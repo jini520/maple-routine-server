@@ -1,0 +1,20 @@
+# 자격증명. **이 저장소는 public 이다.**
+#
+# 한 번 커밋되면 히스토리에서 지워도 이미 나간 것이다. FCM 서비스 계정 키 하나로 전 사용자에게
+# 푸시를 쏠 수 있고, DATABASE_URL 에는 DB 비밀번호가 들어간다. 파일이 도착하기 전에 막아 둔다.
+*-firebase-adminsdk-*.json
+firebase-service-account*.json
+service-account*.json
+*.p8
+*.pem
+*.key
+
+# 환경 변수. 실제 값은 서버의 ~/.config/maple-routine-server/.env 에 산다.
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+*.log
+.DS_Store

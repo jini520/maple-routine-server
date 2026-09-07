@@ -1,0 +1,32 @@
+# 배포 정의가 코드와 같이 산다.
+#
+# 기존 `infra` 프로젝트의 compose 에 얹지 않는다. 저장소를 가른 이유가 배포 축이 다르기
+# 때문인데, 배포 정의를 남의 프로젝트에 두면 그 축이 다시 붙는다. 대신 네트워크만 빌려 쓴다.
+
+services:
+  notice-api:
+    build: .
+    image: maple-routine-server:prod
+    container_name: maple-routine-server
+    restart: unless-stopped
+    # 0.0.0.0 인 것은 Oracle 이 공용 인터넷을 건너 붙기 때문이다. 집 방화벽이 그 IP 만 받게
+    # 막고 있다. WireGuard 를 넣으면 127.0.0.1 로 조인다.
+    ports:
+      - '4000:4000'
+    env_file:
+      - /home/jinni/.config/maple-routine-server/.env
+    volumes:
+      # FCM 키는 이미지에 안 굽는다. 읽기 전용으로 걸어만 준다.
+      - /home/jinni/.config/maple-routine-server/fcm-key.json:/run/secrets/fcm-key.json:ro
+    networks:
+      - infra_network
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  # 기존 infra 프로젝트가 만든 것을 빌려 쓴다. 이 파일이 만들지 않는다.
+  infra_network:
+    external: true

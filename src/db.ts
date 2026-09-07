@@ -15,6 +15,11 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
  *
  * 마이그레이션 도구를 안 두는 이유는 표가 하나뿐이고 아직 아무도 안 쓰기 때문이다. 두 번째
  * 표가 생기거나 컬럼을 바꿔야 하는 날 도구를 들인다. 그전까지는 이 함수가 진실이다.
+ *
+ * ⚠️ **`CREATE TABLE IF NOT EXISTS` 는 이미 있는 표에 컬럼을 안 더한다.** 표가 만들어진 뒤에
+ * 컬럼을 늘리면 그 문장이 조용히 건너뛰고, 다음에 그 컬럼을 쓰는 쿼리가 42703 으로 죽는다.
+ * 실제로 `push_title` 을 그렇게 잃었다. 그래서 컬럼을 더할 때는 아래 `ADD COLUMN IF NOT
+ * EXISTS` 를 **함께** 적는다. 새 설치는 위에서, 기존 설치는 아래에서 맞는다.
  */
 export async function migrate(): Promise<void> {
   await pool.query(`
@@ -35,6 +40,10 @@ export async function migrate(): Promise<void> {
     -- 목록이 최근순으로 읽는다. 건수가 적어도 인덱스가 없으면 매번 정렬한다.
     CREATE INDEX IF NOT EXISTS notices_published_at_desc
       ON notices (published_at DESC, id DESC);
+
+    -- 위 CREATE TABLE 뒤에 늘어난 컬럼들. 이미 있는 표에도 붙는다.
+    ALTER TABLE notices ADD COLUMN IF NOT EXISTS push_title text;
+    ALTER TABLE notices ADD COLUMN IF NOT EXISTS push_body  text;
   `)
 }
 

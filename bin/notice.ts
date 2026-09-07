@@ -6,14 +6,19 @@
  * 서버에서 그 경로는 아무나 전 사용자에게 알림을 쏘는 문이 된다. CLI 는 그 문을 SSH 로
  * 대신하고, SSH 는 이미 열쇠로 잠겨 있다.
  *
+ * **주 창구는 웹 폼(`/admin`)이다.** 이 CLI 는 그것이 안 될 때의 뒷문이고, 서버에 SSH 로
+ * 들어갈 수 있으면 언제나 쓸 수 있다.
+ *
  * ```
- * notice send  --id 2026-09-08-maint --title 점검 --body 본문 [--link URL] [--dry]
- * notice list  [--limit 20]
+ * notice send --title 제목 --body 본문 [--push-title …] [--push-body …] [--link …] [--dry]
+ * notice list [--limit 20]
  * ```
+ *
+ * `--push-title` 과 `--push-body` 를 둘 다 주면 알림까지 보낸다. 안 주면 공지만 저장한다.
  */
 import { insertNotice, listNotices, markSent, migrate } from '../src/db.ts'
 import { sendNotice, payloadBytes } from '../src/send.ts'
-import type { Notice } from '../src/notice.ts'
+import { newNoticeId, type Notice } from '../src/notice.ts'
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`)
@@ -25,33 +30,45 @@ function has(name: string): boolean {
 }
 
 async function send(): Promise<void> {
-  const id = flag('id')
   const title = flag('title')
   const body = flag('body')
-  if (id === undefined || title === undefined || body === undefined) {
-    throw new Error('--id --title --body 가 다 있어야 한다')
+  if (title === undefined || body === undefined) {
+    throw new Error('--title 과 --body 가 있어야 한다')
   }
 
   const link = flag('link')
   const notice: Notice = {
-    id,
+    id: flag('id') ?? newNoticeId(new Date()),
     title,
     body,
     publishedAt: new Date().toISOString(),
     ...(link === undefined ? {} : { link }),
   }
 
-  console.log(`페이로드 ${payloadBytes(notice)}바이트`)
+  const pushTitle = flag('push-title')
+  const pushBody = flag('push-body')
+  const push =
+    pushTitle !== undefined && pushBody !== undefined
+      ? { title: pushTitle, body: pushBody }
+      : null
+
+  console.log(`id ${notice.id} · 페이로드 ${payloadBytes(notice)}바이트`)
+
+  const dry = has('dry')
 
   // **저장이 먼저다.** 발송에 성공했는데 저장이 실패하면 알림은 갔는데 목록에 없는 공지가
   // 생기고, 그 상태는 되돌릴 방법이 없다. 반대는 다시 쏘면 된다.
-  await insertNotice(notice)
+  if (!dry) await insertNotice(notice)
 
-  const dry = has('dry')
-  const messageId = await sendNotice(notice, dry)
-  if (!dry) await markSent(id)
+  if (push === null) {
+    console.log(dry ? '검증만 했다. 알림은 안 보낸다' : '공지만 저장했다. 알림은 안 보냈다')
+    return
+  }
 
-  console.log(dry ? `검증만 통과. id ${messageId}` : `발송 완료. id ${messageId}`)
+  const messageId = await sendNotice(notice, push, dry)
+  if (!dry) await markSent(notice.id, push.title, push.body)
+
+  console.log(dry ? `검증만 통과. ${messageId}` : `발송 완료. ${messageId}`)
 }
 
 async function list(): Promise<void> {
@@ -65,7 +82,7 @@ const command = process.argv[2]
 if (command === 'send') await send()
 else if (command === 'list') await list()
 else {
-  console.error('쓰는 법: notice send --id … --title … --body … [--link …] [--dry]')
+  console.error('쓰는 법: notice send --title … --body … [--push-title … --push-body …] [--dry]')
   console.error('         notice list [--limit 20]')
   process.exitCode = 1
 }

@@ -25,7 +25,12 @@ export async function migrate(): Promise<void> {
       published_at timestamptz NOT NULL,
       link         text,
       -- 발송 시각. NULL 이면 아직 안 쐈다. 목록에는 나가되 알림은 안 간 상태가 있을 수 있다.
-      sent_at      timestamptz
+      -- 운영자가 알림 전송을 안 고르면 그 상태로 남는다.
+      sent_at      timestamptz,
+      -- 실제로 보낸 알림 문구. 공지 문구와 다를 수 있어서 따로 남긴다. 나중에 "그때 뭐라고
+      -- 보냈더라" 를 답할 수 있는 유일한 기록이다.
+      push_title   text,
+      push_body    text
     );
     -- 목록이 최근순으로 읽는다. 건수가 적어도 인덱스가 없으면 매번 정렬한다.
     CREATE INDEX IF NOT EXISTS notices_published_at_desc
@@ -60,8 +65,11 @@ export async function insertNotice(notice: Notice): Promise<void> {
   )
 }
 
-export async function markSent(id: string): Promise<void> {
-  await pool.query(`UPDATE notices SET sent_at = now() WHERE id = $1`, [id])
+export async function markSent(id: string, pushTitle: string, pushBody: string): Promise<void> {
+  await pool.query(
+    `UPDATE notices SET sent_at = now(), push_title = $2, push_body = $3 WHERE id = $1`,
+    [id, pushTitle, pushBody],
+  )
 }
 
 export async function getNotice(id: string): Promise<Notice | null> {

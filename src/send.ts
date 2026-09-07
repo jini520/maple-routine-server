@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getMessaging } from 'firebase-admin/messaging'
 
-import { toPushData, type Notice } from './notice.ts'
+import { toPushData, type Notice, type PushText } from './notice.ts'
 
 /** 앱이 구독하는 토픽. 앱 쪽 `features/notice/store.ts` 와 같은 문자열이어야 한다. */
 export const NOTICE_TOPIC = 'notice'
@@ -20,6 +20,9 @@ export const NOTICE_TOPIC = 'notice'
  */
 const MAX_PAYLOAD_BYTES = 4096
 
+/** `data` 에 실을 본문의 상한. 전체 4KB 안에서 다른 필드가 쓸 몫을 남긴 값이다. */
+const MAX_BODY_BYTES = 2800
+
 function ensureApp(): void {
   if (getApps().length > 0) return
 
@@ -28,7 +31,26 @@ function ensureApp(): void {
   initializeApp({ credential: cert(JSON.parse(readFileSync(path, 'utf8'))) })
 }
 
-/** 4KB 를 넘는지. 키 이름도 함께 센다. */
+/**
+ * UTF-8 바이트 기준으로 자른다. **글자 중간에서 안 자른다.**
+ *
+ * `slice` 로 자르면 한글 한 글자가 3바이트라 경계가 어긋나 깨진 문자가 남는다.
+ */
+export function truncateBytes(text: string, max: number): string {
+  if (Buffer.byteLength(text, 'utf8') <= max) return text
+
+  let out = ''
+  let used = 0
+  for (const ch of text) {
+    const size = Buffer.byteLength(ch, 'utf8')
+    if (used + size > max - 1) break
+    out += ch
+    used += size
+  }
+  return `${out}…`
+}
+
+/** 보낼 페이로드의 바이트 수. 키 이름도 함께 센다. */
 export function payloadBytes(notice: Notice): number {
   return Buffer.byteLength(JSON.stringify(toPushData(notice)), 'utf8')
 }
@@ -38,9 +60,19 @@ export function payloadBytes(notice: Notice): number {
  *
  * `notification` 으로 보내는 이유. 앱이 죽어 있을 때 OS 가 직접 그린다. data-only 로 보내면
  * iOS 가 배달을 보장하지 않는 자리로 들어가고, 공지 알림에서 그것은 안 뜨는 것과 같다.
+ *
+ * **알림 문구는 공지 문구와 따로 받는다.** 트레이에 뜨는 한두 줄과 상세 화면의 본문은 쓰임이
+ * 달라서, 같은 글을 두 자리에 쓰면 한쪽이 늘 어색해진다.
  */
-export async function sendNotice(notice: Notice, dryRun = false): Promise<string> {
-  const bytes = payloadBytes(notice)
+export async function sendNotice(
+  notice: Notice,
+  push: PushText,
+  dryRun = false,
+): Promise<string> {
+  // 본문이 길면 여기서 자른다. 상세 화면은 서버 조회가 온전한 것으로 덮는다.
+  const trimmed: Notice = { ...notice, body: truncateBytes(notice.body, MAX_BODY_BYTES) }
+
+  const bytes = payloadBytes(trimmed)
   if (bytes > MAX_PAYLOAD_BYTES) {
     throw new Error(`페이로드가 ${bytes}바이트다. 상한 ${MAX_PAYLOAD_BYTES}을 넘는다`)
   }
@@ -49,8 +81,8 @@ export async function sendNotice(notice: Notice, dryRun = false): Promise<string
   return getMessaging().send(
     {
       topic: NOTICE_TOPIC,
-      notification: { title: notice.title, body: notice.body },
-      data: toPushData(notice),
+      notification: { title: push.title, body: push.body },
+      data: toPushData(trimmed),
       android: { priority: 'high' },
       apns: { payload: { aps: { sound: 'default' } } },
     },

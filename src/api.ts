@@ -14,6 +14,8 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
+import { handleCreate, isAuthorized } from './admin.ts'
+import { ADMIN_HTML } from './admin-page.ts'
 import { getNotice, listNotices } from './db.ts'
 
 /** 한 번에 주는 상한. 넘겨 부르면 이 값으로 깎는다. */
@@ -33,6 +35,32 @@ function send(res: ServerResponse, status: number, body: unknown): void {
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
+
+  // 관리자 경로가 먼저다. 앞단 nginx 가 auth_basic 으로 막고 토큰 헤더를 넣어 주며,
+  // 여기서 그 토큰을 한 번 더 본다. nginx 설정이 깨져도 이쪽이 혼자 거부한다.
+  if (url.pathname.startsWith('/admin')) {
+    if (!isAuthorized(req)) {
+      send(res, 403, { error: 'forbidden' })
+      return
+    }
+
+    if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname === '/admin/')) {
+      res.writeHead(200, {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+      })
+      res.end(ADMIN_HTML)
+      return
+    }
+
+    if (req.method === 'POST' && url.pathname === '/admin/notices') {
+      await handleCreate(req, res)
+      return
+    }
+
+    send(res, 404, { error: 'not_found' })
+    return
+  }
 
   if (req.method !== 'GET') {
     send(res, 405, { error: 'method_not_allowed' })

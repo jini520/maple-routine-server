@@ -39,6 +39,8 @@ async function send(): Promise<void> {
   const link = flag('link')
   const notice: Notice = {
     id: flag('id') ?? newNoticeId(new Date()),
+    // CLI 로 쓰는 것은 운영자 공지다. 넥슨에서 온 것은 폴러가 자기 분류로 넣는다.
+    kind: 'app',
     title,
     body,
     publishedAt: new Date().toISOString(),

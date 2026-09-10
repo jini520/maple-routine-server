@@ -26,24 +26,93 @@ URL 이고 `/app-ads.txt` 는 AdMob 판매 권한 선언이라, 집 정전이 �
 셋이 전부 이 모양이라 앱의 화면이 출처를 안 가린다.
 
 ```ts
+type NoticeKind = 'app' | 'game' | 'update' | 'event' | 'cashshop'
+
 interface Notice {
   id: string
+  kind: NoticeKind
   title: string
-  body: string
+  body: string          // 블록에서 뽑은 평문. 목록 미리보기와 푸시가 쓴다
   publishedAt: string   // ISO 8601
   link?: string
+  blocks?: NoticeBlock[]  // 상세에서만 온다
 }
 ```
 
 ```
-GET /v1/notices?limit=20&cursor=…   → { items: Notice[], nextCursor: string | null }
-GET /v1/notices/{id}                → Notice
-GET /healthz                        → { ok: true }
+GET /v1/notices?limit=20&cursor=…&kind=game,update  → { items: Notice[], nextCursor }
+GET /v1/notices/{id}                                → Notice (blocks 포함)
+GET /healthz                                        → { ok: true }
 ```
+
+**목록은 `blocks` 를 안 준다.** 업데이트 한 건이 블록 797개 · JSON 57KB다(실측). 20건에 실으면
+한 응답이 MB 단위가 된다.
 
 **인증이 없다.** 공개 정보라서다. `limit` 상한은 50 이고 그 밖의 속도 제한은 앞단 nginx 가 건다.
 
 한쪽만 바꾸면 다른 저장소의 타입 검사가 못 잡는다. 필드를 더할 때 **양쪽을 함께 볼 것.**
+
+## 넥슨 공지를 받는다
+
+`NEXON_KEY` 가 있으면 1분마다 네 분류의 목록을 조회하고, 처음 보는 글은 상세까지 받아 저장한 뒤
+알림을 보낸다(`src/poll.ts`).
+
+```
+공지사항  /maplestory/v1/notice            → kind 'game'
+업데이트  /maplestory/v1/notice-update     → kind 'update'
+이벤트    /maplestory/v1/notice-event      → kind 'event'
+캐시샵    /maplestory/v1/notice-cashshop   → kind 'cashshop'
+```
+
+**1분마다 도는 이유는 나중에 받아 오는 길이 없기 때문이다.** 넥슨 상세는 **목록에 지금 떠 있는
+것만** 답한다(실측 2026-09-10 · 목록 밖 id 는 전부 400 `OPENAPI00004`). 목록에서 빠지면 그 글은
+영영 못 받고, 썬데이 메이플은 일요일 하루짜리라 그날의 목록에만 잠깐 뜬다. **우리 DB 가 그 글의
+유일한 아카이브다.**
+
+본문은 HTML 로 오고 `src/html.ts` 가 블록 배열로 바꾼다. 앱에 HTML 을 보내지 않으므로 넥슨
+본문에 무엇이 들어 있든 태그가 앱에 닿지 않는다. 파서가 서버에 있는 이유는 넥슨이 마크업을 바꿀
+때 그날 고쳐 그날 나가야 하기 때문이다.
+
+### 알림을 안 보내는 세 경우
+
+셋 다 **저장은 한다.** 목록에는 나오고 알림만 안 간다.
+
+| 언제 | 왜 |
+|---|---|
+| 그 분류의 첫 회차 | 빈 표로 처음 돌면 79건이 전부 새 항목이다. 그대로 두면 알림 79개가 나간다 |
+| 올라온 지 6시간 넘은 글 | 씨 뿌리기가 429 로 끊기거나 서버가 하루 죽었다 살아날 때 밀린 알림이 터진다 |
+| 썬데이가 아닌 이벤트 | 사용자 지정. 패치 날 이벤트 5건과 캐시샵 4건이 같은 분에 올라온다 |
+
+### 알림 문구
+
+**제목은 분류가 정하고 내용은 공지 제목이다**(사용자 지정). 공지 제목을 알림 제목에 넣지 않는
+이유는 트레이가 한 줄로 자르기 때문이다. 거기에 `클라이언트 1.2.418 업데이트 안내 (신규 HEXA
+스킬 및…` 이 서면 무엇이 왔는지가 안 남는다.
+
+| 분류 | 알림 제목 | 알림 내용 |
+|---|---|---|
+| `game` | 새 공지 사항이 올라왔어요. | 9/10(목) 넥슨 정기점검 안내 |
+| `update` | 새 업데이트 확인해보세요. | 클라이언트 1.2.418 업데이트 안내 |
+| `event` | 새로운 이벤트가 시작돼요. | 스페셜 썬데이 메이플 |
+| `cashshop` | 캐시 아이템이 업데이트 됐어요. | 마스터라벨 플러스 |
+
+**캐시샵만 제목을 손본다.** 원본이 `8월 20일 캐시아이템 업데이트 - 마스터라벨 플러스` 꼴이라
+앞이 전부 같다. 그대로 두면 알림 스무 개가 같은 열두 글자로 시작하고 다른 것은 뒤쪽뿐이다.
+못 떼면 제목을 통째로 쓴다 - 넥슨이 꼴을 바꿨을 때 빈 알림을 보내는 것보다 낫다.
+
+운영자 공지(`app`)는 이 규칙을 안 탄다. `/admin` 과 CLI 가 문구를 직접 받는다.
+
+### 토픽은 넷이다
+
+| 앱의 토글 | 토픽 | 담는 `kind` |
+|---|---|---|
+| 앱 공지사항 | `notice` | `app` |
+| 게임 공지사항 | `notice-game` | `game` |
+| 업데이트·이벤트 | `notice-update-event` | `update` · `event` |
+| 캐시샵 | `notice-cashshop` | `cashshop` |
+
+**`notice` 라는 이름은 못 바꾼다.** 이미 스토어에 나간 바이너리가 그것을 구독하고 있어서, 게임
+공지로 돌리면 업데이트를 안 받은 기기가 켠 적 없는 알림을 받는다.
 
 ## 발송은 CLI 다
 

@@ -116,6 +116,21 @@ export function nexonNoticeId(kind: NoticeKind, sourceId: number): string {
  */
 export function shouldNotify(kind: NoticeKind, title: string): boolean {
   if (kind !== 'event') return true
+  return isSundayMaple(title)
+}
+
+/**
+ * 썬데이 메이플인가. **알림 판정과 기록 판정이 같은 함수를 쓴다.**
+ *
+ * 관측된 제목이 셋이다 - `썬데이 메이플` · `스페셜 썬데이 메이플` · `스페셜 썬데이`. 그래서
+ * 완전 일치가 아니라 공백을 지운 제목이 `썬데이` 를 담는지 본다. 넥슨이 접두어를 붙이거나
+ * 띄어쓰기를 바꿔도 살아남는다.
+ *
+ * ⚠️ **아직 실물을 못 봤다.** 위 셋은 웹 게시판 제목이고, 이 API 가 주는 제목을 받아 본 적이
+ * 없다(썬데이는 일요일 하루만 목록에 뜨고 지나면 상세도 400 이다). 실물을 본 날 이 함수만
+ * 고치면 되고, **기록은 이 함수를 조회 때마다 돌리므로 이미 쌓인 것도 함께 바로잡힌다.**
+ */
+export function isSundayMaple(title: string): boolean {
   return title.replace(/\s+/g, '').includes('썬데이')
 }
 
@@ -131,4 +146,40 @@ export function pushTextFor(notice: Notice): PushText {
     title: notice.title,
     body: body === '' ? notice.title : body.split('\n')[0] ?? notice.title,
   }
+}
+
+/**
+ * 썬데이 메이플 기록 한 줄. **`Notice` 와 달리 기간을 든다.**
+ *
+ * 기록에서 가장 중요한 값이 «어느 일요일이었나» 인데 `publishedAt` 은 등록 시각이라 그것과
+ * 다를 수 있다. 그래서 이 응답에만 `startsAt`·`endsAt` 을 싣는다.
+ */
+export interface SundayRecord {
+  id: string
+  title: string
+  publishedAt: string
+  /** 이벤트 시작. 넥슨이 안 주면 `null`. */
+  startsAt: string | null
+  endsAt: string | null
+  link?: string
+  /** 본문. 썬데이는 이미지 한두 장이라 목록에 실어도 무겁지 않다. */
+  blocks?: NoticeBlock[]
+}
+
+/**
+ * 쌓인 이벤트에서 썬데이만 골라 최근 순으로.
+ *
+ * **판정을 조회 때마다 돌린다.** 저장할 때 표식을 박아 두면 빠르지만, 아직 이 API 가 주는
+ * 썬데이 제목을 받아 본 적이 없어서 지금 박는 표식은 틀릴 수 있다. 조회 때 돌리면 판정을
+ * 고치는 것만으로 **이미 쌓인 기록도 함께 바로잡힌다.**
+ *
+ * 정렬 축은 **이벤트 시작일**이다. 등록일이 아니라 그날이 기록의 이름이기 때문이고, 넥슨이
+ * 기간을 안 주면 등록일로 떨어진다.
+ */
+export function sundayRecordsFrom(rows: readonly SundayRecord[]): SundayRecord[] {
+  const when = (row: SundayRecord): string => row.startsAt ?? row.publishedAt
+
+  return rows
+    .filter((row) => isSundayMaple(row.title))
+    .sort((a, b) => when(b).localeCompare(when(a)))
 }

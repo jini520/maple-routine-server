@@ -7,7 +7,7 @@
 import pg from 'pg'
 
 import type { NoticeBlock } from './html.ts'
-import { isNoticeKind, type Notice, type NoticeKind } from './notice.ts'
+import { isNoticeKind, type Notice, type NoticeKind, type SundayRecord } from './notice.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -175,6 +175,43 @@ export async function knownIds(ids: readonly string[]): Promise<Set<string>> {
 export async function hasAny(kind: NoticeKind): Promise<boolean> {
   const { rows } = await pool.query(`SELECT 1 FROM notices WHERE kind = $1 LIMIT 1`, [kind])
   return rows.length > 0
+}
+
+/**
+ * 썬데이 기록의 재료. **이벤트 행을 최근 것부터 훑어 준다.**
+ *
+ * 썬데이만 골라 내는 일은 SQL 이 아니라 `sundayRecordsFrom` 이 한다. 판정을 두 언어로 두면
+ * 한쪽만 고쳐져서 갈라지고, 지금 그 판정은 **실물을 못 본 채 세운 것**이라 곧 고칠 것이 거의
+ * 확실하다. 한 자리에 두면 고치는 것도 한 번이다.
+ *
+ * 전부 훑지 않는 이유는 이벤트가 계속 쌓이기 때문이다. 썬데이는 주 1~2회라 이 창이면 몇 년
+ * 치가 들어온다.
+ */
+export async function listEventRows(scan = 500): Promise<SundayRecord[]> {
+  const { rows } = await pool.query<{
+    id: string
+    title: string
+    published_at: Date
+    starts_at: Date | null
+    ends_at: Date | null
+    link: string | null
+    blocks: NoticeBlock[] | null
+  }>(
+    `SELECT id, title, published_at, starts_at, ends_at, link, blocks
+     FROM notices WHERE kind = 'event'
+     ORDER BY published_at DESC, id DESC LIMIT $1`,
+    [scan],
+  )
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    publishedAt: row.published_at.toISOString(),
+    startsAt: row.starts_at === null ? null : row.starts_at.toISOString(),
+    endsAt: row.ends_at === null ? null : row.ends_at.toISOString(),
+    ...(row.link === null ? {} : { link: row.link }),
+    ...(row.blocks == null ? {} : { blocks: row.blocks }),
+  }))
 }
 
 /**

@@ -1,10 +1,11 @@
 // 계약이 실제로 지켜지는지 본다. FCM 은 `data` 값이 전부 문자열이어야 하고, 하나라도
 // 아니면 발송이 거부된다. 그 실패는 보내 봐야 드러나므로 여기서 막는다.
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { describe, it, test } from 'node:test'
 
 import {
   nexonNoticeId,
+  sundayRecordsFrom,
   pushTextFor,
   shouldNotify,
   toPushData,
@@ -103,4 +104,51 @@ test('알림 본문은 첫 줄만 쓴다', () => {
   const 여러줄: Notice = { ...공지, body: '첫 줄\n둘째 줄\n셋째 줄' }
 
   assert.equal(pushTextFor(여러줄).body, '첫 줄')
+})
+
+describe('썬데이 기록', () => {
+  const 기록 = (id: string, title: string, startsAt: string | null, publishedAt: string) => ({
+    id,
+    title,
+    publishedAt,
+    startsAt,
+    endsAt: null,
+  })
+
+  it('썬데이만 고른다', () => {
+    const rows = [
+      기록('event-1', '울티마 유물 탐사', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z'),
+      기록('event-2', '스페셜 썬데이 메이플', '2026-09-06T00:00:00.000Z', '2026-09-05T00:00:00.000Z'),
+    ]
+
+    assert.deepEqual(
+      sundayRecordsFrom(rows).map((row) => row.id),
+      ['event-2'],
+    )
+  })
+
+  // 기록의 이름은 «어느 일요일이었나» 다. 등록일은 그보다 며칠 앞설 수 있다.
+  it('이벤트 시작일 기준 최근 순이다', () => {
+    const rows = [
+      기록('event-1', '썬데이 메이플', '2026-08-30T00:00:00.000Z', '2026-08-29T00:00:00.000Z'),
+      기록('event-2', '썬데이 메이플', '2026-09-06T00:00:00.000Z', '2026-08-28T00:00:00.000Z'),
+    ]
+
+    assert.deepEqual(
+      sundayRecordsFrom(rows).map((row) => row.id),
+      ['event-2', 'event-1'],
+    )
+  })
+
+  it('기간이 없으면 등록일로 줄 세운다', () => {
+    const rows = [
+      기록('event-1', '썬데이 메이플', null, '2026-08-30T00:00:00.000Z'),
+      기록('event-2', '썬데이 메이플', null, '2026-09-06T00:00:00.000Z'),
+    ]
+
+    assert.deepEqual(
+      sundayRecordsFrom(rows).map((row) => row.id),
+      ['event-2', 'event-1'],
+    )
+  })
 })

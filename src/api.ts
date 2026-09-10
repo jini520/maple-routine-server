@@ -4,6 +4,7 @@
  * ```
  * GET /v1/notices?limit=20&cursor=…&kind=game,update  → { items, nextCursor }
  * GET /v1/notices/{id}                                → Notice (blocks 포함)
+ * GET /v1/sunday-maple?limit=20                       → { items: SundayRecord[] }
  * ```
  *
  * **목록은 `blocks` 를 안 준다.** 업데이트 한 건이 블록 797개 · JSON 57KB라 20건에 실으면 한
@@ -19,8 +20,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 
 import { handleCreate, isAuthorized } from './admin.ts'
 import { ADMIN_HTML } from './admin-page.ts'
-import { getNotice, listNotices } from './db.ts'
-import { isNoticeKind, type NoticeKind } from './notice.ts'
+import { getNotice, listEventRows, listNotices } from './db.ts'
+import { isNoticeKind, sundayRecordsFrom, type NoticeKind } from './notice.ts'
 
 /** 한 번에 주는 상한. 넘겨 부르면 이 값으로 깎는다. */
 const MAX_LIMIT = 50
@@ -95,6 +96,22 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     // NaN 도 여기서 걸린다. 이상한 값이면 기본값으로 간다.
     const limit = Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), MAX_LIMIT) : DEFAULT_LIMIT
     send(res, 200, await listNotices(limit, url.searchParams.get('cursor'), parseKinds(url)))
+    return
+  }
+
+  /**
+   * 썬데이 메이플 기록. **넥슨이 안 들고 있는 것을 우리가 든다.**
+   *
+   * 썬데이는 일요일 하루만 `notice-event` 목록에 뜨고, 지나면 상세도 400 이라 지난 회차를
+   * 받아 올 길이 없다. 폴러가 그날 잡아 둔 것이 유일한 사본이고 이 경로가 그것을 돌려준다.
+   *
+   * **목록인데 `blocks` 를 싣는다.** 다른 목록은 안 싣지만(업데이트 한 건이 57KB다) 썬데이
+   * 본문은 이미지 한두 장이라 가볍고, 빼면 기록이 제목만 남아 볼 것이 없어진다.
+   */
+  if (url.pathname === '/v1/sunday-maple') {
+    const raw = Number(url.searchParams.get('limit') ?? DEFAULT_LIMIT)
+    const limit = Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), MAX_LIMIT) : DEFAULT_LIMIT
+    send(res, 200, { items: sundayRecordsFrom(await listEventRows()).slice(0, limit) })
     return
   }
 

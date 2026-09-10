@@ -58,14 +58,16 @@ test('앱 공지의 토픽 이름은 notice 그대로다', () => {
   assert.equal(TOPIC_BY_KIND.app, 'notice')
 })
 
-test('업데이트와 이벤트가 한 토픽을 쓴다', () => {
-  assert.equal(TOPIC_BY_KIND.update, TOPIC_BY_KIND.event)
+// 이벤트로 나가는 것이 썬데이뿐이라 «업데이트·이벤트» 묶음이 뜻을 잃었다. 토글 한 줄이
+// 두 가지를 말해야 했다.
+test('업데이트와 이벤트가 서로 다른 토픽이다', () => {
+  assert.notEqual(TOPIC_BY_KIND.update, TOPIC_BY_KIND.event)
 })
 
-test('네 토글이 서로 다른 토픽이다', () => {
+test('다섯 분류가 다 다른 토픽이다', () => {
   const topics = new Set(Object.values(TOPIC_BY_KIND))
 
-  assert.equal(topics.size, 4)
+  assert.equal(topics.size, 5)
 })
 
 // notice_id 번호 체계가 분류마다 달라서(공지 149862 · 업데이트 811 · 이벤트 1374 · 캐시샵 642)

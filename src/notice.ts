@@ -53,18 +53,20 @@ export interface PushText {
 }
 
 /**
- * 분류가 어느 토픽으로 가는가. **`app` 이 `notice` 인 것은 호환 때문이다.**
+ * 분류가 어느 토픽으로 가는가. **분류 하나가 토픽 하나다.**
  *
- * 이미 스토어에 나간 바이너리가 `notice` 를 구독하고 있다. 그 이름을 게임 공지로 돌리면
- * 업데이트를 안 받은 기기가 어느 날 갑자기 켠 적 없는 알림을 받는다.
+ * `app` 이 `notice` 인 것은 호환 때문이다. 이미 스토어에 나간 바이너리가 그 이름을 구독하고
+ * 있어서, 게임 공지로 돌리면 업데이트를 안 받은 기기가 켠 적 없는 알림을 받는다.
  *
- * 업데이트와 이벤트가 한 토픽을 쓰는 것은 사용자가 정한 토글이 그 묶음이어서다.
+ * 업데이트와 이벤트가 한때 `notice-update-event` 를 나눠 썼는데 갈랐다(2026-09-10, 사용자
+ * 지정). 이벤트로 나가는 것이 썬데이뿐이라 그 묶음이 뜻을 잃었다 - 토글 한 줄이 «패치 노트와
+ * 썬데이» 두 가지를 말해야 했다. **그 옛 토픽으로는 이제 아무것도 안 보낸다.**
  */
 export const TOPIC_BY_KIND: Record<NoticeKind, string> = {
   app: 'notice',
   game: 'notice-game',
-  update: 'notice-update-event',
-  event: 'notice-update-event',
+  update: 'notice-update',
+  event: 'notice-event',
   cashshop: 'notice-cashshop',
 }
 

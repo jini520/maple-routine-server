@@ -104,12 +104,19 @@ GET /healthz                                        → { ok: true }
 
 ### 토픽은 넷이다
 
-| 앱의 토글 | 토픽 | 담는 `kind` |
+**분류 하나가 토픽 하나다.**
+
+| 앱의 토글 | 토픽 | `kind` |
 |---|---|---|
-| 앱 공지사항 | `notice` | `app` |
-| 게임 공지사항 | `notice-game` | `game` |
-| 업데이트·이벤트 | `notice-update-event` | `update` · `event` |
-| 캐시샵 | `notice-cashshop` | `cashshop` |
+| 앱 공지 사항 | `notice` | `app` |
+| 게임 공지 사항 | `notice-game` | `game` |
+| 썬데이 메이플 | `notice-event` | `event` |
+| 게임 업데이트 안내 | `notice-update` | `update` |
+| 캐시 아이템 업데이트 | `notice-cashshop` | `cashshop` |
+
+업데이트와 이벤트가 한때 `notice-update-event` 를 나눠 썼는데 갈랐다(2026-09-10). 이벤트로
+나가는 것이 썬데이뿐이라 그 묶음이 뜻을 잃었다 - 토글 한 줄이 «패치 노트와 썬데이» 두 가지를
+말해야 했다. **옛 토픽으로는 이제 아무것도 안 보낸다.**
 
 **`notice` 라는 이름은 못 바꾼다.** 이미 스토어에 나간 바이너리가 그것을 구독하고 있어서, 게임
 공지로 돌리면 업데이트를 안 받은 기기가 켠 적 없는 알림을 받는다.

@@ -85,7 +85,9 @@ test('둘째 회차부터 발송한다', async () => {
   const result = await pollKind('game', rec.deps)
 
   assert.equal(result.sent, 1)
-  assert.equal(rec.sent[0]?.push.title, '가')
+  // 알림 제목은 분류가 정하고, 공지 제목은 내용으로 간다.
+  assert.equal(rec.sent[0]?.push.title, '새 공지 사항이 올라왔어요.')
+  assert.equal(rec.sent[0]?.push.body, '가')
 })
 
 test('이벤트는 썬데이만 발송하고 나머지는 저장만 한다', async () => {

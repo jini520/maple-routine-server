@@ -93,17 +93,61 @@ test('이벤트가 아닌 분류는 전부 나간다', () => {
   assert.equal(shouldNotify('cashshop', '8월 20일 캐시아이템 업데이트'), true)
 })
 
-// 이벤트·캐시샵 본문은 이미지 한 장이라 평문이 0자다. 그대로 두면 알림 둘째 줄이 빈칸이다.
-test('본문이 비면 알림 문구가 제목을 쓴다', () => {
-  const 이미지만: Notice = { ...공지, kind: 'event', title: '썬데이 메이플', body: '' }
+// 알림 제목은 분류마다 고정이고 내용이 실제 공지 제목이다(사용자 지정). 공지 제목을 알림
+// 제목에 넣으면 트레이에서 한 줄로 잘려 무엇이 왔는지가 안 남는다.
+describe('넥슨 공지의 알림 문구', () => {
+  const 공지로 = (kind: Notice['kind'], title: string): Notice => ({ ...공지, kind, title })
 
-  assert.deepEqual(pushTextFor(이미지만), { title: '썬데이 메이플', body: '썬데이 메이플' })
+  it('게임 공지', () => {
+    assert.deepEqual(pushTextFor(공지로('game', '9/10(목) 넥슨 정기점검 안내')), {
+      title: '새 공지 사항이 올라왔어요.',
+      body: '9/10(목) 넥슨 정기점검 안내',
+    })
+  })
+
+  it('업데이트', () => {
+    assert.deepEqual(pushTextFor(공지로('update', '클라이언트 1.2.418 업데이트 안내')), {
+      title: '새 업데이트 확인해보세요.',
+      body: '클라이언트 1.2.418 업데이트 안내',
+    })
+  })
+
+  it('이벤트', () => {
+    assert.deepEqual(pushTextFor(공지로('event', '스페셜 썬데이 메이플')), {
+      title: '새로운 이벤트가 시작돼요.',
+      body: '스페셜 썬데이 메이플',
+    })
+  })
+
+  // 캐시샵 제목은 앞이 전부 같아서 그대로 두면 알림 스무 개가 «8월 20일 캐시아이템
+  // 업데이트 - » 로 시작한다. 다른 것은 뒤쪽뿐이다.
+  it('캐시샵은 날짜 접두어를 뗀다', () => {
+    assert.deepEqual(pushTextFor(공지로('cashshop', '8월 20일 캐시아이템 업데이트 - 마스터라벨 플러스')), {
+      title: '캐시 아이템이 업데이트 됐어요.',
+      body: '마스터라벨 플러스',
+    })
+  })
+
+  it('캐시샵 접두어의 띄어쓰기가 달라도 뗀다', () => {
+    assert.equal(pushTextFor(공지로('cashshop', '1월 15일  캐시아이템 업데이트-성별 변경 쿠폰')).body, '성별 변경 쿠폰')
+  })
+
+  // 넥슨이 제목 꼴을 바꾸면 못 뗀다. 그때 빈 알림을 보내느니 통째로 보낸다.
+  it('접두어가 없으면 제목을 그대로 쓴다', () => {
+    assert.equal(pushTextFor(공지로('cashshop', '캐시샵 임시 점검 안내')).body, '캐시샵 임시 점검 안내')
+  })
+
+  // 본문이 이미지 한 장이라 평문이 0자여도 알림에는 제목이 실린다.
+  it('본문이 비어도 알림 내용이 빈칸이 아니다', () => {
+    assert.equal(pushTextFor({ ...공지로('event', '썬데이 메이플'), body: '' }).body, '썬데이 메이플')
+  })
 })
 
-test('알림 본문은 첫 줄만 쓴다', () => {
-  const 여러줄: Notice = { ...공지, body: '첫 줄\n둘째 줄\n셋째 줄' }
+// 운영자 공지는 이 함수를 안 탄다. `/admin` 과 CLI 가 문구를 직접 받는다.
+test('앱 공지는 제목과 본문 첫 줄을 그대로 쓴다', () => {
+  const 여러줄: Notice = { ...공지, body: '첫 줄\n둘째 줄' }
 
-  assert.equal(pushTextFor(여러줄).body, '첫 줄')
+  assert.deepEqual(pushTextFor(여러줄), { title: '점검 안내', body: '첫 줄' })
 })
 
 describe('썬데이 기록', () => {

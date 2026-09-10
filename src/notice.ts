@@ -135,17 +135,46 @@ export function isSundayMaple(title: string): boolean {
 }
 
 /**
- * 넥슨 공지의 알림 문구. 제목이 그대로 알림 제목이 된다.
+ * 분류마다 고정된 알림 제목 (사용자 지정).
  *
- * **본문이 비면 제목을 대신 쓴다.** 이벤트·캐시샵 본문은 이미지 한 장이라 평문이 0자다
- * (실측). 그대로 두면 알림 둘째 줄이 빈칸으로 뜬다.
+ * 공지 제목을 알림 제목에 넣지 않는 이유는 **트레이가 한 줄로 자르기 때문**이다. 거기에
+ * `클라이언트 1.2.418 업데이트 안내 (신규 HEXA 스킬 및…` 이 서면 무엇이 왔는지가 안 남는다.
+ * 제목은 «어느 갈래인가» 를 말하고 내용이 «무엇인가» 를 말한다.
+ */
+const PUSH_TITLE: Record<Exclude<NoticeKind, 'app'>, string> = {
+  game: '새 공지 사항이 올라왔어요.',
+  update: '새 업데이트 확인해보세요.',
+  event: '새로운 이벤트가 시작돼요.',
+  cashshop: '캐시 아이템이 업데이트 됐어요.',
+}
+
+/**
+ * 캐시샵 제목의 날짜 접두어. `8월 20일 캐시아이템 업데이트 - 마스터라벨 플러스` 의 앞부분이다.
+ *
+ * 떼는 이유는 **캐시샵 제목이 앞이 전부 같아서**다. 그대로 두면 알림 스무 개가 같은 열두
+ * 글자로 시작하고 다른 것은 뒤쪽뿐이다. 실측 20건이 모두 이 꼴이었다(2026-09-10).
+ */
+const CASHSHOP_PREFIX = /^\d{1,2}월\s*\d{1,2}일\s*캐시아이템\s*업데이트\s*-\s*/
+
+/**
+ * 알림에 실을 문구. **제목은 분류가 정하고 내용은 공지 제목이다** (사용자 지정).
+ *
+ * 운영자 공지(`app`)는 여기 안 온다. `/admin` 과 CLI 가 문구를 직접 받는다 - 트레이에 뜨는
+ * 한두 줄과 공지 본문은 쓰임이 달라 같은 글을 두 자리에 쓰면 한쪽이 늘 어색해진다.
  */
 export function pushTextFor(notice: Notice): PushText {
-  const body = notice.body.trim()
-  return {
-    title: notice.title,
-    body: body === '' ? notice.title : body.split('\n')[0] ?? notice.title,
+  if (notice.kind === 'app') {
+    const body = notice.body.trim()
+    return {
+      title: notice.title,
+      body: body === '' ? notice.title : body.split('\n')[0] ?? notice.title,
+    }
   }
+
+  // 접두어를 못 떼면 제목을 통째로 쓴다. 넥슨이 꼴을 바꿨을 때 빈 알림을 보내는 것보다 낫다.
+  const body = notice.kind === 'cashshop' ? notice.title.replace(CASHSHOP_PREFIX, '') : notice.title
+
+  return { title: PUSH_TITLE[notice.kind], body: body.trim() === '' ? notice.title : body }
 }
 
 /**

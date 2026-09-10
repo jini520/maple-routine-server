@@ -87,6 +87,8 @@ export async function handleCreate(
 
   const notice: Notice = {
     id: newNoticeId(new Date()),
+    // 이 창구로 쓰는 것은 언제나 운영자 공지다.
+    kind: 'app',
     title: form.title,
     body: form.body,
     publishedAt: new Date().toISOString(),

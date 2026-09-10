@@ -2,9 +2,12 @@
  * 조회 API 둘. 계약은 앱 저장소의 결정 문서가 소유한다.
  *
  * ```
- * GET /v1/notices?limit=20&cursor=…  → { items, nextCursor }
- * GET /v1/notices/{id}               → Notice
+ * GET /v1/notices?limit=20&cursor=…&kind=game,update  → { items, nextCursor }
+ * GET /v1/notices/{id}                                → Notice (blocks 포함)
  * ```
+ *
+ * **목록은 `blocks` 를 안 준다.** 업데이트 한 건이 블록 797개 · JSON 57KB라 20건에 실으면 한
+ * 응답이 MB 단위가 된다. 상세에서만 온다.
  *
  * **인증이 없다.** 공개 정보라서다. 대신 누구나 부를 수 있으므로 `limit` 에 상한을 두고,
  * 그 밖의 속도 제한은 앞단 nginx 가 건다.
@@ -17,6 +20,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { handleCreate, isAuthorized } from './admin.ts'
 import { ADMIN_HTML } from './admin-page.ts'
 import { getNotice, listNotices } from './db.ts'
+import { isNoticeKind, type NoticeKind } from './notice.ts'
 
 /** 한 번에 주는 상한. 넘겨 부르면 이 값으로 깎는다. */
 const MAX_LIMIT = 50
@@ -31,6 +35,19 @@ function send(res: ServerResponse, status: number, body: unknown): void {
     'cache-control': 'public, max-age=60',
   })
   res.end(json)
+}
+
+/**
+ * `?kind=game,update` 를 분류 목록으로. 모르는 값은 버린다.
+ *
+ * 빈 목록이면 전 분류다. 앱이 켠 토글만 물어 올 수 있고, 아무 것도 안 주면 지금까지처럼 전부
+ * 준다(옛 앱이 그 모양으로 부른다).
+ */
+function parseKinds(url: URL): NoticeKind[] {
+  const raw = url.searchParams.get('kind')
+  if (raw === null || raw === '') return []
+
+  return [...new Set(raw.split(',').map((one) => one.trim()))].filter(isNoticeKind)
 }
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -77,7 +94,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const raw = Number(url.searchParams.get('limit') ?? DEFAULT_LIMIT)
     // NaN 도 여기서 걸린다. 이상한 값이면 기본값으로 간다.
     const limit = Number.isFinite(raw) ? Math.min(Math.max(Math.trunc(raw), 1), MAX_LIMIT) : DEFAULT_LIMIT
-    send(res, 200, await listNotices(limit, url.searchParams.get('cursor')))
+    send(res, 200, await listNotices(limit, url.searchParams.get('cursor'), parseKinds(url)))
     return
   }
 

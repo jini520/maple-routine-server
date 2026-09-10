@@ -9,10 +9,10 @@ import { readFileSync } from 'node:fs'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getMessaging } from 'firebase-admin/messaging'
 
-import { toPushData, type Notice, type PushText } from './notice.ts'
+import { toPushData, TOPIC_BY_KIND, type Notice, type PushText } from './notice.ts'
 
-/** 앱이 구독하는 토픽. 앱 쪽 `features/notice/store.ts` 와 같은 문자열이어야 한다. */
-export const NOTICE_TOPIC = 'notice'
+// 토픽 이름은 `notice.ts` 의 TOPIC_BY_KIND 가 든다. 앱 쪽 `features/notice/topics.ts` 와
+// 같은 문자열이어야 하고, 한쪽만 바꾸면 구독자가 0명인 토픽으로 조용히 나간다.
 
 /**
  * FCM 메시지 전체 상한. 넘으면 **발송이 거부되는 것이 아니라 잘려 나갈 수 있다.**
@@ -80,7 +80,7 @@ export async function sendNotice(
   ensureApp()
   return getMessaging().send(
     {
-      topic: NOTICE_TOPIC,
+      topic: TOPIC_BY_KIND[notice.kind],
       notification: { title: push.title, body: push.body },
       data: toPushData(trimmed),
       android: { priority: 'high' },

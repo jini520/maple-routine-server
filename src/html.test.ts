@@ -79,7 +79,7 @@ test('링크는 문단에서 떼어 낸 블록이 된다', () => {
   ])
 })
 
-test('http 가 아닌 주소와 빈 이미지는 버린다', () => {
+test('모르는 스킴과 빈 이미지는 버린다', () => {
   // 아는 것만 통과시킨다. 모르는 스킴이 앱까지 흘러가면 그것을 여는 코드가 앱에 필요해진다.
   const html =
     '<p><a href="javascript:alert(1)">눌러</a></p><img src="data:image/png;base64,AAAA"><img src="">'
@@ -100,6 +100,20 @@ test('주석도 버린다', () => {
 test('엔티티를 푼다', () => {
   assert.deepEqual(parseContents('<p>&lt;공지&gt; &amp; &quot;안내&quot;&nbsp;&#39;끝&#39;</p>'), [
     { type: 'text', text: '<공지> & "안내" \'끝\'' },
+  ])
+})
+
+// 넥슨 본문에 평문 http 이미지가 실제로 섞여 온다(업데이트 811). iOS 는 ATS 가 그것을 막아
+// 화면이 말없이 빈칸이 된다.
+test('http 는 https 로 올린다', () => {
+  assert.deepEqual(parseContents('<img src="http://file.nexon.com/a.png">'), [
+    { type: 'image', src: 'https://file.nexon.com/a.png' },
+  ])
+})
+
+test('링크 주소도 올린다', () => {
+  assert.deepEqual(parseContents('<p><a href="http://x.test/1">여기</a></p>'), [
+    { type: 'link', text: '여기', href: 'https://x.test/1' },
   ])
 })
 

@@ -76,12 +76,18 @@ function attribute(tag: string, name: string): string | null {
  * 아는 주소만 통과시킨다. 프로토콜 없는 `//host/…` 는 https 로 채운다.
  *
  * 모르는 스킴(`javascript:` · `data:`)을 통과시키면 그것을 여는 코드가 앱에 필요해진다.
+ *
+ * **`http://` 는 `https://` 로 올린다.** 넥슨 본문에 평문 http 이미지가 실제로 섞여 온다
+ * (업데이트 811 의 `file.nexon.com/NxFile/Download/…`). iOS 는 App Transport Security 가
+ * 평문 http 를 막아서 그 이미지가 **말없이 빈칸**이 된다. 올려서 잃을 것이 없다 - 어차피
+ * 그 주소로는 iOS 에서 못 받고, 같은 호스트가 https 를 받는 것은 확인했다(2026-09-10).
  */
 function safeUrl(raw: string | null): string | null {
   if (raw === null) return null
   const url = decodeEntities(raw).trim()
   if (url.startsWith('//')) return `https:${url}`
-  return /^https?:\/\//i.test(url) ? url : null
+  if (/^http:\/\//i.test(url)) return `https://${url.slice('http://'.length)}`
+  return /^https:\/\//i.test(url) ? url : null
 }
 
 /** 문단·제목·표 칸을 가르는 태그. 닫힐 때 지금까지 모은 글자가 한 덩어리가 된다. */

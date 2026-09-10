@@ -143,7 +143,7 @@ export function isSundayMaple(title: string): boolean {
  */
 const PUSH_TITLE: Record<Exclude<NoticeKind, 'app'>, string> = {
   game: '새 공지 사항이 올라왔어요.',
-  update: '새 업데이트 확인해보세요.',
+  update: '새 업데이트를 확인해보세요.',
   event: '새로운 이벤트가 시작돼요.',
   cashshop: '캐시 아이템이 업데이트 됐어요.',
 }

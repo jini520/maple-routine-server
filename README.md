@@ -122,8 +122,13 @@ API 에 발송 경로가 없다. 열면 인증을 만들어야 하고, 인증 �
 ```bash
 npm run notice -- send --id 2026-09-08-maint --title '점검 안내' --body '…' --dry
 npm run notice -- send --id 2026-09-08-maint --title '점검 안내' --body '…'
-npm run notice -- list
+npm run notice -- list --kind game
+npm run notice -- push --id game-149862 --dry   # 이미 쌓인 것을 다시 쏜다
 ```
+
+`send` 는 공지를 **만들어** 보내고 `push` 는 있는 것을 **다시** 보낸다. `push` 의 문구는 그
+분류의 규칙이 만든다 - 폴러가 저절로 보낼 때와 같은 문구여야 손으로 쏜 것이 사용자에게 다르게
+보이지 않는다.
 
 `--dry` 는 FCM 이 검증만 하고 배달하지 않는다. **먼저 이것으로 확인할 것.**
 

@@ -19,7 +19,8 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
-import { handleCreate, isAuthorized } from './admin.ts'
+import { adminNoticeId, handleCreate, handleDelete, handleList, handleUpdate, isAuthorized } from './admin.ts'
+import { ADMIN_LIST_HTML } from './admin-list-page.ts'
 import { ADMIN_HTML } from './admin-page.ts'
 import { getNotice, listEventRows, listNotices } from './db.ts'
 import { isNoticeKind, sundayRecordsFrom, type NoticeKind } from './notice.ts'
@@ -40,6 +41,12 @@ function send(res: ServerResponse, status: number, body: unknown): void {
     'cache-control': 'public, max-age=60',
   })
   res.end(json)
+}
+
+/** 관리자 화면 한 장. 캐시를 안 건다. 고친 화면이 다음 방문에 바로 서야 한다. */
+function sendHtml(res: ServerResponse, html: string): void {
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+  res.end(html)
 }
 
 /** 캐시를 안 거는 응답. 값이 자주 갈리는 자리가 쓴다. */
@@ -82,16 +89,28 @@ async function route(
     }
 
     if (req.method === 'GET' && (url.pathname === '/admin' || url.pathname === '/admin/')) {
-      res.writeHead(200, {
-        'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'no-store',
-      })
-      res.end(ADMIN_HTML)
+      sendHtml(res, ADMIN_HTML)
       return
     }
 
-    if (req.method === 'POST' && url.pathname === '/admin/notices') {
-      await handleCreate(req, res)
+    if (req.method === 'GET' && url.pathname === '/admin/list') {
+      sendHtml(res, ADMIN_LIST_HTML)
+      return
+    }
+
+    if (url.pathname === '/admin/notices') {
+      if (req.method === 'GET') await handleList(res)
+      else if (req.method === 'POST') await handleCreate(req, res)
+      else send(res, 405, { error: 'method_not_allowed' })
+      return
+    }
+
+    // 수정과 삭제. 어느 쪽이든 운영자 공지가 아니면 핸들러가 404 로 떨어뜨린다.
+    const id = adminNoticeId(url.pathname)
+    if (id !== null) {
+      if (req.method === 'PATCH') await handleUpdate(req, res, id)
+      else if (req.method === 'DELETE') await handleDelete(res, id)
+      else send(res, 405, { error: 'method_not_allowed' })
       return
     }
 

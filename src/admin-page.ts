@@ -1,16 +1,16 @@
 /**
- * 관리자 화면 한 장. 빌드 도구 없이 문자열로 든다.
+ * 관리자 화면 둘 중 쓰는 자리. 빌드 도구 없이 문자열로 든다.
  *
- * 화면이 하나뿐이고 폼 다섯 칸이 전부라, 번들러와 프레임워크를 들이면 얻는 것보다 늘어나는
- * 것이 많다. 이 파일이 곧 화면이다.
+ * 폼 다섯 칸이 전부라, 번들러와 프레임워크를 들이면 얻는 것보다 늘어나는 것이 많다.
+ * 이 파일이 곧 화면이다. 목록과 수정은 `admin-list-page.ts` 다.
  */
-export const ADMIN_HTML = `<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>공지 작성</title>
-<style>
+
+/**
+ * 두 화면이 나눠 쓰는 꼴. **목록 화면의 수정 폼이 이 폼과 같은 칸을 써서** 갈라 둔다.
+ *
+ * 한쪽만 고치면 같은 칸이 두 화면에서 다르게 보인다.
+ */
+export const ADMIN_STYLE = `
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280;
           --line:#d1d5db; --accent:#2563eb; --ok:#059669; --err:#dc2626; --field:#fff; }
   @media (prefers-color-scheme: dark) {
@@ -28,7 +28,6 @@ export const ADMIN_HTML = `<!doctype html>
     width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
     background:var(--field); color:var(--fg); font:inherit; }
   textarea { min-height:180px; resize:vertical; line-height:1.6; }
-  #pushBody { min-height:80px; }
   fieldset { margin:24px 0 0; padding:16px; border:1px solid var(--line); border-radius:10px; }
   legend { padding:0 6px; font-size:13px; font-weight:600; }
   .check { display:flex; align-items:center; gap:8px; margin:0; font-size:14px; }
@@ -44,11 +43,24 @@ export const ADMIN_HTML = `<!doctype html>
   #out.ok { background:color-mix(in srgb, var(--ok) 14%, transparent); color:var(--ok); }
   #out.err { background:color-mix(in srgb, var(--err) 14%, transparent); color:var(--err); }
   #out:empty { display:none; }
+  .nav { margin:-8px 0 20px; font-size:14px; }
+  .nav a { color:var(--accent); }
+`
+
+export const ADMIN_HTML = `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>공지 작성</title>
+<style>${ADMIN_STYLE}
+  #pushBody { min-height:80px; }
 </style>
 </head>
 <body>
 <main>
   <h1>공지 작성</h1>
+  <p class="nav"><a href="/admin/list">쓴 공지 목록</a></p>
 
   <label for="title">제목</label>
   <input id="title" type="text" autocomplete="off">

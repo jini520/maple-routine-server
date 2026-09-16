@@ -134,6 +134,86 @@ export async function insertNotice(notice: Notice, meta?: NexonMeta): Promise<vo
   )
 }
 
+/**
+ * 운영자 공지 한 건. **계약에 없는 발송 기록이 함께 온다.**
+ *
+ * 공개 API 의 `Notice` 와 가르는 이유는 `sent_at`·`push_*` 가 운영자만 볼 것이기 때문이다.
+ * 같은 조회를 나눠 쓰면 이 칸들이 앱 응답에도 실린다.
+ */
+export interface AdminNotice {
+  id: string
+  title: string
+  body: string
+  publishedAt: string
+  /** 알림을 보낸 시각. `null` 이면 목록에만 있고 알림은 안 갔다. */
+  sentAt: string | null
+  /** 실제로 보낸 알림 문구. 공지 문구와 다를 수 있다. */
+  pushTitle: string | null
+  pushBody: string | null
+}
+
+/**
+ * 운영자 창구의 목록. **운영자 공지만 준다.**
+ *
+ * 넥슨 공지를 빼는 이유는 이 목록이 수정·삭제 버튼을 달고 있어서다. 지울 수 없는 것을
+ * 목록에 세우면 누를 수 있는 것처럼 보인다.
+ */
+export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
+  const { rows } = await pool.query<{
+    id: string
+    title: string
+    body: string
+    published_at: Date
+    sent_at: Date | null
+    push_title: string | null
+    push_body: string | null
+  }>(
+    `SELECT id, title, body, published_at, sent_at, push_title, push_body
+     FROM notices WHERE kind = 'app'
+     ORDER BY published_at DESC, id DESC LIMIT $1`,
+    [limit],
+  )
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    publishedAt: row.published_at.toISOString(),
+    sentAt: row.sent_at === null ? null : row.sent_at.toISOString(),
+    pushTitle: row.push_title,
+    pushBody: row.push_body,
+  }))
+}
+
+/**
+ * 제목과 내용을 간다. 없거나 운영자 공지가 아니면 `null`.
+ *
+ * **`published_at` 을 안 건드린다.** 목록의 정렬 축이라 고칠 때마다 그 글이 맨 위로 올라온다.
+ *
+ * 갱신된 행을 돌려주는 것은 그 다음이 알림 발송이기 때문이다. 다시 읽으면 그 사이에 바뀐
+ * 것을 보내게 된다.
+ */
+export async function updateNotice(id: string, title: string, body: string): Promise<Notice | null> {
+  const { rows } = await pool.query<Row>(
+    `UPDATE notices SET title = $2, body = $3
+     WHERE id = $1 AND kind = 'app'
+     RETURNING ${LIST_COLUMNS}`,
+    [id, title, body],
+  )
+  return rows[0] === undefined ? null : toNotice(rows[0])
+}
+
+/**
+ * 지운다. 없거나 운영자 공지가 아니면 `false`.
+ *
+ * **넥슨 공지는 여기로 안 지워진다.** 지난 글은 넥슨이 상세를 400 으로 거절해 우리 DB 가
+ * 유일한 사본이고, 아직 목록에 떠 있는 글이면 폴러가 1분 뒤 다시 넣으면서 알림까지 다시 쏜다.
+ */
+export async function deleteNotice(id: string): Promise<boolean> {
+  const { rowCount } = await pool.query(`DELETE FROM notices WHERE id = $1 AND kind = 'app'`, [id])
+  return rowCount !== null && rowCount > 0
+}
+
 export async function markSent(id: string, pushTitle: string, pushBody: string): Promise<void> {
   await pool.query(
     `UPDATE notices SET sent_at = now(), push_title = $2, push_body = $3 WHERE id = $1`,

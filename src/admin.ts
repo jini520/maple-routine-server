@@ -1,5 +1,9 @@
 /**
- * 운영자 창구. 공지를 쓰고 알림까지 한 자리에서 보낸다.
+ * 운영자 창구. 공지를 쓰고 알림까지 한 자리에서 보내고, 이미 쓴 것을 고치고 지운다.
+ *
+ * **수정과 삭제는 운영자 공지에만 닿는다**(`kind = 'app'`). 넥슨에서 받아 온 글은 지난
+ * 것이면 넥슨이 상세를 거절해 우리 DB 가 유일한 사본이고, 아직 넥슨 목록에 떠 있는 글이면
+ * 폴러가 1분 뒤 다시 넣으면서 알림까지 다시 쏜다. 잠그는 자리는 SQL 의 `WHERE` 다.
  *
  * **인증은 앞단 nginx 가 한다**(`auth_basic`). 여기서 또 하지 않는 이유는 비밀번호 저장과
  * 세션을 우리가 만들면 그것이 곧 새로 감사해야 할 코드이기 때문이다. nginx 의 것은 이미
@@ -11,12 +15,15 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-import { insertNotice, markSent } from './db.ts'
+import { deleteNotice, insertNotice, listAppNotices, markSent, updateNotice } from './db.ts'
 import { newNoticeId, type Notice } from './notice.ts'
 import { payloadBytes, sendNotice, truncateBytes } from './send.ts'
 
 /** nginx 가 넣어 주는 헤더 이름. 값은 환경변수로만 안다. */
 const TOKEN_HEADER = 'x-admin-token'
+
+/** 목록에 한 번에 세우는 건수. 운영자 공지는 드물게 쓰여 이 창이면 몇 년 치가 들어온다. */
+const LIST_LIMIT = 50
 
 export function isAuthorized(req: IncomingMessage): boolean {
   const expected = process.env.ADMIN_TOKEN
@@ -37,13 +44,45 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString('utf8')
 }
 
-interface AdminForm {
+/** 작성 폼과 수정 폼이 같은 모양으로 온다. 두 화면의 칸이 같아서다. */
+export interface AdminForm {
   title: string
   body: string
   pushTitle: string
   pushBody: string
   push: boolean
   dryRun: boolean
+}
+
+/**
+ * 못 채운 칸의 이름. 빈 배열이면 다 찼다.
+ *
+ * **알림 칸은 알림을 켠 경우에만 따진다.** 늘 따지면 공지만 저장하는 길이 막힌다.
+ * 순서가 화면에 뜨는 순서와 같아서 무엇을 채워야 하는지 눈으로 좇을 수 있다.
+ */
+export function missingFields(form: AdminForm): string[] {
+  const missing: string[] = []
+  if (form.title === '') missing.push('제목')
+  if (form.body === '') missing.push('내용')
+  if (form.push) {
+    if (form.pushTitle === '') missing.push('알림 제목')
+    if (form.pushBody === '') missing.push('알림 내용')
+  }
+  return missing
+}
+
+/**
+ * `/admin/notices/{id}` 가 가리키는 공지. 다른 경로면 `null`.
+ *
+ * **`/admin/notices` 자체는 `null` 이다.** 그 경로는 목록과 작성이 쓰고, 여기서 id 를 읽으면
+ * 목록 조회가 상세 수정으로 새어 나간다.
+ *
+ * 인코딩을 푸는 이유는 공백이나 슬래시가 든 id 가 주소에 인코딩돼 오기 때문이다. 안 풀면
+ * DB 의 id 와 안 맞아 멀쩡한 공지가 없는 것이 된다.
+ */
+export function adminNoticeId(pathname: string): string | null {
+  const found = /^\/admin\/notices\/(.+)$/.exec(pathname)
+  return found?.[1] === undefined ? null : decodeURIComponent(found[1])
 }
 
 function parseForm(raw: string): AdminForm {
@@ -73,13 +112,7 @@ export async function handleCreate(
 ): Promise<void> {
   const form = parseForm(await readBody(req))
 
-  const missing: string[] = []
-  if (form.title === '') missing.push('제목')
-  if (form.body === '') missing.push('내용')
-  if (form.push) {
-    if (form.pushTitle === '') missing.push('알림 제목')
-    if (form.pushBody === '') missing.push('알림 내용')
-  }
+  const missing = missingFields(form)
   if (missing.length > 0) {
     json(res, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
     return
@@ -119,6 +152,62 @@ export async function handleCreate(
   const messageId = await sendNotice(notice, { title: form.pushTitle, body: form.pushBody })
   await markSent(notice.id, form.pushTitle, form.pushBody)
   json(res, 200, { ok: true, id: notice.id, sent: true, messageId })
+}
+
+/** 목록 화면이 그릴 것. 운영자 공지만 온다. */
+export async function handleList(res: ServerResponse): Promise<void> {
+  json(res, 200, { items: await listAppNotices(LIST_LIMIT) })
+}
+
+/**
+ * 제목과 내용을 갈고, 고른 경우 알림을 다시 보낸다.
+ *
+ * **알림은 켠 경우에만 나간다.** 오타 하나를 고칠 때마다 전 사용자의 트레이가 울면 안 된다.
+ *
+ * 저장이 발송보다 먼저인 것은 작성과 같은 이유다. 발송만 성공하면 트레이의 문구와 목록의
+ * 공지가 어긋나고 되돌릴 방법이 없다.
+ */
+export async function handleUpdate(
+  req: IncomingMessage,
+  res: ServerResponse,
+  id: string,
+): Promise<void> {
+  const form = parseForm(await readBody(req))
+
+  const missing = missingFields(form)
+  if (missing.length > 0) {
+    json(res, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
+    return
+  }
+
+  const notice = await updateNotice(id, form.title, form.body)
+  if (notice === null) {
+    json(res, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
+    return
+  }
+
+  if (!form.push) {
+    json(res, 200, { ok: true, id, sent: false })
+    return
+  }
+
+  const messageId = await sendNotice(notice, { title: form.pushTitle, body: form.pushBody })
+  await markSent(id, form.pushTitle, form.pushBody)
+  json(res, 200, { ok: true, id, sent: true, messageId })
+}
+
+/**
+ * 지운다.
+ *
+ * **이미 나간 알림은 못 거둔다.** 지우는 것은 목록과 상세뿐이고, 기기의 사본에서는 앱이
+ * 다음에 목록을 받을 때 빠진다.
+ */
+export async function handleDelete(res: ServerResponse, id: string): Promise<void> {
+  if (!(await deleteNotice(id))) {
+    json(res, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
+    return
+  }
+  json(res, 200, { ok: true, id })
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

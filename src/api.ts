@@ -5,6 +5,7 @@
  * GET /v1/notices?limit=20&cursor=…&kind=game,update  → { items, nextCursor }
  * GET /v1/notices/{id}                                → Notice (blocks 포함)
  * GET /v1/sunday-maple?limit=20                       → { items: SundayRecord[] }
+ * GET /v1/settlement                                  → { settling, startedAt }
  * ```
  *
  * **목록은 `blocks` 를 안 준다.** 업데이트 한 건이 블록 797개 · JSON 57KB라 20건에 실으면 한
@@ -22,10 +23,13 @@ import { handleCreate, isAuthorized } from './admin.ts'
 import { ADMIN_HTML } from './admin-page.ts'
 import { getNotice, listEventRows, listNotices } from './db.ts'
 import { isNoticeKind, sundayRecordsFrom, type NoticeKind } from './notice.ts'
+import type { Settlement } from './settlement.ts'
 
 /** 한 번에 주는 상한. 넘겨 부르면 이 값으로 깎는다. */
 const MAX_LIMIT = 50
 const DEFAULT_LIMIT = 20
+
+const NOT_SETTLING: Settlement = { settling: false, startedAt: null }
 
 function send(res: ServerResponse, status: number, body: unknown): void {
   const json = JSON.stringify(body)
@@ -34,6 +38,17 @@ function send(res: ServerResponse, status: number, body: unknown): void {
     'content-length': Buffer.byteLength(json),
     // 앱이 목록을 자주 연다. 짧게 캐시하면 같은 화면을 두 번 열 때 서버를 안 깨운다.
     'cache-control': 'public, max-age=60',
+  })
+  res.end(json)
+}
+
+/** 캐시를 안 거는 응답. 값이 자주 갈리는 자리가 쓴다. */
+function sendFresh(res: ServerResponse, status: number, body: unknown): void {
+  const json = JSON.stringify(body)
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'content-length': Buffer.byteLength(json),
+    'cache-control': 'no-store',
   })
   res.end(json)
 }
@@ -51,7 +66,11 @@ function parseKinds(url: URL): NoticeKind[] {
   return [...new Set(raw.split(',').map((one) => one.trim()))].filter(isNoticeKind)
 }
 
-async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function route(
+  req: IncomingMessage,
+  res: ServerResponse,
+  settlement: () => Settlement,
+): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
 
   // 관리자 경로가 먼저다. 앞단 nginx 가 auth_basic 으로 막고 토큰 헤더를 넣어 주며,
@@ -115,6 +134,19 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return
   }
 
+  /**
+   * 넥슨이 지금 스케줄러 기록을 결산 중인가. 판정은 `settlement.ts` 의 밤 고리가 들고 있다.
+   *
+   * **`startedAt` 이 계약의 핵심이다.** 앱이 안내 줄을 닫을 때 이 값을 기억하고, 다음에 받은
+   * 값이 같으면 안 세운다. 다음 날 밤이면 값이 달라 다시 선다.
+   *
+   * 캐시를 안 건다. 판정이 1분마다 갈리는데 60초 캐시를 두면 앱이 최대 2분 낡은 값을 본다.
+   */
+  if (url.pathname === '/v1/settlement') {
+    sendFresh(res, 200, settlement())
+    return
+  }
+
   const detail = /^\/v1\/notices\/(.+)$/.exec(url.pathname)
   if (detail?.[1] !== undefined) {
     const notice = await getNotice(decodeURIComponent(detail[1]))
@@ -129,9 +161,13 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   send(res, 404, { error: 'not_found' })
 }
 
-export function createApi() {
+/**
+ * @param settlement 결산 판정을 꺼내는 함수. 밤 고리가 소유하고 이 서버는 읽기만 한다.
+ *   안 주면 늘 «결산 아님» 이다(`NEXON_KEY` 없이 뜬 서버).
+ */
+export function createApi(settlement: () => Settlement = () => NOT_SETTLING) {
   return createServer((req, res) => {
-    route(req, res).catch((error: unknown) => {
+    route(req, res, settlement).catch((error: unknown) => {
       // 실패 사유를 밖으로 안 흘린다. 안에서만 남긴다.
       console.error('[api]', error)
       if (!res.headersSent) send(res, 500, { error: 'internal' })

@@ -13,6 +13,7 @@ import { hasAny, insertNotice, knownIds, markSent } from './db.ts'
 import { migrate } from './db.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
+import { startSettlementWatch, type Settlement } from './settlement.ts'
 import { sendNotice } from './send.ts'
 
 const port = Number(process.env.PORT ?? 4000)
@@ -21,15 +22,31 @@ const pollIntervalMs = Number(process.env.POLL_INTERVAL_MS ?? 60_000)
 
 await migrate()
 
-createApi().listen(port, () => {
+const nexonKey = process.env.NEXON_KEY
+/** 결산을 재는 캐릭터. 없으면 확인을 안 돌고 앱에는 늘 «결산 아님» 이 간다. */
+const settlementOcid = process.env.SETTLEMENT_OCID
+const client = nexonKey === undefined || nexonKey === '' ? null : new NexonClient(nexonKey)
+
+let settlement: () => Settlement = () => ({ settling: false, startedAt: null })
+if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
+  // 폴링과 같은 간격으로 돈다. 창 밖이면 넥슨을 안 부르므로 낮에는 이 고리가 놀기만 한다.
+  settlement = startSettlementWatch(
+    { probe: (date) => client.probeSchedulerState(settlementOcid, date) },
+    pollIntervalMs,
+  ).settlement
+  console.log('[settlement] 밤마다 결산을 본다')
+} else {
+  console.warn('[settlement] NEXON_KEY 나 SETTLEMENT_OCID 가 없어 결산을 안 본다')
+}
+
+// 판정을 만든 뒤에 API 를 연다. 서버가 뜬 직후에도 같은 함수를 읽는다.
+createApi(settlement).listen(port, () => {
   console.log(`[api] :${port}`)
 })
 
-const nexonKey = process.env.NEXON_KEY
-if (nexonKey === undefined || nexonKey === '') {
+if (client === null) {
   console.warn('[poll] NEXON_KEY 가 없어 넥슨 공지를 안 받는다')
 } else {
-  const client = new NexonClient(nexonKey)
   startPolling(
     {
       list: (kind) => client.list(kind),

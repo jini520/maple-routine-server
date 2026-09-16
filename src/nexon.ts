@@ -12,6 +12,7 @@
  * ⚠️ **상세 응답에 `notice_id` 가 없다.** 요청에 쓴 값을 부른 쪽이 붙인다.
  */
 import type { NoticeKind } from './notice.ts'
+import type { Probe } from './settlement.ts'
 
 const BASE = 'https://open.api.nexon.com'
 
@@ -153,6 +154,24 @@ export class NexonClient {
       if (item !== null) items.push(item)
     }
     return items
+  }
+
+  /**
+   * 결산 판정용 한 방. **몸통을 안 본다** - 묻는 것은 «지금 이 날짜가 조회되는가» 뿐이다.
+   *
+   * `date` 가 `null` 이면 날짜 없는 조회다(자정 전 구간). 실패해도 안 던진다 - 부르는 쪽이
+   * 상태 코드와 오류 코드로 가른다.
+   */
+  async probeSchedulerState(ocid: string, date: string | null): Promise<Probe> {
+    const dateParam = date === null ? '' : `&date=${encodeURIComponent(date)}`
+    try {
+      await this.call(`/maplestory/v1/scheduler/character-state?ocid=${encodeURIComponent(ocid)}${dateParam}`)
+      return { ok: true, status: 200, code: null }
+    } catch (error) {
+      if (error instanceof NexonError) return { ok: false, status: error.status, code: error.code }
+      // 네트워크·중단. 상태가 없으므로 0 으로 둔다.
+      return { ok: false, status: 0, code: null }
+    }
   }
 
   /**

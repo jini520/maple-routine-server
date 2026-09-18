@@ -21,6 +21,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 
 import {
   adminNoticeId,
+  handleCancelSchedule,
   handleCreate,
   handleDelete,
   handleList,
@@ -134,6 +135,15 @@ async function route(
     if (url.pathname === '/admin/notices') {
       if (req.method === 'GET') await handleList(res)
       else if (req.method === 'POST') await handleCreate(req, res)
+      else send(res, 405, { error: 'method_not_allowed' })
+      return
+    }
+
+    // **예약 취소가 수정·삭제보다 먼저다.** 아래 `adminNoticeId` 는 `/admin/notices/` 뒤를
+    // 전부 id 로 읽어서, 순서를 바꾸면 예약 취소가 공지 삭제로 들어간다.
+    const unschedule = /^\/admin\/notices\/(.+)\/schedule$/.exec(url.pathname)
+    if (unschedule?.[1] !== undefined) {
+      if (req.method === 'DELETE') await handleCancelSchedule(res, decodeURIComponent(unschedule[1]))
       else send(res, 405, { error: 'method_not_allowed' })
       return
     }

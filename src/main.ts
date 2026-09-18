@@ -9,16 +9,24 @@
  * 1분마다 401 을 찍는 서버가 되고, 그 로그가 진짜 고장을 덮는다.
  */
 import { createApi } from './api.ts'
-import { hasAny, insertNotice, knownIds, markSent } from './db.ts'
+import { hasAny, insertNotice, knownIds, listDueScheduled, markSent } from './db.ts'
 import { migrate } from './db.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
+import { startScheduleWatch } from './schedule.ts'
 import { startSettlementWatch, type Settlement } from './settlement.ts'
 import { sendNotice } from './send.ts'
 
 const port = Number(process.env.PORT ?? 4000)
 /** 넥슨 목록에서 빠지면 그 글은 영영 못 받는다. 촘촘히 도는 이유가 그것이다. */
 const pollIntervalMs = Number(process.env.POLL_INTERVAL_MS ?? 60_000)
+/**
+ * 예약 알림을 보는 간격. **`POLL_INTERVAL_MS` 를 안 나눠 쓴다.**
+ *
+ * 그 값은 넥슨 목록을 놓치지 않으려고 두는 것이라 운영자가 늘릴 수 있는데, 늘리면 예약 알림이
+ * 그만큼 늦게 나간다. 운영자가 고른 시각과 트레이가 울리는 시각의 차이는 1분 안이어야 한다.
+ */
+const scheduleIntervalMs = 60_000
 
 await migrate()
 
@@ -43,6 +51,20 @@ if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
 createApi(settlement).listen(port, () => {
   console.log(`[api] :${port}`)
 })
+
+// 예약 알림은 넥슨 키와 무관하게 돈다. 운영자가 `/admin` 에서 건 것이라, 넥슨 공지를 안 받는
+// 서버에서도 그 시각에 나가야 한다. 예약이 없는 회차는 DB 만 한 번 물어보고 끝난다.
+startScheduleWatch(
+  {
+    due: listDueScheduled,
+    send: async (notice, push) => {
+      await sendNotice(notice, push)
+      await markSent(notice.id, push.title, push.body)
+    },
+  },
+  scheduleIntervalMs,
+)
+console.log(`[schedule] ${scheduleIntervalMs}ms 간격`)
 
 if (client === null) {
   console.warn('[poll] NEXON_KEY 가 없어 넥슨 공지를 안 받는다')

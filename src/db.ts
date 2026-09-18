@@ -9,6 +9,7 @@ import pg from 'pg'
 import type { NoticeBlock } from './html.ts'
 import { isNoticeKind, type Notice, type NoticeKind, type SundayRecord } from './notice.ts'
 import type { ManualCompletionBoss } from './manual-completion.ts'
+import type { DuePush } from './schedule.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -47,7 +48,10 @@ export async function migrate(): Promise<void> {
       -- 이벤트·판매 기간. 넥슨이 그 둘에만 준다.
       starts_at    timestamptz,
       ends_at      timestamptz,
-      ongoing      boolean
+      ongoing      boolean,
+      -- 알림을 보낼 시각. NULL 이면 예약이 없다. sent_at 이 비어 있고 이 칸에 값이 있으면
+      -- 아직 안 보낸 예약이다. 보낸 뒤에도 남아 예약해서 보낸 것임을 말한다.
+      scheduled_at timestamptz
     );
     -- 목록이 최근순으로 읽는다. 건수가 적어도 인덱스가 없으면 매번 정렬한다.
     CREATE INDEX IF NOT EXISTS notices_published_at_desc
@@ -62,10 +66,17 @@ export async function migrate(): Promise<void> {
     ALTER TABLE notices ADD COLUMN IF NOT EXISTS starts_at  timestamptz;
     ALTER TABLE notices ADD COLUMN IF NOT EXISTS ends_at    timestamptz;
     ALTER TABLE notices ADD COLUMN IF NOT EXISTS ongoing    boolean;
+    ALTER TABLE notices ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
 
     -- 분류로 걸러 최근순으로 읽는다. 목록 화면이 토글마다 따로 물어 온다.
     CREATE INDEX IF NOT EXISTS notices_kind_published_at_desc
       ON notices (kind, published_at DESC, id DESC);
+
+    -- 예약 고리가 1분마다 훑는 자리. 표는 넥슨 공지로 계속 커지는데 아직 안 보낸 예약은
+    -- 늘 몇 건이라, 부분 인덱스가 그 몇 건만 들고 있다.
+    CREATE INDEX IF NOT EXISTS notices_pending_schedule
+      ON notices (scheduled_at)
+      WHERE scheduled_at IS NOT NULL AND sent_at IS NULL;
 
     -- 직접 완료를 열어 둔 보스. 행이 있고 closed_at 이 NULL 이면 열려 있다.
     CREATE TABLE IF NOT EXISTS manual_completion_bosses (
@@ -158,9 +169,11 @@ export interface AdminNotice {
   publishedAt: string
   /** 알림을 보낸 시각. `null` 이면 목록에만 있고 알림은 안 갔다. */
   sentAt: string | null
-  /** 실제로 보낸 알림 문구. 공지 문구와 다를 수 있다. */
+  /** 실제로 보낸 알림 문구. 공지 문구와 다를 수 있다. 예약 중이면 보낼 문구다. */
   pushTitle: string | null
   pushBody: string | null
+  /** 알림을 보낼 시각. `sentAt` 이 `null` 인데 값이 있으면 아직 안 보낸 예약이다. */
+  scheduledAt: string | null
 }
 
 /**
@@ -178,8 +191,9 @@ export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
     sent_at: Date | null
     push_title: string | null
     push_body: string | null
+    scheduled_at: Date | null
   }>(
-    `SELECT id, title, body, published_at, sent_at, push_title, push_body
+    `SELECT id, title, body, published_at, sent_at, push_title, push_body, scheduled_at
      FROM notices WHERE kind = 'app'
      ORDER BY published_at DESC, id DESC LIMIT $1`,
     [limit],
@@ -193,6 +207,63 @@ export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
     sentAt: row.sent_at === null ? null : row.sent_at.toISOString(),
     pushTitle: row.push_title,
     pushBody: row.push_body,
+    scheduledAt: row.scheduled_at === null ? null : row.scheduled_at.toISOString(),
+  }))
+}
+
+/**
+ * 알림을 보낼 시각과 보낼 문구를 적는다. 공지는 이미 저장돼 있다.
+ *
+ * 문구를 `push_title`·`push_body` 에 넣는 것은 그 칸이 **그때 뭐라고 보냈나**를 답하는 자리라서다.
+ * 예약 동안에는 «보낼 문구» 였다가 발송이 끝나면 «보낸 문구» 가 된다. 값이 같으므로 칸을 안 늘린다.
+ */
+export async function scheduleNotice(
+  id: string,
+  at: string,
+  pushTitle: string,
+  pushBody: string,
+): Promise<void> {
+  await pool.query(
+    // 다른 창구와 같이 `kind` 를 건다. 넥슨 공지에 예약이 걸리면 폴러가 그 글을 다시 넣을 때
+    // 알림이 두 번 나간다.
+    `UPDATE notices SET scheduled_at = $2, push_title = $3, push_body = $4
+     WHERE id = $1 AND kind = 'app'`,
+    [id, at, pushTitle, pushBody],
+  )
+}
+
+/**
+ * 예약을 내린다. 예약이 없거나 이미 보냈거나 운영자 공지가 아니면 `false`.
+ *
+ * **공지는 남는다.** 내리는 것은 알림뿐이다. 이미 보낸 것에는 안 닿는다 - 나간 알림은 못 거둔다.
+ */
+export async function cancelSchedule(id: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `UPDATE notices SET scheduled_at = NULL
+     WHERE id = $1 AND kind = 'app' AND scheduled_at IS NOT NULL AND sent_at IS NULL`,
+    [id],
+  )
+  return rowCount !== null && rowCount > 0
+}
+
+/**
+ * 보낼 시각이 된 예약. **지나친 것도 함께 온다**(사용자 지정 2026-09-19).
+ *
+ * `sent_at IS NULL` 이 재시도의 경계다. 발송이 실패하면 그 칸이 안 찍혀 다음 회차가 같은 건을
+ * 다시 잡고, 성공하면 찍혀 빠진다. 시각은 DB 시계로 잰다 - 앱 프로세스가 UTC 로 돌든 말든
+ * 예약을 적은 자리와 읽는 자리가 같은 시계를 본다.
+ */
+export async function listDueScheduled(): Promise<DuePush[]> {
+  const { rows } = await pool.query<Row & { push_title: string | null; push_body: string | null }>(
+    `SELECT ${LIST_COLUMNS}, push_title, push_body FROM notices
+     WHERE scheduled_at IS NOT NULL AND sent_at IS NULL AND scheduled_at <= now()
+     ORDER BY scheduled_at`,
+  )
+
+  return rows.map((row) => ({
+    notice: toNotice(row),
+    // 예약할 때 두 칸을 함께 적는다. 빈 문구로는 예약이 안 걸리므로 여기서 비는 일이 없다.
+    push: { title: row.push_title ?? row.title, body: row.push_body ?? row.body },
   }))
 }
 

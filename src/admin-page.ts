@@ -24,7 +24,7 @@ export const ADMIN_STYLE = `
   h1 { font-size:19px; margin:0 0 20px; }
   label { display:block; margin:16px 0 6px; font-size:13px; font-weight:600; }
   .hint { font-weight:400; color:var(--muted); }
-  input[type=text], textarea {
+  input[type=text], input[type=datetime-local], textarea {
     width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
     background:var(--field); color:var(--fg); font:inherit; }
   textarea { min-height:180px; resize:vertical; line-height:1.6; }
@@ -81,6 +81,8 @@ export const ADMIN_HTML = `<!doctype html>
 <title>공지 작성</title>
 <style>${ADMIN_STYLE}
   #pushBody { min-height:80px; }
+  /* 예약 체크는 알림 내용 아래에 선다. 공용 .check 는 margin 이 0 이라 여기서 띄운다. */
+  .check.later { margin-top:18px; }
 </style>
 </head>
 <body>
@@ -106,6 +108,14 @@ export const ADMIN_HTML = `<!doctype html>
 
     <label for="pushBody">알림 내용 <span class="hint">트레이에 한두 줄로 뜹니다</span></label>
     <textarea id="pushBody"></textarea>
+
+    <label class="check later" for="schedule">
+      <input id="schedule" type="checkbox">
+      <span>나중에 보내기</span>
+    </label>
+
+    <label for="scheduledAt">보낼 시각 <span class="hint">공지는 지금 저장됩니다</span></label>
+    <input id="scheduledAt" type="datetime-local">
   </fieldset>
 
   <div class="row">
@@ -122,6 +132,22 @@ const out = $('out');
 
 function show(kind, text) { out.className = kind; out.textContent = text; }
 
+/**
+ * 예약 칸의 값을 ISO 8601 로. datetime-local 은 시간대를 안 들고 오므로 이 브라우저의
+ * 시간대로 읽는다. 그것이 운영자가 화면에서 고른 시각이다. 서버는 ISO 만 받는다.
+ */
+function scheduledIso() {
+  const raw = $('scheduledAt').value;
+  return raw === '' ? '' : new Date(raw).toISOString();
+}
+
+function when(iso) {
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  const day = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+  return (d.getMonth() + 1) + '/' + d.getDate() + '(' + day + ') ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 async function submit(dryRun) {
   const buttons = [$('btnDry'), $('btnSend')];
   buttons.forEach((b) => (b.disabled = true));
@@ -137,6 +163,8 @@ async function submit(dryRun) {
         pushTitle: $('pushTitle').value,
         pushBody: $('pushBody').value,
         push: $('push').checked,
+        schedule: $('schedule').checked,
+        scheduledAt: scheduledIso(),
         dryRun,
       }),
     });
@@ -152,10 +180,16 @@ async function submit(dryRun) {
       return;
     }
 
-    show('ok', data.sent ? ('보냈습니다\\n' + data.id) : ('공지만 저장했습니다\\n' + data.id));
+    if (data.sent) show('ok', '보냈습니다\\n' + data.id);
+    else if (data.scheduledAt) show('ok', when(data.scheduledAt) + ' 에 알림을 보냅니다\\n' + data.id);
+    else show('ok', '공지만 저장했습니다\\n' + data.id);
+
     // 보낸 뒤에는 비운다. 같은 것을 두 번 보내는 사고를 막는다.
-    for (const id of ['title', 'body', 'pushTitle', 'pushBody']) $(id).value = '';
+    for (const id of ['title', 'body', 'pushTitle', 'pushBody', 'scheduledAt']) $(id).value = '';
     $('push').checked = false;
+    $('schedule').checked = false;
+    // 체크를 코드로 끄면 change 가 안 나므로 직접 부른다. 안 부르면 비운 칸이 켜진 채 남는다.
+    syncPush();
   } catch (e) {
     show('err', String(e));
   } finally {
@@ -167,14 +201,21 @@ $('btnDry').addEventListener('click', () => submit(true));
 $('btnSend').addEventListener('click', () => submit(false));
 
 // 알림을 안 보낼 거면 그 칸들을 흐리게 둔다. 왜 안 채워도 되는지가 눈에 보인다.
+// 보낼 시각은 한 겹 더 안쪽이다. 알림을 켜고 예약까지 켠 경우에만 채운다.
 function syncPush() {
   const on = $('push').checked;
-  for (const id of ['pushTitle', 'pushBody']) {
+  const later = on && $('schedule').checked;
+  for (const id of ['pushTitle', 'pushBody', 'schedule']) {
     $(id).disabled = !on;
     $(id).style.opacity = on ? '1' : '.5';
   }
+  $('scheduledAt').disabled = !later;
+  $('scheduledAt').style.opacity = later ? '1' : '.5';
+  // 누르기 전에 무엇이 일어날지가 단추에 쓰여 있어야 한다.
+  $('btnSend').textContent = later ? '저장하고 예약' : '저장하고 보내기';
 }
 $('push').addEventListener('change', syncPush);
+$('schedule').addEventListener('change', syncPush);
 syncPush();
 </script>
 </body>

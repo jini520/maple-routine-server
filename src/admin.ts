@@ -16,6 +16,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import {
+  cancelSchedule,
   closeManualCompletionBoss,
   deleteNotice,
   insertNotice,
@@ -23,6 +24,7 @@ import {
   listManualCompletionRows,
   markSent,
   openManualCompletionBoss,
+  scheduleNotice,
   updateNotice,
 } from './db.ts'
 import { BOSS_OPTIONS, bossNameOf, isDateKey, isKnownBoss, todayKst } from './manual-completion.ts'
@@ -54,13 +56,22 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString('utf8')
 }
 
-/** 작성 폼과 수정 폼이 같은 모양으로 온다. 두 화면의 칸이 같아서다. */
+/**
+ * 작성 폼과 수정 폼이 같은 모양으로 온다. 두 화면의 칸이 같아서다.
+ *
+ * **예약 칸 둘은 작성 폼만 쓴다**(사용자 지정 2026-09-19). 수정은 오타를 고치는 일이라 즉시
+ * 발송이나 안 보냄 둘로 족하다.
+ */
 export interface AdminForm {
   title: string
   body: string
   pushTitle: string
   pushBody: string
   push: boolean
+  /** 알림을 지금 안 보내고 시각을 잡아 둔다. */
+  schedule: boolean
+  /** ISO 8601. 화면이 `datetime-local` 값을 운영자 기기의 시간대로 읽어 바꿔 보낸다. */
+  scheduledAt: string
   dryRun: boolean
 }
 
@@ -77,8 +88,37 @@ export function missingFields(form: AdminForm): string[] {
   if (form.push) {
     if (form.pushTitle === '') missing.push('알림 제목')
     if (form.pushBody === '') missing.push('알림 내용')
+    if (form.schedule && form.scheduledAt === '') missing.push('보낼 시각')
   }
   return missing
+}
+
+/**
+ * 시간대가 붙은 ISO 8601 인가. **시간대 없는 값을 받으면 안 된다.**
+ *
+ * `Date.parse('2026-09-19 20:00')` 은 실패하지 않고 **이 프로세스의 시간대**로 읽는다. 컨테이너가
+ * UTC 로 돌면 운영자가 고른 KST 20:00 이 9시간 뒤로 밀린다. 화면은 늘 `toISOString()` 을 보내므로
+ * 시간대가 없는 값은 화면을 거치지 않은 요청이다.
+ */
+const ISO_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/
+
+/**
+ * 예약 시각이 쓸 수 있는 값인가. 쓸 수 있으면 `null`, 아니면 운영자에게 보일 문구.
+ *
+ * **지난 시각을 거절한다.** 예약 칸에 어제를 넣는 것은 오타다. 지금 보내는 길은 예약을 끄면
+ * 된다. 이미 걸린 예약이 시각을 지나친 것은 다른 이야기이고, 그것은 늦어도 보낸다(사용자 지정).
+ *
+ * @param now 테스트가 고정한다.
+ */
+export function scheduleError(form: AdminForm, now: number = Date.now()): string | null {
+  if (!form.push || !form.schedule) return null
+
+  const at = Date.parse(form.scheduledAt)
+  if (!ISO_WITH_ZONE.test(form.scheduledAt) || Number.isNaN(at)) {
+    return '보낼 시각을 읽을 수 없습니다'
+  }
+  if (at <= now) return '보낼 시각이 이미 지났습니다'
+  return null
 }
 
 /**
@@ -106,15 +146,20 @@ function parseForm(raw: string): AdminForm {
     pushTitle: str('pushTitle'),
     pushBody: str('pushBody'),
     push: o.push === true,
+    schedule: o.schedule === true,
+    scheduledAt: str('scheduledAt'),
     dryRun: o.dryRun === true,
   }
 }
 
 /**
- * 공지를 저장하고, 고른 경우 알림까지 보낸다.
+ * 공지를 저장하고, 고른 경우 알림까지 보낸다. 예약하면 발송만 미룬다.
  *
  * **저장이 발송보다 먼저다.** 발송에 성공했는데 저장이 실패하면 알림은 갔는데 목록에 없는
  * 공지가 생기고 되돌릴 방법이 없다. 반대는 다시 쏘면 된다.
+ *
+ * **예약은 공지를 안 미룬다.** 저장한 순간부터 조회 API 에 나가고, 미루는 것은 트레이가 울리는
+ * 시각 하나다(사용자 지정 2026-09-19).
  */
 export async function handleCreate(
   req: IncomingMessage,
@@ -125,6 +170,12 @@ export async function handleCreate(
   const missing = missingFields(form)
   if (missing.length > 0) {
     json(res, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
+    return
+  }
+
+  const badSchedule = scheduleError(form)
+  if (badSchedule !== null) {
+    json(res, 400, { error: badSchedule })
     return
   }
 
@@ -156,6 +207,13 @@ export async function handleCreate(
 
   if (!form.push) {
     json(res, 200, { ok: true, id: notice.id, sent: false })
+    return
+  }
+
+  // 예약이면 여기서 FCM 을 안 부른다. 시각이 되면 `schedule.ts` 의 고리가 보낸다.
+  if (form.schedule) {
+    await scheduleNotice(notice.id, form.scheduledAt, form.pushTitle, form.pushBody)
+    json(res, 200, { ok: true, id: notice.id, sent: false, scheduledAt: form.scheduledAt })
     return
   }
 
@@ -215,6 +273,20 @@ export async function handleUpdate(
 export async function handleDelete(res: ServerResponse, id: string): Promise<void> {
   if (!(await deleteNotice(id))) {
     json(res, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
+    return
+  }
+  json(res, 200, { ok: true, id })
+}
+
+/**
+ * 알림 예약을 내린다. 공지는 남는다.
+ *
+ * **다시 예약하는 길은 없다**(사용자 지정 2026-09-19). 시각을 바꾸려면 취소하고 새로 쓴다.
+ * 이미 보낸 알림에는 안 닿는다 - 나간 알림은 못 거둔다.
+ */
+export async function handleCancelSchedule(res: ServerResponse, id: string): Promise<void> {
+  if (!(await cancelSchedule(id))) {
+    json(res, 404, { error: '예약이 걸려 있지 않은 공지입니다' })
     return
   }
   json(res, 200, { ok: true, id })

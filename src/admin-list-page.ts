@@ -62,6 +62,7 @@ const VIEW = [
   '<p class="body"></p>',
   '<p class="push"></p>',
   '<div class="row">',
+  '<button class="dry act-unschedule" type="button" hidden>예약 취소</button>',
   '<button class="dry act-edit" type="button">수정</button>',
   '<button class="del act-del" type="button">삭제</button>',
   '</div>',
@@ -86,19 +87,31 @@ const EDIT = [
   '</div>',
 ].join('');
 
+/** 알림이 어디까지 갔나. 보낸 것 · 시각을 잡아 둔 것 · 안 보낸 것 셋이다. */
+function pending(notice) {
+  return notice.sentAt === null && notice.scheduledAt !== null;
+}
+
 function card(notice) {
   const el = document.createElement('article');
   el.className = 'item';
   el.dataset.id = notice.id;
   el.innerHTML = VIEW;
 
-  el.querySelector('.when').textContent =
-    when(notice.publishedAt) + (notice.sentAt === null ? ' · 알림 안 보냄' : ' · 알림 보냄');
+  const state = notice.sentAt !== null
+    ? ' · 알림 보냄'
+    : pending(notice) ? ' · 알림 예약 ' + when(notice.scheduledAt) : ' · 알림 안 보냄';
+
+  el.querySelector('.when').textContent = when(notice.publishedAt) + state;
   el.querySelector('.title').textContent = notice.title;
   el.querySelector('.body').textContent = notice.body;
-  // 그때 뭐라고 보냈나. 공지 문구와 다를 수 있어 따로 남는 기록이다.
+  // 그때 뭐라고 보냈나. 공지 문구와 다를 수 있어 따로 남는 기록이다. 예약 중이면 보낼 문구다.
   el.querySelector('.push').textContent =
-    notice.sentAt === null ? '' : '보낸 알림  ' + notice.pushTitle + '\\n' + notice.pushBody;
+    notice.sentAt !== null
+      ? '보낸 알림  ' + notice.pushTitle + '\\n' + notice.pushBody
+      : pending(notice) ? '보낼 알림  ' + notice.pushTitle + '\\n' + notice.pushBody : '';
+  // 예약을 내리는 단추는 예약이 걸린 카드에만 선다. 나간 알림은 못 거둔다.
+  el.querySelector('.act-unschedule').hidden = !pending(notice);
 
   return el;
 }
@@ -171,6 +184,23 @@ async function save(el, id) {
   }
 }
 
+async function unschedule(id) {
+  // 다시 예약하는 길은 없다. 시각을 바꾸려면 취소하고 새로 쓴다.
+  if (!confirm('알림 예약을 내립니다. 공지는 남고, 다시 예약할 수는 없습니다.')) return;
+  show('', '예약을 내리는 중…');
+
+  try {
+    const res = await fetch('/admin/notices/' + encodeURIComponent(id) + '/schedule', { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { show('err', data.error ?? ('실패 ' + res.status)); return; }
+
+    show('ok', '예약을 내렸습니다');
+    await load();
+  } catch (e) {
+    show('err', String(e));
+  }
+}
+
 async function remove(id) {
   // 되돌릴 수 없다. 지운 공지는 앱이 다음에 목록을 받을 때 기기에서도 사라진다.
   if (!confirm('이 공지를 지웁니다. 되돌릴 수 없습니다.')) return;
@@ -198,6 +228,7 @@ list.addEventListener('click', (event) => {
   if (notice === undefined) return;
 
   if (button.classList.contains('act-edit')) openEdit(el, notice);
+  else if (button.classList.contains('act-unschedule')) unschedule(id);
   else if (button.classList.contains('act-del')) remove(id);
   else if (button.classList.contains('act-cancel')) el.replaceWith(card(notice));
   else if (button.classList.contains('act-save')) save(el, id);

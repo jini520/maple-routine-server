@@ -206,7 +206,10 @@ async function route(
    * 그 날이 든 기간부터 열린다는 판정은 앱이 한다.
    */
   if (url.pathname === '/v1/manual-completion') {
-    send(res, 200, { bosses: await listOpenManualCompletionBosses() })
+    // 캐시를 안 건다. 운영자가 열거나 닫은 것이 그 다음 진입에 바로 닿아야 한다. 60초를 걸었더니
+    // 열고 들어가도 닫힌 응답이 돌아와 단추가 안 섬다(시뮬레이터 실측). 결산 판정이 상태가 바뀌는 값이라
+    // 캐시를 안 건 것과 같은 이유다.
+    sendFresh(res, 200, { bosses: await listOpenManualCompletionBosses() })
     return
   }
 

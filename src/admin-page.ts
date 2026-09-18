@@ -43,9 +43,35 @@ export const ADMIN_STYLE = `
   #out.ok { background:color-mix(in srgb, var(--ok) 14%, transparent); color:var(--ok); }
   #out.err { background:color-mix(in srgb, var(--err) 14%, transparent); color:var(--err); }
   #out:empty { display:none; }
-  .nav { margin:-8px 0 20px; font-size:14px; }
-  .nav a { color:var(--accent); }
+  .nav { display:flex; gap:4px; flex-wrap:wrap; margin:-4px 0 22px;
+         border-bottom:1px solid var(--line); padding-bottom:10px; }
+  .nav a { padding:7px 12px; border-radius:8px; font-size:14px; color:var(--muted);
+           text-decoration:none; }
+  .nav a.on { background:color-mix(in srgb, var(--accent) 14%, transparent);
+              color:var(--accent); font-weight:600; }
 `
+
+/**
+ * 세 화면이 나눠 쓰는 길 표시. 지금 화면만 칠한다.
+ *
+ * 길을 한 자리에 둔 이유는 화면이 늘 때마다 다른 두 화면의 링크를 손으로 더하게 되기 때문이다.
+ * 한 번 빼먹으면 그 화면은 막다른 골목이 된다.
+ */
+export type AdminPage = 'write' | 'list' | 'manual'
+
+const ADMIN_LINKS: readonly { page: AdminPage; href: string; label: string }[] = [
+  { page: 'write', href: '/admin', label: '공지 작성' },
+  { page: 'list', href: '/admin/list', label: '공지 목록' },
+  { page: 'manual', href: '/admin/manual-completion', label: '직접 완료 보스' },
+]
+
+export function adminNav(current: AdminPage): string {
+  const links = ADMIN_LINKS.map(
+    (link) =>
+      `<a href="${link.href}"${link.page === current ? ' class="on" aria-current="page"' : ''}>${link.label}</a>`,
+  )
+  return `<nav class="nav">${links.join('')}</nav>`
+}
 
 export const ADMIN_HTML = `<!doctype html>
 <html lang="ko">
@@ -60,7 +86,7 @@ export const ADMIN_HTML = `<!doctype html>
 <body>
 <main>
   <h1>공지 작성</h1>
-  <p class="nav"><a href="/admin/list">쓴 공지 목록</a></p>
+  ${adminNav('write')}
 
   <label for="title">제목</label>
   <input id="title" type="text" autocomplete="off">

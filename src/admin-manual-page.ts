@@ -7,7 +7,7 @@
  * 보스는 **드롭다운으로만** 고른다. key 를 손으로 치면 오타가 «아무 보스도 안 열림» 으로 조용히
  * 실패한다. 값은 전부 `textContent` 와 `value` 로 넣어 HTML 로 해석되는 길이 없다.
  */
-import { ADMIN_STYLE } from './admin-page.ts'
+import { adminNav, ADMIN_STYLE } from './admin-page.ts'
 
 export const ADMIN_MANUAL_HTML = `<!doctype html>
 <html lang="ko">
@@ -34,7 +34,7 @@ export const ADMIN_MANUAL_HTML = `<!doctype html>
 <body>
 <main>
   <h1>직접 완료 보스</h1>
-  <p class="nav"><a href="/admin">새 공지 쓰기</a> · <a href="/admin/list">쓴 공지 목록</a></p>
+  ${adminNav('manual')}
   <p class="when">여기서 켠 보스만 앱에서 직접 완료로 기록할 수 있습니다. 넥슨이 완료를 다시 주기
     시작하면 닫아 주세요.</p>
 

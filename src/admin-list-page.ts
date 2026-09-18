@@ -6,7 +6,7 @@
  *
  * 값은 전부 `textContent` 와 `value` 로 넣는다. 공지 본문이 HTML 로 해석되는 길이 없다.
  */
-import { ADMIN_STYLE } from './admin-page.ts'
+import { adminNav, ADMIN_STYLE } from './admin-page.ts'
 
 export const ADMIN_LIST_HTML = `<!doctype html>
 <html lang="ko">
@@ -34,7 +34,7 @@ export const ADMIN_LIST_HTML = `<!doctype html>
 <body>
 <main>
   <h1>공지 목록</h1>
-  <p class="nav"><a href="/admin">새 공지 쓰기</a></p>
+  ${adminNav('list')}
 
   <div id="list"><p class="loading">불러오는 중…</p></div>
   <div id="out"></div>

@@ -67,6 +67,31 @@ GET /v1/settlement  → Settlement
 그때도 `settling: false` 다. 앱이 둘에 대해 하는 일이 같아서다(줄을 안 세운다). 가르는 자리는
 서버 로그다.
 
+**직접 완료 보스**(설계 확정 2026-09-18 · 앱 ADR-293). 넥슨이 완료를 안 주는 보스를 사용자가
+직접 완료로 적을 수 있게 열어 둔다. **어느 보스를 언제부터 여느냐만 서버가 든다.**
+
+```ts
+interface ManualCompletionBoss {
+  boss: string   // 보스 key. 앱의 `src/data/weekly-bosses.json` 과 같은 값
+  from: string   // 여는 날(KST YYYY-MM-DD)
+}
+```
+
+```
+GET /v1/manual-completion  → { bosses: ManualCompletionBoss[] }
+```
+
+- **난이도로 안 가른다.** 열린 보스는 그 보스의 모든 난이도에 열린다.
+- **닫는 날은 없다.** 넥슨이 언제 고칠지 모르기 때문이다. 여는 것과 닫는 것이 따로 도는 동작이라,
+  운영자가 닫으면 그 행이 응답에서 빠지고 앱의 단추도 그때 사라진다. 표에는 `closed_at` 으로 남는다.
+- **기간 판정은 앱이 한다.** 그 보스 행이 선 기간(주간은 목요일 키, 월간은 달)의 마지막 날이
+  `from` 이상이면 열린다. 서버는 앱의 기록·한도·레벨을 모른다 - 그것들은 기기 SQLite 에만 있다.
+- **못 받으면 앱은 닫힌다.** 기기에 사본을 안 둔다. 공지와 반대인 것은 공지는 **읽는 것**이고
+  이쪽은 **쓰는 문**이기 때문이다.
+- 운영자 화면은 `/admin/manual-completion` 이고 보스는 **드롭다운으로만** 고른다. key 를 손으로 치면
+  오타가 «아무 보스도 안 열림» 으로 조용히 실패한다. 보스 key·이름 사본은 `src/manual-completion.ts` 에 있고
+  앱의 표가 진실이다 - 새 보스가 나오면 사본에도 한 줄 더한다.
+
 **목록은 `blocks` 를 안 준다.** 업데이트 한 건이 블록 797개 · JSON 57KB다(실측). 20건에 실으면
 한 응답이 MB 단위가 된다.
 
@@ -180,6 +205,11 @@ GET /v1/settlement  → Settlement
 ```
 GET    /admin                   공지 작성 폼
 POST   /admin/notices           작성. 저장하고, 고르면 알림까지
+
+GET    /admin/manual-completion        직접 완료 보스 화면
+GET    /admin/manual-completion/rows   열린·닫힌 보스 목록 + 고를 수 있는 보스 (JSON)
+POST   /admin/manual-completion        보스를 연다 { boss, from }
+DELETE /admin/manual-completion/{boss} 닫는다 (행은 남고 closed_at 만 적힌다)
 
 GET    /admin/list              공지 목록 화면
 GET    /admin/notices           운영자 공지 목록 (JSON. 화면이 부른다)

@@ -8,6 +8,7 @@ import pg from 'pg'
 
 import type { NoticeBlock } from './html.ts'
 import { isNoticeKind, type Notice, type NoticeKind, type SundayRecord } from './notice.ts'
+import type { ManualCompletionBoss } from './manual-completion.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -65,6 +66,16 @@ export async function migrate(): Promise<void> {
     -- 분류로 걸러 최근순으로 읽는다. 목록 화면이 토글마다 따로 물어 온다.
     CREATE INDEX IF NOT EXISTS notices_kind_published_at_desc
       ON notices (kind, published_at DESC, id DESC);
+
+    -- 직접 완료를 열어 둔 보스. 행이 있고 closed_at 이 NULL 이면 열려 있다.
+    CREATE TABLE IF NOT EXISTS manual_completion_bosses (
+      boss      text PRIMARY KEY,
+      -- 여는 날(KST YYYY-MM-DD). 이 날이 든 기간부터 앱이 단추를 세운다.
+      from_date text        NOT NULL,
+      opened_at timestamptz NOT NULL DEFAULT now(),
+      -- 닫은 시각. NULL 이면 열려 있다. 행을 안 지우는 것은 언제 켜고 언제 꿄는지가 기록이기 때문이다.
+      closed_at timestamptz
+    );
   `)
 }
 
@@ -341,4 +352,68 @@ export async function listNotices(
 function splitCursor(cursor: string): [string, string] {
   const at = cursor.indexOf('|')
   return at === -1 ? [cursor, ''] : [cursor.slice(0, at), cursor.slice(at + 1)]
+}
+
+/**
+ * 지금 열려 있는 보스. 앱의 `GET /v1/manual-completion` 이 그대로 내보낸다.
+ *
+ * **닫힌 행은 안 준다.** 닫는 순간 앱의 단추도 사라져야 하고, 그러면 닫는 날을 계약에 둘 이유가 없다.
+ */
+export async function listOpenManualCompletionBosses(): Promise<ManualCompletionBoss[]> {
+  const { rows } = await pool.query<{ boss: string; from_date: string }>(
+    `SELECT boss, from_date FROM manual_completion_bosses
+     WHERE closed_at IS NULL ORDER BY boss`,
+  )
+  return rows.map((row) => ({ boss: row.boss, from: row.from_date }))
+}
+
+/** 운영자 화면이 읽는 한 줄. 닫힌 것까지 들어 언제 켜고 끈는지가 남는다. */
+export interface AdminManualCompletionRow {
+  boss: string
+  from: string
+  openedAt: string
+  closedAt: string | null
+}
+
+export async function listManualCompletionRows(): Promise<AdminManualCompletionRow[]> {
+  const { rows } = await pool.query<{
+    boss: string
+    from_date: string
+    opened_at: Date
+    closed_at: Date | null
+  }>(
+    `SELECT boss, from_date, opened_at, closed_at FROM manual_completion_bosses
+     ORDER BY closed_at NULLS FIRST, boss`,
+  )
+  return rows.map((row) => ({
+    boss: row.boss,
+    from: row.from_date,
+    openedAt: row.opened_at.toISOString(),
+    closedAt: row.closed_at === null ? null : row.closed_at.toISOString(),
+  }))
+}
+
+/**
+ * 보스를 여는다. 이미 닫힌 행이 있었으면 다시 열면서 `closed_at` 을 비운다.
+ *
+ * 여는 것과 닫는 것이 따로 도는 동작이라(사용자 지정) 여기서 닫지 않는다.
+ */
+export async function openManualCompletionBoss(boss: string, fromDate: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO manual_completion_bosses (boss, from_date)
+     VALUES ($1, $2)
+     ON CONFLICT (boss) DO UPDATE
+       SET from_date = EXCLUDED.from_date, opened_at = now(), closed_at = NULL`,
+    [boss, fromDate],
+  )
+}
+
+/** 닫는다. 없거나 이미 닫혔으면 `false`. */
+export async function closeManualCompletionBoss(boss: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `UPDATE manual_completion_bosses SET closed_at = now()
+     WHERE boss = $1 AND closed_at IS NULL`,
+    [boss],
+  )
+  return rowCount !== null && rowCount > 0
 }

@@ -15,7 +15,17 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
-import { deleteNotice, insertNotice, listAppNotices, markSent, updateNotice } from './db.ts'
+import {
+  closeManualCompletionBoss,
+  deleteNotice,
+  insertNotice,
+  listAppNotices,
+  listManualCompletionRows,
+  markSent,
+  openManualCompletionBoss,
+  updateNotice,
+} from './db.ts'
+import { BOSS_OPTIONS, bossNameOf, isDateKey, isKnownBoss, todayKst } from './manual-completion.ts'
 import { newNoticeId, type Notice } from './notice.ts'
 import { payloadBytes, sendNotice, truncateBytes } from './send.ts'
 
@@ -208,6 +218,60 @@ export async function handleDelete(res: ServerResponse, id: string): Promise<voi
     return
   }
   json(res, 200, { ok: true, id })
+}
+
+/**
+ * 직접 완료를 열어 둔 보스 목록. 고를 수 있는 보스까지 함께 낸다.
+ *
+ * 화면이 두 번 물지 않게 한 응답에 싫는다. 드롭다운은 목록이 있어야 그려진다.
+ */
+export async function handleManualCompletionList(res: ServerResponse): Promise<void> {
+  json(res, 200, {
+    items: (await listManualCompletionRows()).map((row) => ({ ...row, name: bossNameOf(row.boss) })),
+    bosses: BOSS_OPTIONS,
+    today: todayKst(),
+  })
+}
+
+/**
+ * 보스를 열어 둔다. 목록에 없는 key 는 거절한다.
+ *
+ * **모르는 key 를 받으면 조용히 아무 보스도 안 열린다.** 앱은 자기 보스 표에서 못 찾으면 그냥 지나간다.
+ * 여기서 막는 편이 운영자에게 바로 말한다.
+ */
+export async function handleManualCompletionOpen(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const raw: unknown = JSON.parse(await readBody(req))
+  const form = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {}
+  const boss = typeof form.boss === 'string' ? form.boss : ''
+  const from = typeof form.from === 'string' && form.from !== '' ? form.from : todayKst()
+
+  if (!isKnownBoss(boss)) {
+    json(res, 400, { error: '보스 표에 없는 key 입니다' })
+    return
+  }
+  if (!isDateKey(from)) {
+    json(res, 400, { error: '여는 날은 YYYY-MM-DD 입니다' })
+    return
+  }
+
+  await openManualCompletionBoss(boss, from)
+  json(res, 200, { ok: true, boss, from })
+}
+
+/**
+ * 닫는다. 행을 안 지우고 `closed_at` 만 적는다.
+ *
+ * 여는 것과 닫는 것이 따로 도는 동작이라(사용자 지정 2026-09-18) 언제 켜고 언제 꿄는지가 남아야 한다.
+ */
+export async function handleManualCompletionClose(res: ServerResponse, boss: string): Promise<void> {
+  if (!(await closeManualCompletionBoss(boss))) {
+    json(res, 404, { error: '안 열려 있는 보스입니다' })
+    return
+  }
+  json(res, 200, { ok: true, boss })
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

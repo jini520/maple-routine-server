@@ -19,10 +19,21 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
-import { adminNoticeId, handleCreate, handleDelete, handleList, handleUpdate, isAuthorized } from './admin.ts'
+import {
+  adminNoticeId,
+  handleCreate,
+  handleDelete,
+  handleList,
+  handleManualCompletionClose,
+  handleManualCompletionList,
+  handleManualCompletionOpen,
+  handleUpdate,
+  isAuthorized,
+} from './admin.ts'
+import { ADMIN_MANUAL_HTML } from './admin-manual-page.ts'
 import { ADMIN_LIST_HTML } from './admin-list-page.ts'
 import { ADMIN_HTML } from './admin-page.ts'
-import { getNotice, listEventRows, listNotices } from './db.ts'
+import { getNotice, listEventRows, listNotices, listOpenManualCompletionBosses } from './db.ts'
 import { isNoticeKind, sundayRecordsFrom, type NoticeKind } from './notice.ts'
 import type { Settlement } from './settlement.ts'
 
@@ -98,6 +109,28 @@ async function route(
       return
     }
 
+    if (req.method === 'GET' && url.pathname === '/admin/manual-completion') {
+      sendHtml(res, ADMIN_MANUAL_HTML)
+      return
+    }
+
+    if (req.method === 'GET' && url.pathname === '/admin/manual-completion/rows') {
+      await handleManualCompletionList(res)
+      return
+    }
+
+    if (req.method === 'POST' && url.pathname === '/admin/manual-completion') {
+      await handleManualCompletionOpen(req, res)
+      return
+    }
+
+    const closing = /^\/admin\/manual-completion\/(.+)$/.exec(url.pathname)
+    if (closing?.[1] !== undefined) {
+      if (req.method === 'DELETE') await handleManualCompletionClose(res, decodeURIComponent(closing[1]))
+      else send(res, 405, { error: 'method_not_allowed' })
+      return
+    }
+
     if (url.pathname === '/admin/notices') {
       if (req.method === 'GET') await handleList(res)
       else if (req.method === 'POST') await handleCreate(req, res)
@@ -163,6 +196,17 @@ async function route(
    */
   if (url.pathname === '/v1/settlement') {
     sendFresh(res, 200, settlement())
+    return
+  }
+
+  /**
+   * 직접 완료를 열어 둔 보스. 앱은 today 진입과 보스 수익 진입에서 물어 간다(앱 ADR-293).
+   *
+   * **보스 key 와 여는 날만 준다.** 난이도로는 안 가르고 닫는 날은 없다 - 닫으면 목록에서 빠진다.
+   * 그 날이 든 기간부터 열린다는 판정은 앱이 한다.
+   */
+  if (url.pathname === '/v1/manual-completion') {
+    send(res, 200, { bosses: await listOpenManualCompletionBosses() })
     return
   }
 

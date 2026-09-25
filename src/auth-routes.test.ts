@@ -33,18 +33,24 @@ const 넥슨토큰: NexonTokens = {
   accessToken: '새액세스',
   refreshToken: '새갱신',
   accessExpiresAt: new Date('2026-09-26T12:30:00.000Z'),
+  refreshExpiresAt: new Date('2026-10-10T12:00:00.000Z'),
 }
 
 /** DB 를 안 탄다. 무엇이 저장됐는지 남긴다. */
 function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
   짝: LoginAttempt[]
-  저장된세션: { sessionHash: Buffer; accessToken: string; platform: string }[]
+  저장된세션: { sessionHash: Buffer; accessToken: string; platform: string; nexonUid: string | null }[]
   지운세션: Buffer[]
   갱신된: Buffer[]
   deps: AuthDeps
 } {
   const 짝: LoginAttempt[] = []
-  const 저장된세션: { sessionHash: Buffer; accessToken: string; platform: string }[] = []
+  const 저장된세션: {
+    sessionHash: Buffer
+    accessToken: string
+    platform: string
+    nexonUid: string | null
+  }[] = []
   const 지운세션: Buffer[] = []
   const 갱신된: Buffer[] = []
 
@@ -62,6 +68,7 @@ function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
         sessionHash: s.sessionHash,
         accessToken: s.accessToken,
         platform: s.platform,
+        nexonUid: s.nexonUid,
       })
     },
     findNexonSession: async () => null,
@@ -73,6 +80,7 @@ function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
     },
     exchangeCode: async () => 넥슨토큰,
     refreshTokens: async () => 넥슨토큰,
+    fetchUserInfo: async () => ({ uid: '2001359453644', scope: [] }),
     now: () => 지금,
     ...덮어쓸것,
   }
@@ -392,4 +400,36 @@ test('교환은 앱이 보낸 플랫폼이 아니라 짝에 적힌 것을 쓴다
 
   assert.equal(res.statusCode, 200)
   assert.equal(가짜.저장된세션[0]?.platform, 'android', '짝에 적힌 쌍이 이긴다')
+})
+
+test('로그인하면 uid 를 받아 저장한다', async () => {
+  // 넥슨의 /oauth2/userinfo 가 { result: { uid, scope } } 를 준다(실측 2026-09-26).
+  // 같은 사람이 다시 로그인했는지 가리는 값이다.
+  const 가짜 = 가짜인증()
+  const app = 앱(가짜.deps)
+  const 시작 = await 로그인시작(app)
+
+  await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/session',
+    payload: { code: 'code', state: 시작.state, verifier: 시작.verifier },
+  })
+
+  assert.equal(가짜.저장된세션[0]?.nexonUid, '2001359453644')
+})
+
+test('uid 를 못 받아도 로그인은 된다', async () => {
+  // 넥슨이 잠깐 느린 날 로그인이 통째로 죽으면 안 된다. 세션을 찾는 열쇠는 세션 해시다.
+  const 가짜 = 가짜인증({ fetchUserInfo: async () => null })
+  const app = 앱(가짜.deps)
+  const 시작 = await 로그인시작(app)
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/session',
+    payload: { code: 'code', state: 시작.state, verifier: 시작.verifier },
+  })
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(가짜.저장된세션[0]?.nexonUid, null)
 })

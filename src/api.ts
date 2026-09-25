@@ -33,6 +33,7 @@ import {
   isAuthorized,
 } from './admin.ts'
 import { registerAuthRoutes, type AuthDeps } from './auth-routes.ts'
+import { registerFriendsProxy, type NexonFetch } from './friends-proxy.ts'
 import { ADMIN_MANUAL_HTML } from './admin-manual-page.ts'
 import { ADMIN_LIST_HTML } from './admin-list-page.ts'
 import { ADMIN_HTML } from './admin-page.ts'
@@ -65,6 +66,8 @@ export interface ApiDeps {
   listOpenManualCompletionBosses: typeof listOpenManualCompletionBosses
   /** 넥슨 로그인. 안 주면 그 경로를 안 연다(키만 쓰는 배포에서 표가 없어도 선다). */
   auth?: AuthDeps
+  /** 프렌즈 프록시가 넥슨을 부르는 함수. 테스트가 갈아끼운다. */
+  nexonFetch?: NexonFetch
 }
 
 /**
@@ -208,7 +211,10 @@ export function createApi(deps: ApiDeps): FastifyInstance {
     return cached(reply).send(notice)
   })
 
-  if (deps.auth !== undefined) registerAuthRoutes(app, deps.auth)
+  if (deps.auth !== undefined) {
+    registerAuthRoutes(app, deps.auth)
+    registerFriendsProxy(app, deps.auth, deps.nexonFetch)
+  }
 
   app.get('/admin', async (_req, reply) => html(reply, ADMIN_HTML))
   app.get('/admin/', async (_req, reply) => html(reply, ADMIN_HTML))

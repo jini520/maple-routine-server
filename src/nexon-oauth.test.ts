@@ -5,11 +5,14 @@
 // 이 서버에 넘기면 사용자의 캐릭터 목록·확률 기록·스케줄러를 읽는다. 검증값이 그 길을 끊는다.
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, test } from 'node:test'
 
 import {
   NEXON_AUTHORIZE_URL,
+  SCOPES,
   NEXON_TOKEN_URL,
+  NEXON_USERINFO_URL,
   authorizeUrl,
   hashSession,
   newAttempt,
@@ -82,6 +85,15 @@ test('등록 화면에서 켠 스코프만 요청한다', () => {
   }
 })
 
+test('스코프를 콤마로 잇는다', () => {
+  // 표준 OAuth2 는 공백이지만 넥슨은 콤마를 받는다. 공백으로 보내면 로그인 화면이
+  // `유효하지 않은 요청입니다` 로 거절한다(실측 2026-09-26).
+  const scope = new URL(authorizeUrl('state', 'ios')).searchParams.get('scope') ?? ''
+
+  assert.equal(scope.includes(' '), false, '공백으로 이으면 넥슨이 거절한다')
+  assert.deepEqual(scope.split(','), [...SCOPES])
+})
+
 /** 짝 하나. 교환 판정에 넘기는 모양이다. */
 function 짝(덮어쓸것: Partial<LoginAttempt> = {}): LoginAttempt {
   return { ...newAttempt('ios'), ...덮어쓸것 }
@@ -151,7 +163,14 @@ function 가짜넥슨(답: unknown, status = 200): {
   return { 보낸것, fetcher }
 }
 
-const 넥슨답 = { access_token: '액세스', refresh_token: '갱신', expires_in: 1800 }
+// 실측(2026-09-26)한 응답 모양. 키 다섯이 전부이고 사용자 식별자는 없다.
+const 넥슨답 = {
+  token_type: 'Bearer',
+  access_token: '액세스',
+  expires_in: 1800,
+  refresh_token: '갱신',
+  refresh_token_expires_in: 1209600,
+}
 
 test('code 를 토큰으로 바꾼다', async () => {
   const { exchangeCode } = await import('./nexon-oauth.ts')
@@ -164,8 +183,8 @@ test('code 를 토큰으로 바꾼다', async () => {
   assert.equal(넥슨.보낸것.url, NEXON_TOKEN_URL)
 })
 
-test('교환에는 client_secret 과 등록한 redirect 를 보낸다', async () => {
-  // redirect_uri 가 등록값과 다르면 넥슨이 거절한다. 커스텀 스킴 그대로 보낸다.
+test('교환에 보내는 파라미터를 고정한다', async () => {
+  // redirect_uri 는 문서 표에 없지만 함께 보낸다. 이 모양이 실제 로그인으로 확인된 쪽이다.
   const { exchangeCode } = await import('./nexon-oauth.ts')
   const 넥슨 = 가짜넥슨(넥슨답)
 
@@ -176,6 +195,10 @@ test('교환에는 client_secret 과 등록한 redirect 를 보낸다', async ()
   assert.equal(보낸.get('code'), '받은code')
   assert.equal(보낸.get('client_secret'), 'ios-비밀')
   assert.equal(보낸.get('redirect_uri'), 'com.mapleroutine.app://oauth/callback')
+  assert.deepEqual(
+    [...보낸.keys()].sort(),
+    ['client_id', 'client_secret', 'code', 'grant_type', 'redirect_uri'],
+  )
 })
 
 test('액세스 토큰 만료 시각을 넥슨이 준 초로 잰다', async () => {
@@ -251,4 +274,65 @@ test('자격이 없는 플랫폼은 던진다', () => {
   // 한 쪽만 채운 배포에서 조용히 다른 쪽으로 새면, 그 사용자는 넥슨 거절만 보고 원인을 모른다.
   delete process.env.NEXON_ANDROID_CLIENT_ID
   assert.throws(() => authorizeUrl('state', 'android'), /NEXON_ANDROID_CLIENT_ID/)
+})
+
+test('갱신 토큰 수명을 넥슨이 준 값으로 잰다', async () => {
+  // 실측에서 넥슨이 refresh_token_expires_in 을 준다. 14일을 박아 두면 넥슨이 바꿀 때
+  // 앱이 재로그인을 늦게 띄우고, 그때 사용자는 조회 실패를 먼저 본다.
+  const { exchangeCode } = await import('./nexon-oauth.ts')
+  const 지금 = new Date('2026-09-26T00:00:00.000Z')
+  const 넥슨 = 가짜넥슨({ ...넥슨답, refresh_token_expires_in: 3600 })
+
+  const 받은것 = await exchangeCode('code', 'ios', 넥슨.fetcher, 지금)
+  assert.equal(받은것.refreshExpiresAt.toISOString(), '2026-09-26T01:00:00.000Z')
+})
+
+test('갱신 토큰 수명이 안 오면 14일로 둔다', async () => {
+  const { exchangeCode, REFRESH_TTL_MS } = await import('./nexon-oauth.ts')
+  const 지금 = new Date('2026-09-26T00:00:00.000Z')
+  const { refresh_token_expires_in: _생략, ...수명없음 } = 넥슨답
+  const 넥슨 = 가짜넥슨(수명없음)
+
+  const 받은것 = await exchangeCode('code', 'ios', 넥슨.fetcher, 지금)
+  assert.equal(받은것.refreshExpiresAt.getTime() - 지금.getTime(), REFRESH_TTL_MS)
+})
+
+test('userinfo 에서 uid 를 꺼낸다', async () => {
+  // 실측(2026-09-26)한 응답 모양이다. { result: { uid, scope } } 로 한 겹 싸여 온다.
+  const { fetchUserInfo } = await import('./nexon-oauth.ts')
+  const 넥슨 = 가짜넥슨({
+    result: { uid: '2001359453644', scope: ['maplestory.characterlist'] },
+  })
+
+  const 받은것 = await fetchUserInfo('액세스', 넥슨.fetcher)
+
+  assert.equal(받은것?.uid, '2001359453644')
+  assert.deepEqual(받은것?.scope, ['maplestory.characterlist'])
+  assert.equal(넥슨.보낸것.url, NEXON_USERINFO_URL)
+})
+
+test('userinfo 는 Bearer 로 부른다', async () => {
+  const { fetchUserInfo } = await import('./nexon-oauth.ts')
+  const 넥슨 = 가짜넥슨({ result: { uid: 'u' } })
+
+  await fetchUserInfo('액세스토큰', 넥슨.fetcher)
+  assert.equal(넥슨.보낸것.headers?.authorization, 'Bearer 액세스토큰')
+})
+
+test('userinfo 가 실패하면 던지지 않고 null 이다', async () => {
+  // 로그인 자체는 uid 없이도 돌아야 한다. 여기서 던지면 넥슨이 잠깐 느린 날 로그인이 죽는다.
+  const { fetchUserInfo } = await import('./nexon-oauth.ts')
+
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨({ error: 'x' }, 401).fetcher), null)
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨({ result: {} }).fetcher), null)
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨({ result: { uid: '' } }).fetcher), null)
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨(null).fetcher), null)
+})
+
+test('code 안의 숫자는 uid 가 아니다', () => {
+  // 실측(2026-09-26): 같은 계정의 code 에는 1645799708 이 들어 있었고 userinfo 의 uid 는
+  // 2001359453644 였다. code 는 계약상 불투명한 문자열이라 내용을 읽지 않는다.
+  const src = readFileSync(new URL('./nexon-oauth.ts', import.meta.url), 'utf8')
+  assert.equal(/atob|from\(\s*code\s*,\s*'base64'|Buffer\.from\(code/.test(src), false,
+    'code 를 풀어 보는 코드가 생겼다')
 })

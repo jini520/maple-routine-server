@@ -1,6 +1,9 @@
 /**
  * 넥슨 Open ID 로그인. **토큰을 드는 쪽이 이 서버다.**
  *
+ * 규격은 `openapi.nexon.com/ko/open-id/development-guide` 가 갖는다. 그 문서는
+ * `/ko/open-id/guide/` 가 아니라 이 주소에 있고, 탭으로 나뉘어 있다.
+ *
  * 토큰 교환이 `client_secret` 을 필수로 받고 네이티브 앱용 대안인 PKCE 는 규격에 없다. 앱
  * 번들에 넣으면 그대로 뜯기므로 교환은 여기서 한다. 앱이 받는 것은 이 서버가 발급한 세션 하나다.
  *
@@ -26,6 +29,9 @@ export const NEXON_AUTHORIZE_URL = 'https://openid.nexon.com/oauth2/authorize'
 
 /** code 를 토큰으로 바꾸는 자리. `client_secret` 이 여기로만 나간다. */
 export const NEXON_TOKEN_URL = 'https://openid.nexon.com/oauth2/token'
+
+/** 로그인한 사용자가 누구인지 묻는 자리. 넥슨 문서에 없지만 실재한다(실측 2026-09-26). */
+export const NEXON_USERINFO_URL = 'https://openid.nexon.com/oauth2/userinfo'
 
 /**
  * 넥슨에 등록한 redirect URI. **두 플랫폼 모두 앱의 커스텀 스킴이다.**
@@ -127,7 +133,10 @@ export function authorizeUrl(state: string, platform: Platform): string {
   url.searchParams.set('client_id', credentials(platform).clientId)
   url.searchParams.set('redirect_uri', REDIRECT_URI)
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', SCOPES.join(' '))
+  // **콤마로 잇는다.** 표준 OAuth2 는 공백이지만 넥슨은 콤마를 받는다. 공백으로 보내면
+  // `유효하지 않은 요청입니다` 로 거절한다(실측 2026-09-26). 넥슨이 등록 화면에서 만들어
+  // 주는 주소도 콤마다.
+  url.searchParams.set('scope', SCOPES.join(','))
   url.searchParams.set('state', state)
   return url.toString()
 }
@@ -182,25 +191,35 @@ type Fetcher = typeof fetch
 /** 한 요청이 이만큼 넘게 걸리면 끊는다. 사용자가 로그인 버튼 앞에서 기다리는 자리다. */
 const TOKEN_TIMEOUT_MS = 10_000
 
-/** 넥슨이 준 토큰 한 벌. 저장하기 직전의 모양이다. */
+/**
+ * 넥슨이 준 토큰 한 벌. 저장하기 직전의 모양이다.
+ *
+ * **이 응답에는 사용자 식별자가 없다.** 실측(2026-09-26)에서 키는 `token_type` ·
+ * `access_token` · `expires_in` · `refresh_token` · `refresh_token_expires_in` 다섯뿐이고
+ * `id_token` 도 없다. 식별자는 `fetchUserInfo` 가 따로 받아 온다.
+ */
 export interface NexonTokens {
   accessToken: string
   refreshToken: string
   /** 넥슨이 준 `expires_in` 으로 잰다. 30분이라고 박아 두지 않는다. */
   accessExpiresAt: Date
+  /** 넥슨이 준 `refresh_token_expires_in` 으로 잰다. 안 오면 `REFRESH_TTL_MS`. */
+  refreshExpiresAt: Date
 }
 
 interface TokenWire {
   access_token?: unknown
   refresh_token?: unknown
   expires_in?: unknown
+  refresh_token_expires_in?: unknown
 }
 
 /**
- * 넥슨이 갱신 토큰 수명을 안 줄 때 쓰는 값. **문서상 14일이다.**
+ * 넥슨이 갱신 토큰 수명을 안 줄 때만 쓰는 값. **문서상 14일이다.**
  *
- * 응답에 `refresh_token_expires_in` 이 오면 그것을 쓴다. 안 오면 이 값이라, 실제보다 길게
- * 잡히면 앱이 재로그인을 늦게 띄운다. 그 경우 사용자는 조회 실패를 먼저 본다.
+ * 실측(2026-09-26)에서 넥슨은 `refresh_token_expires_in` 을 준다. 그래서 이 값은 그것이
+ * 빠졌을 때의 대비일 뿐이다. 실제보다 길게 잡히면 앱이 재로그인을 늦게 띄우고, 그때 사용자는
+ * 조회 실패를 먼저 본다.
  */
 export const REFRESH_TTL_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -224,10 +243,15 @@ async function postToken(body: URLSearchParams, fetcher: Fetcher, now: Date): Pr
     if (accessToken === '') throw new Error('넥슨 응답에 액세스 토큰이 없다')
 
     const seconds = typeof wire?.expires_in === 'number' ? wire.expires_in : 1800
+    const refreshSeconds =
+      typeof wire?.refresh_token_expires_in === 'number'
+        ? wire.refresh_token_expires_in * 1000
+        : REFRESH_TTL_MS
     return {
       accessToken,
       refreshToken: typeof wire?.refresh_token === 'string' ? wire.refresh_token : '',
       accessExpiresAt: new Date(now.getTime() + seconds * 1000),
+      refreshExpiresAt: new Date(now.getTime() + refreshSeconds),
     }
   } finally {
     clearTimeout(timer)
@@ -237,7 +261,9 @@ async function postToken(body: URLSearchParams, fetcher: Fetcher, now: Date): Pr
 /**
  * 콜백으로 받은 `code` 를 토큰으로 바꾼다. **`client_secret` 이 여기로만 나간다.**
  *
- * `redirect_uri` 는 등록값을 그대로 보낸다. 다르면 넥슨이 거절한다.
+ * **`redirect_uri` 는 넥슨 개발 가이드의 요청 파라미터 표에 없는데 함께 보낸다.** 표대로 넷만
+ * 보내는 것은 실측을 못 했고, 다섯을 보내는 지금 모양은 실제 로그인으로 확인했다(2026-09-26).
+ * 검증된 쪽을 남긴다. 다음에 실기기로 로그인을 돌릴 때 빼고도 되는지 함께 재 볼 것.
  */
 export async function exchangeCode(
   code: string,
@@ -282,4 +308,52 @@ export async function refreshTokens(
 
   const tokens = await postToken(body, fetcher, now)
   return tokens.refreshToken === '' ? { ...tokens, refreshToken } : tokens
+}
+
+/** `userinfo` 가 주는 것. **`uid` 가 사용자 식별자다.** */
+export interface NexonUserInfo {
+  uid: string
+  scope: readonly string[]
+}
+
+interface UserInfoWire {
+  result?: { uid?: unknown; scope?: unknown }
+}
+
+/**
+ * 로그인한 사용자가 누구인지 묻는다. 개발 가이드의 **사용자 정보 조회 API** 다.
+ *
+ * `result.uid` 가 넥슨의 고유 식별자다. 토큰 응답에는 식별자가 없어서 이 경로가 유일한 길이다.
+ *
+ * `uid` 는 code 문자열 안에 보이는 숫자와 **다른 값**이다(실측: code `1645799708` · uid
+ * `2001359453644`). code 는 불투명한 문자열이라 내용을 읽지 않는다.
+ *
+ * 실패해도 던지지 않고 `null` 이다. **로그인 자체는 uid 없이도 돌아야 한다** - 세션을 찾는
+ * 열쇠는 세션 해시이고, uid 는 같은 사람을 알아보는 데만 쓴다.
+ */
+export async function fetchUserInfo(
+  accessToken: string,
+  fetcher: Fetcher = fetch,
+): Promise<NexonUserInfo | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS)
+
+  try {
+    const res = await fetcher(NEXON_USERINFO_URL, {
+      headers: { authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    })
+    if (!res.ok) return null
+
+    const wire = (await res.json().catch(() => null)) as UserInfoWire | null
+    const uid = wire?.result?.uid
+    if (typeof uid !== 'string' || uid === '') return null
+
+    const scope = wire?.result?.scope
+    return { uid, scope: Array.isArray(scope) ? scope.filter((s) => typeof s === 'string') : [] }
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
 }

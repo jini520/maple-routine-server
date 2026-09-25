@@ -1,5 +1,5 @@
 /**
- * Postgres 한 자리. 스키마와 조회가 여기 산다.
+ * Postgres 한 자리. 조회가 여기 산다. 스키마는 `migrations/` 가 든다.
  *
  * 기존 `jinni_prod` 와 **다른 DB** 를 쓴다. 같은 DB 에 있으면 백업·복구·권한이 서로 묶여
  * 한쪽 사고가 다른 쪽으로 번진다.
@@ -12,83 +12,6 @@ import type { ManualCompletionBoss } from './manual-completion.ts'
 import type { DuePush } from './schedule.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
-
-/**
- * 스키마를 맞춘다. 부팅 때 한 번 부른다.
- *
- * 마이그레이션 도구를 안 두는 이유는 표가 하나뿐이고 아직 아무도 안 쓰기 때문이다. 두 번째
- * 표가 생기거나 컬럼을 바꿔야 하는 날 도구를 들인다. 그전까지는 이 함수가 진실이다.
- *
- * ⚠️ **`CREATE TABLE IF NOT EXISTS` 는 이미 있는 표에 컬럼을 안 더한다.** 표가 만들어진 뒤에
- * 컬럼을 늘리면 그 문장이 조용히 건너뛰고, 다음에 그 컬럼을 쓰는 쿼리가 42703 으로 죽는다.
- * 실제로 `push_title` 을 그렇게 잃었다. 그래서 컬럼을 더할 때는 아래 `ADD COLUMN IF NOT
- * EXISTS` 를 **함께** 적는다. 새 설치는 위에서, 기존 설치는 아래에서 맞는다.
- */
-export async function migrate(): Promise<void> {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS notices (
-      id           text        PRIMARY KEY,
-      title        text        NOT NULL,
-      body         text        NOT NULL,
-      published_at timestamptz NOT NULL,
-      link         text,
-      -- 발송 시각. NULL 이면 아직 안 쐈다. 목록에는 나가되 알림은 안 간 상태가 있을 수 있다.
-      -- 운영자가 알림 전송을 안 고르면 그 상태로 남는다.
-      sent_at      timestamptz,
-      -- 실제로 보낸 알림 문구. 공지 문구와 다를 수 있어서 따로 남긴다. 나중에 "그때 뭐라고
-      -- 보냈더라" 를 답할 수 있는 유일한 기록이다.
-      push_title   text,
-      push_body    text,
-      -- 어디서 온 공지인가. 기존 행은 전부 운영자가 쓴 것이라 기본값이 'app' 이다.
-      kind         text        NOT NULL DEFAULT 'app',
-      -- 상세 본문. 넥슨 HTML 을 블록 배열로 바꾼 것이고 목록 응답에는 안 실린다.
-      blocks       jsonb,
-      -- 넥슨의 notice_id. 분류마다 번호 체계가 달라 id 에는 분류가 앞에 붙는다.
-      source_id    bigint,
-      -- 이벤트·판매 기간. 넥슨이 그 둘에만 준다.
-      starts_at    timestamptz,
-      ends_at      timestamptz,
-      ongoing      boolean,
-      -- 알림을 보낼 시각. NULL 이면 예약이 없다. sent_at 이 비어 있고 이 칸에 값이 있으면
-      -- 아직 안 보낸 예약이다. 보낸 뒤에도 남아 예약해서 보낸 것임을 말한다.
-      scheduled_at timestamptz
-    );
-    -- 목록이 최근순으로 읽는다. 건수가 적어도 인덱스가 없으면 매번 정렬한다.
-    CREATE INDEX IF NOT EXISTS notices_published_at_desc
-      ON notices (published_at DESC, id DESC);
-
-    -- 위 CREATE TABLE 뒤에 늘어난 컬럼들. 이미 있는 표에도 붙는다.
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS push_title text;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS push_body  text;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS kind       text NOT NULL DEFAULT 'app';
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS blocks     jsonb;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS source_id  bigint;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS starts_at  timestamptz;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS ends_at    timestamptz;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS ongoing    boolean;
-    ALTER TABLE notices ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
-
-    -- 분류로 걸러 최근순으로 읽는다. 목록 화면이 토글마다 따로 물어 온다.
-    CREATE INDEX IF NOT EXISTS notices_kind_published_at_desc
-      ON notices (kind, published_at DESC, id DESC);
-
-    -- 예약 고리가 1분마다 훑는 자리. 표는 넥슨 공지로 계속 커지는데 아직 안 보낸 예약은
-    -- 늘 몇 건이라, 부분 인덱스가 그 몇 건만 들고 있다.
-    CREATE INDEX IF NOT EXISTS notices_pending_schedule
-      ON notices (scheduled_at)
-      WHERE scheduled_at IS NOT NULL AND sent_at IS NULL;
-
-    -- 직접 완료를 열어 둔 보스. 행이 있고 closed_at 이 NULL 이면 열려 있다.
-    CREATE TABLE IF NOT EXISTS manual_completion_bosses (
-      boss      text PRIMARY KEY,
-      -- 여는 날(KST YYYY-MM-DD). 이 날이 든 기간부터 앱이 단추를 세운다.
-      from_date text        NOT NULL,
-      opened_at timestamptz NOT NULL DEFAULT now(),
-      -- 닫은 시각. NULL 이면 열려 있다. 행을 안 지우는 것은 언제 켜고 언제 꿄는지가 기록이기 때문이다.
-      closed_at timestamptz
-    );
-  `)
-}
 
 interface Row {
   id: string

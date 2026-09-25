@@ -20,6 +20,12 @@ services:
       - /home/jinni/.config/maple-routine-server/fcm-key.json:/run/secrets/fcm-key.json:ro
     networks:
       - infra_network
+    # 요청마다 한 줄이 찍히므로 도커 기본값(무제한)으로 두면 디스크가 언젠가 찬다.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     healthcheck:
       test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

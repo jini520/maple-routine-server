@@ -9,7 +9,18 @@
  * 1분마다 401 을 찍는 서버가 되고, 그 로그가 진짜 고장을 덮는다.
  */
 import { createApi } from './api.ts'
-import { exclusively, hasAny, insertNotice, knownIds, listDueScheduled, markSent } from './db.ts'
+import {
+  exclusively,
+  getNotice,
+  hasAny,
+  insertNotice,
+  knownIds,
+  listDueScheduled,
+  listEventRows,
+  listNotices,
+  listOpenManualCompletionBosses,
+  markSent,
+} from './db.ts'
 import { migrate } from './migrate.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
@@ -51,9 +62,15 @@ if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
 }
 
 // 판정을 만든 뒤에 API 를 연다. 서버가 뜬 직후에도 같은 함수를 읽는다.
-createApi(settlement).listen(port, () => {
-  console.log(`[api] :${port}`)
+const api = createApi({
+  settlement,
+  listNotices,
+  getNotice,
+  listEventRows,
+  listOpenManualCompletionBosses,
 })
+// `0.0.0.0` 이어야 한다. Fastify 의 기본은 localhost 인데 도커가 컨테이너 밖에서 붙는다.
+await api.listen({ port, host: '0.0.0.0' })
 
 // 예약 알림은 넥슨 키와 무관하게 돈다. 운영자가 `/admin` 에서 건 것이라, 넥슨 공지를 안 받는
 // 서버에서도 그 시각에 나가야 한다. 예약이 없는 회차는 DB 만 한 번 물어보고 끝난다.

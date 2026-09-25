@@ -46,6 +46,7 @@ const 빈넥슨토큰: NexonTokens = {
   accessToken: '새액세스',
   refreshToken: '새갱신',
   accessExpiresAt: new Date('2026-09-26T12:30:00.000Z'),
+  refreshExpiresAt: new Date('2026-10-10T12:00:00.000Z'),
 }
 
 interface 부른것 {

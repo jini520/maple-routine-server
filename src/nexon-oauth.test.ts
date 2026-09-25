@@ -9,6 +9,7 @@ import { afterEach, beforeEach, test } from 'node:test'
 
 import {
   NEXON_AUTHORIZE_URL,
+  SCOPES,
   NEXON_TOKEN_URL,
   authorizeUrl,
   hashSession,
@@ -82,6 +83,15 @@ test('등록 화면에서 켠 스코프만 요청한다', () => {
   }
 })
 
+test('스코프를 콤마로 잇는다', () => {
+  // 표준 OAuth2 는 공백이지만 넥슨은 콤마를 받는다. 공백으로 보내면 로그인 화면이
+  // `유효하지 않은 요청입니다` 로 거절한다(실측 2026-09-26).
+  const scope = new URL(authorizeUrl('state', 'ios')).searchParams.get('scope') ?? ''
+
+  assert.equal(scope.includes(' '), false, '공백으로 이으면 넥슨이 거절한다')
+  assert.deepEqual(scope.split(','), [...SCOPES])
+})
+
 /** 짝 하나. 교환 판정에 넘기는 모양이다. */
 function 짝(덮어쓸것: Partial<LoginAttempt> = {}): LoginAttempt {
   return { ...newAttempt('ios'), ...덮어쓸것 }
@@ -151,7 +161,14 @@ function 가짜넥슨(답: unknown, status = 200): {
   return { 보낸것, fetcher }
 }
 
-const 넥슨답 = { access_token: '액세스', refresh_token: '갱신', expires_in: 1800 }
+// 실측(2026-09-26)한 응답 모양. 키 다섯이 전부이고 사용자 식별자는 없다.
+const 넥슨답 = {
+  token_type: 'Bearer',
+  access_token: '액세스',
+  expires_in: 1800,
+  refresh_token: '갱신',
+  refresh_token_expires_in: 1209600,
+}
 
 test('code 를 토큰으로 바꾼다', async () => {
   const { exchangeCode } = await import('./nexon-oauth.ts')
@@ -251,4 +268,25 @@ test('자격이 없는 플랫폼은 던진다', () => {
   // 한 쪽만 채운 배포에서 조용히 다른 쪽으로 새면, 그 사용자는 넥슨 거절만 보고 원인을 모른다.
   delete process.env.NEXON_ANDROID_CLIENT_ID
   assert.throws(() => authorizeUrl('state', 'android'), /NEXON_ANDROID_CLIENT_ID/)
+})
+
+test('갱신 토큰 수명을 넥슨이 준 값으로 잰다', async () => {
+  // 실측에서 넥슨이 refresh_token_expires_in 을 준다. 14일을 박아 두면 넥슨이 바꿀 때
+  // 앱이 재로그인을 늦게 띄우고, 그때 사용자는 조회 실패를 먼저 본다.
+  const { exchangeCode } = await import('./nexon-oauth.ts')
+  const 지금 = new Date('2026-09-26T00:00:00.000Z')
+  const 넥슨 = 가짜넥슨({ ...넥슨답, refresh_token_expires_in: 3600 })
+
+  const 받은것 = await exchangeCode('code', 'ios', 넥슨.fetcher, 지금)
+  assert.equal(받은것.refreshExpiresAt.toISOString(), '2026-09-26T01:00:00.000Z')
+})
+
+test('갱신 토큰 수명이 안 오면 14일로 둔다', async () => {
+  const { exchangeCode, REFRESH_TTL_MS } = await import('./nexon-oauth.ts')
+  const 지금 = new Date('2026-09-26T00:00:00.000Z')
+  const { refresh_token_expires_in: _생략, ...수명없음 } = 넥슨답
+  const 넥슨 = 가짜넥슨(수명없음)
+
+  const 받은것 = await exchangeCode('code', 'ios', 넥슨.fetcher, 지금)
+  assert.equal(받은것.refreshExpiresAt.getTime() - 지금.getTime(), REFRESH_TTL_MS)
 })

@@ -24,7 +24,6 @@ import {
   newSession,
   refreshTokens,
   verifyAttempt,
-  REFRESH_TTL_MS,
   type LoginAttempt,
   type NexonTokens,
   type Platform,
@@ -118,13 +117,12 @@ export async function resolveSession(
     return null
   }
 
+  // 넥슨이 갱신 때도 새 갱신 토큰과 그 수명을 함께 준다(실측 2026-09-26). 그 값을 그대로 쓴다.
   const refreshed = {
     accessToken: fresh.accessToken,
     accessExpiresAt: fresh.accessExpiresAt,
     refreshToken: fresh.refreshToken,
-    // 넥슨이 갱신 토큰 수명을 따로 안 줘서 받은 시각부터 다시 잰다. 실제보다 길게 잡히면
-    // 앱이 재로그인을 늦게 띄우고, 그때 사용자는 조회 실패를 먼저 본다.
-    refreshExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS),
+    refreshExpiresAt: fresh.refreshExpiresAt,
   }
   await deps.updateNexonTokens(hash, refreshed)
   return { ...session, ...refreshed }
@@ -199,7 +197,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       accessToken: tokens.accessToken,
       accessExpiresAt: tokens.accessExpiresAt,
       refreshToken: tokens.refreshToken,
-      refreshExpiresAt: new Date(now().getTime() + REFRESH_TTL_MS),
+      refreshExpiresAt: tokens.refreshExpiresAt,
     })
 
     return json(reply, 200, { session })

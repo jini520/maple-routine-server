@@ -127,7 +127,10 @@ export function authorizeUrl(state: string, platform: Platform): string {
   url.searchParams.set('client_id', credentials(platform).clientId)
   url.searchParams.set('redirect_uri', REDIRECT_URI)
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', SCOPES.join(' '))
+  // **콤마로 잇는다.** 표준 OAuth2 는 공백이지만 넥슨은 콤마를 받는다. 공백으로 보내면
+  // `유효하지 않은 요청입니다` 로 거절한다(실측 2026-09-26). 넥슨이 등록 화면에서 만들어
+  // 주는 주소도 콤마다.
+  url.searchParams.set('scope', SCOPES.join(','))
   url.searchParams.set('state', state)
   return url.toString()
 }
@@ -182,25 +185,35 @@ type Fetcher = typeof fetch
 /** 한 요청이 이만큼 넘게 걸리면 끊는다. 사용자가 로그인 버튼 앞에서 기다리는 자리다. */
 const TOKEN_TIMEOUT_MS = 10_000
 
-/** 넥슨이 준 토큰 한 벌. 저장하기 직전의 모양이다. */
+/**
+ * 넥슨이 준 토큰 한 벌. 저장하기 직전의 모양이다.
+ *
+ * **사용자 식별자가 없다.** 실측(2026-09-26)에서 응답 키는 `token_type` · `access_token` ·
+ * `expires_in` · `refresh_token` · `refresh_token_expires_in` 다섯뿐이고 `id_token` 도 uid 도
+ * 없다. 그래서 `nexon_sessions.nexon_uid` 는 비어 있다.
+ */
 export interface NexonTokens {
   accessToken: string
   refreshToken: string
   /** 넥슨이 준 `expires_in` 으로 잰다. 30분이라고 박아 두지 않는다. */
   accessExpiresAt: Date
+  /** 넥슨이 준 `refresh_token_expires_in` 으로 잰다. 안 오면 `REFRESH_TTL_MS`. */
+  refreshExpiresAt: Date
 }
 
 interface TokenWire {
   access_token?: unknown
   refresh_token?: unknown
   expires_in?: unknown
+  refresh_token_expires_in?: unknown
 }
 
 /**
- * 넥슨이 갱신 토큰 수명을 안 줄 때 쓰는 값. **문서상 14일이다.**
+ * 넥슨이 갱신 토큰 수명을 안 줄 때만 쓰는 값. **문서상 14일이다.**
  *
- * 응답에 `refresh_token_expires_in` 이 오면 그것을 쓴다. 안 오면 이 값이라, 실제보다 길게
- * 잡히면 앱이 재로그인을 늦게 띄운다. 그 경우 사용자는 조회 실패를 먼저 본다.
+ * 실측(2026-09-26)에서 넥슨은 `refresh_token_expires_in` 을 준다. 그래서 이 값은 그것이
+ * 빠졌을 때의 대비일 뿐이다. 실제보다 길게 잡히면 앱이 재로그인을 늦게 띄우고, 그때 사용자는
+ * 조회 실패를 먼저 본다.
  */
 export const REFRESH_TTL_MS = 14 * 24 * 60 * 60 * 1000
 
@@ -224,10 +237,15 @@ async function postToken(body: URLSearchParams, fetcher: Fetcher, now: Date): Pr
     if (accessToken === '') throw new Error('넥슨 응답에 액세스 토큰이 없다')
 
     const seconds = typeof wire?.expires_in === 'number' ? wire.expires_in : 1800
+    const refreshSeconds =
+      typeof wire?.refresh_token_expires_in === 'number'
+        ? wire.refresh_token_expires_in * 1000
+        : REFRESH_TTL_MS
     return {
       accessToken,
       refreshToken: typeof wire?.refresh_token === 'string' ? wire.refresh_token : '',
       accessExpiresAt: new Date(now.getTime() + seconds * 1000),
+      refreshExpiresAt: new Date(now.getTime() + refreshSeconds),
     }
   } finally {
     clearTimeout(timer)

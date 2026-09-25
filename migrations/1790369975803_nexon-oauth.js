@@ -37,12 +37,11 @@ export const up = (pgm) => {
       platform          text        NOT NULL,
       -- 넥슨이 주는 사용자 식별자. 같은 사람이 다시 로그인하면 이 값으로 옛 행을 찾는다.
       --
-      -- **지금은 늘 비어 있다.** 토큰 응답에 식별자가 없고 id_token 도 userinfo 경로도
-      -- 없다(2026-09-26 실측·문서 확인). 쓸 수 있는 것은 character/list 의 account_id 인데
-      -- 그것은 메이플 ID 의 식별자이지 넥슨 계정의 것이 아니다.
+      -- 로그인 직후 /oauth2/userinfo 가 준 값(실측 2026-09-26). 넥슨 문서에 안 적혀 있는
+      -- 경로지만 실재하고 { result: { uid, scope } } 를 준다.
       --
-      -- 없어도 로그인은 돈다 - 세션을 찾는 열쇠는 session_hash 다. 생기는 일은 같은 사람이
-      -- 다시 로그인하면 옛 행이 갱신 토큰 수명만큼 남는 것 하나다.
+      -- **비어 있을 수 있다.** userinfo 가 실패해도 로그인은 진행한다. 세션을 찾는 열쇠는
+      -- session_hash 이고 이 값은 같은 사람을 알아보는 데만 쓴다.
       nexon_uid         text,
       access_cipher     bytea       NOT NULL,
       access_iv         bytea       NOT NULL,

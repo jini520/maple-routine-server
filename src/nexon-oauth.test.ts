@@ -5,12 +5,14 @@
 // 이 서버에 넘기면 사용자의 캐릭터 목록·확률 기록·스케줄러를 읽는다. 검증값이 그 길을 끊는다.
 import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, test } from 'node:test'
 
 import {
   NEXON_AUTHORIZE_URL,
   SCOPES,
   NEXON_TOKEN_URL,
+  NEXON_USERINFO_URL,
   authorizeUrl,
   hashSession,
   newAttempt,
@@ -289,4 +291,44 @@ test('갱신 토큰 수명이 안 오면 14일로 둔다', async () => {
 
   const 받은것 = await exchangeCode('code', 'ios', 넥슨.fetcher, 지금)
   assert.equal(받은것.refreshExpiresAt.getTime() - 지금.getTime(), REFRESH_TTL_MS)
+})
+
+test('userinfo 에서 uid 를 꺼낸다', async () => {
+  // 실측(2026-09-26)한 응답 모양이다. { result: { uid, scope } } 로 한 겹 싸여 온다.
+  const { fetchUserInfo } = await import('./nexon-oauth.ts')
+  const 넥슨 = 가짜넥슨({
+    result: { uid: '2001359453644', scope: ['maplestory.characterlist'] },
+  })
+
+  const 받은것 = await fetchUserInfo('액세스', 넥슨.fetcher)
+
+  assert.equal(받은것?.uid, '2001359453644')
+  assert.deepEqual(받은것?.scope, ['maplestory.characterlist'])
+  assert.equal(넥슨.보낸것.url, NEXON_USERINFO_URL)
+})
+
+test('userinfo 는 Bearer 로 부른다', async () => {
+  const { fetchUserInfo } = await import('./nexon-oauth.ts')
+  const 넥슨 = 가짜넥슨({ result: { uid: 'u' } })
+
+  await fetchUserInfo('액세스토큰', 넥슨.fetcher)
+  assert.equal(넥슨.보낸것.headers?.authorization, 'Bearer 액세스토큰')
+})
+
+test('userinfo 가 실패하면 던지지 않고 null 이다', async () => {
+  // 로그인 자체는 uid 없이도 돌아야 한다. 여기서 던지면 넥슨이 잠깐 느린 날 로그인이 죽는다.
+  const { fetchUserInfo } = await import('./nexon-oauth.ts')
+
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨({ error: 'x' }, 401).fetcher), null)
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨({ result: {} }).fetcher), null)
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨({ result: { uid: '' } }).fetcher), null)
+  assert.equal(await fetchUserInfo('액세스', 가짜넥슨(null).fetcher), null)
+})
+
+test('code 안의 숫자는 uid 가 아니다', () => {
+  // 실측(2026-09-26): 같은 계정의 code 에는 1645799708 이 들어 있었고 userinfo 의 uid 는
+  // 2001359453644 였다. code 는 계약상 불투명한 문자열이라 내용을 읽지 않는다.
+  const src = readFileSync(new URL('./nexon-oauth.ts', import.meta.url), 'utf8')
+  assert.equal(/atob|from\(\s*code\s*,\s*'base64'|Buffer\.from\(code/.test(src), false,
+    'code 를 풀어 보는 코드가 생겼다')
 })

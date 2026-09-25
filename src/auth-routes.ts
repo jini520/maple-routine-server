@@ -18,6 +18,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   authorizeUrl,
   exchangeCode,
+  fetchUserInfo,
   hashSession,
   isPlatform,
   newAttempt,
@@ -61,6 +62,7 @@ export interface AuthDeps {
   /** 테스트가 넥슨 대신 답한다. */
   exchangeCode?: typeof exchangeCode
   refreshTokens?: typeof refreshTokens
+  fetchUserInfo?: typeof fetchUserInfo
   now?: () => Date
 }
 
@@ -188,12 +190,16 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       return json(reply, 502, { error: 'exchange_failed' })
     }
 
+    // 누구인지 묻는다. **실패해도 로그인은 진행한다.** 세션을 찾는 열쇠는 세션 해시이고,
+    // uid 는 같은 사람을 알아보는 데만 쓴다. 여기서 막으면 넥슨이 잠깐 느린 날 로그인이 죽는다.
+    const userInfo = await (deps.fetchUserInfo ?? fetchUserInfo)(tokens.accessToken, fetch)
+    if (userInfo === null) req.log.warn('[auth] userinfo 를 못 받아 uid 없이 세션을 만든다')
+
     const { session, sessionHash } = newSession()
     await deps.insertNexonSession({
       sessionHash,
       platform: stored.platform,
-      // 넥슨이 사용자 식별자를 어디에 주는지 실측 전이다. 추측해서 채우지 않는다.
-      nexonUid: null,
+      nexonUid: userInfo?.uid ?? null,
       accessToken: tokens.accessToken,
       accessExpiresAt: tokens.accessExpiresAt,
       refreshToken: tokens.refreshToken,

@@ -27,6 +27,9 @@ export const NEXON_AUTHORIZE_URL = 'https://openid.nexon.com/oauth2/authorize'
 /** code 를 토큰으로 바꾸는 자리. `client_secret` 이 여기로만 나간다. */
 export const NEXON_TOKEN_URL = 'https://openid.nexon.com/oauth2/token'
 
+/** 로그인한 사용자가 누구인지 묻는 자리. 넥슨 문서에 없지만 실재한다(실측 2026-09-26). */
+export const NEXON_USERINFO_URL = 'https://openid.nexon.com/oauth2/userinfo'
+
 /**
  * 넥슨에 등록한 redirect URI. **두 플랫폼 모두 앱의 커스텀 스킴이다.**
  *
@@ -190,12 +193,7 @@ const TOKEN_TIMEOUT_MS = 10_000
  *
  * **이 응답에는 사용자 식별자가 없다.** 실측(2026-09-26)에서 키는 `token_type` ·
  * `access_token` · `expires_in` · `refresh_token` · `refresh_token_expires_in` 다섯뿐이고
- * `id_token` 이 없다. 넥슨 Open ID 문서에 `userinfo` 같은 별도 경로도 없다.
- *
- * 쓸 수 있는 것은 `character/list` 응답의 `account_id` 다. 다만 그것은 **메이플 ID 의
- * 식별자이지 넥슨 계정의 것이 아니다.** 한 사람이 메이플 ID 를 새로 만들면 집합이 는다.
- * 그래서 `nexon_sessions.nexon_uid` 는 비워 둔다. 채우려면 **어느 집합을 같은 사람으로 볼
- * 것인가**를 먼저 정해야 한다.
+ * `id_token` 도 없다. 식별자는 `fetchUserInfo` 가 따로 받아 온다.
  */
 export interface NexonTokens {
   accessToken: string
@@ -305,4 +303,53 @@ export async function refreshTokens(
 
   const tokens = await postToken(body, fetcher, now)
   return tokens.refreshToken === '' ? { ...tokens, refreshToken } : tokens
+}
+
+/** `userinfo` 가 주는 것. **`uid` 가 사용자 식별자다.** */
+export interface NexonUserInfo {
+  uid: string
+  scope: readonly string[]
+}
+
+interface UserInfoWire {
+  result?: { uid?: unknown; scope?: unknown }
+}
+
+/**
+ * 로그인한 사용자가 누구인지 묻는다.
+ *
+ * **문서에 안 적혀 있지만 실재한다**(실측 2026-09-26). 토큰 응답에는 식별자가 없고 `id_token`
+ * 도 없어서 한때 **넥슨은 식별자를 안 준다** 고 적었는데, 표준 위치인 이 경로를 찔러 보니
+ * `{ result: { uid, scope } }` 를 준다.
+ *
+ * `uid` 는 code 문자열 안에 보이는 숫자와 **다른 값**이다. 그쪽은 계약이 아니므로 쓰지 않는다.
+ *
+ * 실패해도 던지지 않고 `null` 이다. **로그인 자체는 uid 없이도 돌아야 한다** - 세션을 찾는
+ * 열쇠는 세션 해시이고, uid 는 같은 사람을 알아보는 데만 쓴다.
+ */
+export async function fetchUserInfo(
+  accessToken: string,
+  fetcher: Fetcher = fetch,
+): Promise<NexonUserInfo | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS)
+
+  try {
+    const res = await fetcher(NEXON_USERINFO_URL, {
+      headers: { authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    })
+    if (!res.ok) return null
+
+    const wire = (await res.json().catch(() => null)) as UserInfoWire | null
+    const uid = wire?.result?.uid
+    if (typeof uid !== 'string' || uid === '') return null
+
+    const scope = wire?.result?.scope
+    return { uid, scope: Array.isArray(scope) ? scope.filter((s) => typeof s === 'string') : [] }
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
 }

@@ -14,6 +14,7 @@
  * 자리는 운영자 화면의 예약 취소다.
  */
 import type { Notice, PushText } from './notice.ts'
+import { runAnyway, type RunExclusively } from './single-runner.ts'
 
 /** 보낼 시각이 된 한 건. 문구는 예약할 때 적어 둔 것이다. */
 export interface DuePush {
@@ -60,8 +61,15 @@ export async function sendDue(deps: ScheduleDeps): Promise<ScheduleResult> {
  *
  * 폴링·결산과 같은 모양이다. `setInterval` 이 아니라 끝난 뒤에 다음을 잡아, FCM 이 느린 날
  * 회차가 겹쳐 같은 예약을 두 번 쏘는 일이 없다.
+ *
+ * @param exclusive 인스턴스가 여럿일 때 한 쪽에서만 돌게 하는 자물쇠. 못 잡으면 그 회차를
+ *   건너뛴다. 안 주면 아무도 안 막는다
  */
-export function startScheduleWatch(deps: ScheduleDeps, intervalMs: number): () => void {
+export function startScheduleWatch(
+  deps: ScheduleDeps,
+  intervalMs: number,
+  exclusive: RunExclusively = runAnyway,
+): () => void {
   let stopped = false
   let timer: NodeJS.Timeout | undefined
 
@@ -69,10 +77,12 @@ export function startScheduleWatch(deps: ScheduleDeps, intervalMs: number): () =
     if (stopped) return
 
     try {
-      const result = await sendDue(deps)
-      if (result.sent > 0 || result.failed > 0) {
-        console.log('[schedule]', JSON.stringify(result))
-      }
+      await exclusive(async () => {
+        const result = await sendDue(deps)
+        if (result.sent > 0 || result.failed > 0) {
+          console.log('[schedule]', JSON.stringify(result))
+        }
+      })
     } catch (error) {
       // 예약 조회가 죽었다. 다음 회차가 다시 묻는다.
       console.error('[schedule] 회차 실패', error)

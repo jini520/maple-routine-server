@@ -10,6 +10,7 @@ import type { NoticeBlock } from './html.ts'
 import { isNoticeKind, type Notice, type NoticeKind, type SundayRecord } from './notice.ts'
 import type { ManualCompletionBoss } from './manual-completion.ts'
 import type { DuePush } from './schedule.ts'
+import type { RunExclusively } from './single-runner.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -410,4 +411,43 @@ export async function closeManualCompletionBoss(boss: string): Promise<boolean> 
     [boss],
   )
   return rowCount !== null && rowCount > 0
+}
+
+/**
+ * 그 고리를 **인스턴스 하나에서만** 돌린다. 자물쇠를 못 잡으면 회차를 건너뛴다.
+ *
+ * 왜 이것이 필요한지는 `single-runner.ts` 가 적는다. 여기는 postgres 로 그것을 어떻게
+ * 만드는지만 안다.
+ *
+ * **풀에서 연결 하나를 빼 들고 있는다.** 어드바이저리 락은 세션에 매달려서, 잡은 연결과 푸는
+ * 연결이 같아야 한다. 회차가 도는 동안 그 연결은 놀지만 회차의 쿼리들은 풀의 다른 연결로
+ * 나가므로 서로 막지 않는다.
+ *
+ * **인스턴스가 죽어도 잠기지 않는다.** 연결이 끊기면 postgres 가 그 세션의 락을 푼다. 그래서
+ * 만료 시각을 따로 안 둔다.
+ *
+ * @param lockId `single-runner.ts` 의 `LOCK_IDS`
+ * @example exclusively(LOCK_IDS.poll)
+ */
+export function exclusively(lockId: number): RunExclusively {
+  return async (run) => {
+    const client = await pool.connect()
+    try {
+      const { rows } = await client.query<{ got: boolean }>(
+        'SELECT pg_try_advisory_lock($1) AS got',
+        [lockId],
+      )
+      // 다른 인스턴스가 들고 있다. 기다리지 않는다.
+      if (rows[0]?.got !== true) return
+
+      try {
+        await run()
+      } finally {
+        // 회차가 던져도 푼다. 안 풀면 이 프로세스가 살아 있는 동안 그 고리가 영영 멈춘다.
+        await client.query('SELECT pg_advisory_unlock($1)', [lockId])
+      }
+    } finally {
+      client.release()
+    }
+  }
 }

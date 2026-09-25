@@ -22,6 +22,7 @@ import {
   type NoticeKind,
   type PushText,
 } from './notice.ts'
+import { runAnyway, type RunExclusively } from './single-runner.ts'
 import type { NexonMeta } from './db.ts'
 
 /** 목록과 푸시에 실리는 미리보기 길이. 상세는 `blocks` 가 온전히 든다. */
@@ -185,8 +186,15 @@ export async function pollOnce(deps: PollDeps): Promise<PollSummary> {
  *
  * **회차가 겹치지 않게 한다.** 넥슨이 느린 날 `setInterval` 로 걸면 이전 회차가 끝나기 전에
  * 다음이 시작되고, 같은 글을 두 번 저장하며 알림도 두 번 나간다.
+ *
+ * @param exclusive 인스턴스가 여럿일 때 한 쪽에서만 돌게 하는 자물쇠. 못 잡으면 그 회차를
+ *   건너뛴다. 안 주면 아무도 안 막는다
  */
-export function startPolling(deps: PollDeps, intervalMs: number): () => void {
+export function startPolling(
+  deps: PollDeps,
+  intervalMs: number,
+  exclusive: RunExclusively = runAnyway,
+): () => void {
   let stopped = false
   let timer: NodeJS.Timeout | undefined
 
@@ -194,10 +202,12 @@ export function startPolling(deps: PollDeps, intervalMs: number): () => void {
     if (stopped) return
 
     try {
-      const summary = await pollOnce(deps)
-      if (summary.saved > 0 || summary.errors > 0) {
-        console.log('[poll]', JSON.stringify(summary))
-      }
+      await exclusive(async () => {
+        const summary = await pollOnce(deps)
+        if (summary.saved > 0 || summary.errors > 0) {
+          console.log('[poll]', JSON.stringify(summary))
+        }
+      })
     } catch (error) {
       console.error('[poll] 회차 실패', error)
     }

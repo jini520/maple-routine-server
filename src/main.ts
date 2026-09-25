@@ -9,12 +9,13 @@
  * 1분마다 401 을 찍는 서버가 되고, 그 로그가 진짜 고장을 덮는다.
  */
 import { createApi } from './api.ts'
-import { hasAny, insertNotice, knownIds, listDueScheduled, markSent } from './db.ts'
+import { exclusively, hasAny, insertNotice, knownIds, listDueScheduled, markSent } from './db.ts'
 import { migrate } from './migrate.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
 import { startScheduleWatch } from './schedule.ts'
 import { startSettlementWatch, type Settlement } from './settlement.ts'
+import { LOCK_IDS } from './single-runner.ts'
 import { sendNotice } from './send.ts'
 
 const port = Number(process.env.PORT ?? 4000)
@@ -38,6 +39,8 @@ const client = nexonKey === undefined || nexonKey === '' ? null : new NexonClien
 let settlement: () => Settlement = () => ({ settling: false, startedAt: null })
 if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
   // 폴링과 같은 간격으로 돈다. 창 밖이면 넥슨을 안 부르므로 낮에는 이 고리가 놀기만 한다.
+  // 자물쇠를 안 건다. 판정을 프로세스 메모리에 들고 API 가 그 값을 읽어서, 한 인스턴스만
+  // 재게 하면 나머지가 늘 `결산 아님` 을 내놓는다. 인스턴스를 늘리기 전에 판정을 DB 로 옮길 것.
   settlement = startSettlementWatch(
     { probe: (date) => client.probeSchedulerState(settlementOcid, date) },
     pollIntervalMs,
@@ -63,6 +66,7 @@ startScheduleWatch(
     },
   },
   scheduleIntervalMs,
+  exclusively(LOCK_IDS.schedule),
 )
 console.log(`[schedule] ${scheduleIntervalMs}ms 간격`)
 
@@ -82,6 +86,7 @@ if (client === null) {
       },
     },
     pollIntervalMs,
+    exclusively(LOCK_IDS.poll),
   )
   console.log(`[poll] ${pollIntervalMs}ms 간격`)
 }

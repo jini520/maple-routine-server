@@ -13,7 +13,9 @@
  * 열리면 아무나 전 사용자에게 알림을 쏜다. nginx 가 넣어 주는 헤더를 확인해서, 앞단이
  * 무너져도 이쪽이 혼자 거부하게 둔다.
  */
-import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { IncomingHttpHeaders } from 'node:http'
+
+import type { FastifyReply } from 'fastify'
 
 import {
   cancelSchedule,
@@ -37,23 +39,11 @@ const TOKEN_HEADER = 'x-admin-token'
 /** 목록에 한 번에 세우는 건수. 운영자 공지는 드물게 쓰여 이 창이면 몇 년 치가 들어온다. */
 const LIST_LIMIT = 50
 
-export function isAuthorized(req: IncomingMessage): boolean {
+export function isAuthorized(headers: IncomingHttpHeaders): boolean {
   const expected = process.env.ADMIN_TOKEN
   // 토큰이 설정 안 돼 있으면 **닫는다.** 열어 두면 설정을 빠뜨린 서버가 조용히 무방비가 된다.
   if (expected === undefined || expected === '') return false
-  return req.headers[TOKEN_HEADER] === expected
-}
-
-async function readBody(req: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const chunk of req) {
-    size += (chunk as Buffer).length
-    // 본문이 아무리 길어도 이 정도면 넉넉하다. 상한이 없으면 메모리를 먹이는 길이 된다.
-    if (size > 256 * 1024) throw new Error('본문이 너무 크다')
-    chunks.push(chunk as Buffer)
-  }
-  return Buffer.concat(chunks).toString('utf8')
+  return headers[TOKEN_HEADER] === expected
 }
 
 /**
@@ -130,14 +120,9 @@ export function scheduleError(form: AdminForm, now: number = Date.now()): string
  * 인코딩을 푸는 이유는 공백이나 슬래시가 든 id 가 주소에 인코딩돼 오기 때문이다. 안 풀면
  * DB 의 id 와 안 맞아 멀쩡한 공지가 없는 것이 된다.
  */
-export function adminNoticeId(pathname: string): string | null {
-  const found = /^\/admin\/notices\/(.+)$/.exec(pathname)
-  return found?.[1] === undefined ? null : decodeURIComponent(found[1])
-}
-
-function parseForm(raw: string): AdminForm {
-  const v: unknown = JSON.parse(raw)
-  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>
+/** 본문은 Fastify 가 이미 JSON 으로 풀어 준다. 모양이 다르면 빈 폼으로 읽어 검증이 잡는다. */
+function parseForm(raw: unknown): AdminForm {
+  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
   const str = (k: string): string => (typeof o[k] === 'string' ? o[k].trim() : '')
 
   return {
@@ -161,22 +146,17 @@ function parseForm(raw: string): AdminForm {
  * **예약은 공지를 안 미룬다.** 저장한 순간부터 조회 API 에 나가고, 미루는 것은 트레이가 울리는
  * 시각 하나다(사용자 지정 2026-09-19).
  */
-export async function handleCreate(
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<void> {
-  const form = parseForm(await readBody(req))
+export async function handleCreate(body: unknown, reply: FastifyReply): Promise<FastifyReply> {
+  const form = parseForm(body)
 
   const missing = missingFields(form)
   if (missing.length > 0) {
-    json(res, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
-    return
+    return json(reply, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
   }
 
   const badSchedule = scheduleError(form)
   if (badSchedule !== null) {
-    json(res, 400, { error: badSchedule })
-    return
+    return json(reply, 400, { error: badSchedule })
   }
 
   const notice: Notice = {
@@ -193,38 +173,35 @@ export async function handleCreate(
     const messageId = form.push
       ? await sendNotice(notice, { title: form.pushTitle, body: form.pushBody }, true)
       : null
-    json(res, 200, {
+    return json(reply, 200, {
       ok: true,
       dryRun: true,
       bytes: payloadBytes(notice),
       truncated: truncateBytes(notice.body, 2800) !== notice.body,
       messageId,
     })
-    return
   }
 
   await insertNotice(notice)
 
   if (!form.push) {
-    json(res, 200, { ok: true, id: notice.id, sent: false })
-    return
+    return json(reply, 200, { ok: true, id: notice.id, sent: false })
   }
 
   // 예약이면 여기서 FCM 을 안 부른다. 시각이 되면 `schedule.ts` 의 고리가 보낸다.
   if (form.schedule) {
     await scheduleNotice(notice.id, form.scheduledAt, form.pushTitle, form.pushBody)
-    json(res, 200, { ok: true, id: notice.id, sent: false, scheduledAt: form.scheduledAt })
-    return
+    return json(reply, 200, { ok: true, id: notice.id, sent: false, scheduledAt: form.scheduledAt })
   }
 
   const messageId = await sendNotice(notice, { title: form.pushTitle, body: form.pushBody })
   await markSent(notice.id, form.pushTitle, form.pushBody)
-  json(res, 200, { ok: true, id: notice.id, sent: true, messageId })
+  return json(reply, 200, { ok: true, id: notice.id, sent: true, messageId })
 }
 
 /** 목록 화면이 그릴 것. 운영자 공지만 온다. */
-export async function handleList(res: ServerResponse): Promise<void> {
-  json(res, 200, { items: await listAppNotices(LIST_LIMIT) })
+export async function handleList(reply: FastifyReply): Promise<FastifyReply> {
+  return json(reply, 200, { items: await listAppNotices(LIST_LIMIT) })
 }
 
 /**
@@ -236,32 +213,29 @@ export async function handleList(res: ServerResponse): Promise<void> {
  * 공지가 어긋나고 되돌릴 방법이 없다.
  */
 export async function handleUpdate(
-  req: IncomingMessage,
-  res: ServerResponse,
+  body: unknown,
+  reply: FastifyReply,
   id: string,
-): Promise<void> {
-  const form = parseForm(await readBody(req))
+): Promise<FastifyReply> {
+  const form = parseForm(body)
 
   const missing = missingFields(form)
   if (missing.length > 0) {
-    json(res, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
-    return
+    return json(reply, 400, { error: `${missing.join(' · ')} 를 채워 주세요` })
   }
 
   const notice = await updateNotice(id, form.title, form.body)
   if (notice === null) {
-    json(res, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
-    return
+    return json(reply, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
   }
 
   if (!form.push) {
-    json(res, 200, { ok: true, id, sent: false })
-    return
+    return json(reply, 200, { ok: true, id, sent: false })
   }
 
   const messageId = await sendNotice(notice, { title: form.pushTitle, body: form.pushBody })
   await markSent(id, form.pushTitle, form.pushBody)
-  json(res, 200, { ok: true, id, sent: true, messageId })
+  return json(reply, 200, { ok: true, id, sent: true, messageId })
 }
 
 /**
@@ -270,12 +244,11 @@ export async function handleUpdate(
  * **이미 나간 알림은 못 거둔다.** 지우는 것은 목록과 상세뿐이고, 기기의 사본에서는 앱이
  * 다음에 목록을 받을 때 빠진다.
  */
-export async function handleDelete(res: ServerResponse, id: string): Promise<void> {
+export async function handleDelete(reply: FastifyReply, id: string): Promise<FastifyReply> {
   if (!(await deleteNotice(id))) {
-    json(res, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
-    return
+    return json(reply, 404, { error: '없는 공지거나 운영자 공지가 아닙니다' })
   }
-  json(res, 200, { ok: true, id })
+  return json(reply, 200, { ok: true, id })
 }
 
 /**
@@ -284,12 +257,11 @@ export async function handleDelete(res: ServerResponse, id: string): Promise<voi
  * **다시 예약하는 길은 없다**(사용자 지정 2026-09-19). 시각을 바꾸려면 취소하고 새로 쓴다.
  * 이미 보낸 알림에는 안 닿는다 - 나간 알림은 못 거둔다.
  */
-export async function handleCancelSchedule(res: ServerResponse, id: string): Promise<void> {
+export async function handleCancelSchedule(reply: FastifyReply, id: string): Promise<FastifyReply> {
   if (!(await cancelSchedule(id))) {
-    json(res, 404, { error: '예약이 걸려 있지 않은 공지입니다' })
-    return
+    return json(reply, 404, { error: '예약이 걸려 있지 않은 공지입니다' })
   }
-  json(res, 200, { ok: true, id })
+  return json(reply, 200, { ok: true, id })
 }
 
 /**
@@ -297,8 +269,8 @@ export async function handleCancelSchedule(res: ServerResponse, id: string): Pro
  *
  * 화면이 두 번 물지 않게 한 응답에 싫는다. 드롭다운은 목록이 있어야 그려진다.
  */
-export async function handleManualCompletionList(res: ServerResponse): Promise<void> {
-  json(res, 200, {
+export async function handleManualCompletionList(reply: FastifyReply): Promise<FastifyReply> {
+  return json(reply, 200, {
     items: (await listManualCompletionRows()).map((row) => ({ ...row, name: bossNameOf(row.boss) })),
     bosses: BOSS_OPTIONS,
     today: todayKst(),
@@ -312,25 +284,22 @@ export async function handleManualCompletionList(res: ServerResponse): Promise<v
  * 여기서 막는 편이 운영자에게 바로 말한다.
  */
 export async function handleManualCompletionOpen(
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<void> {
-  const raw: unknown = JSON.parse(await readBody(req))
-  const form = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {}
+  body: unknown,
+  reply: FastifyReply,
+): Promise<FastifyReply> {
+  const form = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
   const boss = typeof form.boss === 'string' ? form.boss : ''
   const from = typeof form.from === 'string' && form.from !== '' ? form.from : todayKst()
 
   if (!isKnownBoss(boss)) {
-    json(res, 400, { error: '보스 표에 없는 key 입니다' })
-    return
+    return json(reply, 400, { error: '보스 표에 없는 key 입니다' })
   }
   if (!isDateKey(from)) {
-    json(res, 400, { error: '여는 날은 YYYY-MM-DD 입니다' })
-    return
+    return json(reply, 400, { error: '여는 날은 YYYY-MM-DD 입니다' })
   }
 
   await openManualCompletionBoss(boss, from)
-  json(res, 200, { ok: true, boss, from })
+  return json(reply, 200, { ok: true, boss, from })
 }
 
 /**
@@ -338,20 +307,17 @@ export async function handleManualCompletionOpen(
  *
  * 여는 것과 닫는 것이 따로 도는 동작이라(사용자 지정 2026-09-18) 언제 켜고 언제 꿄는지가 남아야 한다.
  */
-export async function handleManualCompletionClose(res: ServerResponse, boss: string): Promise<void> {
+export async function handleManualCompletionClose(
+  reply: FastifyReply,
+  boss: string,
+): Promise<FastifyReply> {
   if (!(await closeManualCompletionBoss(boss))) {
-    json(res, 404, { error: '안 열려 있는 보스입니다' })
-    return
+    return json(reply, 404, { error: '안 열려 있는 보스입니다' })
   }
-  json(res, 200, { ok: true, boss })
+  return json(reply, 200, { ok: true, boss })
 }
 
-function json(res: ServerResponse, status: number, body: unknown): void {
-  const text = JSON.stringify(body)
-  res.writeHead(status, {
-    'content-type': 'application/json; charset=utf-8',
-    'content-length': Buffer.byteLength(text),
-    'cache-control': 'no-store',
-  })
-  res.end(text)
+/** 운영자 창구의 답은 전부 캐시를 안 건다. 고친 것이 다음 새로고침에 바로 보여야 한다. */
+function json(reply: FastifyReply, status: number, body: unknown): FastifyReply {
+  return reply.header('cache-control', 'no-store').code(status).send(body)
 }

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { adminNoticeId, missingFields, scheduleError, type AdminForm } from './admin.ts'
+import { missingFields, scheduleError, type AdminForm } from './admin.ts'
 
 const 온전한폼: AdminForm = {
   title: '점검 안내',
@@ -108,23 +108,3 @@ test('지난 시각은 거절한다', () => {
   )
 })
 
-test('수정·삭제가 가리키는 공지 id 를 읽는다', () => {
-  assert.equal(adminNoticeId('/admin/notices/notice-20260916-120000'), 'notice-20260916-120000')
-})
-
-// 목록과 작성이 쓰는 경로다. 여기서 id 를 읽으면 목록 조회가 상세 수정으로 새어 나간다.
-test('id 가 없는 경로는 안 읽는다', () => {
-  assert.equal(adminNoticeId('/admin/notices'), null)
-  assert.equal(adminNoticeId('/admin/notices/'), null)
-})
-
-test('다른 관리자 경로는 안 읽는다', () => {
-  assert.equal(adminNoticeId('/admin/list'), null)
-  assert.equal(adminNoticeId('/admin'), null)
-})
-
-// id 에 공백이나 슬래시가 들어 있으면 주소에 인코딩돼 온다. 안 풀면 DB 의 id 와 안 맞아
-// 멀쩡한 공지가 없는 것이 된다.
-test('인코딩된 id 를 푼다', () => {
-  assert.equal(adminNoticeId('/admin/notices/notice%20a'), 'notice a')
-})

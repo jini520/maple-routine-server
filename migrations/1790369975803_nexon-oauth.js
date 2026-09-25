@@ -33,6 +33,8 @@ export const up = (pgm) => {
     CREATE TABLE IF NOT EXISTS nexon_sessions (
       -- 세션 원본이 아니라 그 해시를 둔다. DB 가 새도 그것으로 남의 세션을 쓸 수 없다.
       session_hash      bytea       PRIMARY KEY,
+      -- 이 세션을 만든 자격 쌍. **갱신도 같은 쌍으로 해야 넥슨이 받는다.**
+      platform          text        NOT NULL,
       -- 넥슨이 주는 사용자 식별자. 같은 사람이 다시 로그인하면 이 값으로 옛 행을 찾는다.
       --
       -- **아직 비어 있을 수 있다.** 넥슨이 이 값을 토큰 응답에 주는지 id_token 에 주는지

@@ -17,7 +17,8 @@
  *
  * `--push-title` 과 `--push-body` 를 둘 다 주면 알림까지 보낸다. 안 주면 공지만 저장한다.
  */
-import { getNotice, insertNotice, listNotices, markSent, migrate } from '../src/db.ts'
+import { getNotice, insertNotice, listNotices, markSent } from '../src/db.ts'
+import { migrate } from '../src/migrate.ts'
 import { sendNotice, payloadBytes } from '../src/send.ts'
 import { isNoticeKind, newNoticeId, pushTextFor, type Notice } from '../src/notice.ts'
 

@@ -10,7 +10,7 @@
  */
 import { createApi } from './api.ts'
 import { hasAny, insertNotice, knownIds, listDueScheduled, markSent } from './db.ts'
-import { migrate } from './db.ts'
+import { migrate } from './migrate.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
 import { startScheduleWatch } from './schedule.ts'

@@ -10,16 +10,22 @@
  */
 import { createApi } from './api.ts'
 import {
+  deleteNexonSession,
   exclusively,
+  findNexonSession,
   getNotice,
   hasAny,
   insertNotice,
   knownIds,
   listDueScheduled,
   listEventRows,
+  insertNexonSession,
   listNotices,
   listOpenManualCompletionBosses,
   markSent,
+  saveLoginAttempt,
+  takeLoginAttempt,
+  updateNexonTokens,
 } from './db.ts'
 import { migrate } from './migrate.ts'
 import { NexonClient } from './nexon.ts'
@@ -68,6 +74,15 @@ const api = createApi({
   getNotice,
   listEventRows,
   listOpenManualCompletionBosses,
+  // 넥슨 자격이 플랫폼마다 갈려서, 어느 쌍을 쓸지는 짝에 적힌 값이 정한다.
+  auth: {
+    saveLoginAttempt,
+    takeLoginAttempt,
+    insertNexonSession,
+    findNexonSession,
+    updateNexonTokens,
+    deleteNexonSession,
+  },
 })
 // `0.0.0.0` 이어야 한다. Fastify 의 기본은 localhost 인데 도커가 컨테이너 밖에서 붙는다.
 await api.listen({ port, host: '0.0.0.0' })

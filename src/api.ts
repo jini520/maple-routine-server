@@ -32,6 +32,7 @@ import {
   handleUpdate,
   isAuthorized,
 } from './admin.ts'
+import { registerAuthRoutes, type AuthDeps } from './auth-routes.ts'
 import { ADMIN_MANUAL_HTML } from './admin-manual-page.ts'
 import { ADMIN_LIST_HTML } from './admin-list-page.ts'
 import { ADMIN_HTML } from './admin-page.ts'
@@ -62,6 +63,8 @@ export interface ApiDeps {
   getNotice: typeof getNotice
   listEventRows: typeof listEventRows
   listOpenManualCompletionBosses: typeof listOpenManualCompletionBosses
+  /** 넥슨 로그인. 안 주면 그 경로를 안 연다(키만 쓰는 배포에서 표가 없어도 선다). */
+  auth?: AuthDeps
 }
 
 /**
@@ -204,6 +207,8 @@ export function createApi(deps: ApiDeps): FastifyInstance {
     if (notice === null) return fresh(reply).code(404).send({ error: 'not_found' })
     return cached(reply).send(notice)
   })
+
+  if (deps.auth !== undefined) registerAuthRoutes(app, deps.auth)
 
   app.get('/admin', async (_req, reply) => html(reply, ADMIN_HTML))
   app.get('/admin/', async (_req, reply) => html(reply, ADMIN_HTML))

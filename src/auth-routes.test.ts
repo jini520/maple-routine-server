@@ -16,8 +16,10 @@ const 원래 = { ...process.env }
 
 beforeEach(() => {
   process.env.TOKEN_ENC_KEY = randomBytes(32).toString('hex')
-  process.env.NEXON_CLIENT_ID = '클라이언트id'
-  process.env.NEXON_CLIENT_SECRET = '비밀'
+  process.env.NEXON_IOS_CLIENT_ID = 'ios-클라이언트id'
+  process.env.NEXON_IOS_CLIENT_SECRET = 'ios-비밀'
+  process.env.NEXON_ANDROID_CLIENT_ID = 'android-클라이언트id'
+  process.env.NEXON_ANDROID_CLIENT_SECRET = 'android-비밀'
   process.env.LOG_LEVEL = 'silent'
 })
 
@@ -36,13 +38,13 @@ const 넥슨토큰: NexonTokens = {
 /** DB 를 안 탄다. 무엇이 저장됐는지 남긴다. */
 function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
   짝: LoginAttempt[]
-  저장된세션: { sessionHash: Buffer; accessToken: string }[]
+  저장된세션: { sessionHash: Buffer; accessToken: string; platform: string }[]
   지운세션: Buffer[]
   갱신된: Buffer[]
   deps: AuthDeps
 } {
   const 짝: LoginAttempt[] = []
-  const 저장된세션: { sessionHash: Buffer; accessToken: string }[] = []
+  const 저장된세션: { sessionHash: Buffer; accessToken: string; platform: string }[] = []
   const 지운세션: Buffer[] = []
   const 갱신된: Buffer[] = []
 
@@ -56,7 +58,11 @@ function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
       return i === -1 ? null : (짝.splice(i, 1)[0] ?? null)
     },
     insertNexonSession: async (s) => {
-      저장된세션.push({ sessionHash: s.sessionHash, accessToken: s.accessToken })
+      저장된세션.push({
+        sessionHash: s.sessionHash,
+        accessToken: s.accessToken,
+        platform: s.platform,
+      })
     },
     findNexonSession: async () => null,
     updateNexonTokens: async (h) => {
@@ -85,7 +91,11 @@ function 앱(auth: AuthDeps) {
 }
 
 async function 로그인시작(app: ReturnType<typeof 앱>) {
-  const res = await app.inject({ method: 'POST', url: '/v1/auth/nexon/start' })
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/start',
+    payload: { platform: 'ios' },
+  })
   return res.json() as { authorizeUrl: string; state: string; verifier: string }
 }
 
@@ -269,7 +279,11 @@ test('로그인을 안 붙인 배포에서는 그 경로가 없다', async () =>
     listOpenManualCompletionBosses: async () => [],
   })
 
-  const res = await app.inject({ method: 'POST', url: '/v1/auth/nexon/start' })
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/start',
+    payload: { platform: 'ios' },
+  })
   // 이 서버의 `/v1` 은 전부 GET 이라 안 맞는 경로에 POST 가 오면 405 다. 요점은 200 이
   // 아니라는 것, 곧 세션이 안 나간다는 것이다.
   assert.equal(res.statusCode, 405)
@@ -280,6 +294,7 @@ test('로그인을 안 붙인 배포에서는 그 경로가 없다', async () =>
 function 저장된세션(덮어쓸것: Partial<StoredSession> = {}): StoredSession {
   return {
     sessionHash: hashSession('세션값'),
+    platform: 'ios',
     nexonUid: null,
     accessToken: '옛액세스',
     accessExpiresAt: new Date('2026-09-26T12:20:00.000Z'),
@@ -344,4 +359,37 @@ test('없는 세션과 빈 세션은 재로그인이다', async () => {
   assert.equal(await resolveSession(가짜.deps, ''), null)
   assert.equal(await resolveSession(가짜.deps, '모르는세션'), null)
   assert.equal(가짜.지운세션.length, 0, '없는 것을 지우러 가지 않는다')
+})
+
+test('플랫폼을 안 주면 로그인을 시작하지 않는다', async () => {
+  // 넥슨 자격이 플랫폼마다 갈려서 어느 쌍을 쓸지 정할 수 없다. 아무 쪽이나 고르면 그 사용자는
+  // 넥슨 거절만 보고 원인을 모른다.
+  const app = 앱(가짜인증().deps)
+
+  for (const payload of [{}, { platform: 'windows' }, { platform: 1 }]) {
+    const res = await app.inject({ method: 'POST', url: '/v1/auth/nexon/start', payload })
+    assert.equal(res.statusCode, 400, JSON.stringify(payload))
+  }
+})
+
+test('교환은 앱이 보낸 플랫폼이 아니라 짝에 적힌 것을 쓴다', async () => {
+  // 앱이 안드로이드로 시작해 놓고 교환에서 ios 라고 우겨도, 서버는 시작 때 적어 둔 쌍을 쓴다.
+  const 가짜 = 가짜인증()
+  const app = 앱(가짜.deps)
+
+  const 시작 = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/start',
+    payload: { platform: 'android' },
+  })
+  const { state, verifier } = 시작.json() as { state: string; verifier: string }
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/session',
+    payload: { code: 'code', state, verifier, platform: 'ios' },
+  })
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(가짜.저장된세션[0]?.platform, 'android', '짝에 적힌 쌍이 이긴다')
 })

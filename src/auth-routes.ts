@@ -19,6 +19,7 @@ import {
   authorizeUrl,
   exchangeCode,
   hashSession,
+  isPlatform,
   newAttempt,
   newSession,
   refreshTokens,
@@ -26,6 +27,7 @@ import {
   REFRESH_TTL_MS,
   type LoginAttempt,
   type NexonTokens,
+  type Platform,
 } from './nexon-oauth.ts'
 import { needsRefresh, sessionExpired, type StoredSession } from './nexon-session.ts'
 
@@ -39,6 +41,7 @@ export interface AuthDeps {
   takeLoginAttempt: (state: string, verifier: string) => Promise<LoginAttempt | null>
   insertNexonSession: (session: {
     sessionHash: Buffer
+    platform: Platform
     nexonUid: string | null
     accessToken: string
     accessExpiresAt: Date
@@ -66,6 +69,10 @@ interface ExchangeBody {
   code?: unknown
   state?: unknown
   verifier?: unknown
+}
+
+interface StartBody {
+  platform?: unknown
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
@@ -103,7 +110,8 @@ export async function resolveSession(
   const refresh = deps.refreshTokens ?? refreshTokens
   let fresh: NexonTokens
   try {
-    fresh = await refresh(session.refreshToken, fetch, now)
+    // 세션을 만든 쌍으로 갱신한다. 다른 쌍으로 부르면 넥슨이 거절한다.
+    fresh = await refresh(session.refreshToken, session.platform, fetch, now)
   } catch {
     // 넥슨이 갱신을 거절했다. 그 갱신 토큰으로는 다시 못 받으므로 세션을 접는다.
     await deps.deleteNexonSession(hash)
@@ -131,12 +139,19 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
    * **검증값을 응답 본문으로 준다.** 앱이 들고 있다가 교환 때 돌려주는 값이고, 이 경로는
    * https 라 콜백 URL 과 달리 다른 앱이 볼 수 없다.
    */
-  app.post('/v1/auth/nexon/start', async (_req, reply) => {
-    const attempt = newAttempt(now())
+  app.post('/v1/auth/nexon/start', async (req: FastifyRequest, reply) => {
+    // 넥슨 애플리케이션이 플랫폼마다 따로 등록돼 client_id 와 secret 이 쌍으로 갈린다.
+    // 어느 쌍으로 시작했는지를 짝에 적어 두고, 교환 때는 앱이 보낸 값이 아니라 그것을 쓴다.
+    const platform = (req.body ?? {}) as StartBody
+    if (!isPlatform(platform.platform)) {
+      return json(reply, 400, { error: 'bad_request' })
+    }
+
+    const attempt = newAttempt(platform.platform, now())
     await deps.saveLoginAttempt(attempt)
 
     return json(reply, 200, {
-      authorizeUrl: authorizeUrl(attempt.state),
+      authorizeUrl: authorizeUrl(attempt.state, attempt.platform),
       state: attempt.state,
       verifier: attempt.verifier,
     })
@@ -159,7 +174,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
 
     const stored = await deps.takeLoginAttempt(state, verifier)
     const 거절 = verifyAttempt(stored, verifier, now())
-    if (거절 !== null) {
+    if (거절 !== null || stored === null) {
       req.log.warn({ 거절 }, '[auth] 교환을 거절했다')
       return json(reply, 400, { error: 'invalid_request' })
     }
@@ -167,7 +182,9 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const exchange = deps.exchangeCode ?? exchangeCode
     let tokens: NexonTokens
     try {
-      tokens = await exchange(code, fetch, now())
+      // 앱이 보낸 값이 아니라 짝에 적힌 쌍을 쓴다. 시작과 교환이 어긋나면 넥슨이 거절하고,
+      // 그 실패는 사용자에게 `로그인이 안 된다` 로만 보인다.
+      tokens = await exchange(code, stored.platform, fetch, now())
     } catch (error) {
       req.log.error(error, '[auth] 넥슨 교환이 실패했다')
       return json(reply, 502, { error: 'exchange_failed' })
@@ -176,6 +193,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const { session, sessionHash } = newSession()
     await deps.insertNexonSession({
       sessionHash,
+      platform: stored.platform,
       // 넥슨이 사용자 식별자를 어디에 주는지 실측 전이다. 추측해서 채우지 않는다.
       nexonUid: null,
       accessToken: tokens.accessToken,

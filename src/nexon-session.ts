@@ -8,9 +8,13 @@
  * 갱신하면 그만이다. 이 둘을 안 가르면 30분 지난 사용자가 전부 재로그인 화면을 본다.
  */
 
+import type { Platform } from './nexon-oauth.ts'
+
 /** DB 에서 꺼내 토큰을 푼 세션 하나. */
 export interface StoredSession {
   sessionHash: Buffer
+  /** 이 세션을 만든 쌍. **갱신도 같은 쌍으로 해야 넥슨이 받는다.** */
+  platform: Platform
   /** 넥슨이 어디에 주는지 실측 전이라 아직 비어 있을 수 있다. */
   nexonUid: string | null
   accessToken: string

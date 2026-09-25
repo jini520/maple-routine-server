@@ -74,6 +74,7 @@ const api = createApi({
   getNotice,
   listEventRows,
   listOpenManualCompletionBosses,
+  // 넥슨 자격이 플랫폼마다 갈려서, 어느 쌍을 쓸지는 짝에 적힌 값이 정한다.
   auth: {
     saveLoginAttempt,
     takeLoginAttempt,

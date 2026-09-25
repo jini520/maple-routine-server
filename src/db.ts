@@ -10,7 +10,7 @@ import type { NoticeBlock } from './html.ts'
 import { isNoticeKind, type Notice, type NoticeKind, type SundayRecord } from './notice.ts'
 import type { ManualCompletionBoss } from './manual-completion.ts'
 import type { DuePush } from './schedule.ts'
-import type { LoginAttempt } from './nexon-oauth.ts'
+import { isPlatform, type LoginAttempt, type Platform } from './nexon-oauth.ts'
 import type { StoredSession } from './nexon-session.ts'
 import type { RunExclusively } from './single-runner.ts'
 import { openToken, sealToken } from './token-crypto.ts'
@@ -462,9 +462,9 @@ export function exclusively(lockId: number): RunExclusively {
 /** 로그인 시작 때 만든 짝을 둔다. 한 번 쓰면 지우고, 안 쓰여도 수명이 지나면 만료다. */
 export async function saveLoginAttempt(attempt: LoginAttempt): Promise<void> {
   await pool.query(
-    `INSERT INTO nexon_login_attempts (state, verifier, created_at, expires_at)
-     VALUES ($1, $2, $3, $4)`,
-    [attempt.state, attempt.verifier, attempt.createdAt, attempt.expiresAt],
+    `INSERT INTO nexon_login_attempts (state, verifier, platform, created_at, expires_at)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [attempt.state, attempt.verifier, attempt.platform, attempt.createdAt, attempt.expiresAt],
   )
 }
 
@@ -485,6 +485,7 @@ export async function takeLoginAttempt(
   const { rows } = await pool.query<{
     state: string
     verifier: string
+    platform: string
     created_at: Date
     expires_at: Date
   }>(`DELETE FROM nexon_login_attempts WHERE state = $1 AND verifier = $2 RETURNING *`, [
@@ -494,9 +495,12 @@ export async function takeLoginAttempt(
 
   const row = rows[0]
   if (row === undefined) return null
+  // 우리가 넣은 값이라 정상적으로는 늘 맞는다. 아니면 그 짝은 못 쓴다.
+  if (!isPlatform(row.platform)) return null
   return {
     state: row.state,
     verifier: row.verifier,
+    platform: row.platform,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
   }
@@ -511,6 +515,7 @@ export async function purgeExpiredLoginAttempts(): Promise<number> {
 /** 저장할 세션 한 벌. 토큰은 아직 평문이고 이 함수가 감싼다. */
 export interface SessionToStore {
   sessionHash: Buffer
+  platform: Platform
   nexonUid: string | null
   accessToken: string
   accessExpiresAt: Date
@@ -523,6 +528,7 @@ function sealBoth(session: SessionToStore): unknown[] {
   const refresh = sealToken(session.refreshToken, 'refresh')
   return [
     session.sessionHash,
+    session.platform,
     session.nexonUid,
     access.cipher,
     access.iv,
@@ -539,11 +545,12 @@ function sealBoth(session: SessionToStore): unknown[] {
 export async function insertNexonSession(session: SessionToStore): Promise<void> {
   await pool.query(
     `INSERT INTO nexon_sessions (
-       session_hash, nexon_uid,
+       session_hash, platform, nexon_uid,
        access_cipher, access_iv, access_tag, access_expires_at,
        refresh_cipher, refresh_iv, refresh_tag, refresh_expires_at
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
      ON CONFLICT (session_hash) DO UPDATE SET
+       platform = EXCLUDED.platform,
        nexon_uid = EXCLUDED.nexon_uid,
        access_cipher = EXCLUDED.access_cipher, access_iv = EXCLUDED.access_iv,
        access_tag = EXCLUDED.access_tag, access_expires_at = EXCLUDED.access_expires_at,
@@ -556,6 +563,7 @@ export async function insertNexonSession(session: SessionToStore): Promise<void>
 
 interface SessionRow {
   session_hash: Buffer
+  platform: string
   nexon_uid: string | null
   access_cipher: Buffer
   access_iv: Buffer
@@ -581,8 +589,10 @@ export async function findNexonSession(sessionHash: Buffer): Promise<StoredSessi
 
   const row = rows[0]
   if (row === undefined) return null
+  if (!isPlatform(row.platform)) return null
   return {
     sessionHash: row.session_hash,
+    platform: row.platform,
     nexonUid: row.nexon_uid,
     accessToken: openToken(
       { cipher: row.access_cipher, iv: row.access_iv, tag: row.access_tag },

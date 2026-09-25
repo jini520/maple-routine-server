@@ -36,19 +36,34 @@ export const NEXON_TOKEN_URL = 'https://openid.nexon.com/oauth2/token'
 export const REDIRECT_URI = 'com.mapleroutine.app://oauth/callback'
 
 /**
- * 받는 스코프. **Open ID 로 열리는 것은 이 넷뿐이다.**
+ * 앱이 로그인하는 플랫폼. **넥슨 애플리케이션이 플랫폼마다 따로 등록된다.**
  *
- * 안 받으면 로그인은 되는데 아무것도 못 읽는다. 앱이 쓰는 나머지(`character/basic` 계열)는 이
- * 목록에 없고 API 키를 요구한다. 그래서 로그인이 키를 대체하지 못한다.
+ * iOS 는 Bundle ID 를, Android 는 Package Name 을 받고 **`client_id` 와 secret 이 쌍으로 갈린다**
+ * (2026-09-26 등록 화면 확인). 그래서 서버가 요청마다 어느 쌍을 쓸지 골라야 한다.
+ */
+export type Platform = 'ios' | 'android'
+
+export function isPlatform(value: unknown): value is Platform {
+  return value === 'ios' || value === 'android'
+}
+
+/**
+ * 받는 스코프. **넥슨 등록 화면에서 켠 것과 정확히 같아야 한다.**
+ *
+ * 안 켠 스코프를 달라고 하면 넥슨이 거절한다. 지금 켜져 있는 것이 이 여섯이고, 두 플랫폼이
+ * 같다(2026-09-26 확인). `maplestory.achievement` 는 꺼져 있어 여기 없다. 앱이 그것을 쓰게
+ * 되면 등록 화면에서 먼저 켜고 여기 한 줄을 더한다.
+ *
+ * 이 여섯이 Open ID 로 열리는 전부다. 앱이 쓰는 나머지(`character/basic` 계열)는 이 목록에
+ * 없고 API 키를 요구한다. 그래서 로그인이 키를 대체하지 못한다.
  */
 export const SCOPES = [
   'maplestory.characterlist',
-  'maplestory.achievement',
-  'maplestory.cube',
   'maplestory.starforce',
   'maplestory.potential',
-  'maplestory.soulpotential',
   'maplestory.scheduler',
+  'maplestory.cube',
+  'maplestory.soulpotential',
 ] as const
 
 /**
@@ -65,15 +80,23 @@ export interface LoginAttempt {
   state: string
   /** 콜백 URL 에 안 실린다. 앱과 서버 사이 https 로만 오간다. */
   verifier: string
+  /**
+   * 어느 쌍으로 시작했나. **교환도 같은 쌍을 써야 한다.**
+   *
+   * 앱이 교환에서 보낸 값을 안 믿고 여기 적힌 것을 쓴다. 시작과 교환의 쌍이 어긋나면
+   * 넥슨이 거절하는데, 그 실패는 사용자에게 `로그인이 안 된다` 로만 보인다.
+   */
+  platform: Platform
   createdAt: Date
   expiresAt: Date
 }
 
 /** 새 짝. 로그인 시작 요청마다 하나씩 만든다. */
-export function newAttempt(now: Date = new Date()): LoginAttempt {
+export function newAttempt(platform: Platform, now: Date = new Date()): LoginAttempt {
   return {
     state: randomBytes(24).toString('base64url'),
     verifier: randomBytes(32).toString('base64url'),
+    platform,
     createdAt: now,
     expiresAt: new Date(now.getTime() + ATTEMPT_TTL_MS),
   }
@@ -85,14 +108,23 @@ function required(name: string): string {
   return value
 }
 
+/** 그 플랫폼의 넥슨 자격 한 쌍. 이름을 여기 한 자리에 모은다. */
+function credentials(platform: Platform): { clientId: string; clientSecret: string } {
+  const prefix = platform === 'ios' ? 'NEXON_IOS' : 'NEXON_ANDROID'
+  return {
+    clientId: required(`${prefix}_CLIENT_ID`),
+    clientSecret: required(`${prefix}_CLIENT_SECRET`),
+  }
+}
+
 /**
  * 앱이 열 주소. **`client_secret` 은 안 싣는다.**
  *
  * 실으면 브라우저 주소창과 넥슨 로그에 남는다. 앱 번들에 안 두는 이유가 그대로 여기도 걸린다.
  */
-export function authorizeUrl(state: string): string {
+export function authorizeUrl(state: string, platform: Platform): string {
   const url = new URL(NEXON_AUTHORIZE_URL)
-  url.searchParams.set('client_id', required('NEXON_CLIENT_ID'))
+  url.searchParams.set('client_id', credentials(platform).clientId)
   url.searchParams.set('redirect_uri', REDIRECT_URI)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', SCOPES.join(' '))
@@ -209,13 +241,15 @@ async function postToken(body: URLSearchParams, fetcher: Fetcher, now: Date): Pr
  */
 export async function exchangeCode(
   code: string,
+  platform: Platform,
   fetcher: Fetcher = fetch,
   now: Date = new Date(),
 ): Promise<NexonTokens> {
+  const { clientId, clientSecret } = credentials(platform)
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
-    client_id: required('NEXON_CLIENT_ID'),
-    client_secret: required('NEXON_CLIENT_SECRET'),
+    client_id: clientId,
+    client_secret: clientSecret,
     code,
     redirect_uri: REDIRECT_URI,
   })
@@ -234,13 +268,15 @@ export async function exchangeCode(
  */
 export async function refreshTokens(
   refreshToken: string,
+  platform: Platform,
   fetcher: Fetcher = fetch,
   now: Date = new Date(),
 ): Promise<NexonTokens> {
+  const { clientId, clientSecret } = credentials(platform)
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
-    client_id: required('NEXON_CLIENT_ID'),
-    client_secret: required('NEXON_CLIENT_SECRET'),
+    client_id: clientId,
+    client_secret: clientSecret,
     refresh_token: refreshToken,
   })
 

@@ -17,6 +17,10 @@ export const up = (pgm) => {
       -- 콜백 URL 에 안 실리고 앱과 서버 사이 https 로만 오간다. 안드로이드에서 콜백을 가로챈
       -- 앱은 code 와 state 만 갖고 이 값이 없어, 교환을 요청해도 서버가 거절한다.
       verifier   text        NOT NULL,
+      -- 어느 플랫폼으로 시작한 로그인인가. 넥슨 애플리케이션이 iOS 와 Android 로 따로
+      -- 등록돼 client_id 와 secret 이 쌍으로 갈린다. 교환은 시작 때와 **같은 쌍**을 써야
+      -- 하고, 앱이 교환에서 보낸 값이 아니라 여기 적힌 것을 쓴다.
+      platform   text        NOT NULL,
       created_at timestamptz NOT NULL DEFAULT now(),
       -- 이 시각이 지나면 안 받는다. 쓰이지 않은 짝을 치우는 기준이기도 하다.
       expires_at timestamptz NOT NULL

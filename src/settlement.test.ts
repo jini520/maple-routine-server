@@ -42,23 +42,24 @@ test('창 밖(낮)에는 넥슨을 안 부르고 결산 중이 아니다', async
   assert.equal(next.settling, false)
 })
 
-test('20:00 에 창이 열리고, 자정 전에는 `date` 없이 부른다', async () => {
-  const { deps, calls } = watcher([끝났다], KST('2026-09-16T20:00:00'))
+test('20:00 은 아직 창 밖이다', async () => {
+  const { deps, calls } = watcher([결산중], KST('2026-09-16T20:00:00'))
 
-  await tick(IDLE, deps)
+  const next = await tick(IDLE, deps)
 
-  assert.deepEqual(calls, [{ date: null }])
+  assert.equal(calls.length, 0)
+  assert.equal(next.settling, false)
 })
 
-test('자정 뒤에는 켠 날 날짜로 부른다', async () => {
-  const { deps, calls } = watcher([결산중], KST('2026-09-17T02:00:00'))
+test('00:00 에 창이 열리고 어제 날짜로 부른다', async () => {
+  const { deps, calls } = watcher([결산중], KST('2026-09-17T00:00:00'))
 
   await tick(IDLE, deps)
 
   assert.deepEqual(calls, [{ date: '2026-09-16' }])
 })
 
-test('자정 뒤 OPENAPI00009 면 결산 중이고 시작 시각이 선다', async () => {
+test('OPENAPI00009 면 결산 중이고 시작 시각이 선다', async () => {
   const at = KST('2026-09-17T00:30:00')
   const { deps } = watcher([결산중], at)
 
@@ -77,7 +78,7 @@ test('결산이 이어져도 시작 시각은 처음 본 그대로다', async ()
   assert.equal(next.startedAt, new Date(처음).toISOString())
 })
 
-test('자정 뒤 200 이면 결산이 끝나고 그날 밤은 더 안 부른다', async () => {
+test('200 이면 결산이 끝나고 그날 밤은 더 안 부른다', async () => {
   const settling = await tick(IDLE, watcher([결산중], KST('2026-09-17T00:30:00')).deps)
 
   const done = await tick(settling, watcher([끝났다], KST('2026-09-17T03:40:00')).deps)
@@ -90,16 +91,16 @@ test('자정 뒤 200 이면 결산이 끝나고 그날 밤은 더 안 부른다'
   assert.equal(next.settling, false)
 })
 
-test('다음 날 밤 20:00 이 되면 다시 부른다', async () => {
+test('다음 날 밤 00:00 이 되면 다시 부른다', async () => {
   const done = await tick(
     await tick(IDLE, watcher([결산중], KST('2026-09-17T00:30:00')).deps),
     watcher([끝났다], KST('2026-09-17T03:40:00')).deps,
   )
 
-  const tonight = watcher([끝났다], KST('2026-09-17T20:10:00'))
+  const tonight = watcher([끝났다], KST('2026-09-18T00:10:00'))
   await tick(done, tonight.deps)
 
-  assert.deepEqual(tonight.calls, [{ date: null }])
+  assert.deepEqual(tonight.calls, [{ date: '2026-09-17' }])
 })
 
 test('06:00 이 되면 끝을 못 봤어도 결산 중이 아니게 된다', async () => {
@@ -114,20 +115,16 @@ test('06:00 이 되면 끝을 못 봤어도 결산 중이 아니게 된다', asy
   assert.equal(out.calls.length, 0)
 })
 
-test('자정 전 200 은 아직 결산 전이다', async () => {
-  const { deps } = watcher([끝났다], KST('2026-09-16T22:00:00'))
+// 자정 전에는 결산을 가를 신호가 없다. 하루가 안 끝나 `date=오늘` 이 400 `OPENAPI00004` 로
+// 거절되고, 남은 `date` 없는 조회는 결산 중에도 200 을 준다(2026-07-31 실측). 여섯 밤 로그로
+// 다시 확인하고 창을 00:00 으로 옮겼다.
+test('자정 직전에는 안 부른다', async () => {
+  const { deps, calls } = watcher([결산중], KST('2026-09-16T23:59:00'))
 
   const next = await tick(IDLE, deps)
 
+  assert.equal(calls.length, 0)
   assert.equal(next.settling, false)
-})
-
-test('자정 전 오류는 판정하지 않는다. 그 신호를 아직 모른다', async () => {
-  const { deps } = watcher([결산중], KST('2026-09-16T23:00:00'))
-
-  const next = await tick(IDLE, deps)
-
-  assert.equal(next.settling, false, '자정 전 OPENAPI00009 를 결산 중으로 읽지 않는다')
 })
 
 test('모름은 결산 중을 새로 선언하지 않는다', async () => {

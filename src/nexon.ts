@@ -159,13 +159,13 @@ export class NexonClient {
   /**
    * 결산 판정용 한 방. **몸통을 안 본다** - 묻는 것은 «지금 이 날짜가 조회되는가» 뿐이다.
    *
-   * `date` 가 `null` 이면 날짜 없는 조회다(자정 전 구간). 실패해도 안 던진다 - 부르는 쪽이
-   * 상태 코드와 오류 코드로 가른다.
+   * 실패해도 안 던진다 - 부르는 쪽이 상태 코드와 오류 코드로 가른다.
    */
-  async probeSchedulerState(ocid: string, date: string | null): Promise<Probe> {
-    const dateParam = date === null ? '' : `&date=${encodeURIComponent(date)}`
+  async probeSchedulerState(ocid: string, date: string): Promise<Probe> {
     try {
-      await this.call(`/maplestory/v1/scheduler/character-state?ocid=${encodeURIComponent(ocid)}${dateParam}`)
+      await this.call(
+        `/maplestory/v1/scheduler/character-state?ocid=${encodeURIComponent(ocid)}&date=${encodeURIComponent(date)}`,
+      )
       return { ok: true, status: 200, code: null }
     } catch (error) {
       if (error instanceof NexonError) return { ok: false, status: error.status, code: error.code }

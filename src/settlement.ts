@@ -5,12 +5,10 @@
  * **앱이 시각으로 가르면 틀리기 때문에 서버가 본다.** 결산의 시작과 끝이 날마다 다르다. 실측은
  * 어제 기록이 KST 01:52 에 400 `OPENAPI00009`, 03:44 에 200 이었다(2026-07-31).
  *
- * **자정 전과 뒤에 부르는 조회가 다르다.** 자정 전에는 하루가 안 끝나 `date=오늘` 이 400
- * `OPENAPI00004` 로 거절되므로 `date` 없는 조회를 쓴다. 자정 뒤에는 끝난 하루(켠 날)를 묻는다.
- *
- * ⚠️ **자정 전 결산 중에 무엇이 오는지 아직 모른다.** 잰 기록이 전부 새벽 것이다. 그래서 자정
- * 전 구간은 200 만 읽고(아직 결산 전), 오류는 판정하지 않고 로그만 남긴다. 첫날 밤 로그를 보고
- * 신호를 알아낸 뒤에 이 자리를 채운다.
+ * **묻는 것은 `date=어제` 하나이고 자정 전은 안 본다.** 자정 전에는 하루가 안 끝나 `date=오늘`
+ * 이 400 `OPENAPI00004` 로 거절되고, 남는 `date` 없는 조회는 **결산 중에도 200 을 주어** 가를
+ * 수가 없다. 2026-07-31 실측이 그것을 보였고(01:52 에 `date=어제` 는 400 인데 날짜 없는 조회는
+ * 200), 여섯 밤 로그가 다시 확인했다(2026-09-25).
  */
 
 /** 넥슨 응답에서 판정에 필요한 것만. 몸통은 안 본다 — 우리가 묻는 것은 «지금 되는가» 뿐이다. */
@@ -21,8 +19,8 @@ export interface Probe {
 }
 
 export interface SettlementDeps {
-  /** `date` 가 `null` 이면 날짜 없는 조회. 던지면 모름으로 친다. */
-  probe: (date: string | null) => Promise<Probe>
+  /** 결산되는 날짜(어제)를 묻는다. 던지면 모름으로 친다. */
+  probe: (date: string) => Promise<Probe>
   /** 테스트가 고정한다. */
   now?: () => number
 }
@@ -46,9 +44,7 @@ export const IDLE: WatchState = { settling: false, startedAt: null, doneNight: n
 /** 결산 중이라는 신호. 이 코드 하나만 «시간이 지나면 풀리는 실패» 다. */
 const SETTLING_CODE = 'OPENAPI00009'
 
-/** 밤마다 확인을 켜는 KST 시각. 넥슨이 대략 22:00 에 시작하므로 두 시간 앞에서 기다린다. */
-const WATCH_FROM_HOUR = 20
-/** 끝을 못 봐도 끄는 KST 시각. */
+/** 끝을 못 봐도 끄는 KST 시각. 창은 자정에 열린다. */
 const WATCH_TO_HOUR = 6
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000
@@ -64,15 +60,13 @@ function previousDay(date: string): string {
 }
 
 /**
- * 지금이 확인 창 안인가. 창 안이면 그 밤의 이름과 자정 전후를 준다.
+ * 지금이 확인 창 안인가. 창 안이면 **결산되는 날짜**(어제)를 준다.
  *
- * **밤 이름은 켠 날이다.** 자정을 넘어도 같은 이름이라, 끝을 본 밤을 그 이름 하나로 기억한다.
+ * 그 날짜가 곧 그 밤의 이름이다. 끝을 본 밤을 이름 하나로 기억해 그 밤에는 더 안 부른다.
  */
-export function nightOf(at: number): { nightKey: string; phase: 'before' | 'after' } | null {
+export function nightOf(at: number): string | null {
   const { date, hour } = kstParts(at)
-  if (hour >= WATCH_FROM_HOUR) return { nightKey: date, phase: 'before' }
-  if (hour < WATCH_TO_HOUR) return { nightKey: previousDay(date), phase: 'after' }
-  return null
+  return hour < WATCH_TO_HOUR ? previousDay(date) : null
 }
 
 /**
@@ -88,28 +82,20 @@ export async function tick(state: WatchState, deps: SettlementDeps): Promise<Wat
   // 배너가 서 있는다.
   if (night === null) return { ...state, settling: false, startedAt: null }
 
-  if (state.doneNight === night.nightKey) return { ...state, settling: false, startedAt: null }
+  if (state.doneNight === night) return { ...state, settling: false, startedAt: null }
 
   let probe: Probe
   try {
-    probe = await deps.probe(night.phase === 'after' ? night.nightKey : null)
+    probe = await deps.probe(night)
   } catch (error) {
     // 모름이다. 판정을 안 바꾼다.
     console.error('[settlement] 조회 실패', error)
     return state
   }
 
-  if (night.phase === 'before') {
-    // 200 이면 아직 결산 전이다. 그 밖의 응답이 결산 중을 뜻하는지 아직 모르므로 판정하지
-    // 않고 로그만 남긴다. 이 로그가 신호를 알아내는 유일한 길이다.
-    if (probe.ok) return { ...state, settling: false, startedAt: null }
-    console.log('[settlement] 자정 전 응답', JSON.stringify({ status: probe.status, code: probe.code }))
-    return state
-  }
-
   if (probe.ok) {
     // 결산이 끝났다. 그날 밤은 더 안 묻는다.
-    return { settling: false, startedAt: null, doneNight: night.nightKey }
+    return { settling: false, startedAt: null, doneNight: night }
   }
 
   if (probe.code === SETTLING_CODE) {

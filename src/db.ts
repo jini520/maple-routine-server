@@ -10,7 +10,10 @@ import type { NoticeBlock } from './html.ts'
 import { isNoticeKind, type Notice, type NoticeKind, type SundayRecord } from './notice.ts'
 import type { ManualCompletionBoss } from './manual-completion.ts'
 import type { DuePush } from './schedule.ts'
+import type { LoginAttempt } from './nexon-oauth.ts'
+import type { StoredSession } from './nexon-session.ts'
 import type { RunExclusively } from './single-runner.ts'
+import { openToken, sealToken } from './token-crypto.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
@@ -450,4 +453,182 @@ export function exclusively(lockId: number): RunExclusively {
       client.release()
     }
   }
+}
+
+// ── 넥슨 Open ID 로그인 ──────────────────────────────────────────────────
+//
+// 토큰은 평문으로 안 들어온다. `token-crypto.ts` 가 감싼 셋(본문 · iv · 태그)이 그대로 칸이 된다.
+
+/** 로그인 시작 때 만든 짝을 둔다. 한 번 쓰면 지우고, 안 쓰여도 수명이 지나면 만료다. */
+export async function saveLoginAttempt(attempt: LoginAttempt): Promise<void> {
+  await pool.query(
+    `INSERT INTO nexon_login_attempts (state, verifier, created_at, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [attempt.state, attempt.verifier, attempt.createdAt, attempt.expiresAt],
+  )
+}
+
+/**
+ * `state` 와 검증값이 **둘 다 맞을 때만** 짝을 꺼내면서 그 자리에서 지운다.
+ *
+ * **검증값까지 조건에 넣는 것이 요점이다.** `state` 만으로 지우면, 콜백을 가로챈 앱이 아무
+ * 검증값이나 들고 먼저 찔러 진짜 사용자의 짝을 태워 버린다. 세션을 뺏기지는 않지만 그 사용자는
+ * 로그인이 막히고 원인도 안 보인다(실측 2026-09-26).
+ *
+ * 찾기와 지우기를 한 문장에 묶는 것은 그 사이에 같은 짝으로 두 번 들어오는 것을 막기 위해서다.
+ * 수명 판정은 부른 쪽(`verifyAttempt`)이 한다.
+ */
+export async function takeLoginAttempt(
+  state: string,
+  verifier: string,
+): Promise<LoginAttempt | null> {
+  const { rows } = await pool.query<{
+    state: string
+    verifier: string
+    created_at: Date
+    expires_at: Date
+  }>(`DELETE FROM nexon_login_attempts WHERE state = $1 AND verifier = $2 RETURNING *`, [
+    state,
+    verifier,
+  ])
+
+  const row = rows[0]
+  if (row === undefined) return null
+  return {
+    state: row.state,
+    verifier: row.verifier,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  }
+}
+
+/** 수명이 지난 짝을 치운다. 쓰이지 않은 로그인 시도가 표에 쌓이는 것을 막는다. */
+export async function purgeExpiredLoginAttempts(): Promise<number> {
+  const { rowCount } = await pool.query(`DELETE FROM nexon_login_attempts WHERE expires_at <= now()`)
+  return rowCount ?? 0
+}
+
+/** 저장할 세션 한 벌. 토큰은 아직 평문이고 이 함수가 감싼다. */
+export interface SessionToStore {
+  sessionHash: Buffer
+  nexonUid: string | null
+  accessToken: string
+  accessExpiresAt: Date
+  refreshToken: string
+  refreshExpiresAt: Date
+}
+
+function sealBoth(session: SessionToStore): unknown[] {
+  const access = sealToken(session.accessToken, 'access')
+  const refresh = sealToken(session.refreshToken, 'refresh')
+  return [
+    session.sessionHash,
+    session.nexonUid,
+    access.cipher,
+    access.iv,
+    access.tag,
+    session.accessExpiresAt,
+    refresh.cipher,
+    refresh.iv,
+    refresh.tag,
+    session.refreshExpiresAt,
+  ]
+}
+
+/** 새 세션. 같은 해시가 다시 올 일은 없지만 재시도가 겹쳐도 깨지지 않게 덮어쓴다. */
+export async function insertNexonSession(session: SessionToStore): Promise<void> {
+  await pool.query(
+    `INSERT INTO nexon_sessions (
+       session_hash, nexon_uid,
+       access_cipher, access_iv, access_tag, access_expires_at,
+       refresh_cipher, refresh_iv, refresh_tag, refresh_expires_at
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     ON CONFLICT (session_hash) DO UPDATE SET
+       nexon_uid = EXCLUDED.nexon_uid,
+       access_cipher = EXCLUDED.access_cipher, access_iv = EXCLUDED.access_iv,
+       access_tag = EXCLUDED.access_tag, access_expires_at = EXCLUDED.access_expires_at,
+       refresh_cipher = EXCLUDED.refresh_cipher, refresh_iv = EXCLUDED.refresh_iv,
+       refresh_tag = EXCLUDED.refresh_tag, refresh_expires_at = EXCLUDED.refresh_expires_at,
+       last_used_at = now()`,
+    sealBoth(session),
+  )
+}
+
+interface SessionRow {
+  session_hash: Buffer
+  nexon_uid: string | null
+  access_cipher: Buffer
+  access_iv: Buffer
+  access_tag: Buffer
+  access_expires_at: Date
+  refresh_cipher: Buffer
+  refresh_iv: Buffer
+  refresh_tag: Buffer
+  refresh_expires_at: Date
+}
+
+/**
+ * 세션 해시로 찾아 토큰까지 푼다. 없으면 `null`.
+ *
+ * **푸는 데 실패하면 던진다.** 열쇠가 바뀌었거나 행이 건드려진 것이라, 빈 토큰으로 넥슨을
+ * 부르면 401 이 오고 그 401 이 사용자에게 재로그인으로 보인다. 진짜 원인이 묻힌다.
+ */
+export async function findNexonSession(sessionHash: Buffer): Promise<StoredSession | null> {
+  const { rows } = await pool.query<SessionRow>(
+    `SELECT * FROM nexon_sessions WHERE session_hash = $1`,
+    [sessionHash],
+  )
+
+  const row = rows[0]
+  if (row === undefined) return null
+  return {
+    sessionHash: row.session_hash,
+    nexonUid: row.nexon_uid,
+    accessToken: openToken(
+      { cipher: row.access_cipher, iv: row.access_iv, tag: row.access_tag },
+      'access',
+    ),
+    accessExpiresAt: row.access_expires_at,
+    refreshToken: openToken(
+      { cipher: row.refresh_cipher, iv: row.refresh_iv, tag: row.refresh_tag },
+      'refresh',
+    ),
+    refreshExpiresAt: row.refresh_expires_at,
+  }
+}
+
+/** 갱신한 토큰으로 갈아끼운다. 세션 해시는 그대로라 앱은 아무것도 모른다. */
+export async function updateNexonTokens(
+  sessionHash: Buffer,
+  tokens: { accessToken: string; accessExpiresAt: Date; refreshToken: string; refreshExpiresAt: Date },
+): Promise<void> {
+  const access = sealToken(tokens.accessToken, 'access')
+  const refresh = sealToken(tokens.refreshToken, 'refresh')
+  await pool.query(
+    `UPDATE nexon_sessions SET
+       access_cipher = $2, access_iv = $3, access_tag = $4, access_expires_at = $5,
+       refresh_cipher = $6, refresh_iv = $7, refresh_tag = $8, refresh_expires_at = $9,
+       last_used_at = now()
+     WHERE session_hash = $1`,
+    [
+      sessionHash,
+      access.cipher,
+      access.iv,
+      access.tag,
+      tokens.accessExpiresAt,
+      refresh.cipher,
+      refresh.iv,
+      refresh.tag,
+      tokens.refreshExpiresAt,
+    ],
+  )
+}
+
+/**
+ * 세션을 지운다. **토큰도 함께 사라진다.**
+ *
+ * 앱이 연결을 해제했거나 갱신 토큰까지 만료된 자리다. 둘 다 같은 일을 한다.
+ */
+export async function deleteNexonSession(sessionHash: Buffer): Promise<void> {
+  await pool.query(`DELETE FROM nexon_sessions WHERE session_hash = $1`, [sessionHash])
 }

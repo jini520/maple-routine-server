@@ -183,8 +183,8 @@ test('code 를 토큰으로 바꾼다', async () => {
   assert.equal(넥슨.보낸것.url, NEXON_TOKEN_URL)
 })
 
-test('교환에는 client_secret 과 등록한 redirect 를 보낸다', async () => {
-  // redirect_uri 가 등록값과 다르면 넥슨이 거절한다. 커스텀 스킴 그대로 보낸다.
+test('교환에 보내는 파라미터를 고정한다', async () => {
+  // redirect_uri 는 문서 표에 없지만 함께 보낸다. 이 모양이 실제 로그인으로 확인된 쪽이다.
   const { exchangeCode } = await import('./nexon-oauth.ts')
   const 넥슨 = 가짜넥슨(넥슨답)
 
@@ -195,6 +195,10 @@ test('교환에는 client_secret 과 등록한 redirect 를 보낸다', async ()
   assert.equal(보낸.get('code'), '받은code')
   assert.equal(보낸.get('client_secret'), 'ios-비밀')
   assert.equal(보낸.get('redirect_uri'), 'com.mapleroutine.app://oauth/callback')
+  assert.deepEqual(
+    [...보낸.keys()].sort(),
+    ['client_id', 'client_secret', 'code', 'grant_type', 'redirect_uri'],
+  )
 })
 
 test('액세스 토큰 만료 시각을 넥슨이 준 초로 잰다', async () => {

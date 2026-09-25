@@ -338,6 +338,10 @@ POST   /v1/auth/nexon/session   ← { code, state, verifier }   → { session }
 DELETE /v1/auth/nexon/session   ← x-nexon-session 헤더        → { ok: true }
 ```
 
+규격은 `openapi.nexon.com/ko/open-id/development-guide` 가 갖는다. **`/ko/open-id/guide/` 가
+아니다**(그 주소는 404 다). 탭으로 나뉘어 있고 스코프 구분자 · 토큰 응답 · 사용자 정보 조회 ·
+에러 코드 · 보안 가이드라인이 거기 있다.
+
 **넥슨이 이 서버를 부르는 일은 없다.** 등록한 redirect URI 가 앱의 커스텀 스킴
 (`com.mapleroutine.app://oauth/callback`)이라 콜백은 앱이 받는다.
 
@@ -356,9 +360,9 @@ DELETE /v1/auth/nexon/session   ← x-nexon-session 헤더        → { ok: true
 - 넥슨 토큰은 **AES-256-GCM 으로 감싸서** 넣는다. 열쇠는 `TOKEN_ENC_KEY` 로 env 에만 있고, DB
   백업이 새도 토큰은 안 샌다. **잃으면 전원 재로그인**이다
 - 앱에 주는 세션은 난수 원본이고 DB 에는 그 sha256 만 둔다
-- 로그인 직후 **`GET /oauth2/userinfo`** 로 누구인지 묻는다. 넥슨 문서에 없는 경로지만 실재하고
-  `{ result: { uid, scope } }` 를 준다(실측 2026-09-26). 토큰 응답에는 식별자가 없어서 이 경로가
-  유일한 길이다. **실패해도 로그인은 진행한다** - 세션을 찾는 열쇠는 세션 해시다
+- 로그인 직후 **`GET /oauth2/userinfo`** 로 누구인지 묻는다(개발 가이드의 사용자 정보 조회 API).
+  `result.uid` 가 넥슨의 고유 식별자이고, 토큰 응답에는 식별자가 없어 이 경로가 유일한 길이다.
+  **실패해도 로그인은 진행한다** - 세션을 찾는 열쇠는 세션 해시다
 - 액세스 토큰이 죽어 가면 **서버가 알아서 갱신한다.** 앱은 모르고 세션 값도 그대로다
 - 갱신 토큰까지 만료되면 행을 지우고 앱이 재로그인을 띄운다. 2주 넘게 앱을 안 켠 사용자가 걸린다
 
@@ -375,7 +379,10 @@ GET /v1/nexon/maplestory/v1/character/list   →   open.api.nexon.com/maplestory
 문이 된다. 여는 것은 `friends-proxy.ts` 의 `FRIENDS_PATHS` 에 적힌 여섯이고 그 밖은 404 다.
 
 늘릴 때는 **넥슨 등록의 활용 데이터 항목도 함께 켜야 한다.** 그 둘이 어긋나면 그 경로만 401 이
-오고 원인이 앱에서는 안 보인다.
+오고 원인이 앱에서는 안 보인다. 어느 항목이 어느 API 를 여는지는 개발 가이드의
+`데이터 항목(Scope)-API 매칭 테이블` 이 갖는다.
+
+호출 한도는 프로덕션 단계의 프렌즈 제작자 기준 **초당 1,000건 · 하루 2,000만건**이다.
 
 넥슨이 준 상태 코드와 본문을 **그대로 넘긴다.** 앱이 429 와 401 을 가려 다뤄야 하는데 전부
 500 으로 덮으면 그 판단을 못 한다. 세션이 없거나 죽었으면 넥슨을 부르지 않고 401

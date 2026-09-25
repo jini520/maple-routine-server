@@ -188,9 +188,14 @@ const TOKEN_TIMEOUT_MS = 10_000
 /**
  * 넥슨이 준 토큰 한 벌. 저장하기 직전의 모양이다.
  *
- * **사용자 식별자가 없다.** 실측(2026-09-26)에서 응답 키는 `token_type` · `access_token` ·
- * `expires_in` · `refresh_token` · `refresh_token_expires_in` 다섯뿐이고 `id_token` 도 uid 도
- * 없다. 그래서 `nexon_sessions.nexon_uid` 는 비어 있다.
+ * **이 응답에는 사용자 식별자가 없다.** 실측(2026-09-26)에서 키는 `token_type` ·
+ * `access_token` · `expires_in` · `refresh_token` · `refresh_token_expires_in` 다섯뿐이고
+ * `id_token` 이 없다. 넥슨 Open ID 문서에 `userinfo` 같은 별도 경로도 없다.
+ *
+ * 쓸 수 있는 것은 `character/list` 응답의 `account_id` 다. 다만 그것은 **메이플 ID 의
+ * 식별자이지 넥슨 계정의 것이 아니다.** 한 사람이 메이플 ID 를 새로 만들면 집합이 는다.
+ * 그래서 `nexon_sessions.nexon_uid` 는 비워 둔다. 채우려면 **어느 집합을 같은 사람으로 볼
+ * 것인가**를 먼저 정해야 한다.
  */
 export interface NexonTokens {
   accessToken: string

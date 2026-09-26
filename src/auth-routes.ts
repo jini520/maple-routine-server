@@ -3,7 +3,8 @@
  *
  * ```
  * POST   /v1/auth/nexon/start     → { authorizeUrl, state, verifier }
- * POST   /v1/auth/nexon/session   ← { code, state, verifier }   → { session }
+ * POST   /v1/auth/nexon/session   ← { code, state, verifier }   → { session, accessToken, accessExpiresAt }
+ * POST   /v1/auth/nexon/token     ← 헤더의 세션                 → { accessToken, accessExpiresAt }
  * DELETE /v1/auth/nexon/session   ← 헤더의 세션                 → { ok: true }
  * ```
  *
@@ -206,7 +207,34 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
       refreshExpiresAt: tokens.refreshExpiresAt,
     })
 
-    return json(reply, 200, { session })
+    // **액세스 토큰을 앱에 넘긴다.** 앱이 넥슨을 직접 부른다 - 강화 내역 한 회차가 수백 건이라
+    // 중계하면 사용자 한 명의 조작이 서버에 수백 요청이 된다.
+    //
+    // **갱신 토큰은 안 싣는다.** 갱신이 client_secret 을 요구해 서버만 할 수 있고, 14일짜리를
+    // 앱에 두는 것은 30분짜리를 두는 것과 위험이 다르다.
+    return json(reply, 200, {
+      session,
+      accessToken: tokens.accessToken,
+      accessExpiresAt: tokens.accessExpiresAt.toISOString(),
+    })
+  })
+
+  /**
+   * 살아 있는 액세스 토큰을 준다. **앱이 만료를 보고, 또는 401 을 받고 부른다.**
+   *
+   * 갱신은 `resolveSession` 이 알아서 한다. 앱은 세션 값 하나만 들고 있으면 된다.
+   */
+  app.post('/v1/auth/nexon/token', async (req: FastifyRequest, reply) => {
+    const raw = req.headers[SESSION_HEADER]
+    const session = await resolveSession(deps, typeof raw === 'string' ? raw.trim() : '')
+
+    // 세션이 없거나 갱신 토큰까지 죽었다. 앱은 이것을 보고 재로그인을 띄운다.
+    if (session === null) return json(reply, 401, { error: 'signin_required' })
+
+    return json(reply, 200, {
+      accessToken: session.accessToken,
+      accessExpiresAt: session.accessExpiresAt.toISOString(),
+    })
   })
 
   /**

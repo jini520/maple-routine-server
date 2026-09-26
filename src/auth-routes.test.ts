@@ -433,3 +433,99 @@ test('uid 를 못 받아도 로그인은 된다', async () => {
   assert.equal(res.statusCode, 200)
   assert.equal(가짜.저장된세션[0]?.nexonUid, null)
 })
+
+// ── 액세스 토큰 넘기기 ──────────────────────────────────────────────────
+//
+// 앱이 넥슨을 직접 부른다. 강화 내역 한 회차가 수백 건이라 그걸 다 중계하면 미니 PC 가
+// 사용자 한 명의 조작에 수백 요청을 받는다. 그래서 토큰을 앱에 넘긴다.
+//
+// **갱신 토큰은 안 넘긴다.** 갱신이 client_secret 을 요구해 서버만 할 수 있고, 14일짜리를
+// 앱에 두면 30분짜리를 두는 것과 위험이 다르다.
+
+test('교환이 액세스 토큰과 만료를 함께 준다', async () => {
+  const 가짜 = 가짜인증()
+  const app = 앱(가짜.deps)
+  const 시작 = await 로그인시작(app)
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/session',
+    payload: { code: '받은code', state: 시작.state, verifier: 시작.verifier },
+  })
+
+  assert.equal(res.statusCode, 200)
+  const body = res.json() as { session: string; accessToken: string; accessExpiresAt: string }
+  assert.equal(body.accessToken, '새액세스')
+  assert.equal(body.accessExpiresAt, 넥슨토큰.accessExpiresAt.toISOString())
+})
+
+test('교환 응답에 갱신 토큰이 없다', async () => {
+  const 가짜 = 가짜인증()
+  const app = 앱(가짜.deps)
+  const 시작 = await 로그인시작(app)
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/session',
+    payload: { code: '받은code', state: 시작.state, verifier: 시작.verifier },
+  })
+
+  assert.equal(JSON.stringify(res.json()).includes('새갱신'), false)
+})
+
+test('세션으로 새 액세스 토큰을 받는다', async () => {
+  // 앱이 30분마다, 또는 401 을 받고 부르는 자리다.
+  const 가짜 = 가짜인증({ findNexonSession: async () => 저장된세션() })
+  const app = 앱(가짜.deps)
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/token',
+    headers: { [SESSION_HEADER]: '세션값' },
+  })
+
+  assert.equal(res.statusCode, 200)
+  const body = res.json() as { accessToken: string; accessExpiresAt: string }
+  assert.equal(body.accessToken, '옛액세스')
+  assert.equal(body.accessExpiresAt, new Date('2026-09-26T12:20:00.000Z').toISOString())
+})
+
+test('곧 죽는 액세스면 갱신해서 새것을 준다', async () => {
+  const 가짜 = 가짜인증({
+    findNexonSession: async () => 저장된세션({ accessExpiresAt: new Date('2026-09-26T12:00:10.000Z') }),
+  })
+  const app = 앱(가짜.deps)
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/token',
+    headers: { [SESSION_HEADER]: '세션값' },
+  })
+
+  assert.equal((res.json() as { accessToken: string }).accessToken, '새액세스')
+  assert.equal(가짜.갱신된.length, 1)
+})
+
+test('세션이 없으면 401 signin_required 다', async () => {
+  // 갱신 토큰까지 죽은 자리와 같은 답이다. 앱은 이것을 보고 재로그인을 띄운다.
+  const 가짜 = 가짜인증({ findNexonSession: async () => null })
+  const app = 앱(가짜.deps)
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/nexon/token',
+    headers: { [SESSION_HEADER]: '없는세션' },
+  })
+
+  assert.equal(res.statusCode, 401)
+  assert.equal((res.json() as { error: string }).error, 'signin_required')
+})
+
+test('세션 헤더가 없으면 401 이다', async () => {
+  const 가짜 = 가짜인증()
+  const app = 앱(가짜.deps)
+
+  const res = await app.inject({ method: 'POST', url: '/v1/auth/nexon/token' })
+
+  assert.equal(res.statusCode, 401)
+})

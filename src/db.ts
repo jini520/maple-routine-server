@@ -12,16 +12,19 @@ import type { ManualCompletionBoss } from './manual-completion.ts'
 import type { DuePush } from './schedule.ts'
 import { isPlatform, type LoginAttempt, type Platform } from './nexon-oauth.ts'
 import type { StoredSession } from './nexon-session.ts'
+import type { User } from './users.ts'
 import type { RunExclusively } from './single-runner.ts'
 import { openToken, sealToken } from './token-crypto.ts'
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
 interface Row {
-  id: string
+  /** 앱이 공지를 가리키는 값. `kind-sourceId` 또는 `notice-YYYYMMDD-HHMMSS` 다. */
+  notice_key: string
   kind: string
   title: string
-  body: string
+  /** **넥슨 공지는 `NULL` 이다.** 운영자 공지만 본문을 든다. */
+  body: string | null
   published_at: Date
   link: string | null
   blocks: NoticeBlock[] | null
@@ -32,13 +35,16 @@ interface Row {
  *
  * `kind` 를 모르는 값으로 만나면 `app` 으로 읽는다. 앞으로 분류가 늘 때 옛 서버가 새 행을
  * 만나도 화면이 서기는 해야 한다.
+ *
+ * **`body` 의 `NULL` 을 빈 문자열로 바꾼다.** 계약의 `body` 는 `string` 이고 넥슨 공지의 칸은
+ * 비어 있다. 여기서 안 바꾸면 앱이 받는 타입이 갈린다.
  */
 function toNotice(row: Row): Notice {
   return {
-    id: row.id,
+    id: row.notice_key,
     kind: isNoticeKind(row.kind) ? row.kind : 'app',
     title: row.title,
-    body: row.body,
+    body: row.body ?? '',
     publishedAt: row.published_at.toISOString(),
     ...(row.link === null ? {} : { link: row.link }),
     ...(row.blocks == null ? {} : { blocks: row.blocks }),
@@ -46,27 +52,26 @@ function toNotice(row: Row): Notice {
 }
 
 /** 목록이 읽는 칸. **`blocks` 가 빠져 있는 것이 요점이다**(업데이트 한 건이 57KB다). */
-const LIST_COLUMNS = 'id, kind, title, body, published_at, link'
+const LIST_COLUMNS = 'notice_key, kind, title, body, published_at, link'
 
 /** 넥슨 공지에 딸린 값들. 계약에는 없고 우리 표에만 있다. */
 export interface NexonMeta {
   sourceId: number
+  /** 이벤트 시작·끝. **썬데이 메이플만 값이 있다** - 상세에만 있는 값이고 상세를 그것만 받는다. */
   startsAt: string | null
   endsAt: string | null
-  ongoing: boolean | null
 }
 
 export async function insertNotice(notice: Notice, meta?: NexonMeta): Promise<void> {
   await pool.query(
-    `INSERT INTO notices (id, kind, title, body, published_at, link, blocks,
-                          source_id, starts_at, ends_at, ongoing)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-     ON CONFLICT (id) DO UPDATE
+    `INSERT INTO notices (notice_key, kind, title, body, published_at, link, blocks,
+                          source_id, starts_at, ends_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT (notice_key) DO UPDATE
        SET kind = EXCLUDED.kind, title = EXCLUDED.title, body = EXCLUDED.body,
            published_at = EXCLUDED.published_at, link = EXCLUDED.link,
            blocks = EXCLUDED.blocks, source_id = EXCLUDED.source_id,
-           starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at,
-           ongoing = EXCLUDED.ongoing`,
+           starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at`,
     [
       notice.id,
       notice.kind,
@@ -78,7 +83,6 @@ export async function insertNotice(notice: Notice, meta?: NexonMeta): Promise<vo
       meta?.sourceId ?? null,
       meta?.startsAt ?? null,
       meta?.endsAt ?? null,
-      meta?.ongoing ?? null,
     ],
   )
 }
@@ -111,7 +115,7 @@ export interface AdminNotice {
  */
 export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
   const { rows } = await pool.query<{
-    id: string
+    notice_key: string
     title: string
     body: string
     published_at: Date
@@ -120,14 +124,14 @@ export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
     push_body: string | null
     scheduled_at: Date | null
   }>(
-    `SELECT id, title, body, published_at, sent_at, push_title, push_body, scheduled_at
+    `SELECT notice_key, title, body, published_at, sent_at, push_title, push_body, scheduled_at
      FROM notices WHERE kind = 'app'
-     ORDER BY published_at DESC, id DESC LIMIT $1`,
+     ORDER BY published_at DESC, notice_key DESC LIMIT $1`,
     [limit],
   )
 
   return rows.map((row) => ({
-    id: row.id,
+    id: row.notice_key,
     title: row.title,
     body: row.body,
     publishedAt: row.published_at.toISOString(),
@@ -154,7 +158,7 @@ export async function scheduleNotice(
     // 다른 창구와 같이 `kind` 를 건다. 넥슨 공지에 예약이 걸리면 폴러가 그 글을 다시 넣을 때
     // 알림이 두 번 나간다.
     `UPDATE notices SET scheduled_at = $2, push_title = $3, push_body = $4
-     WHERE id = $1 AND kind = 'app'`,
+     WHERE notice_key = $1 AND kind = 'app'`,
     [id, at, pushTitle, pushBody],
   )
 }
@@ -167,7 +171,7 @@ export async function scheduleNotice(
 export async function cancelSchedule(id: string): Promise<boolean> {
   const { rowCount } = await pool.query(
     `UPDATE notices SET scheduled_at = NULL
-     WHERE id = $1 AND kind = 'app' AND scheduled_at IS NOT NULL AND sent_at IS NULL`,
+     WHERE notice_key = $1 AND kind = 'app' AND scheduled_at IS NOT NULL AND sent_at IS NULL`,
     [id],
   )
   return rowCount !== null && rowCount > 0
@@ -190,7 +194,9 @@ export async function listDueScheduled(): Promise<DuePush[]> {
   return rows.map((row) => ({
     notice: toNotice(row),
     // 예약할 때 두 칸을 함께 적는다. 빈 문구로는 예약이 안 걸리므로 여기서 비는 일이 없다.
-    push: { title: row.push_title ?? row.title, body: row.push_body ?? row.body },
+    // 예약은 운영자 공지에만 걸려(`kind = 'app'`) `body` 가 차 있지만, 칸이 nullable 이라 마지막
+    // 대비로 제목을 쓴다. 빈 알림을 보내는 것보다 낫다.
+    push: { title: row.push_title ?? row.title, body: row.push_body ?? row.body ?? row.title },
   }))
 }
 
@@ -205,7 +211,7 @@ export async function listDueScheduled(): Promise<DuePush[]> {
 export async function updateNotice(id: string, title: string, body: string): Promise<Notice | null> {
   const { rows } = await pool.query<Row>(
     `UPDATE notices SET title = $2, body = $3
-     WHERE id = $1 AND kind = 'app'
+     WHERE notice_key = $1 AND kind = 'app'
      RETURNING ${LIST_COLUMNS}`,
     [id, title, body],
   )
@@ -219,13 +225,13 @@ export async function updateNotice(id: string, title: string, body: string): Pro
  * 유일한 사본이고, 아직 목록에 떠 있는 글이면 폴러가 1분 뒤 다시 넣으면서 알림까지 다시 쏜다.
  */
 export async function deleteNotice(id: string): Promise<boolean> {
-  const { rowCount } = await pool.query(`DELETE FROM notices WHERE id = $1 AND kind = 'app'`, [id])
+  const { rowCount } = await pool.query(`DELETE FROM notices WHERE notice_key = $1 AND kind = 'app'`, [id])
   return rowCount !== null && rowCount > 0
 }
 
 export async function markSent(id: string, pushTitle: string, pushBody: string): Promise<void> {
   await pool.query(
-    `UPDATE notices SET sent_at = now(), push_title = $2, push_body = $3 WHERE id = $1`,
+    `UPDATE notices SET sent_at = now(), push_title = $2, push_body = $3 WHERE notice_key = $1`,
     [id, pushTitle, pushBody],
   )
 }
@@ -233,7 +239,7 @@ export async function markSent(id: string, pushTitle: string, pushBody: string):
 /** 상세. 여기서만 `blocks` 를 준다. */
 export async function getNotice(id: string): Promise<Notice | null> {
   const { rows } = await pool.query<Row>(
-    `SELECT ${LIST_COLUMNS}, blocks FROM notices WHERE id = $1`,
+    `SELECT ${LIST_COLUMNS}, blocks FROM notices WHERE notice_key = $1`,
     [id],
   )
   return rows[0] === undefined ? null : toNotice(rows[0])
@@ -248,11 +254,11 @@ export async function getNotice(id: string): Promise<Notice | null> {
 export async function knownIds(ids: readonly string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set()
 
-  const { rows } = await pool.query<{ id: string }>(
-    `SELECT id FROM notices WHERE id = ANY($1::text[])`,
+  const { rows } = await pool.query<{ notice_key: string }>(
+    `SELECT notice_key FROM notices WHERE notice_key = ANY($1::text[])`,
     [[...ids]],
   )
-  return new Set(rows.map((row) => row.id))
+  return new Set(rows.map((row) => row.notice_key))
 }
 
 /**
@@ -278,7 +284,7 @@ export async function hasAny(kind: NoticeKind): Promise<boolean> {
  */
 export async function listEventRows(scan = 500): Promise<SundayRecord[]> {
   const { rows } = await pool.query<{
-    id: string
+    notice_key: string
     title: string
     published_at: Date
     starts_at: Date | null
@@ -286,14 +292,14 @@ export async function listEventRows(scan = 500): Promise<SundayRecord[]> {
     link: string | null
     blocks: NoticeBlock[] | null
   }>(
-    `SELECT id, title, published_at, starts_at, ends_at, link, blocks
+    `SELECT notice_key, title, published_at, starts_at, ends_at, link, blocks
      FROM notices WHERE kind = 'event'
-     ORDER BY published_at DESC, id DESC LIMIT $1`,
+     ORDER BY published_at DESC, notice_key DESC LIMIT $1`,
     [scan],
   )
 
   return rows.map((row) => ({
-    id: row.id,
+    id: row.notice_key,
     title: row.title,
     publishedAt: row.published_at.toISOString(),
     startsAt: row.starts_at === null ? null : row.starts_at.toISOString(),
@@ -326,13 +332,13 @@ export async function listNotices(
   }
   if (at !== null) {
     args.push(at, id)
-    where.push(`(published_at, id) < ($${args.length - 1}::timestamptz, $${args.length}::text)`)
+    where.push(`(published_at, notice_key) < ($${args.length - 1}::timestamptz, $${args.length}::text)`)
   }
 
   const { rows } = await pool.query<Row>(
     `SELECT ${LIST_COLUMNS} FROM notices
      ${where.length === 0 ? '' : `WHERE ${where.join(' AND ')}`}
-     ORDER BY published_at DESC, id DESC LIMIT $1`,
+     ORDER BY published_at DESC, notice_key DESC LIMIT $1`,
     args,
   )
 
@@ -455,6 +461,80 @@ export function exclusively(lockId: number): RunExclusively {
   }
 }
 
+// ── 사람 ────────────────────────────────────────────────────────────────
+//
+// 인증 수단이 `users` 행을 가리키고, 사람에 매달리는 데이터는 모두 그 행을 본다. 가리는 규칙은
+// `users.ts` 가 들고 이 자리는 쿼리만 안다.
+
+interface UserRow {
+  id: string
+  nexon_uid: string | null
+  created_at: Date
+  last_seen_at: Date
+}
+
+const USER_COLUMNS = 'id, nexon_uid, created_at, last_seen_at'
+
+function toUser(row: UserRow): User {
+  return {
+    id: row.id,
+    nexonUid: row.nexon_uid,
+    createdAt: row.created_at,
+    lastSeenAt: row.last_seen_at,
+  }
+}
+
+/** 로그인한 사람을 uid 로 찾는다. 같은 사람이 다시 로그인하면 이 자리가 옛 행을 준다. */
+export async function findUserByNexonUid(uid: string): Promise<User | null> {
+  const { rows } = await pool.query<UserRow>(
+    `SELECT ${USER_COLUMNS} FROM users WHERE nexon_uid = $1`,
+    [uid],
+  )
+  return rows[0] === undefined ? null : toUser(rows[0])
+}
+
+/**
+ * 키를 쓰는 사람을 찾는다. **인자는 서버가 한 번 더 해시한 값이다**(`sealApiKeyHash`).
+ *
+ * 앱이 보낸 값 그대로를 칸에 두지 않는 이유는 그것이 기록을 여는 값이기도 해서다.
+ */
+export async function findUserByApiKeyHash(sealed: Buffer): Promise<User | null> {
+  const { rows } = await pool.query<UserRow>(
+    `SELECT ${USER_COLUMNS} FROM users WHERE api_key_hash = $1`,
+    [sealed],
+  )
+  return rows[0] === undefined ? null : toUser(rows[0])
+}
+
+/**
+ * 사람을 만든다. 열쇠 둘 중 하나가 있어야 하고 표의 `CHECK` 가 그것을 지킨다.
+ *
+ * **같은 열쇠가 겹치면 그 행을 그대로 돌려준다.** 로그인 요청이 겹쳐 들어와도 사람이 둘이 되지
+ * 않는다. `DO NOTHING` 은 아무 행도 안 돌려주므로 그때는 다시 읽는다.
+ */
+export async function insertUser(keys: {
+  nexonUid?: string
+  apiKeyHash?: Buffer
+}): Promise<User> {
+  const { rows } = await pool.query<UserRow>(
+    `INSERT INTO users (nexon_uid, api_key_hash) VALUES ($1, $2)
+     ON CONFLICT DO NOTHING
+     RETURNING ${USER_COLUMNS}`,
+    [keys.nexonUid ?? null, keys.apiKeyHash ?? null],
+  )
+  if (rows[0] !== undefined) return toUser(rows[0])
+
+  // 겹쳐 들어왔다. 그 열쇠로 다시 읽으면 먼저 넣은 쪽의 행이 나온다.
+  const existing =
+    keys.nexonUid !== undefined
+      ? await findUserByNexonUid(keys.nexonUid)
+      : keys.apiKeyHash !== undefined
+        ? await findUserByApiKeyHash(keys.apiKeyHash)
+        : null
+  if (existing === null) throw new Error('사람을 만들지도 찾지도 못했다')
+  return existing
+}
+
 // ── 넥슨 Open ID 로그인 ──────────────────────────────────────────────────
 //
 // 토큰은 평문으로 안 들어온다. `token-crypto.ts` 가 감싼 셋(본문 · iv · 태그)이 그대로 칸이 된다.
@@ -516,7 +596,7 @@ export async function purgeExpiredLoginAttempts(): Promise<number> {
 export interface SessionToStore {
   sessionHash: Buffer
   platform: Platform
-  nexonUid: string | null
+  userId: string | null
   accessToken: string
   accessExpiresAt: Date
   refreshToken: string
@@ -529,7 +609,7 @@ function sealBoth(session: SessionToStore): unknown[] {
   return [
     session.sessionHash,
     session.platform,
-    session.nexonUid,
+    session.userId,
     access.cipher,
     access.iv,
     access.tag,
@@ -545,13 +625,13 @@ function sealBoth(session: SessionToStore): unknown[] {
 export async function insertNexonSession(session: SessionToStore): Promise<void> {
   await pool.query(
     `INSERT INTO nexon_sessions (
-       session_hash, platform, nexon_uid,
+       session_hash, platform, user_id,
        access_cipher, access_iv, access_tag, access_expires_at,
        refresh_cipher, refresh_iv, refresh_tag, refresh_expires_at
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
      ON CONFLICT (session_hash) DO UPDATE SET
        platform = EXCLUDED.platform,
-       nexon_uid = EXCLUDED.nexon_uid,
+       user_id = EXCLUDED.user_id,
        access_cipher = EXCLUDED.access_cipher, access_iv = EXCLUDED.access_iv,
        access_tag = EXCLUDED.access_tag, access_expires_at = EXCLUDED.access_expires_at,
        refresh_cipher = EXCLUDED.refresh_cipher, refresh_iv = EXCLUDED.refresh_iv,
@@ -564,7 +644,7 @@ export async function insertNexonSession(session: SessionToStore): Promise<void>
 interface SessionRow {
   session_hash: Buffer
   platform: string
-  nexon_uid: string | null
+  user_id: string | null
   access_cipher: Buffer
   access_iv: Buffer
   access_tag: Buffer
@@ -593,7 +673,7 @@ export async function findNexonSession(sessionHash: Buffer): Promise<StoredSessi
   return {
     sessionHash: row.session_hash,
     platform: row.platform,
-    nexonUid: row.nexon_uid,
+    userId: row.user_id,
     accessToken: openToken(
       { cipher: row.access_cipher, iv: row.access_iv, tag: row.access_tag },
       'access',

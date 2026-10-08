@@ -1,10 +1,15 @@
 /**
  * 넥슨 공지 본문(HTML)을 앱이 그릴 블록으로 바꾼다.
  *
- * **앱에 HTML 을 보내지 않는 것이 이 파일의 목적이다.** 앱은 문자열과 배열만 그리므로 본문에
- * 무엇이 들어 있든 태그가 앱에 닿지 않고, 파서가 아는 블록만 통과한다. 파서가 서버에 있는
- * 이유는 넥슨이 마크업을 바꿀 때 그날 고쳐 그날 나가야 하기 때문이다. 앱에 두면 그 수정이
- * OTA 배포 축에 실린다.
+ * **쓰이는 범위는 썬데이 메이플 하나다.** `/v1/sunday-maple` 이 그 블록을 응답에 싣고, 그것이
+ * 유일한 소비자다. 나머지 넥슨 공지는 상세를 받지 않으므로 여기 오지 않는다.
+ *
+ * **앱에도 같은 파서가 있다**(`nexon/notice/contents.ts`). 앱이 넥슨 네 분류를 넥슨에서 직접 받아
+ * 자기 파서로 화면을 그린다. 그래서 **화면용 블록의 주인은 앱 쪽이고 이 파일은 썬데이 기록만
+ * 만든다.** 둘이 같은 결과를 낼 필요가 없다.
+ *
+ * 앱은 문자열과 배열만 그리므로 본문에 무엇이 들어 있든 태그가 앱에 닿지 않고, 파서가 아는
+ * 블록만 통과한다.
  *
  * 규칙 둘이 실측에서 나왔다(2026-09-10).
  *
@@ -232,27 +237,4 @@ export function parseContents(html: string): NoticeBlock[] {
   flushText()
 
   return blocks
-}
-
-/**
- * 블록에서 평문을 뽑는다. 푸시 `data` 의 미리보기와 목록의 두 줄 요약이 이것을 쓴다.
- *
- * 이미지와 표는 세지 않는다. 앞의 것은 글자가 없고, 뒤의 것은 칸을 이어 붙이면 미리보기에서
- * 읽히지 않는 줄이 된다.
- *
- * @param maxChars 넘으면 말줄임표까지 포함해 이 길이로 자른다. 글자 단위다(바이트가 아니다).
- */
-export function toPlainText(blocks: readonly NoticeBlock[], maxChars?: number): string {
-  const lines: string[] = []
-  for (const block of blocks) {
-    if (block.type === 'heading' || block.type === 'text' || block.type === 'link') {
-      lines.push(block.text)
-    }
-  }
-
-  const text = lines.join('\n').trim()
-  if (maxChars === undefined) return text
-
-  const chars = [...text]
-  return chars.length <= maxChars ? text : `${chars.slice(0, maxChars - 1).join('')}…`
 }

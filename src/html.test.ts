@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { parseContents, toPlainText } from './html.ts'
+import { parseContents } from './html.ts'
 
 test('이벤트·캐시샵 본문은 이미지 한 장이 된다', () => {
   // 실제 event/detail?notice_id=1374 의 contents 그대로.
@@ -129,15 +129,4 @@ test('블록 수에 상한이 있다', () => {
   const blocks = parseContents(html)
 
   assert.equal(blocks.length, 2000)
-})
-
-test('평문은 블록을 이어 붙이되 이미지는 세지 않는다', () => {
-  const blocks = parseContents('<h1>제목</h1><p>본문</p><img src="https://x.test/a.png"><p>끝</p>')
-
-  assert.equal(toPlainText(blocks), '제목\n본문\n끝')
-})
-
-test('평문에 상한을 걸 수 있다', () => {
-  // 푸시 data 는 4KB 안에 들어가야 한다. 자르는 자리가 글자 중간이면 안 된다.
-  assert.equal(toPlainText(parseContents('<p>가나다라마바사</p>'), 5), '가나다라…')
 })

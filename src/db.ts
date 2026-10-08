@@ -19,7 +19,8 @@ import { openToken, sealToken } from './token-crypto.ts'
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
 
 interface Row {
-  id: string
+  /** 앱이 공지를 가리키는 값. `kind-sourceId` 또는 `notice-YYYYMMDD-HHMMSS` 다. */
+  notice_key: string
   kind: string
   title: string
   /** **넥슨 공지는 `NULL` 이다.** 운영자 공지만 본문을 든다. */
@@ -40,7 +41,7 @@ interface Row {
  */
 function toNotice(row: Row): Notice {
   return {
-    id: row.id,
+    id: row.notice_key,
     kind: isNoticeKind(row.kind) ? row.kind : 'app',
     title: row.title,
     body: row.body ?? '',
@@ -51,7 +52,7 @@ function toNotice(row: Row): Notice {
 }
 
 /** 목록이 읽는 칸. **`blocks` 가 빠져 있는 것이 요점이다**(업데이트 한 건이 57KB다). */
-const LIST_COLUMNS = 'id, kind, title, body, published_at, link'
+const LIST_COLUMNS = 'notice_key, kind, title, body, published_at, link'
 
 /** 넥슨 공지에 딸린 값들. 계약에는 없고 우리 표에만 있다. */
 export interface NexonMeta {
@@ -63,10 +64,10 @@ export interface NexonMeta {
 
 export async function insertNotice(notice: Notice, meta?: NexonMeta): Promise<void> {
   await pool.query(
-    `INSERT INTO notices (id, kind, title, body, published_at, link, blocks,
+    `INSERT INTO notices (notice_key, kind, title, body, published_at, link, blocks,
                           source_id, starts_at, ends_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     ON CONFLICT (id) DO UPDATE
+     ON CONFLICT (notice_key) DO UPDATE
        SET kind = EXCLUDED.kind, title = EXCLUDED.title, body = EXCLUDED.body,
            published_at = EXCLUDED.published_at, link = EXCLUDED.link,
            blocks = EXCLUDED.blocks, source_id = EXCLUDED.source_id,
@@ -114,7 +115,7 @@ export interface AdminNotice {
  */
 export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
   const { rows } = await pool.query<{
-    id: string
+    notice_key: string
     title: string
     body: string
     published_at: Date
@@ -123,14 +124,14 @@ export async function listAppNotices(limit: number): Promise<AdminNotice[]> {
     push_body: string | null
     scheduled_at: Date | null
   }>(
-    `SELECT id, title, body, published_at, sent_at, push_title, push_body, scheduled_at
+    `SELECT notice_key, title, body, published_at, sent_at, push_title, push_body, scheduled_at
      FROM notices WHERE kind = 'app'
-     ORDER BY published_at DESC, id DESC LIMIT $1`,
+     ORDER BY published_at DESC, notice_key DESC LIMIT $1`,
     [limit],
   )
 
   return rows.map((row) => ({
-    id: row.id,
+    id: row.notice_key,
     title: row.title,
     body: row.body,
     publishedAt: row.published_at.toISOString(),
@@ -157,7 +158,7 @@ export async function scheduleNotice(
     // 다른 창구와 같이 `kind` 를 건다. 넥슨 공지에 예약이 걸리면 폴러가 그 글을 다시 넣을 때
     // 알림이 두 번 나간다.
     `UPDATE notices SET scheduled_at = $2, push_title = $3, push_body = $4
-     WHERE id = $1 AND kind = 'app'`,
+     WHERE notice_key = $1 AND kind = 'app'`,
     [id, at, pushTitle, pushBody],
   )
 }
@@ -170,7 +171,7 @@ export async function scheduleNotice(
 export async function cancelSchedule(id: string): Promise<boolean> {
   const { rowCount } = await pool.query(
     `UPDATE notices SET scheduled_at = NULL
-     WHERE id = $1 AND kind = 'app' AND scheduled_at IS NOT NULL AND sent_at IS NULL`,
+     WHERE notice_key = $1 AND kind = 'app' AND scheduled_at IS NOT NULL AND sent_at IS NULL`,
     [id],
   )
   return rowCount !== null && rowCount > 0
@@ -210,7 +211,7 @@ export async function listDueScheduled(): Promise<DuePush[]> {
 export async function updateNotice(id: string, title: string, body: string): Promise<Notice | null> {
   const { rows } = await pool.query<Row>(
     `UPDATE notices SET title = $2, body = $3
-     WHERE id = $1 AND kind = 'app'
+     WHERE notice_key = $1 AND kind = 'app'
      RETURNING ${LIST_COLUMNS}`,
     [id, title, body],
   )
@@ -224,13 +225,13 @@ export async function updateNotice(id: string, title: string, body: string): Pro
  * 유일한 사본이고, 아직 목록에 떠 있는 글이면 폴러가 1분 뒤 다시 넣으면서 알림까지 다시 쏜다.
  */
 export async function deleteNotice(id: string): Promise<boolean> {
-  const { rowCount } = await pool.query(`DELETE FROM notices WHERE id = $1 AND kind = 'app'`, [id])
+  const { rowCount } = await pool.query(`DELETE FROM notices WHERE notice_key = $1 AND kind = 'app'`, [id])
   return rowCount !== null && rowCount > 0
 }
 
 export async function markSent(id: string, pushTitle: string, pushBody: string): Promise<void> {
   await pool.query(
-    `UPDATE notices SET sent_at = now(), push_title = $2, push_body = $3 WHERE id = $1`,
+    `UPDATE notices SET sent_at = now(), push_title = $2, push_body = $3 WHERE notice_key = $1`,
     [id, pushTitle, pushBody],
   )
 }
@@ -238,7 +239,7 @@ export async function markSent(id: string, pushTitle: string, pushBody: string):
 /** 상세. 여기서만 `blocks` 를 준다. */
 export async function getNotice(id: string): Promise<Notice | null> {
   const { rows } = await pool.query<Row>(
-    `SELECT ${LIST_COLUMNS}, blocks FROM notices WHERE id = $1`,
+    `SELECT ${LIST_COLUMNS}, blocks FROM notices WHERE notice_key = $1`,
     [id],
   )
   return rows[0] === undefined ? null : toNotice(rows[0])
@@ -253,11 +254,11 @@ export async function getNotice(id: string): Promise<Notice | null> {
 export async function knownIds(ids: readonly string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set()
 
-  const { rows } = await pool.query<{ id: string }>(
-    `SELECT id FROM notices WHERE id = ANY($1::text[])`,
+  const { rows } = await pool.query<{ notice_key: string }>(
+    `SELECT notice_key FROM notices WHERE notice_key = ANY($1::text[])`,
     [[...ids]],
   )
-  return new Set(rows.map((row) => row.id))
+  return new Set(rows.map((row) => row.notice_key))
 }
 
 /**
@@ -283,7 +284,7 @@ export async function hasAny(kind: NoticeKind): Promise<boolean> {
  */
 export async function listEventRows(scan = 500): Promise<SundayRecord[]> {
   const { rows } = await pool.query<{
-    id: string
+    notice_key: string
     title: string
     published_at: Date
     starts_at: Date | null
@@ -291,14 +292,14 @@ export async function listEventRows(scan = 500): Promise<SundayRecord[]> {
     link: string | null
     blocks: NoticeBlock[] | null
   }>(
-    `SELECT id, title, published_at, starts_at, ends_at, link, blocks
+    `SELECT notice_key, title, published_at, starts_at, ends_at, link, blocks
      FROM notices WHERE kind = 'event'
-     ORDER BY published_at DESC, id DESC LIMIT $1`,
+     ORDER BY published_at DESC, notice_key DESC LIMIT $1`,
     [scan],
   )
 
   return rows.map((row) => ({
-    id: row.id,
+    id: row.notice_key,
     title: row.title,
     publishedAt: row.published_at.toISOString(),
     startsAt: row.starts_at === null ? null : row.starts_at.toISOString(),
@@ -331,13 +332,13 @@ export async function listNotices(
   }
   if (at !== null) {
     args.push(at, id)
-    where.push(`(published_at, id) < ($${args.length - 1}::timestamptz, $${args.length}::text)`)
+    where.push(`(published_at, notice_key) < ($${args.length - 1}::timestamptz, $${args.length}::text)`)
   }
 
   const { rows } = await pool.query<Row>(
     `SELECT ${LIST_COLUMNS} FROM notices
      ${where.length === 0 ? '' : `WHERE ${where.join(' AND ')}`}
-     ORDER BY published_at DESC, id DESC LIMIT $1`,
+     ORDER BY published_at DESC, notice_key DESC LIMIT $1`,
     args,
   )
 

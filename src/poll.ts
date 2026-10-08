@@ -12,9 +12,10 @@
  * **못 보낸 것을 다시 보내지 않는다.** 발송 실패는 그 회차에서 끝난다. 재시도를 넣으면 서버가
  * 오래 죽었다 살아날 때 밀린 알림이 한꺼번에 터진다.
  */
-import { parseContents, toPlainText } from './html.ts'
+import { parseContents } from './html.ts'
 import { NEXON_KINDS, type NexonDetail, type NexonKind, type NexonListItem } from './nexon.ts'
 import {
+  isSundayMaple,
   nexonNoticeId,
   pushTextFor,
   shouldNotify,
@@ -26,7 +27,6 @@ import { runAnyway, type RunExclusively } from './single-runner.ts'
 import type { NexonMeta } from './db.ts'
 
 /** 목록과 푸시에 실리는 미리보기 길이. 상세는 `blocks` 가 온전히 든다. */
-const BODY_PREVIEW_CHARS = 300
 
 /**
  * 넥슨을 부르는 사이 간격. 한 회차에 상세가 스물까지 나갈 수 있어 한 번에 몰지 않는다.
@@ -73,17 +73,62 @@ export interface PollResult {
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
-function toNotice(kind: NexonKind, detail: NexonDetail): Notice {
-  const blocks = parseContents(detail.contents)
-
+/**
+ * 목록 값만으로 만든 공지. **상세를 안 받는 길이다.**
+ *
+ * 본문이 빈 것이 요점이다. 넥슨 공지의 푸시는 제목으로 만들고(`pushTextFor` 의 비-`app` 분기),
+ * 앱은 넥슨 네 분류를 넥슨에서 직접 받는다. 그래서 미리보기를 읽는 자리가 없다.
+ */
+function noticeFromList(kind: NexonKind, one: NexonListItem): Notice {
   return {
-    id: nexonNoticeId(kind, detail.sourceId),
+    id: nexonNoticeId(kind, one.sourceId),
     kind,
-    title: detail.title,
-    body: toPlainText(blocks, BODY_PREVIEW_CHARS),
-    publishedAt: detail.publishedAt,
-    ...(detail.url === '' ? {} : { link: detail.url }),
-    blocks,
+    title: one.title,
+    body: '',
+    publishedAt: one.publishedAt,
+    ...(one.url === '' ? {} : { link: one.url }),
+  }
+}
+
+/**
+ * 상세까지 받은 공지. **썬데이 메이플만 이 길로 온다.**
+ *
+ * `blocks` 를 드는 것은 `/v1/sunday-maple` 이 응답에 싣기 때문이고, 그것이 유일한 소비자다.
+ */
+function noticeFromDetail(kind: NexonKind, detail: NexonDetail): Notice {
+  return {
+    ...noticeFromList(kind, detail),
+    blocks: parseContents(detail.contents),
+  }
+}
+
+/**
+ * 저장이 끝난 공지의 알림을 보낸다. 안 보내는 경우 셋을 여기서 가린다.
+ *
+ * **`result` 를 고친다.** 두 저장 경로(목록만 · 상세까지)가 같은 판정을 써야 해서 빼낸 것이고,
+ * 베끼면 한쪽만 고쳐지는 날이 온다.
+ */
+async function notify(
+  kind: NexonKind,
+  notice: Notice,
+  deps: PollDeps,
+  result: PollResult,
+  seeding: boolean,
+  now: () => number,
+): Promise<void> {
+  const stale = now() - Date.parse(notice.publishedAt) > NOTIFY_WINDOW_MS
+  if (seeding || stale || !shouldNotify(kind, notice.title)) {
+    result.quiet += 1
+    return
+  }
+
+  try {
+    await deps.send(notice, pushTextFor(notice))
+    result.sent += 1
+  } catch (error) {
+    // 저장은 이미 끝났다. 목록에는 나오고 알림만 안 간 상태로 남는다.
+    console.error(`[poll] ${notice.id} 발송 실패`, error)
+    result.failed += 1
   }
 }
 
@@ -113,6 +158,17 @@ export async function pollKind(kind: NexonKind, deps: PollDeps): Promise<PollRes
   const seeding = !(await deps.hasAny(kind))
 
   for (const one of fresh) {
+    // **상세는 썬데이 메이플만 받는다.** 판정이 제목만 보고 제목은 목록에 있어서, 상세를 받기
+    // 전에 가린다. 나머지 공지의 상세는 받아도 읽는 자리가 없다 - `blocks` 는 썬데이 응답만
+    // 쓰고 미리보기는 아무도 안 쓴다.
+    if (!isSundayMaple(one.title)) {
+      const notice = noticeFromList(kind, one)
+      await deps.save(notice, { sourceId: one.sourceId, startsAt: null, endsAt: null })
+      result.saved += 1
+      await notify(kind, notice, deps, result, seeding, now)
+      continue
+    }
+
     await pace(PACE_MS)
 
     const detail = await deps.detail(kind, one)
@@ -122,29 +178,14 @@ export async function pollKind(kind: NexonKind, deps: PollDeps): Promise<PollRes
       continue
     }
 
-    const notice = toNotice(kind, detail)
+    const notice = noticeFromDetail(kind, detail)
     await deps.save(notice, {
       sourceId: detail.sourceId,
       startsAt: detail.startsAt,
       endsAt: detail.endsAt,
-      ongoing: detail.ongoing,
     })
     result.saved += 1
-
-    const stale = now() - Date.parse(notice.publishedAt) > NOTIFY_WINDOW_MS
-    if (seeding || stale || !shouldNotify(kind, notice.title)) {
-      result.quiet += 1
-      continue
-    }
-
-    try {
-      await deps.send(notice, pushTextFor(notice))
-      result.sent += 1
-    } catch (error) {
-      // 저장은 이미 끝났다. 목록에는 나오고 알림만 안 간 상태로 남는다.
-      console.error(`[poll] ${notice.id} 발송 실패`, error)
-      result.failed += 1
-    }
+    await notify(kind, notice, deps, result, seeding, now)
   }
 
   return result

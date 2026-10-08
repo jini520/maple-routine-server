@@ -22,7 +22,8 @@ interface Row {
   id: string
   kind: string
   title: string
-  body: string
+  /** **넥슨 공지는 `NULL` 이다.** 운영자 공지만 본문을 든다. */
+  body: string | null
   published_at: Date
   link: string | null
   blocks: NoticeBlock[] | null
@@ -33,13 +34,16 @@ interface Row {
  *
  * `kind` 를 모르는 값으로 만나면 `app` 으로 읽는다. 앞으로 분류가 늘 때 옛 서버가 새 행을
  * 만나도 화면이 서기는 해야 한다.
+ *
+ * **`body` 의 `NULL` 을 빈 문자열로 바꾼다.** 계약의 `body` 는 `string` 이고 넥슨 공지의 칸은
+ * 비어 있다. 여기서 안 바꾸면 앱이 받는 타입이 갈린다.
  */
 function toNotice(row: Row): Notice {
   return {
     id: row.id,
     kind: isNoticeKind(row.kind) ? row.kind : 'app',
     title: row.title,
-    body: row.body,
+    body: row.body ?? '',
     publishedAt: row.published_at.toISOString(),
     ...(row.link === null ? {} : { link: row.link }),
     ...(row.blocks == null ? {} : { blocks: row.blocks }),
@@ -52,22 +56,21 @@ const LIST_COLUMNS = 'id, kind, title, body, published_at, link'
 /** 넥슨 공지에 딸린 값들. 계약에는 없고 우리 표에만 있다. */
 export interface NexonMeta {
   sourceId: number
+  /** 이벤트 시작·끝. **썬데이 메이플만 값이 있다** - 상세에만 있는 값이고 상세를 그것만 받는다. */
   startsAt: string | null
   endsAt: string | null
-  ongoing: boolean | null
 }
 
 export async function insertNotice(notice: Notice, meta?: NexonMeta): Promise<void> {
   await pool.query(
     `INSERT INTO notices (id, kind, title, body, published_at, link, blocks,
-                          source_id, starts_at, ends_at, ongoing)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                          source_id, starts_at, ends_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      ON CONFLICT (id) DO UPDATE
        SET kind = EXCLUDED.kind, title = EXCLUDED.title, body = EXCLUDED.body,
            published_at = EXCLUDED.published_at, link = EXCLUDED.link,
            blocks = EXCLUDED.blocks, source_id = EXCLUDED.source_id,
-           starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at,
-           ongoing = EXCLUDED.ongoing`,
+           starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at`,
     [
       notice.id,
       notice.kind,
@@ -79,7 +82,6 @@ export async function insertNotice(notice: Notice, meta?: NexonMeta): Promise<vo
       meta?.sourceId ?? null,
       meta?.startsAt ?? null,
       meta?.endsAt ?? null,
-      meta?.ongoing ?? null,
     ],
   )
 }
@@ -191,7 +193,9 @@ export async function listDueScheduled(): Promise<DuePush[]> {
   return rows.map((row) => ({
     notice: toNotice(row),
     // 예약할 때 두 칸을 함께 적는다. 빈 문구로는 예약이 안 걸리므로 여기서 비는 일이 없다.
-    push: { title: row.push_title ?? row.title, body: row.push_body ?? row.body },
+    // 예약은 운영자 공지에만 걸려(`kind = 'app'`) `body` 가 차 있지만, 칸이 nullable 이라 마지막
+    // 대비로 제목을 쓴다. 빈 알림을 보내는 것보다 낫다.
+    push: { title: row.push_title ?? row.title, body: row.push_body ?? row.body ?? row.title },
   }))
 }
 

@@ -21,6 +21,8 @@ interface Recorder {
   deps: PollDeps
   saved: Notice[]
   sent: { notice: Notice; push: PushText }[]
+  /** 상세를 부른 글의 제목. 썬데이만 와야 한다. */
+  detailed: string[]
 }
 
 function recorder(
@@ -34,15 +36,22 @@ function recorder(
 ): Recorder {
   const saved: Notice[] = []
   const sent: { notice: Notice; push: PushText }[] = []
+  const detailed: string[] = []
   const known = new Set(options.known ?? [])
   const seeded = new Set(options.seeded ?? ['game', 'update', 'event', 'cashshop'])
+
+  const detail = options.detail ?? ((_: NexonKind, one: NexonListItem) => Promise.resolve(detailOf(one)))
 
   return {
     saved,
     sent,
+    detailed,
     deps: {
       list: (kind) => Promise.resolve(lists[kind] ?? []),
-      detail: options.detail ?? ((_, one) => Promise.resolve(detailOf(one))),
+      detail: (kind, one) => {
+        detailed.push(one.title)
+        return detail(kind, one)
+      },
       knownIds: (ids) => Promise.resolve(new Set(ids.filter((id) => known.has(id)))),
       hasAny: (kind) => Promise.resolve(seeded.has(kind)),
       save: (notice) => {
@@ -100,13 +109,16 @@ test('이벤트는 썬데이만 발송하고 나머지는 저장만 한다', asy
   assert.equal(result.saved, 3)
   assert.equal(result.sent, 1)
   assert.equal(rec.sent[0]?.notice.title, '스페셜 썬데이 메이플')
+  // 상세는 썬데이만 받는다. 나머지는 목록 값으로 저장한다.
+  assert.deepEqual(rec.detailed, ['스페셜 썬데이 메이플'])
 })
 
 // 목록에서 방금 빠진 글이다. 다시 부른다고 오지 않으므로 저장할 것도 없다.
-test('상세를 못 받으면 저장도 발송도 안 한다', async () => {
-  const rec = recorder({ game: [item(1, '사라진 글')] }, { detail: () => Promise.resolve(null) })
+// **상세를 받는 것은 썬데이뿐이라** 이 경우도 썬데이에서만 생긴다.
+test('썬데이의 상세를 못 받으면 저장도 발송도 안 한다', async () => {
+  const rec = recorder({ event: [item(1, '썬데이 메이플')] }, { detail: () => Promise.resolve(null) })
 
-  const result = await pollKind('game', rec.deps)
+  const result = await pollKind('event', rec.deps)
 
   assert.deepEqual([result.saved, result.sent, result.missing], [0, 0, 1])
 })
@@ -122,19 +134,33 @@ test('오래된 것부터 저장한다', async () => {
   assert.deepEqual(rec.saved.map((n) => n.title), ['첫째', '셋째'])
 })
 
-test('본문은 블록에서 뽑은 평문이고 블록도 함께 저장한다', async () => {
+// 썬데이만 블록을 든다. `/v1/sunday-maple` 이 그것을 응답에 싣는 유일한 소비자다.
+test('썬데이는 블록을 저장한다', async () => {
   const rec = recorder(
-    { game: [item(1, '공지')] },
+    { event: [item(1, '썬데이 메이플')] },
     { detail: (_, one) => Promise.resolve(detailOf(one, '<p>첫 줄</p><p>둘째 줄</p>')) },
   )
 
-  await pollKind('game', rec.deps)
+  await pollKind('event', rec.deps)
 
-  assert.equal(rec.saved[0]?.body, '첫 줄\n둘째 줄')
   assert.deepEqual(rec.saved[0]?.blocks, [
     { type: 'text', text: '첫 줄' },
     { type: 'text', text: '둘째 줄' },
   ])
+})
+
+// 미리보기를 아무도 안 읽는다. 넥슨 공지의 푸시는 제목으로 만든다.
+test('썬데이가 아니면 상세를 안 받고 블록도 본문도 없다', async () => {
+  const rec = recorder({ game: [item(1, '공지')] })
+
+  await pollKind('game', rec.deps)
+
+  assert.deepEqual(rec.detailed, [])
+  assert.equal(rec.saved[0]?.blocks, undefined)
+  assert.equal(rec.saved[0]?.body, '')
+  // 목록 값은 그대로 남는다. 새 글 가리기와 알림 문구가 이것으로 선다.
+  assert.equal(rec.saved[0]?.title, '공지')
+  assert.equal(rec.saved[0]?.id, 'game-1')
 })
 
 test('링크는 넥슨 게시글 주소다', async () => {

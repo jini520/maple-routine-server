@@ -12,6 +12,7 @@ import type { ManualCompletionBoss } from './manual-completion.ts'
 import type { DuePush } from './schedule.ts'
 import { isPlatform, type LoginAttempt, type Platform } from './nexon-oauth.ts'
 import type { StoredSession } from './nexon-session.ts'
+import type { User } from './users.ts'
 import type { RunExclusively } from './single-runner.ts'
 import { openToken, sealToken } from './token-crypto.ts'
 
@@ -455,6 +456,80 @@ export function exclusively(lockId: number): RunExclusively {
   }
 }
 
+// ── 사람 ────────────────────────────────────────────────────────────────
+//
+// 인증 수단이 `users` 행을 가리키고, 사람에 매달리는 데이터는 모두 그 행을 본다. 가리는 규칙은
+// `users.ts` 가 들고 이 자리는 쿼리만 안다.
+
+interface UserRow {
+  id: string
+  nexon_uid: string | null
+  created_at: Date
+  last_seen_at: Date
+}
+
+const USER_COLUMNS = 'id, nexon_uid, created_at, last_seen_at'
+
+function toUser(row: UserRow): User {
+  return {
+    id: row.id,
+    nexonUid: row.nexon_uid,
+    createdAt: row.created_at,
+    lastSeenAt: row.last_seen_at,
+  }
+}
+
+/** 로그인한 사람을 uid 로 찾는다. 같은 사람이 다시 로그인하면 이 자리가 옛 행을 준다. */
+export async function findUserByNexonUid(uid: string): Promise<User | null> {
+  const { rows } = await pool.query<UserRow>(
+    `SELECT ${USER_COLUMNS} FROM users WHERE nexon_uid = $1`,
+    [uid],
+  )
+  return rows[0] === undefined ? null : toUser(rows[0])
+}
+
+/**
+ * 키를 쓰는 사람을 찾는다. **인자는 서버가 한 번 더 해시한 값이다**(`sealApiKeyHash`).
+ *
+ * 앱이 보낸 값 그대로를 칸에 두지 않는 이유는 그것이 기록을 여는 값이기도 해서다.
+ */
+export async function findUserByApiKeyHash(sealed: Buffer): Promise<User | null> {
+  const { rows } = await pool.query<UserRow>(
+    `SELECT ${USER_COLUMNS} FROM users WHERE api_key_hash = $1`,
+    [sealed],
+  )
+  return rows[0] === undefined ? null : toUser(rows[0])
+}
+
+/**
+ * 사람을 만든다. 열쇠 둘 중 하나가 있어야 하고 표의 `CHECK` 가 그것을 지킨다.
+ *
+ * **같은 열쇠가 겹치면 그 행을 그대로 돌려준다.** 로그인 요청이 겹쳐 들어와도 사람이 둘이 되지
+ * 않는다. `DO NOTHING` 은 아무 행도 안 돌려주므로 그때는 다시 읽는다.
+ */
+export async function insertUser(keys: {
+  nexonUid?: string
+  apiKeyHash?: Buffer
+}): Promise<User> {
+  const { rows } = await pool.query<UserRow>(
+    `INSERT INTO users (nexon_uid, api_key_hash) VALUES ($1, $2)
+     ON CONFLICT DO NOTHING
+     RETURNING ${USER_COLUMNS}`,
+    [keys.nexonUid ?? null, keys.apiKeyHash ?? null],
+  )
+  if (rows[0] !== undefined) return toUser(rows[0])
+
+  // 겹쳐 들어왔다. 그 열쇠로 다시 읽으면 먼저 넣은 쪽의 행이 나온다.
+  const existing =
+    keys.nexonUid !== undefined
+      ? await findUserByNexonUid(keys.nexonUid)
+      : keys.apiKeyHash !== undefined
+        ? await findUserByApiKeyHash(keys.apiKeyHash)
+        : null
+  if (existing === null) throw new Error('사람을 만들지도 찾지도 못했다')
+  return existing
+}
+
 // ── 넥슨 Open ID 로그인 ──────────────────────────────────────────────────
 //
 // 토큰은 평문으로 안 들어온다. `token-crypto.ts` 가 감싼 셋(본문 · iv · 태그)이 그대로 칸이 된다.
@@ -516,7 +591,7 @@ export async function purgeExpiredLoginAttempts(): Promise<number> {
 export interface SessionToStore {
   sessionHash: Buffer
   platform: Platform
-  nexonUid: string | null
+  userId: string | null
   accessToken: string
   accessExpiresAt: Date
   refreshToken: string
@@ -529,7 +604,7 @@ function sealBoth(session: SessionToStore): unknown[] {
   return [
     session.sessionHash,
     session.platform,
-    session.nexonUid,
+    session.userId,
     access.cipher,
     access.iv,
     access.tag,
@@ -545,13 +620,13 @@ function sealBoth(session: SessionToStore): unknown[] {
 export async function insertNexonSession(session: SessionToStore): Promise<void> {
   await pool.query(
     `INSERT INTO nexon_sessions (
-       session_hash, platform, nexon_uid,
+       session_hash, platform, user_id,
        access_cipher, access_iv, access_tag, access_expires_at,
        refresh_cipher, refresh_iv, refresh_tag, refresh_expires_at
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
      ON CONFLICT (session_hash) DO UPDATE SET
        platform = EXCLUDED.platform,
-       nexon_uid = EXCLUDED.nexon_uid,
+       user_id = EXCLUDED.user_id,
        access_cipher = EXCLUDED.access_cipher, access_iv = EXCLUDED.access_iv,
        access_tag = EXCLUDED.access_tag, access_expires_at = EXCLUDED.access_expires_at,
        refresh_cipher = EXCLUDED.refresh_cipher, refresh_iv = EXCLUDED.refresh_iv,
@@ -564,7 +639,7 @@ export async function insertNexonSession(session: SessionToStore): Promise<void>
 interface SessionRow {
   session_hash: Buffer
   platform: string
-  nexon_uid: string | null
+  user_id: string | null
   access_cipher: Buffer
   access_iv: Buffer
   access_tag: Buffer
@@ -593,7 +668,7 @@ export async function findNexonSession(sessionHash: Buffer): Promise<StoredSessi
   return {
     sessionHash: row.session_hash,
     platform: row.platform,
-    nexonUid: row.nexon_uid,
+    userId: row.user_id,
     accessToken: openToken(
       { cipher: row.access_cipher, iv: row.access_iv, tag: row.access_tag },
       'access',

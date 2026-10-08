@@ -43,7 +43,7 @@ export interface AuthDeps {
   insertNexonSession: (session: {
     sessionHash: Buffer
     platform: Platform
-    nexonUid: string | null
+    userId: string | null
     accessToken: string
     accessExpiresAt: Date
     refreshToken: string
@@ -60,6 +60,12 @@ export interface AuthDeps {
     },
   ) => Promise<void>
   deleteNexonSession: (sessionHash: Buffer) => Promise<void>
+  /**
+   * uid 로 사람을 찾거나 만든다. **uid 가 없으면 `null`** 이고 그 세션은 사람 없이 선다.
+   *
+   * 가리는 규칙은 `users.ts` 가 들고 이 파일은 결과만 받는다.
+   */
+  userIdForLogin: (nexonUid: string | null) => Promise<string | null>
   /** 테스트가 넥슨 대신 답한다. */
   exchangeCode?: typeof exchangeCode
   refreshTokens?: typeof refreshTokens
@@ -196,11 +202,14 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthDeps): void {
     const userInfo = await (deps.fetchUserInfo ?? fetchUserInfo)(tokens.accessToken, fetch)
     if (userInfo === null) req.log.warn('[auth] userinfo 를 못 받아 uid 없이 세션을 만든다')
 
+    // **사람을 여기서 가린다.** uid 가 있으면 찾거나 만들고, 없으면 사람 없이 세션만 선다.
+    const userId = await deps.userIdForLogin(userInfo?.uid ?? null)
+
     const { session, sessionHash } = newSession()
     await deps.insertNexonSession({
       sessionHash,
       platform: stored.platform,
-      nexonUid: userInfo?.uid ?? null,
+      userId,
       accessToken: tokens.accessToken,
       accessExpiresAt: tokens.accessExpiresAt,
       refreshToken: tokens.refreshToken,

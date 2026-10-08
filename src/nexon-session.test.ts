@@ -25,7 +25,7 @@ function 세션(덮어쓸것: Partial<StoredSession> = {}): StoredSession {
   return {
     sessionHash: Buffer.alloc(32),
     platform: 'ios',
-    nexonUid: null,
+    userId: null,
     accessToken: '액세스',
     accessExpiresAt: new Date('2026-09-26T12:20:00.000Z'),
     refreshToken: '갱신',

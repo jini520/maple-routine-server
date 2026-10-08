@@ -15,8 +15,11 @@ export interface StoredSession {
   sessionHash: Buffer
   /** 이 세션을 만든 쌍. **갱신도 같은 쌍으로 해야 넥슨이 받는다.** */
   platform: Platform
-  /** 넥슨이 어디에 주는지 실측 전이라 아직 비어 있을 수 있다. */
-  nexonUid: string | null
+  /**
+   * 이 세션의 주인. **`null` 일 수 있다** - userinfo 가 실패해 uid 를 못 받은 세션은 사람으로
+   * 승격하지 않는다. 그 세션으로 조회는 되고 새 기능만 안 열린다.
+   */
+  userId: string | null
   accessToken: string
   accessExpiresAt: Date
   refreshToken: string

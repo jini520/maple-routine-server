@@ -13,6 +13,9 @@ import {
   deleteNexonSession,
   exclusively,
   findNexonSession,
+  findUserByApiKeyHash,
+  findUserByNexonUid,
+  insertUser,
   getNotice,
   hasAny,
   insertNotice,
@@ -28,6 +31,7 @@ import {
   updateNexonTokens,
 } from './db.ts'
 import { migrate } from './migrate.ts'
+import { userForLogin } from './users.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
 import { startScheduleWatch } from './schedule.ts'
@@ -78,6 +82,10 @@ const api = createApi({
   auth: {
     saveLoginAttempt,
     takeLoginAttempt,
+    // 사람을 가리는 규칙은 `users.ts` 가 들고, 여기서 DB 조회를 꽂는다.
+    userIdForLogin: async (nexonUid) =>
+      (await userForLogin({ findUserByNexonUid, findUserByApiKeyHash, insertUser }, nexonUid))?.id ??
+      null,
     insertNexonSession,
     findNexonSession,
     updateNexonTokens,

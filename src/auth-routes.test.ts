@@ -39,7 +39,7 @@ const 넥슨토큰: NexonTokens = {
 /** DB 를 안 탄다. 무엇이 저장됐는지 남긴다. */
 function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
   짝: LoginAttempt[]
-  저장된세션: { sessionHash: Buffer; accessToken: string; platform: string; nexonUid: string | null }[]
+  저장된세션: { sessionHash: Buffer; accessToken: string; platform: string; userId: string | null }[]
   지운세션: Buffer[]
   갱신된: Buffer[]
   deps: AuthDeps
@@ -49,7 +49,7 @@ function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
     sessionHash: Buffer
     accessToken: string
     platform: string
-    nexonUid: string | null
+    userId: string | null
   }[] = []
   const 지운세션: Buffer[] = []
   const 갱신된: Buffer[] = []
@@ -68,9 +68,11 @@ function 가짜인증(덮어쓸것: Partial<AuthDeps> = {}): {
         sessionHash: s.sessionHash,
         accessToken: s.accessToken,
         platform: s.platform,
-        nexonUid: s.nexonUid,
+        userId: s.userId,
       })
     },
+    // uid 가 있으면 사람 하나를 돌려준다. 가리는 규칙 자체는 `users.test.ts` 가 본다.
+    userIdForLogin: async (nexonUid) => (nexonUid === null ? null : `user-${nexonUid}`),
     findNexonSession: async () => null,
     updateNexonTokens: async (h) => {
       갱신된.push(h)
@@ -303,7 +305,7 @@ function 저장된세션(덮어쓸것: Partial<StoredSession> = {}): StoredSessi
   return {
     sessionHash: hashSession('세션값'),
     platform: 'ios',
-    nexonUid: null,
+    userId: null,
     accessToken: '옛액세스',
     accessExpiresAt: new Date('2026-09-26T12:20:00.000Z'),
     refreshToken: '옛갱신',
@@ -415,7 +417,8 @@ test('로그인하면 uid 를 받아 저장한다', async () => {
     payload: { code: 'code', state: 시작.state, verifier: 시작.verifier },
   })
 
-  assert.equal(가짜.저장된세션[0]?.nexonUid, '2001359453644')
+  // uid 가 사람으로 바뀌어 세션에 붙는다. 세션이 uid 를 직접 들지 않는다.
+  assert.equal(가짜.저장된세션[0]?.userId, 'user-2001359453644')
 })
 
 test('uid 를 못 받아도 로그인은 된다', async () => {
@@ -431,7 +434,8 @@ test('uid 를 못 받아도 로그인은 된다', async () => {
   })
 
   assert.equal(res.statusCode, 200)
-  assert.equal(가짜.저장된세션[0]?.nexonUid, null)
+  // uid 가 없으면 사람으로 승격하지 않는다. 그 세션은 조회만 된다.
+  assert.equal(가짜.저장된세션[0]?.userId, null)
 })
 
 // ── 액세스 토큰 넘기기 ──────────────────────────────────────────────────

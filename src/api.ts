@@ -7,13 +7,17 @@
  * GET /v1/sunday-maple?limit=20                       → { items: SundayRecord[] }
  * GET /v1/settlement                                  → { settling, startedAt }
  * GET /v1/manual-completion                           → { bosses }
+ *
+ * POST   /v1/drop-prices                              ← 드롭 판매가 한 건
+ * DELETE /v1/drop-prices/{dropRecordId}               ← 그 가격 거두기
  * ```
  *
  * **목록은 `blocks` 를 안 준다.** 업데이트 한 건이 블록 797개 · JSON 57KB라 20건에 실으면 한
  * 응답이 MB 단위가 된다. 상세에서만 온다.
  *
- * **`/v1` 에는 인증이 없다.** 공개 정보라서다. 대신 누구나 부를 수 있으므로 `limit` 에 상한을
- * 두고, 그 밖의 속도 제한은 앞단 nginx 가 건다.
+ * **`/v1` 의 조회에는 인증이 없다.** 공개 정보라서다. 대신 누구나 부를 수 있으므로 `limit` 에
+ * 상한을 두고, 그 밖의 속도 제한은 앞단 nginx 가 건다. **쓰기 경로는 인증을 든다** - 헤더로 사람을
+ * 가리는 한 겹이 `caller.ts` 에 있다.
  *
  * **DB 를 인자로 받는다.** 직접 import 하면 이 파일을 부르는 테스트가 전부 DB 를 요구해서,
  * 라우팅에 테스트가 하나도 못 붙는다. 고리들(`poll` · `schedule` · `settlement`)이 이미 쓰는
@@ -33,6 +37,8 @@ import {
   isAuthorized,
 } from './admin.ts'
 import { registerAuthRoutes, type AuthDeps } from './auth-routes.ts'
+import { registerDropPriceRoutes, type DropPriceRouteDeps } from './drop-price-routes.ts'
+import { ADMIN_DROP_PRICES_HTML } from './admin-drop-prices-page.ts'
 import { ADMIN_MANUAL_HTML } from './admin-manual-page.ts'
 import { ADMIN_LIST_HTML } from './admin-list-page.ts'
 import { ADMIN_HTML } from './admin-page.ts'
@@ -65,6 +71,8 @@ export interface ApiDeps {
   listOpenManualCompletionBosses: typeof listOpenManualCompletionBosses
   /** 넥슨 로그인. 안 주면 그 경로를 안 연다(키만 쓰는 배포에서 표가 없어도 선다). */
   auth?: AuthDeps
+  /** 드롭 가격 표본. `auth` 와 같은 이유로 안 주면 그 경로를 안 연다. */
+  dropPrices?: DropPriceRouteDeps
 }
 
 /**
@@ -144,8 +152,9 @@ export function createApi(deps: ApiDeps): FastifyInstance {
   /**
    * 안 맞는 경로. **GET 이 아니면 405 다.**
    *
-   * 이 서버의 `/v1` 은 전부 GET 이라, 다른 메서드로 온 것은 **없는 주소**가 아니라 **못 하는
-   * 일**이다. 옛 라우터가 내던 답과 같게 둔다.
+   * 옛 라우터가 내던 답이고, 그때는 `/v1` 이 전부 GET 이라 다른 메서드로 온 것이 **없는 주소**가
+   * 아니라 **못 하는 일**이었다. 지금은 쓰기 경로가 생겨 그 전제가 좁아졌지만 답은 그대로 둔다 -
+   * 등록된 경로는 여기 안 오고, 안 등록된 주소에 POST 가 오면 여전히 그 주소에서 못 하는 일이다.
    */
   app.setNotFoundHandler(async (req, reply) => {
     if (req.method === 'GET') return fresh(reply).code(404).send({ error: 'not_found' })
@@ -209,11 +218,13 @@ export function createApi(deps: ApiDeps): FastifyInstance {
   })
 
   if (deps.auth !== undefined) registerAuthRoutes(app, deps.auth)
+  if (deps.dropPrices !== undefined) registerDropPriceRoutes(app, deps.dropPrices)
 
   app.get('/admin', async (_req, reply) => html(reply, ADMIN_HTML))
   app.get('/admin/', async (_req, reply) => html(reply, ADMIN_HTML))
   app.get('/admin/list', async (_req, reply) => html(reply, ADMIN_LIST_HTML))
   app.get('/admin/manual-completion', async (_req, reply) => html(reply, ADMIN_MANUAL_HTML))
+  app.get('/admin/drop-prices', async (_req, reply) => html(reply, ADMIN_DROP_PRICES_HTML))
   app.get('/admin/manual-completion/rows', async (_req, reply) => handleManualCompletionList(reply))
   app.post('/admin/manual-completion', async (req, reply) =>
     handleManualCompletionOpen(req.body, reply),

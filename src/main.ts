@@ -10,6 +10,7 @@
  */
 import { createApi } from './api.ts'
 import {
+  currentDropPrice,
   deleteNexonSession,
   exclusively,
   findNexonSession,
@@ -22,16 +23,21 @@ import {
   knownIds,
   listDueScheduled,
   listEventRows,
+  insertDropPrice,
   insertNexonSession,
+  listDropPriceStats,
   listNotices,
   listOpenManualCompletionBosses,
   markSent,
+  listRecentDropPrices,
   saveLoginAttempt,
+  supersedeDropPrice,
   takeLoginAttempt,
   updateNexonTokens,
 } from './db.ts'
 import { migrate } from './migrate.ts'
-import { userForLogin } from './users.ts'
+import { resolveSession, type AuthDeps } from './auth-routes.ts'
+import { userForApiKey, userForLogin } from './users.ts'
 import { NexonClient } from './nexon.ts'
 import { startPolling } from './poll.ts'
 import { startScheduleWatch } from './schedule.ts'
@@ -71,6 +77,23 @@ if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
   console.warn('[settlement] NEXON_KEY 나 SETTLEMENT_OCID 가 없어 결산을 안 본다')
 }
 
+// 사람을 가리는 규칙은 `users.ts` 가 들고, 여기서 DB 조회를 꽂는다.
+const userDeps = { findUserByNexonUid, findUserByApiKeyHash, insertUser }
+
+// 넥슨 자격이 플랫폼마다 갈려서, 어느 쌍을 쓸지는 짝에 적힌 값이 정한다.
+//
+// **쓰기 경로가 이 묶음을 다시 쓴다.** 세션으로 사람을 찾으려면 `resolveSession` 이 필요하고
+// 그 함수가 이 deps 를 받는다. 인라인으로 두면 그 자리에 같은 묶음을 한 벌 더 적게 된다.
+const authDeps: AuthDeps = {
+  saveLoginAttempt,
+  takeLoginAttempt,
+  userIdForLogin: async (nexonUid) => (await userForLogin(userDeps, nexonUid))?.id ?? null,
+  insertNexonSession,
+  findNexonSession,
+  updateNexonTokens,
+  deleteNexonSession,
+}
+
 // 판정을 만든 뒤에 API 를 연다. 서버가 뜬 직후에도 같은 함수를 읽는다.
 const api = createApi({
   settlement,
@@ -78,18 +101,16 @@ const api = createApi({
   getNotice,
   listEventRows,
   listOpenManualCompletionBosses,
-  // 넥슨 자격이 플랫폼마다 갈려서, 어느 쌍을 쓸지는 짝에 적힌 값이 정한다.
-  auth: {
-    saveLoginAttempt,
-    takeLoginAttempt,
-    // 사람을 가리는 규칙은 `users.ts` 가 들고, 여기서 DB 조회를 꽂는다.
-    userIdForLogin: async (nexonUid) =>
-      (await userForLogin({ findUserByNexonUid, findUserByApiKeyHash, insertUser }, nexonUid))?.id ??
-      null,
-    insertNexonSession,
-    findNexonSession,
-    updateNexonTokens,
-    deleteNexonSession,
+  auth: authDeps,
+  dropPrices: {
+    // 세션이 살아 있어도 uid 를 못 받은 세션은 사람이 아니다(`userId` 가 `null` 이다).
+    userIdForSession: async (value) => (await resolveSession(authDeps, value))?.userId ?? null,
+    userIdForApiKey: async (received) => (await userForApiKey(userDeps, received))?.id ?? null,
+    currentDropPrice,
+    supersedeDropPrice,
+    insertDropPrice,
+    listDropPriceStats,
+    listRecentDropPrices,
   },
 })
 // `0.0.0.0` 이어야 한다. Fastify 의 기본은 localhost 인데 도커가 컨테이너 밖에서 붙는다.

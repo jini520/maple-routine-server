@@ -52,17 +52,18 @@ export const ADMIN_STYLE = `
 `
 
 /**
- * 세 화면이 나눠 쓰는 길 표시. 지금 화면만 칠한다.
+ * 관리 화면들이 나눠 쓰는 길 표시. 지금 화면만 칠한다.
  *
  * 길을 한 자리에 둔 이유는 화면이 늘 때마다 다른 두 화면의 링크를 손으로 더하게 되기 때문이다.
  * 한 번 빼먹으면 그 화면은 막다른 골목이 된다.
  */
-export type AdminPage = 'write' | 'list' | 'manual'
+export type AdminPage = 'write' | 'list' | 'manual' | 'drop-prices'
 
 const ADMIN_LINKS: readonly { page: AdminPage; href: string; label: string }[] = [
   { page: 'write', href: '/admin', label: '공지 작성' },
   { page: 'list', href: '/admin/list', label: '공지 목록' },
   { page: 'manual', href: '/admin/manual-completion', label: '직접 완료 보스' },
+  { page: 'drop-prices', href: '/admin/drop-prices', label: '드롭 가격' },
 ]
 
 export function adminNav(current: AdminPage): string {

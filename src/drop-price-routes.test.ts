@@ -39,10 +39,12 @@ function 본문(over: Record<string, unknown> = {}): Record<string, unknown> {
 function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
   넣은것: unknown[]
   덮은것: unknown[]
+  지운사람: string[]
   deps: ApiDeps
 } {
   const 넣은것: unknown[] = []
   const 덮은것: unknown[] = []
+  const 지운사람: string[] = []
   const dropPrices: DropPriceRouteDeps = {
     userIdForSession: async () => null,
     userIdForApiKey: async () => null,
@@ -51,11 +53,13 @@ function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
     insertDropPrice: async () => undefined,
     listDropPriceStats: async () => [],
     listRecentDropPrices: async () => [],
+    deleteUser: async () => undefined,
     ...over,
   }
   return {
     넣은것,
     덮은것,
+    지운사람,
     deps: {
       listNotices: async () => ({ items: [공지], nextCursor: null }),
       getNotice: async () => 공지,
@@ -70,6 +74,10 @@ function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
         supersedeDropPrice: async (dropRecordId) => {
           덮은것.push(dropRecordId)
           return dropPrices.supersedeDropPrice(dropRecordId)
+        },
+        deleteUser: async (userId) => {
+          지운사람.push(userId)
+          return dropPrices.deleteUser(userId)
         },
       },
     },
@@ -238,6 +246,32 @@ test('deps 를 안 주면 그 경로를 안 연다', async () => {
 
   // 등록 안 된 주소에 POST 가 오면 그 주소에서 못 하는 일이다.
   assert.equal(res.statusCode, 405)
+})
+
+test('내 자리 지우기는 사람 행을 지운다. 매달린 것은 CASCADE 가 걷는다', async () => {
+  const 짝 = 가짜({ userIdForApiKey: async () => ME })
+  const app = createApi(짝.deps)
+
+  const res = await app.inject({
+    method: 'DELETE',
+    url: '/v1/me',
+    headers: { [KEY_HASH_HEADER]: HASH },
+  })
+
+  assert.equal(res.statusCode, 200)
+  assert.deepEqual(짝.지운사람, [ME])
+  // 거두기가 아니다. 가격을 물리는 것이 아니라 흔적을 없애는 자리다.
+  assert.deepEqual(짝.덮은것, [])
+})
+
+test('내 자리 지우기도 열쇠가 없으면 401 이다', async () => {
+  const 짝 = 가짜()
+  const app = createApi(짝.deps)
+
+  const res = await app.inject({ method: 'DELETE', url: '/v1/me' })
+
+  assert.equal(res.statusCode, 401)
+  assert.deepEqual(짝.지운사람, [])
 })
 
 test('관리 화면과 그 자료는 토큰 없이는 막힌다', async () => {

@@ -4,6 +4,7 @@
  * ```
  * POST   /v1/drop-prices              ← 가격 한 건         → { ok: true }
  * DELETE /v1/drop-prices/{id}         ← 거두기             → { ok: true }
+ * DELETE /v1/me                       ← 내 자리 전부 지우기 → { ok: true }
  * GET    /admin/drop-prices           → 화면 한 장
  * GET    /admin/drop-prices/rows      → { stats, recent }
  * ```
@@ -31,6 +32,8 @@ const RECENT_LIMIT = 100
 export interface DropPriceRouteDeps extends CallerDeps, DropPriceDeps {
   listDropPriceStats: (limit: number) => Promise<DropPriceStat[]>
   listRecentDropPrices: (limit: number) => Promise<DropPriceEntry[]>
+  /** 사람 행을 지운다. 매달린 표본과 세션이 `CASCADE` 로 함께 사라진다. */
+  deleteUser: (userId: string) => Promise<void>
 }
 
 /** 캐시를 안 거는 답. 인증에 걸리는 것은 어디에도 안 남아야 한다. */
@@ -78,6 +81,24 @@ export function registerDropPriceRoutes(app: FastifyInstance, deps: DropPriceRou
       return json(reply, 200, { ok: true })
     },
   )
+
+  /**
+   * **서버에 있는 내 자리를 지운다.** 앱의 `연결 해제` 가 부르고, 삭제 요구권을 행사하는 자리다.
+   *
+   * 지우는 것은 `users` 행 하나이고 표본과 세션은 `CASCADE` 로 따라 사라진다. 거두기
+   * (`superseded_at`)와 다르다 - 그쪽은 가격을 물린 것이고 이쪽은 흔적을 없애는 것이다.
+   *
+   * 없는 사람으로 불러도 성공으로 답한다. 앱이 하려던 일은 이미 이뤄진 상태이고, 있고 없고를
+   * 알려 주면 해시를 떠보는 길이 된다. 키 해시로 부르면 `userForApiKey` 가 행을 만든 뒤 바로
+   * 지우는데, 남는 것이 없으니 그대로 둔다.
+   */
+  app.delete('/v1/me', async (req: FastifyRequest, reply) => {
+    const caller = await callerFor(deps, req.headers)
+    if ('error' in caller) return json(reply, 401, { error: caller.error })
+
+    await deps.deleteUser(caller.userId)
+    return json(reply, 200, { ok: true })
+  })
 
   app.get('/admin/drop-prices/rows', async (_req, reply) =>
     json(reply, 200, {

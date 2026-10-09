@@ -873,3 +873,14 @@ export async function listRecentDropPrices(limit: number): Promise<DropPriceEntr
     supersededAt: row.superseded_at,
   }))
 }
+
+/**
+ * 서버에 있는 그 사람의 자리를 지운다. **매달린 것이 `CASCADE` 로 함께 사라진다** -
+ * `drop_prices` 와 `nexon_sessions` 가 그 행을 참조한다.
+ *
+ * 앱의 `연결 해제` 가 부른다. 삭제 요구권을 행사하는 자리라 `superseded_at` 을 적는 것이 아니라
+ * 줄을 정말 지운다.
+ */
+export async function deleteUser(userId: string): Promise<void> {
+  await pool.query(`DELETE FROM users WHERE id = $1`, [userId])
+}

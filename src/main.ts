@@ -12,6 +12,7 @@ import { createApi } from './api.ts'
 import {
   currentDropPrice,
   deleteNexonSession,
+  deleteUser,
   exclusively,
   findNexonSession,
   findUserByApiKeyHash,
@@ -111,6 +112,7 @@ const api = createApi({
     insertDropPrice,
     listDropPriceStats,
     listRecentDropPrices,
+    deleteUser,
   },
 })
 // `0.0.0.0` 이어야 한다. Fastify 의 기본은 localhost 인데 도커가 컨테이너 밖에서 붙는다.

@@ -10,9 +10,10 @@
  */
 import { createApi } from './api.ts'
 import {
-  currentDropPrice,
+  deleteDropPrice,
   deleteNexonSession,
   deleteSessionsOfUser,
+  deleteUser,
   exclusively,
   findNexonSession,
   findUserByApiKeyHash,
@@ -24,18 +25,16 @@ import {
   knownIds,
   listDueScheduled,
   listEventRows,
-  insertDropPrice,
   insertNexonSession,
   listDropPriceStats,
   listNotices,
   listOpenManualCompletionBosses,
   markSent,
   listRecentDropPrices,
-  reviveUser,
+  restoreUser,
   saveLoginAttempt,
-  supersedeDropPrice,
   takeLoginAttempt,
-  withdrawUser,
+  upsertDropPrice,
   updateNexonTokens,
 } from './db.ts'
 import { migrate } from './migrate.ts'
@@ -81,7 +80,7 @@ if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
 }
 
 // 사람을 가리는 규칙은 `users.ts` 가 들고, 여기서 DB 조회를 꽂는다.
-const userDeps = { findUserByNexonUid, findUserByApiKeyHash, insertUser, reviveUser }
+const userDeps = { findUserByNexonUid, findUserByApiKeyHash, insertUser, restoreUser }
 
 // 넥슨 자격이 플랫폼마다 갈려서, 어느 쌍을 쓸지는 짝에 적힌 값이 정한다.
 //
@@ -109,12 +108,11 @@ const api = createApi({
     // 세션이 살아 있어도 uid 를 못 받은 세션은 사람이 아니다(`userId` 가 `null` 이다).
     userIdForSession: async (value) => (await resolveSession(authDeps, value))?.userId ?? null,
     userIdForApiKey: async (received) => (await userForApiKey(userDeps, received))?.id ?? null,
-    currentDropPrice,
-    supersedeDropPrice,
-    insertDropPrice,
+    upsertDropPrice,
+    deleteDropPrice,
     listDropPriceStats,
     listRecentDropPrices,
-    withdrawUser,
+    deleteUser,
     deleteSessionsOfUser,
   },
 })

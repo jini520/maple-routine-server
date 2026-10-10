@@ -17,8 +17,10 @@ export interface User {
    *
    * **사용자 요청으로는 행을 지우지 않는다**(사용자 지정 2026-10-10). 그래서 탈퇴는 이 칸이고,
    * 같은 열쇠로 다시 오면 `null` 로 되돌려 그 사람을 그대로 쓴다.
+   *
+   * 이름이 소프트 삭제의 표준을 따른다. 이 저장소에서 `withdraw` 는 다른 뜻으로 쓰이지 않는다.
    */
-  withdrawnAt: Date | null
+  deletedAt: Date | null
 }
 
 /** 이 파일이 DB 에서 하는 일 전부. 진짜 구현은 `db.ts` 에 있고 테스트는 가짜를 넣는다. */
@@ -28,7 +30,7 @@ export interface UserDeps {
   findUserByApiKeyHash: (sealed: Buffer) => Promise<User | null>
   insertUser: (keys: { nexonUid?: string; apiKeyHash?: Buffer }) => Promise<User>
   /** 탈퇴 표시를 지운다. 같은 열쇠로 돌아온 사람에게만 부른다. */
-  reviveUser: (id: string) => Promise<void>
+  restoreUser: (id: string) => Promise<void>
 }
 
 /** 앱이 보내는 값의 모양. SHA-256 을 소문자 hex 로 적은 64자다. */
@@ -61,11 +63,11 @@ export function sealApiKeyHash(received: string): Buffer {
  * 연결 해제 뒤에 늦게 도착한 요청 하나가 그 사람을 되살린다. 기기가 키를 지우고 대기 표를 비우므로
  * 흔한 경우는 아니지만, 그 길이 막혀 있지는 않다.
  */
-async function revived(deps: UserDeps, found: User): Promise<User> {
-  if (found.withdrawnAt === null) return found
+async function restored(deps: UserDeps, found: User): Promise<User> {
+  if (found.deletedAt === null) return found
 
-  await deps.reviveUser(found.id)
-  return { ...found, withdrawnAt: null }
+  await deps.restoreUser(found.id)
+  return { ...found, deletedAt: null }
 }
 
 /**
@@ -79,7 +81,7 @@ export async function userForLogin(deps: UserDeps, nexonUid: string | null): Pro
   if (nexonUid === null || nexonUid === '') return null
 
   const found = await deps.findUserByNexonUid(nexonUid)
-  if (found !== null) return revived(deps, found)
+  if (found !== null) return restored(deps, found)
 
   return deps.insertUser({ nexonUid })
 }
@@ -95,7 +97,7 @@ export async function userForApiKey(deps: UserDeps, received: string): Promise<U
 
   const sealed = sealApiKeyHash(received)
   const found = await deps.findUserByApiKeyHash(sealed)
-  if (found !== null) return revived(deps, found)
+  if (found !== null) return restored(deps, found)
 
   return deps.insertUser({ apiKeyHash: sealed })
 }

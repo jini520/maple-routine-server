@@ -2,15 +2,14 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  deleteDropPrice,
   parseDropPrice,
   saveDropPrice,
-  withdrawDropPrice,
   type DropPrice,
   type DropPriceDeps,
 } from './drop-prices.ts'
 
 const ME = '11111111-1111-4111-8111-111111111111'
-const SOMEONE = '22222222-2222-4222-8222-222222222222'
 const RECORD = '33333333-3333-4333-8333-333333333333'
 
 function body(over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -40,10 +39,10 @@ function price(over: Partial<DropPrice> = {}): DropPrice {
 }
 
 /**
- * 부른 것을 적는 가짜. 유효한 줄이 없는 상태가 기본이다.
+ * 부른 것을 적는 가짜. 손댄 줄 수를 테스트가 정한다.
  *
  * **기록은 감싸는 쪽이 한다.** `...over` 로 함수를 덮으면 그 안의 `calls.push` 가 함께 사라져,
- * 덮은 테스트에서는 부른 순서를 단언할 수 없다(이 파일을 쓸 때 실제로 그렇게 걸렸다).
+ * 덮은 테스트에서는 부른 순서를 단언할 수 없다.
  */
 function fakeDeps(over: Partial<DropPriceDeps> = {}): DropPriceDeps & {
   calls: string[]
@@ -52,28 +51,22 @@ function fakeDeps(over: Partial<DropPriceDeps> = {}): DropPriceDeps & {
   const calls: string[] = []
   const seen: unknown[] = []
   const base: DropPriceDeps = {
-    currentDropPrice: async () => null,
-    supersedeDropPrice: async () => undefined,
-    insertDropPrice: async () => undefined,
+    upsertDropPrice: async () => 1,
+    deleteDropPrice: async () => 1,
     ...over,
   }
   return {
     calls,
     seen,
-    currentDropPrice: async (dropRecordId) => {
-      calls.push('current')
-      seen.push(dropRecordId)
-      return base.currentDropPrice(dropRecordId)
-    },
-    supersedeDropPrice: async (dropRecordId) => {
-      calls.push('supersede')
-      seen.push(dropRecordId)
-      return base.supersedeDropPrice(dropRecordId)
-    },
-    insertDropPrice: async (userId, one) => {
-      calls.push('insert')
+    upsertDropPrice: async (userId, one) => {
+      calls.push('upsert')
       seen.push({ userId, one })
-      return base.insertDropPrice(userId, one)
+      return base.upsertDropPrice(userId, one)
+    },
+    deleteDropPrice: async (userId, dropRecordId) => {
+      calls.push('delete')
+      seen.push({ userId, dropRecordId })
+      return base.deleteDropPrice(userId, dropRecordId)
     },
   }
 }
@@ -129,84 +122,51 @@ describe('본문 읽기', () => {
 })
 
 describe('가격 저장', () => {
-  it('유효한 줄이 없으면 그냥 넣는다', async () => {
+  it('한 문장으로 넣거나 덮어쓴다', async () => {
     const deps = fakeDeps()
 
-    assert.equal(await saveDropPrice(deps, ME, price()), 'inserted')
-    assert.deepEqual(deps.calls, ['current', 'insert'])
-    assert.deepEqual(deps.seen[1], { userId: ME, one: price() })
+    assert.equal(await saveDropPrice(deps, ME, price()), 'saved')
+    // 읽어서 비교한 뒤 쓰지 않는다. 그 사이에 다른 요청이 끼면 둘이 서로를 덮는다.
+    assert.deepEqual(deps.calls, ['upsert'])
+    assert.deepEqual(deps.seen[0], { userId: ME, one: price() })
   })
 
-  it('가격이 바뀌었으면 옛 줄을 덮고 새 줄을 넣는다', async () => {
-    const deps = fakeDeps({
-      currentDropPrice: async () => ({ userId: ME, priceMeso: 10_000_000_000 }),
-    })
+  it('같은 값이 다시 와도 그냥 덮어쓴다', async () => {
+    // 줄을 쌓던 시절에는 이 구분이 「줄이 하나 더 생기나」를 갈랐다. 이제는 결과가 같다.
+    const deps = fakeDeps()
 
-    assert.equal(await saveDropPrice(deps, ME, price({ priceMeso: 3_000_000_000 })), 'inserted')
-    // 덮기가 넣기보다 먼저여야 한다. 반대로 하면 유효한 줄이 둘인 순간이 생겨 유일 인덱스가 막는다.
-    assert.deepEqual(deps.calls, ['current', 'supersede', 'insert'])
+    assert.equal(await saveDropPrice(deps, ME, price()), 'saved')
+    assert.deepEqual(deps.calls, ['upsert'])
   })
 
-  it('같은 가격이 다시 오면 아무것도 안 한다', async () => {
-    // 응답만 유실돼 기기가 다시 보내는 경우다. 줄이 늘면 한 기록이 분포에 두 번 센다.
-    const deps = fakeDeps({
-      currentDropPrice: async () => ({ userId: ME, priceMeso: 10_000_000_000 }),
-    })
-
-    assert.equal(await saveDropPrice(deps, ME, price()), 'unchanged')
-    assert.deepEqual(deps.calls, ['current'])
-  })
-
-  it('남의 기록이면 아무것도 안 한다', async () => {
-    // uuid 를 맞혀도 남의 표본을 못 덮는다. 제약으로는 못 막는 자리다.
-    const deps = fakeDeps({
-      currentDropPrice: async () => ({ userId: SOMEONE, priceMeso: 10_000_000_000 }),
-    })
-
-    assert.equal(await saveDropPrice(deps, ME, price({ priceMeso: 1 })), 'not_mine')
-    assert.deepEqual(deps.calls, ['current'])
-  })
-
-  it('가격이 같아도 남의 기록이면 남의 기록이라고 답한다', async () => {
-    // `unchanged` 로 뭉치면 남의 uuid 를 맞혔을 때 그 가격까지 알아낼 수 있다.
-    const deps = fakeDeps({
-      currentDropPrice: async () => ({ userId: SOMEONE, priceMeso: 10_000_000_000 }),
-    })
+  it('남의 기록이면 손댄 줄이 0 이고 그것이 답이다', async () => {
+    // uuid 를 맞혀도 남의 표본을 못 덮는다. 제약이 아니라 문장이 막는 자리다.
+    const deps = fakeDeps({ upsertDropPrice: async () => 0 })
 
     assert.equal(await saveDropPrice(deps, ME, price()), 'not_mine')
   })
 })
 
-describe('가격 거두기', () => {
-  it('유효한 줄을 덮는다. 줄을 지우지 않는다', async () => {
-    const deps = fakeDeps({
-      currentDropPrice: async () => ({ userId: ME, priceMeso: 10_000_000_000 }),
-    })
-
-    assert.equal(await withdrawDropPrice(deps, ME, RECORD), 'withdrawn')
-    assert.deepEqual(deps.calls, ['current', 'supersede'])
-  })
-
-  it('이미 거둔 기록이면 아무것도 안 한다', async () => {
+describe('가격 빼기', () => {
+  it('손댄 줄이 있으면 뺐다고 답한다', async () => {
     const deps = fakeDeps()
 
-    assert.equal(await withdrawDropPrice(deps, ME, RECORD), 'unchanged')
-    assert.deepEqual(deps.calls, ['current'])
+    assert.equal(await deleteDropPrice(deps, ME, RECORD), 'deleted')
+    assert.deepEqual(deps.calls, ['delete'])
+    assert.deepEqual(deps.seen[0], { userId: ME, dropRecordId: RECORD })
   })
 
-  it('남의 기록은 못 거둔다', async () => {
-    const deps = fakeDeps({
-      currentDropPrice: async () => ({ userId: SOMEONE, priceMeso: 1 }),
-    })
+  it('없는 기록 · 이미 뺀 기록 · 남의 기록이 모두 unchanged 다', async () => {
+    // 셋 다 손댄 줄이 0 이고, 앱이 할 수 있는 일이 셋 다 없어 가르지 않는다.
+    const deps = fakeDeps({ deleteDropPrice: async () => 0 })
 
-    assert.equal(await withdrawDropPrice(deps, ME, RECORD), 'not_mine')
-    assert.deepEqual(deps.calls, ['current'])
+    assert.equal(await deleteDropPrice(deps, ME, RECORD), 'unchanged')
   })
 
   it('기록 식별자가 uuid 가 아니면 DB 를 안 건드린다', async () => {
     const deps = fakeDeps()
 
-    assert.equal(await withdrawDropPrice(deps, ME, 'not-a-uuid'), 'not_mine')
+    assert.equal(await deleteDropPrice(deps, ME, 'not-a-uuid'), 'unchanged')
     assert.deepEqual(deps.calls, [])
   })
 })

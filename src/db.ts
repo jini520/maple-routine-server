@@ -471,17 +471,17 @@ interface UserRow {
   id: string
   nexon_uid: string | null
   created_at: Date
-  withdrawn_at: Date | null
+  deleted_at: Date | null
 }
 
-const USER_COLUMNS = 'id, nexon_uid, created_at, withdrawn_at'
+const USER_COLUMNS = 'id, nexon_uid, created_at, deleted_at'
 
 function toUser(row: UserRow): User {
   return {
     id: row.id,
     nexonUid: row.nexon_uid,
     createdAt: row.created_at,
-    withdrawnAt: row.withdrawn_at,
+    deletedAt: row.deleted_at,
   }
 }
 
@@ -726,48 +726,39 @@ export async function deleteNexonSession(sessionHash: Buffer): Promise<void> {
 
 // ── 드롭 가격 표본 ───────────────────────────────────────────────────────
 //
-// 가격을 고칠 때마다 줄이 쌓이고 `superseded_at` 이 NULL 인 하나만 유효하다. 가리는 규칙은
+// **기록 하나에 한 줄이다.** 고치면 그 줄을 덮어쓰고 이력을 남기지 않는다. 가리는 규칙은
 // `drop-prices.ts` 가 들고 이 자리는 쿼리만 안다.
 //
 // **`bigint` 는 `pg` 가 문자열로 준다.** 자리값을 안 잃으려고 그렇게 한다. 그래서 `price_meso` ·
 // `count(*)` 를 받는 지역 타입이 `string` 이고 매퍼가 `Number` 로 바꾼다. 타입을 `number` 로
-// 적어도 `pool.query<T>` 는 단언이라 통과하고, 그러면 가격 비교가 `'10' === 10` 으로 어긋난다.
-
-/** 그 기록의 유효한 줄 하나. 소유 확인과 같은 값 비교에 쓴다. */
-export async function currentDropPrice(
-  dropRecordId: string,
-): Promise<{ userId: string; priceMeso: number } | null> {
-  const { rows } = await pool.query<{ user_id: string; price_meso: string }>(
-    `SELECT user_id, price_meso FROM drop_prices
-      WHERE drop_record_id = $1 AND superseded_at IS NULL`,
-    [dropRecordId],
-  )
-  const row = rows[0]
-  return row === undefined ? null : { userId: row.user_id, priceMeso: Number(row.price_meso) }
-}
-
-/** 유효한 줄에 덮인 시각을 적는다. **줄을 지우지 않는다** - 고친 흔적이 노이즈 관찰의 재료다. */
-export async function supersedeDropPrice(dropRecordId: string): Promise<void> {
-  await pool.query(
-    `UPDATE drop_prices SET superseded_at = now()
-      WHERE drop_record_id = $1 AND superseded_at IS NULL`,
-    [dropRecordId],
-  )
-}
+// 적어도 `pool.query<T>` 는 단언이라 통과하고, 그러면 숫자가 아니라 글자가 흘러 다닌다.
 
 /**
- * 새 줄을 넣는다.
+ * 넣거나 덮어쓴다. **손댄 줄 수를 돌려준다.**
  *
- * **겹쳐 들어오면 아무것도 안 한다.** 같은 기록으로 두 요청이 동시에 오면 둘 다 유효한 줄이
- * 없는 것을 보고 넣으려 한다. 부분 유일 인덱스가 뒤쪽을 막는데, 그것을 예외로 받으면 500 이
- * 나간다. 먼저 넣은 쪽의 값이 이미 들어가 있으므로 아무것도 안 하는 것이 맞는 답이다.
+ * `drop_record_id` 의 `UNIQUE` 가 멱등을 만든다 - 응답만 유실돼 다시 보내도 한 줄이다.
+ *
+ * **남의 줄은 `WHERE` 가 막는다.** uuid 를 맞혀도 주인이 다르면 그 충돌은 아무것도 안 하고
+ * 끝나므로 손댄 줄이 0 이다. 제약으로 풀려 하면(`user_id` 를 엮으면) 같은 `drop_record_id` 로
+ * 줄이 둘 생긴다.
+ *
+ * `deleted_at` 을 `NULL` 로 되돌리는 것이 요점이다. 뺐던 가격을 다시 적으면 그 줄이 되살아난다.
  */
-export async function insertDropPrice(userId: string, one: DropPrice): Promise<void> {
-  await pool.query(
+export async function upsertDropPrice(userId: string, one: DropPrice): Promise<number> {
+  const { rowCount } = await pool.query(
     `INSERT INTO drop_prices
        (user_id, drop_record_id, item_key, price_meso, period_key, world_key, ring_level, slot)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     ON CONFLICT (drop_record_id) WHERE superseded_at IS NULL DO NOTHING`,
+     ON CONFLICT (drop_record_id) DO UPDATE
+        SET item_key   = EXCLUDED.item_key,
+            price_meso = EXCLUDED.price_meso,
+            period_key = EXCLUDED.period_key,
+            world_key  = EXCLUDED.world_key,
+            ring_level = EXCLUDED.ring_level,
+            slot       = EXCLUDED.slot,
+            updated_at = now(),
+            deleted_at = NULL
+      WHERE drop_prices.user_id = EXCLUDED.user_id`,
     [
       userId,
       one.dropRecordId,
@@ -779,19 +770,34 @@ export async function insertDropPrice(userId: string, one: DropPrice): Promise<v
       one.slot,
     ],
   )
+  return rowCount ?? 0
+}
+
+/**
+ * 가격을 뺀다. **줄은 남고 `deleted_at` 만 찬다** - 사용자 요청으로는 행을 안 지운다.
+ *
+ * 손댄 줄이 0 인 경우가 셋이다. 없는 기록 · 이미 뺀 기록 · 남의 기록. 셋을 가르지 않는다.
+ */
+export async function deleteDropPrice(userId: string, dropRecordId: string): Promise<number> {
+  const { rowCount } = await pool.query(
+    `UPDATE drop_prices SET deleted_at = now(), updated_at = now()
+      WHERE drop_record_id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+    [dropRecordId, userId],
+  )
+  return rowCount ?? 0
 }
 
 /** 아이템 하나의 분포. 관리 화면이 노이즈를 보는 자리다. */
 export interface DropPriceStat {
   itemKey: string
-  /** 유효한 줄의 개수. 거둔 기록은 안 센다. */
+  /** 가격이 있는 줄의 개수. 뺀 기록은 안 센다. */
   samples: number
-  /** 그 표본을 낸 사람 수. 한 사람이 여러 번 적은 것을 가려내는 재료다. */
+  /** 그 표본을 낸 사람 수. 한 사람이 여러 아이템을 적은 것을 가려내는 재료다. */
   people: number
   minMeso: number
   medianMeso: number
   maxMeso: number
-  lastReceivedAt: Date
+  lastUpdatedAt: Date
 }
 
 /**
@@ -808,7 +814,7 @@ export async function listDropPriceStats(limit: number): Promise<DropPriceStat[]
     min_meso: string
     median_meso: string
     max_meso: string
-    last_received_at: Date
+    last_updated_at: Date
   }>(
     `SELECT item_key,
             count(*)                                        AS samples,
@@ -816,9 +822,9 @@ export async function listDropPriceStats(limit: number): Promise<DropPriceStat[]
             min(price_meso)                                 AS min_meso,
             percentile_cont(0.5) WITHIN GROUP (ORDER BY price_meso) AS median_meso,
             max(price_meso)                                 AS max_meso,
-            max(received_at)                                AS last_received_at
+            max(updated_at)                                 AS last_updated_at
        FROM drop_prices
-      WHERE superseded_at IS NULL
+      WHERE deleted_at IS NULL
       GROUP BY item_key
       ORDER BY samples DESC, item_key
       LIMIT $1`,
@@ -831,22 +837,22 @@ export async function listDropPriceStats(limit: number): Promise<DropPriceStat[]
     minMeso: Number(row.min_meso),
     medianMeso: Number(row.median_meso),
     maxMeso: Number(row.max_meso),
-    lastReceivedAt: row.last_received_at,
+    lastUpdatedAt: row.last_updated_at,
   }))
 }
 
-/** 들어온 줄 하나. 거둔 줄도 함께 준다 - 고친 흔적을 보는 것이 목적이다. */
+/** 줄 하나. 뺀 줄도 함께 준다 - 무엇이 빠졌는지 보는 것이 목적이다. */
 export interface DropPriceEntry {
   itemKey: string
   priceMeso: number
   periodKey: string
   worldKey: string | null
   ringLevel: number | null
-  receivedAt: Date
-  supersededAt: Date | null
+  updatedAt: Date
+  deletedAt: Date | null
 }
 
-/** 최근에 들어온 줄. 분포에서 튀는 것을 눈으로 짚는 자리다. */
+/** 최근에 바뀐 줄. 분포에서 튀는 것을 눈으로 짚는 자리다. */
 export async function listRecentDropPrices(limit: number): Promise<DropPriceEntry[]> {
   const { rows } = await pool.query<{
     item_key: string
@@ -854,12 +860,12 @@ export async function listRecentDropPrices(limit: number): Promise<DropPriceEntr
     period_key: string
     world_key: string | null
     ring_level: number | null
-    received_at: Date
-    superseded_at: Date | null
+    updated_at: Date
+    deleted_at: Date | null
   }>(
-    `SELECT item_key, price_meso, period_key, world_key, ring_level, received_at, superseded_at
+    `SELECT item_key, price_meso, period_key, world_key, ring_level, updated_at, deleted_at
        FROM drop_prices
-      ORDER BY received_at DESC
+      ORDER BY updated_at DESC
       LIMIT $1`,
     [limit],
   )
@@ -869,8 +875,8 @@ export async function listRecentDropPrices(limit: number): Promise<DropPriceEntr
     periodKey: row.period_key,
     worldKey: row.world_key,
     ringLevel: row.ring_level,
-    receivedAt: row.received_at,
-    supersededAt: row.superseded_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
   }))
 }
 
@@ -882,15 +888,15 @@ export async function listRecentDropPrices(limit: number): Promise<DropPriceEntr
  *
  * 이미 탈퇴한 사람에게 다시 불러도 **시각을 덮지 않는다.** 처음 탈퇴한 때가 답이어야 한다.
  */
-export async function withdrawUser(userId: string): Promise<void> {
-  await pool.query(`UPDATE users SET withdrawn_at = now() WHERE id = $1 AND withdrawn_at IS NULL`, [
+export async function deleteUser(userId: string): Promise<void> {
+  await pool.query(`UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, [
     userId,
   ])
 }
 
 /** 탈퇴 표시를 지운다. 같은 열쇠로 돌아온 사람에게만 부른다(`users.ts` 가 가린다). */
-export async function reviveUser(userId: string): Promise<void> {
-  await pool.query(`UPDATE users SET withdrawn_at = NULL WHERE id = $1`, [userId])
+export async function restoreUser(userId: string): Promise<void> {
+  await pool.query(`UPDATE users SET deleted_at = NULL WHERE id = $1`, [userId])
 }
 
 /**

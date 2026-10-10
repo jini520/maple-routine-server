@@ -38,30 +38,29 @@ function 본문(over: Record<string, unknown> = {}): Record<string, unknown> {
 
 function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
   넣은것: unknown[]
-  덮은것: unknown[]
+  뺀것: unknown[]
   탈퇴한사람: string[]
   세션지운사람: string[]
   deps: ApiDeps
 } {
   const 넣은것: unknown[] = []
-  const 덮은것: unknown[] = []
+  const 뺀것: unknown[] = []
   const 탈퇴한사람: string[] = []
   const 세션지운사람: string[] = []
   const dropPrices: DropPriceRouteDeps = {
     userIdForSession: async () => null,
     userIdForApiKey: async () => null,
-    currentDropPrice: async () => null,
-    supersedeDropPrice: async () => undefined,
-    insertDropPrice: async () => undefined,
+    upsertDropPrice: async () => 1,
+    deleteDropPrice: async () => 1,
     listDropPriceStats: async () => [],
     listRecentDropPrices: async () => [],
-    withdrawUser: async () => undefined,
+    deleteUser: async () => undefined,
     deleteSessionsOfUser: async () => undefined,
     ...over,
   }
   return {
     넣은것,
-    덮은것,
+    뺀것,
     탈퇴한사람,
     세션지운사람,
     deps: {
@@ -71,17 +70,17 @@ function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
       listOpenManualCompletionBosses: async () => [],
       dropPrices: {
         ...dropPrices,
-        insertDropPrice: async (userId, one) => {
+        upsertDropPrice: async (userId, one) => {
           넣은것.push({ userId, one })
-          return dropPrices.insertDropPrice(userId, one)
+          return dropPrices.upsertDropPrice(userId, one)
         },
-        supersedeDropPrice: async (dropRecordId) => {
-          덮은것.push(dropRecordId)
-          return dropPrices.supersedeDropPrice(dropRecordId)
+        deleteDropPrice: async (userId, dropRecordId) => {
+          뺀것.push({ userId, dropRecordId })
+          return dropPrices.deleteDropPrice(userId, dropRecordId)
         },
-        withdrawUser: async (userId) => {
+        deleteUser: async (userId) => {
           탈퇴한사람.push(userId)
-          return dropPrices.withdrawUser(userId)
+          return dropPrices.deleteUser(userId)
         },
         deleteSessionsOfUser: async (userId) => {
           세션지운사람.push(userId)
@@ -178,12 +177,9 @@ test('계약을 어긴 본문은 400 이다', async () => {
   assert.deepEqual(짝.넣은것, [])
 })
 
-test('남의 기록이어도 ok 로 답하고 아무것도 안 넣는다', async () => {
-  // 거절을 알려 주면 그 uuid 가 남의 것이라는 사실을 떠보는 길이 된다.
-  const 짝 = 가짜({
-    userIdForApiKey: async () => ME,
-    currentDropPrice: async () => ({ userId: SOMEONE, priceMeso: 1 }),
-  })
+test('남의 기록이어도 ok 로 답한다', async () => {
+  // 거절을 알려 주면 그 uuid 가 남의 것이라는 사실을 떠보는 길이 된다. 손댄 줄은 0 이다.
+  const 짝 = 가짜({ userIdForApiKey: async () => ME, upsertDropPrice: async () => 0 })
   const app = createApi(짝.deps)
 
   const res = await app.inject({
@@ -195,15 +191,10 @@ test('남의 기록이어도 ok 로 답하고 아무것도 안 넣는다', async
 
   assert.equal(res.statusCode, 200)
   assert.deepEqual(res.json(), { ok: true })
-  assert.deepEqual(짝.넣은것, [])
-  assert.deepEqual(짝.덮은것, [])
 })
 
-test('거두기는 유효한 줄을 덮고 줄을 안 지운다', async () => {
-  const 짝 = 가짜({
-    userIdForApiKey: async () => ME,
-    currentDropPrice: async () => ({ userId: ME, priceMeso: 1 }),
-  })
+test('가격 빼기는 그 줄의 deleted_at 만 채운다', async () => {
+  const 짝 = 가짜({ userIdForApiKey: async () => ME })
   const app = createApi(짝.deps)
 
   const res = await app.inject({
@@ -213,17 +204,17 @@ test('거두기는 유효한 줄을 덮고 줄을 안 지운다', async () => {
   })
 
   assert.equal(res.statusCode, 200)
-  assert.deepEqual(짝.덮은것, [RECORD])
+  assert.deepEqual(짝.뺀것, [{ userId: ME, dropRecordId: RECORD }])
 })
 
-test('거두기도 열쇠가 없으면 401 이다', async () => {
-  const 짝 = 가짜({ currentDropPrice: async () => ({ userId: ME, priceMeso: 1 }) })
+test('가격 빼기도 열쇠가 없으면 401 이다', async () => {
+  const 짝 = 가짜()
   const app = createApi(짝.deps)
 
   const res = await app.inject({ method: 'DELETE', url: `/v1/drop-prices/${RECORD}` })
 
   assert.equal(res.statusCode, 401)
-  assert.deepEqual(짝.덮은것, [])
+  assert.deepEqual(짝.뺀것, [])
 })
 
 test('쓰기 응답은 캐시되지 않는다', async () => {
@@ -271,7 +262,7 @@ test('탈퇴는 표시만 적고 표본을 안 건드린다. 세션만 지운다
   assert.deepEqual(짝.탈퇴한사람, [ME])
   assert.deepEqual(짝.세션지운사람, [ME])
   // 시세 추이가 사람이 들어왔다 나갔다고 흔들리지 않아야 한다.
-  assert.deepEqual(짝.덮은것, [])
+  assert.deepEqual(짝.뺀것, [])
 })
 
 test('탈퇴도 열쇠가 없으면 401 이고 아무것도 안 한다', async () => {
@@ -305,7 +296,7 @@ test('관리 화면의 자료는 분포와 최근 줄을 함께 준다', async (
         minMeso: 1,
         medianMeso: 2,
         maxMeso: 3,
-        lastReceivedAt: new Date('2026-10-09T00:00:00Z'),
+        lastUpdatedAt: new Date('2026-10-09T00:00:00Z'),
       },
     ],
     listRecentDropPrices: async () => [
@@ -315,8 +306,8 @@ test('관리 화면의 자료는 분포와 최근 줄을 함께 준다', async (
         periodKey: '2026-10-15',
         worldKey: null,
         ringLevel: null,
-        receivedAt: new Date('2026-10-09T00:00:00Z'),
-        supersededAt: null,
+        updatedAt: new Date('2026-10-09T00:00:00Z'),
+        deletedAt: null,
       },
     ],
   })

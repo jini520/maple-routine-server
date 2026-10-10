@@ -11,12 +11,12 @@ function user(over: Partial<User> = {}): User {
     id: '11111111-1111-4111-8111-111111111111',
     nexonUid: null,
     createdAt: new Date('2026-10-08T00:00:00Z'),
-    withdrawnAt: null,
+    deletedAt: null,
     ...over,
   }
 }
 
-const WITHDRAWN = new Date('2026-10-09T00:00:00Z')
+const DELETED = new Date('2026-10-09T00:00:00Z')
 
 /**
  * 부른 것을 적는 가짜. 조회 인자까지 단언하려고 모아 둔다.
@@ -31,7 +31,7 @@ function fakeDeps(over: Partial<UserDeps> = {}): UserDeps & { calls: string[]; s
     findUserByNexonUid: async () => null,
     findUserByApiKeyHash: async () => null,
     insertUser: async (keys) => user({ nexonUid: keys.nexonUid ?? null }),
-    reviveUser: async () => undefined,
+    restoreUser: async () => undefined,
     ...over,
   }
   return {
@@ -52,10 +52,10 @@ function fakeDeps(over: Partial<UserDeps> = {}): UserDeps & { calls: string[]; s
       seen.push(keys)
       return base.insertUser(keys)
     },
-    reviveUser: async (id) => {
-      calls.push('revive')
+    restoreUser: async (id) => {
+      calls.push('restore')
       seen.push(id)
-      return base.reviveUser(id)
+      return base.restoreUser(id)
     },
   }
 }
@@ -145,27 +145,27 @@ describe('받은 해시를 감싸는 것', () => {
 describe('탈퇴한 사람이 돌아오면', () => {
   it('로그인으로 돌아오면 되살리고 그 사람을 준다', async () => {
     // 같은 uid 라 사람 행이 하나뿐이고, 새로 만들면 `nexon_uid` 의 UNIQUE 가 막는다.
-    const 탈퇴한사람 = user({ id: 'abc', nexonUid: 'uid-1', withdrawnAt: WITHDRAWN })
+    const 탈퇴한사람 = user({ id: 'abc', nexonUid: 'uid-1', deletedAt: DELETED })
     const deps = fakeDeps({ findUserByNexonUid: async () => 탈퇴한사람 })
 
     const found = await userForLogin(deps, 'uid-1')
 
     assert.equal(found?.id, 'abc')
     // **돌려주는 값에도 탈퇴 표시가 없어야 한다.** 남아 있으면 부르는 쪽이 아직 탈퇴 상태로 본다.
-    assert.equal(found?.withdrawnAt, null)
-    assert.deepEqual(deps.calls, ['findByUid', 'revive'])
+    assert.equal(found?.deletedAt, null)
+    assert.deepEqual(deps.calls, ['findByUid', 'restore'])
     assert.equal(deps.seen[1], 'abc')
   })
 
   it('키로 돌아오면 되살리고 그 사람을 준다', async () => {
-    const 탈퇴한사람 = user({ id: 'def', withdrawnAt: WITHDRAWN })
+    const 탈퇴한사람 = user({ id: 'def', deletedAt: DELETED })
     const deps = fakeDeps({ findUserByApiKeyHash: async () => 탈퇴한사람 })
 
     const found = await userForApiKey(deps, SOME_HASH)
 
     assert.equal(found?.id, 'def')
-    assert.equal(found?.withdrawnAt, null)
-    assert.deepEqual(deps.calls, ['findByHash', 'revive'])
+    assert.equal(found?.deletedAt, null)
+    assert.deepEqual(deps.calls, ['findByHash', 'restore'])
   })
 
   it('활동 중인 사람에게는 되살리기를 안 부른다', async () => {
@@ -174,7 +174,7 @@ describe('탈퇴한 사람이 돌아오면', () => {
 
     await userForLogin(deps, 'uid-1')
 
-    assert.ok(!deps.calls.includes('revive'))
+    assert.ok(!deps.calls.includes('restore'))
   })
 
   it('방금 만든 사람에게도 안 부른다', async () => {

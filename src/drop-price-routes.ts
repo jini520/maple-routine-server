@@ -3,7 +3,7 @@
  *
  * ```
  * POST   /v1/drop-prices              ← 가격 한 건         → { ok: true }
- * DELETE /v1/drop-prices/{id}         ← 거두기             → { ok: true }
+ * DELETE /v1/drop-prices/{id}         ← 가격 빼기           → { ok: true }
  * DELETE /v1/me                       ← 탈퇴                 → { ok: true }
  * GET    /admin/drop-prices           → 화면 한 장
  * GET    /admin/drop-prices/rows      → { stats, recent }
@@ -18,9 +18,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 import { callerFor, type CallerDeps } from './caller.ts'
 import {
+  deleteDropPrice,
   parseDropPrice,
   saveDropPrice,
-  withdrawDropPrice,
   type DropPriceDeps,
 } from './drop-prices.ts'
 import type { DropPriceEntry, DropPriceStat } from './db.ts'
@@ -33,7 +33,7 @@ export interface DropPriceRouteDeps extends CallerDeps, DropPriceDeps {
   listDropPriceStats: (limit: number) => Promise<DropPriceStat[]>
   listRecentDropPrices: (limit: number) => Promise<DropPriceEntry[]>
   /** 탈퇴 표시를 적는다. 행도 표본도 안 지운다. */
-  withdrawUser: (userId: string) => Promise<void>
+  deleteUser: (userId: string) => Promise<void>
   /** 그 사람의 세션 전부를 지운다. 자격 증명이라 이것만 예외로 지운다. */
   deleteSessionsOfUser: (userId: string) => Promise<void>
 }
@@ -65,10 +65,10 @@ export function registerDropPriceRoutes(app: FastifyInstance, deps: DropPriceRou
   })
 
   /**
-   * 가격을 거둔다. 기기에서 그 기록이 사라졌거나 기록 안함으로 바뀐 경우다.
+   * 가격을 뺀다. 기기에서 그 기록이 사라졌거나 기록 안함으로 바뀐 경우다.
    *
-   * **줄을 지우지 않는다.** 유효한 줄이 없는 상태가 거둔 것이고, 거둔 사실이 노이즈 관찰의
-   * 재료다. 없는 기록으로 불러도 성공으로 답한다 - 앱이 하려던 일은 이미 이뤄진 상태다.
+   * **줄을 지우지 않는다.** `deleted_at` 이 차고, 다시 적으면 그 칸이 `NULL` 로 돌아간다.
+   * 없는 기록으로 불러도 성공으로 답한다 - 앱이 하려던 일은 이미 이뤄진 상태다.
    */
   app.delete<{ Params: { dropRecordId: string } }>(
     '/v1/drop-prices/:dropRecordId',
@@ -76,10 +76,7 @@ export function registerDropPriceRoutes(app: FastifyInstance, deps: DropPriceRou
       const caller = await callerFor(deps, req.headers)
       if ('error' in caller) return json(reply, 401, { error: caller.error })
 
-      const outcome = await withdrawDropPrice(deps, caller.userId, req.params.dropRecordId)
-      if (outcome === 'not_mine') {
-        app.log.warn({ dropRecordId: req.params.dropRecordId }, '남의 기록을 거두려 했다')
-      }
+      await deleteDropPrice(deps, caller.userId, req.params.dropRecordId)
       return json(reply, 200, { ok: true })
     },
   )
@@ -87,7 +84,7 @@ export function registerDropPriceRoutes(app: FastifyInstance, deps: DropPriceRou
   /**
    * **탈퇴.** 앱의 `연결 해제` 가 부른다.
    *
-   * **행을 지우지 않는다**(사용자 지정 2026-10-10). `users.withdrawn_at` 을 적고 **시세 표본은
+   * **행을 지우지 않는다**(사용자 지정 2026-10-10). `users.deleted_at` 을 적고 **시세 표본은
    * 안 건드린다** - 시세 추이가 사람이 들어왔다 나갔다고 흔들리지 않아야 한다.
    *
    * **세션만 예외로 지운다.** 그 행은 기록이 아니라 살아 있는 자격 증명이라, 남기면 기기 둘에서
@@ -102,7 +99,7 @@ export function registerDropPriceRoutes(app: FastifyInstance, deps: DropPriceRou
     const caller = await callerFor(deps, req.headers)
     if ('error' in caller) return json(reply, 401, { error: caller.error })
 
-    await deps.withdrawUser(caller.userId)
+    await deps.deleteUser(caller.userId)
     await deps.deleteSessionsOfUser(caller.userId)
     return json(reply, 200, { ok: true })
   })

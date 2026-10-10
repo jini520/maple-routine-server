@@ -4,7 +4,7 @@
  * ```
  * POST   /v1/drop-prices              ← 가격 한 건         → { ok: true }
  * DELETE /v1/drop-prices/{id}         ← 거두기             → { ok: true }
- * DELETE /v1/me                       ← 내 자리 전부 지우기 → { ok: true }
+ * DELETE /v1/me                       ← 탈퇴                 → { ok: true }
  * GET    /admin/drop-prices           → 화면 한 장
  * GET    /admin/drop-prices/rows      → { stats, recent }
  * ```
@@ -32,8 +32,10 @@ const RECENT_LIMIT = 100
 export interface DropPriceRouteDeps extends CallerDeps, DropPriceDeps {
   listDropPriceStats: (limit: number) => Promise<DropPriceStat[]>
   listRecentDropPrices: (limit: number) => Promise<DropPriceEntry[]>
-  /** 사람 행을 지운다. 매달린 표본과 세션이 `CASCADE` 로 함께 사라진다. */
-  deleteUser: (userId: string) => Promise<void>
+  /** 탈퇴 표시를 적는다. 행도 표본도 안 지운다. */
+  withdrawUser: (userId: string) => Promise<void>
+  /** 그 사람의 세션 전부를 지운다. 자격 증명이라 이것만 예외로 지운다. */
+  deleteSessionsOfUser: (userId: string) => Promise<void>
 }
 
 /** 캐시를 안 거는 답. 인증에 걸리는 것은 어디에도 안 남아야 한다. */
@@ -83,20 +85,25 @@ export function registerDropPriceRoutes(app: FastifyInstance, deps: DropPriceRou
   )
 
   /**
-   * **서버에 있는 내 자리를 지운다.** 앱의 `연결 해제` 가 부르고, 삭제 요구권을 행사하는 자리다.
+   * **탈퇴.** 앱의 `연결 해제` 가 부른다.
    *
-   * 지우는 것은 `users` 행 하나이고 표본과 세션은 `CASCADE` 로 따라 사라진다. 거두기
-   * (`superseded_at`)와 다르다 - 그쪽은 가격을 물린 것이고 이쪽은 흔적을 없애는 것이다.
+   * **행을 지우지 않는다**(사용자 지정 2026-10-10). `users.withdrawn_at` 을 적고 **시세 표본은
+   * 안 건드린다** - 시세 추이가 사람이 들어왔다 나갔다고 흔들리지 않아야 한다.
    *
-   * 없는 사람으로 불러도 성공으로 답한다. 앱이 하려던 일은 이미 이뤄진 상태이고, 있고 없고를
-   * 알려 주면 해시를 떠보는 길이 된다. 키 해시로 부르면 `userForApiKey` 가 행을 만든 뒤 바로
-   * 지우는데, 남는 것이 없으니 그대로 둔다.
+   * **세션만 예외로 지운다.** 그 행은 기록이 아니라 살아 있는 자격 증명이라, 남기면 기기 둘에서
+   * 로그인해 둔 사용자의 다른 쪽 토큰이 계속 먹는다.
+   *
+   * 같은 열쇠로 다시 오면 `users.ts` 가 표시를 지워 그 사람을 되살린다. 그래서 서버에서 보면
+   * 탈퇴한 사람의 늦은 요청과 키를 다시 넣은 요청이 구별되지 않는다 - 앞쪽이 그 사람을 되살린다.
+   *
+   * 없는 사람으로 불러도 성공으로 답한다. 있고 없고를 알려 주면 해시를 떠보는 길이 된다.
    */
   app.delete('/v1/me', async (req: FastifyRequest, reply) => {
     const caller = await callerFor(deps, req.headers)
     if ('error' in caller) return json(reply, 401, { error: caller.error })
 
-    await deps.deleteUser(caller.userId)
+    await deps.withdrawUser(caller.userId)
+    await deps.deleteSessionsOfUser(caller.userId)
     return json(reply, 200, { ok: true })
   })
 

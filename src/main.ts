@@ -12,7 +12,7 @@ import { createApi } from './api.ts'
 import {
   currentDropPrice,
   deleteNexonSession,
-  deleteUser,
+  deleteSessionsOfUser,
   exclusively,
   findNexonSession,
   findUserByApiKeyHash,
@@ -31,9 +31,11 @@ import {
   listOpenManualCompletionBosses,
   markSent,
   listRecentDropPrices,
+  reviveUser,
   saveLoginAttempt,
   supersedeDropPrice,
   takeLoginAttempt,
+  withdrawUser,
   updateNexonTokens,
 } from './db.ts'
 import { migrate } from './migrate.ts'
@@ -79,7 +81,7 @@ if (client !== null && settlementOcid !== undefined && settlementOcid !== '') {
 }
 
 // 사람을 가리는 규칙은 `users.ts` 가 들고, 여기서 DB 조회를 꽂는다.
-const userDeps = { findUserByNexonUid, findUserByApiKeyHash, insertUser }
+const userDeps = { findUserByNexonUid, findUserByApiKeyHash, insertUser, reviveUser }
 
 // 넥슨 자격이 플랫폼마다 갈려서, 어느 쌍을 쓸지는 짝에 적힌 값이 정한다.
 //
@@ -112,7 +114,8 @@ const api = createApi({
     insertDropPrice,
     listDropPriceStats,
     listRecentDropPrices,
-    deleteUser,
+    withdrawUser,
+    deleteSessionsOfUser,
   },
 })
 // `0.0.0.0` 이어야 한다. Fastify 의 기본은 localhost 인데 도커가 컨테이너 밖에서 붙는다.

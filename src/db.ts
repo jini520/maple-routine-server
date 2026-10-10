@@ -472,9 +472,10 @@ interface UserRow {
   nexon_uid: string | null
   created_at: Date
   last_seen_at: Date
+  withdrawn_at: Date | null
 }
 
-const USER_COLUMNS = 'id, nexon_uid, created_at, last_seen_at'
+const USER_COLUMNS = 'id, nexon_uid, created_at, last_seen_at, withdrawn_at'
 
 function toUser(row: UserRow): User {
   return {
@@ -482,6 +483,7 @@ function toUser(row: UserRow): User {
     nexonUid: row.nexon_uid,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
+    withdrawnAt: row.withdrawn_at,
   }
 }
 
@@ -875,12 +877,30 @@ export async function listRecentDropPrices(limit: number): Promise<DropPriceEntr
 }
 
 /**
- * 서버에 있는 그 사람의 자리를 지운다. **매달린 것이 `CASCADE` 로 함께 사라진다** -
- * `drop_prices` 와 `nexon_sessions` 가 그 행을 참조한다.
+ * 탈퇴 표시를 적는다. **행을 지우지 않는다**(사용자 지정 2026-10-10).
  *
- * 앱의 `연결 해제` 가 부른다. 삭제 요구권을 행사하는 자리라 `superseded_at` 을 적는 것이 아니라
- * 줄을 정말 지운다.
+ * 앱의 `연결 해제` 가 부른다. `drop_prices` 는 안 건드린다 - 시세 추이가 사람이 들어왔다 나갔다고
+ * 흔들리지 않아야 한다. 세션은 이 함수 밖에서 지운다(자격 증명이라 남기면 그 토큰이 계속 먹는다).
+ *
+ * 이미 탈퇴한 사람에게 다시 불러도 **시각을 덮지 않는다.** 처음 탈퇴한 때가 답이어야 한다.
  */
-export async function deleteUser(userId: string): Promise<void> {
-  await pool.query(`DELETE FROM users WHERE id = $1`, [userId])
+export async function withdrawUser(userId: string): Promise<void> {
+  await pool.query(`UPDATE users SET withdrawn_at = now() WHERE id = $1 AND withdrawn_at IS NULL`, [
+    userId,
+  ])
+}
+
+/** 탈퇴 표시를 지운다. 같은 열쇠로 돌아온 사람에게만 부른다(`users.ts` 가 가린다). */
+export async function reviveUser(userId: string): Promise<void> {
+  await pool.query(`UPDATE users SET withdrawn_at = NULL WHERE id = $1`, [userId])
+}
+
+/**
+ * 그 사람의 세션 전부를 지운다. 탈퇴가 부른다.
+ *
+ * **여기만 지우는 것이 예외다.** 세션 행은 기록이 아니라 살아 있는 자격 증명이고(넥슨 토큰을
+ * AES-GCM 으로 들고 있다) 남기면 기기 둘에서 로그인해 둔 사용자의 다른 쪽 토큰이 계속 먹는다.
+ */
+export async function deleteSessionsOfUser(userId: string): Promise<void> {
+  await pool.query(`DELETE FROM nexon_sessions WHERE user_id = $1`, [userId])
 }

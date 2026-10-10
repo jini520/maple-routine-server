@@ -39,12 +39,14 @@ function 본문(over: Record<string, unknown> = {}): Record<string, unknown> {
 function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
   넣은것: unknown[]
   덮은것: unknown[]
-  지운사람: string[]
+  탈퇴한사람: string[]
+  세션지운사람: string[]
   deps: ApiDeps
 } {
   const 넣은것: unknown[] = []
   const 덮은것: unknown[] = []
-  const 지운사람: string[] = []
+  const 탈퇴한사람: string[] = []
+  const 세션지운사람: string[] = []
   const dropPrices: DropPriceRouteDeps = {
     userIdForSession: async () => null,
     userIdForApiKey: async () => null,
@@ -53,13 +55,15 @@ function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
     insertDropPrice: async () => undefined,
     listDropPriceStats: async () => [],
     listRecentDropPrices: async () => [],
-    deleteUser: async () => undefined,
+    withdrawUser: async () => undefined,
+    deleteSessionsOfUser: async () => undefined,
     ...over,
   }
   return {
     넣은것,
     덮은것,
-    지운사람,
+    탈퇴한사람,
+    세션지운사람,
     deps: {
       listNotices: async () => ({ items: [공지], nextCursor: null }),
       getNotice: async () => 공지,
@@ -75,9 +79,13 @@ function 가짜(over: Partial<DropPriceRouteDeps> = {}): {
           덮은것.push(dropRecordId)
           return dropPrices.supersedeDropPrice(dropRecordId)
         },
-        deleteUser: async (userId) => {
-          지운사람.push(userId)
-          return dropPrices.deleteUser(userId)
+        withdrawUser: async (userId) => {
+          탈퇴한사람.push(userId)
+          return dropPrices.withdrawUser(userId)
+        },
+        deleteSessionsOfUser: async (userId) => {
+          세션지운사람.push(userId)
+          return dropPrices.deleteSessionsOfUser(userId)
         },
       },
     },
@@ -248,7 +256,8 @@ test('deps 를 안 주면 그 경로를 안 연다', async () => {
   assert.equal(res.statusCode, 405)
 })
 
-test('내 자리 지우기는 사람 행을 지운다. 매달린 것은 CASCADE 가 걷는다', async () => {
+test('탈퇴는 표시만 적고 표본을 안 건드린다. 세션만 지운다', async () => {
+  // 사용자 요청으로는 행을 지우지 않는다(사용자 지정 2026-10-10). 세션은 자격 증명이라 예외다.
   const 짝 = 가짜({ userIdForApiKey: async () => ME })
   const app = createApi(짝.deps)
 
@@ -259,19 +268,21 @@ test('내 자리 지우기는 사람 행을 지운다. 매달린 것은 CASCADE 
   })
 
   assert.equal(res.statusCode, 200)
-  assert.deepEqual(짝.지운사람, [ME])
-  // 거두기가 아니다. 가격을 물리는 것이 아니라 흔적을 없애는 자리다.
+  assert.deepEqual(짝.탈퇴한사람, [ME])
+  assert.deepEqual(짝.세션지운사람, [ME])
+  // 시세 추이가 사람이 들어왔다 나갔다고 흔들리지 않아야 한다.
   assert.deepEqual(짝.덮은것, [])
 })
 
-test('내 자리 지우기도 열쇠가 없으면 401 이다', async () => {
+test('탈퇴도 열쇠가 없으면 401 이고 아무것도 안 한다', async () => {
   const 짝 = 가짜()
   const app = createApi(짝.deps)
 
   const res = await app.inject({ method: 'DELETE', url: '/v1/me' })
 
   assert.equal(res.statusCode, 401)
-  assert.deepEqual(짝.지운사람, [])
+  assert.deepEqual(짝.탈퇴한사람, [])
+  assert.deepEqual(짝.세션지운사람, [])
 })
 
 test('관리 화면과 그 자료는 토큰 없이는 막힌다', async () => {

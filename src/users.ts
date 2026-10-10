@@ -13,6 +13,13 @@ export interface User {
   nexonUid: string | null
   createdAt: Date
   lastSeenAt: Date
+  /**
+   * 탈퇴한 시각. `null` 이 활동 중이다.
+   *
+   * **사용자 요청으로는 행을 지우지 않는다**(사용자 지정 2026-10-10). 그래서 탈퇴는 이 칸이고,
+   * 같은 열쇠로 다시 오면 `null` 로 되돌려 그 사람을 그대로 쓴다.
+   */
+  withdrawnAt: Date | null
 }
 
 /** 이 파일이 DB 에서 하는 일 전부. 진짜 구현은 `db.ts` 에 있고 테스트는 가짜를 넣는다. */
@@ -21,6 +28,8 @@ export interface UserDeps {
   /** 인자는 **다시 해시한 값**이다. 앱이 보낸 값 그대로가 아니다. */
   findUserByApiKeyHash: (sealed: Buffer) => Promise<User | null>
   insertUser: (keys: { nexonUid?: string; apiKeyHash?: Buffer }) => Promise<User>
+  /** 탈퇴 표시를 지운다. 같은 열쇠로 돌아온 사람에게만 부른다. */
+  reviveUser: (id: string) => Promise<void>
 }
 
 /** 앱이 보내는 값의 모양. SHA-256 을 소문자 hex 로 적은 64자다. */
@@ -39,6 +48,28 @@ export function sealApiKeyHash(received: string): Buffer {
 }
 
 /**
+ * 탈퇴한 사람이 같은 열쇠로 돌아왔으면 표시를 지운다.
+ *
+ * **새 사람으로 만들 수 없다.** 열쇠에 `UNIQUE` 가 걸려 있고 탈퇴해도 값이 남아 있어서, 넣으려
+ * 하면 그 자리에서 막힌다. 그래서 돌아오는 길은 되살리기 하나다.
+ *
+ * **돌려주는 값에서도 표시를 지운다.** 남겨 두면 부르는 쪽이 방금 되살린 사람을 아직 탈퇴
+ * 상태로 본다.
+ *
+ * 활동 중인 사람에게는 안 부른다. 요청마다 쓸데없는 `UPDATE` 가 돌기 때문이다.
+ *
+ * **대가**: 서버에서 보면 탈퇴한 사람의 요청과 같은 키를 다시 넣은 사람의 요청이 구별되지 않는다.
+ * 연결 해제 뒤에 늦게 도착한 요청 하나가 그 사람을 되살린다. 기기가 키를 지우고 대기 표를 비우므로
+ * 흔한 경우는 아니지만, 그 길이 막혀 있지는 않다.
+ */
+async function revived(deps: UserDeps, found: User): Promise<User> {
+  if (found.withdrawnAt === null) return found
+
+  await deps.reviveUser(found.id)
+  return { ...found, withdrawnAt: null }
+}
+
+/**
  * 로그인으로 들어온 사람. uid 로 찾고 없으면 만든다.
  *
  * **uid 가 없으면 사람을 만들지 않는다.** userinfo 가 실패해도 로그인은 진행하므로 uid 가 빈
@@ -49,7 +80,7 @@ export async function userForLogin(deps: UserDeps, nexonUid: string | null): Pro
   if (nexonUid === null || nexonUid === '') return null
 
   const found = await deps.findUserByNexonUid(nexonUid)
-  if (found !== null) return found
+  if (found !== null) return revived(deps, found)
 
   return deps.insertUser({ nexonUid })
 }
@@ -65,7 +96,7 @@ export async function userForApiKey(deps: UserDeps, received: string): Promise<U
 
   const sealed = sealApiKeyHash(received)
   const found = await deps.findUserByApiKeyHash(sealed)
-  if (found !== null) return found
+  if (found !== null) return revived(deps, found)
 
   return deps.insertUser({ apiKeyHash: sealed })
 }

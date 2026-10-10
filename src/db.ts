@@ -471,18 +471,16 @@ interface UserRow {
   id: string
   nexon_uid: string | null
   created_at: Date
-  last_seen_at: Date
   withdrawn_at: Date | null
 }
 
-const USER_COLUMNS = 'id, nexon_uid, created_at, last_seen_at, withdrawn_at'
+const USER_COLUMNS = 'id, nexon_uid, created_at, withdrawn_at'
 
 function toUser(row: UserRow): User {
   return {
     id: row.id,
     nexonUid: row.nexon_uid,
     createdAt: row.created_at,
-    lastSeenAt: row.last_seen_at,
     withdrawnAt: row.withdrawn_at,
   }
 }

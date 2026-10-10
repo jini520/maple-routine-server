@@ -12,7 +12,6 @@ export interface User {
   /** 넥슨 로그인으로 들어온 사람의 열쇠. 키만 쓰는 사람은 `null` 이다. */
   nexonUid: string | null
   createdAt: Date
-  lastSeenAt: Date
   /**
    * 탈퇴한 시각. `null` 이 활동 중이다.
    *

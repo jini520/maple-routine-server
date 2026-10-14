@@ -17,7 +17,7 @@ describe('AppController', () => {
     await app.close()
   })
 
-  it('GET /healthz 가 ok 를 낸다', async () => {
+  it('GET /healthz 가 ok 를 돌려준다', async () => {
     const res = await app.inject({ method: 'GET', url: '/healthz' })
 
     expect(res.statusCode).toBe(200)

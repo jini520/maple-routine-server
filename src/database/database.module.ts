@@ -1,4 +1,4 @@
-import { Module, type OnModuleDestroy } from '@nestjs/common'
+import { Global, Module, type OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
@@ -12,6 +12,7 @@ export type Db = NodePgDatabase<typeof schema>
 export const DB = Symbol('DB')
 
 /** pg 풀 하나에 Drizzle 을 얹어 전역으로 준다. 종료 때 풀을 닫는다. */
+@Global()
 @Module({
   providers: [
     {

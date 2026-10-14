@@ -16,7 +16,8 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"*.{json,md,mjs,ts}\"",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "test:db": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
   },
   "jest": {
     "testEnvironment": "node",

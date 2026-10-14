@@ -19,10 +19,19 @@ legacy/        옛 서버. 손대지 않는다. 핫픽스만 그 안에서 빌�
 npm ci
 npm run start:dev        # nest start --watch
 npm test                 # jest. Nest 12 가 ESM 전용이라 --experimental-vm-modules 가 붙어 있다
+npm run test:db          # 리포지토리 스펙까지. TEST_DATABASE_URL 이 가리키는 Postgres 에 마이그레이션을 돌리고 표를 비운다
 npm run typecheck
 npm run lint
 npm run format
 npm run db:generate      # schema.ts 변경 → migrations/ 에 SQL
 npm run db:migrate       # DATABASE_URL 에 적용
 npm run build && npm start
+```
+
+리포지토리 스펙은 진짜 Postgres 가 있어야 돈다. 없으면 건너뛴다. 맥에서는 colima 로 띄운다.
+
+```
+colima start
+docker run -d --name mr-test-pg -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test -p 15432:5432 postgres:16-alpine
+TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
 ```

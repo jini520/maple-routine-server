@@ -1,7 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "legacy", "src/**/*.spec.ts", "drizzle.config.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "legacy",
+    "src/**/*.spec.ts",
+    "drizzle.config.ts",
+    "src/database/test-db.ts"
+  ],
   "compilerOptions": {
     "types": ["node"],
     "rootDir": "./src"

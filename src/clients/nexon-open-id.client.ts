@@ -14,7 +14,7 @@ export interface NexonTokens {
   refreshExpiresIn: number
 }
 
-/** 넥슨이 토큰이나 코드를 거절했다. 죽은 갱신 토큰, 틀린 인가 코드가 여기다. */
+/** 넥슨이 토큰이나 코드를 거절했다(OPENAPI00012). 죽은 갱신 토큰, 틀린 인가 코드가 여기다. */
 export class NexonTokenRejected extends Error {
   constructor(
     readonly status: number,
@@ -24,19 +24,25 @@ export class NexonTokenRejected extends Error {
   }
 }
 
-/** 넥슨에 닿지 못했거나 넥슨 쪽이 고장났다. 토큰의 문제가 아니다. */
+/** 넥슨에 닿지 못했거나 넥슨 쪽이 고장났거나 우리 요청이 틀렸다(OPENAPI00004). 토큰의 문제가 아니다. */
 export class NexonUnavailable extends Error {}
 
 /** 그 플랫폼의 자격 쌍이 env 에 없다. */
 export class NexonCredentialMissing extends Error {}
 
-/** 넥슨 Open ID 의 주소 셋. 개발 가이드(openapi.nexon.com/ko/open-id/development-guide)의 것이다. */
+/**
+ * 넥슨 Open ID 의 주소 셋. 개발 가이드(openapi.nexon.com/ko/open-id/development-guide)의 요청 URL 그대로다.
+ * 가이드의 curl 예시는 token 을 /openid/oauth2/token 으로 적는데 둘 다 같은 답을 준다(2026-10-14 확인).
+ */
 const AUTHORIZE_URL = 'https://openid.nexon.com/oauth2/authorize'
 const TOKEN_URL = 'https://openid.nexon.com/oauth2/token'
 const USERINFO_URL = 'https://openid.nexon.com/oauth2/userinfo'
 
 /** 넥슨이 답을 안 주면 이만큼 기다리고 끊는다. 매달린 호출 하나가 회차 슬롯을 영구히 쥐지 않게. */
 const TIMEOUT_MS = 10_000
+
+/** 죽은 토큰과 틀린 인가 코드의 에러 이름. 같은 400 이라도 OPENAPI00004 는 파라미터나 자격 쌍이 틀린 것이라 토큰 탓이 아니다. */
+const TOKEN_REJECTED = 'OPENAPI00012'
 
 interface TokenBody {
   access_token: string
@@ -128,7 +134,7 @@ export class NexonOpenIdClient {
     }
     if (res.ok) return res
     const text = await res.text()
-    if (res.status >= 400 && res.status < 500) throw new NexonTokenRejected(res.status, text)
+    if (errorNameOf(text) === TOKEN_REJECTED) throw new NexonTokenRejected(res.status, text)
     throw new NexonUnavailable(`넥슨이 ${res.status} 를 냈다: ${text}`)
   }
 
@@ -145,5 +151,15 @@ export class NexonOpenIdClient {
       throw new NexonCredentialMissing(`${platform} 의 넥슨 자격 쌍이 env 에 없다`)
     }
     return { clientId, clientSecret }
+  }
+}
+
+/** 넥슨 에러 본문은 { error: { name, message } } 다. JSON 이 아니면 이름이 없다. */
+function errorNameOf(text: string): string | null {
+  try {
+    const body = JSON.parse(text) as { error?: { name?: unknown } }
+    return typeof body.error?.name === 'string' ? body.error.name : null
+  } catch {
+    return null
   }
 }

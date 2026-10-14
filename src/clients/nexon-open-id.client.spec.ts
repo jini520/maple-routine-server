@@ -88,6 +88,14 @@ describe('NexonOpenIdClient', () => {
     expect(form.get('refresh_token')).toBe('RT')
   })
 
+  it('같은 400 이라도 OPENAPI00004 는 자격이나 파라미터 탓이라 NexonUnavailable 이다', async () => {
+    fetchSpy.mockResolvedValue(
+      reply(400, { error: { name: 'OPENAPI00004', message: 'Invalid ClientID or ClientSecret' } }),
+    )
+
+    await expect(client().refresh('ios', 'RT')).rejects.toBeInstanceOf(NexonUnavailable)
+  })
+
   it('5xx 나 통신 실패는 NexonUnavailable 이다', async () => {
     fetchSpy.mockResolvedValueOnce(reply(503, {}))
     await expect(client().refresh('ios', 'RT')).rejects.toBeInstanceOf(NexonUnavailable)

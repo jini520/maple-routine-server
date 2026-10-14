@@ -1,0 +1,4 @@
+legacy/
+dist/
+node_modules/
+src/database/migrations/

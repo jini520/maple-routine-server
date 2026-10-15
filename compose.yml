@@ -1,0 +1,35 @@
+# 앱 박스(Oracle, 10.0.0.55)의 배포 정의. 코드와 같이 산다.
+#
+# DB 는 이 박스에 없다. DB 박스(10.0.0.192)의 Postgres 를 env 의 DATABASE_URL 로 쓴다.
+# 4000 은 127.0.0.1 에만 연다. 같은 박스의 nginx 가 /v1 과 /admin 을 여기로 넘긴다.
+
+services:
+  server:
+    build: .
+    image: maple-routine-server:prod
+    container_name: maple-routine-server
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:4000:4000'
+    env_file:
+      - /home/ubuntu/.config/maple-routine-server/.env
+    volumes:
+      # FCM 키는 이미지에 안 굽는다. 읽기 전용으로 걸어만 준다.
+      - /home/ubuntu/.config/maple-routine-server/fcm-key.json:/run/secrets/fcm-key.json:ro
+    # 요청마다 한 줄이 찍히므로 도커 기본값(무제한)으로 두면 디스크가 언젠가 찬다.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3

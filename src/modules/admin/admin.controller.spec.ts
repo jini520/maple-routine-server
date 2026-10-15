@@ -77,6 +77,10 @@ describe('AdminController', () => {
       expect(res.headers['content-type']).toContain('text/html')
       expect(res.headers['cache-control']).toBe('no-store')
       expect(res.body).toContain('<!doctype html>')
+      // 페이지가 스크립트 끝에서 바로 load() 를 부른다. 도우미가 뒤에 있으면 그 순간 call 이 없어 목록이 빈다.
+      const helper = res.body.indexOf('async function call(')
+      const firstUse = res.body.indexOf("call('")
+      if (firstUse >= 0) expect(helper).toBeLessThan(firstUse)
     }
   })
 

@@ -1,4 +1,8 @@
-/** 관리 화면의 공통 껍데기. 메뉴와 글꼴만 있고 나머지는 페이지가 채운다. */
+/**
+ * 관리 화면의 공통 껍데기. 메뉴와 글꼴, 페이지가 쓰는 도우미 둘(call · show)을 든다.
+ *
+ * 도우미 스크립트가 페이지 본문보다 **앞**이어야 한다. 페이지가 스크립트 끝에서 바로 load() 를 부르므로 뒤에 두면 그 순간 call 이 없다.
+ */
 export function layout(title: string, body: string): string {
   return `<!doctype html>
 <html lang="ko">
@@ -35,7 +39,6 @@ export function layout(title: string, body: string): string {
 </head>
 <body>
 <nav><a href="/admin">관리</a><a href="/admin/notices">공지</a><a href="/admin/bosses">보스 목록</a><a href="/admin/manual-completion">직접 완료</a><a href="/admin/drop-prices">드롭 가격</a></nav>
-${body}
 <script>
   function show(text, isError) {
     var box = document.getElementById('message');
@@ -54,6 +57,7 @@ ${body}
     return { ok: res.ok, status: res.status, json: json, text: text };
   }
 </script>
+${body}
 </body>
 </html>
 `

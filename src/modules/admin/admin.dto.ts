@@ -45,3 +45,6 @@ export const dropPriceQuery = z.object({
   limit: z.coerce.number().int().min(1).max(1000).default(200),
 })
 export type DropPriceQuery = z.infer<typeof dropPriceQuery>
+
+/** 난이도 줄 하나의 본문. 난이도는 경로가 든다. */
+export const requiredLevelBody = z.object({ requiredLevel: z.number().int().min(1) })

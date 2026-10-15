@@ -1,9 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq, inArray, notInArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { bossDifficulties, bosses, gameRules } from '../../database/schema'
-import { type BossesImport, RULE_KEYS, type RuleField } from './bosses.dto'
+import {
+  type BossInput,
+  type DifficultyInput,
+  RULE_KEYS,
+  type RuleField,
+  type RulesInput,
+} from './bosses.dto'
 
 export interface BossView {
   key: string
@@ -24,80 +30,103 @@ export interface Catalog {
   bosses: BossView[]
 }
 
-export interface ImportResult {
-  bosses: number
-  difficulties: number
-  /** 표에는 있는데 JSON 에 없던 보스. 지우지 않고 알린다. */
-  leftover: string[]
-}
+/** 같은 key 의 보스가 이미 있다. */
+export class BossExists extends Error {}
+
+/** 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이 표 전체를 거절한다. */
+export class LastDifficulty extends Error {}
 
 @Injectable()
 export class BossesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /**
-   * JSON 을 한 트랜잭션으로 넣는다. 보스는 key 로 upsert, 난이도는 그 보스 안에서 갈아 끼운다.
-   * JSON 에 없는 보스는 직접 완료 줄이 참조할 수 있어 지우지 않는다.
-   */
-  async import(input: BossesImport): Promise<ImportResult> {
+  /** 규칙 둘을 적는다. 둘 다 받아 둘 다 쓴다. */
+  async setRules(rules: RulesInput): Promise<void> {
+    const now = new Date()
+    for (const field of Object.keys(RULE_KEYS) as RuleField[]) {
+      await this.db
+        .insert(gameRules)
+        .values({ key: RULE_KEYS[field], value: rules[field], updatedAt: now })
+        .onConflictDoUpdate({ target: gameRules.key, set: { value: rules[field], updatedAt: now } })
+    }
+  }
+
+  /** 새 보스를 맨 뒤에 더한다. 난이도 줄도 함께 넣는다. 같은 key 가 있으면 BossExists 다. */
+  async createBoss(input: BossInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
-      const now = new Date()
-      for (const field of Object.keys(RULE_KEYS) as RuleField[]) {
-        await tx
-          .insert(gameRules)
-          .values({ key: RULE_KEYS[field], value: input.rules[field], updatedAt: now })
-          .onConflictDoUpdate({
-            target: gameRules.key,
-            set: { value: input.rules[field], updatedAt: now },
-          })
-      }
-
-      let difficulties = 0
-      for (const [index, boss] of input.bosses.entries()) {
-        const values = {
-          name: boss.name,
-          alias: boss.alias,
-          cycle: boss.cycle,
-          portraitSlug: boss.portraitSlug,
-          sortOrder: index,
-          updatedAt: now,
-        }
-        const [row] = await tx
-          .insert(bosses)
-          .values({ key: boss.key, ...values })
-          .onConflictDoUpdate({ target: bosses.key, set: values })
-          .returning({ id: bosses.id })
-        if (row === undefined) throw new Error('upsert 가 행을 안 돌려줬다')
-
-        const kept = boss.difficulties.map((d) => d.difficulty)
-        await tx
-          .delete(bossDifficulties)
-          .where(
-            sql`${bossDifficulties.bossId} = ${row.id} AND ${notInArray(bossDifficulties.difficulty, kept)}`,
-          )
-        for (const d of boss.difficulties) {
-          await tx
-            .insert(bossDifficulties)
-            .values({ bossId: row.id, difficulty: d.difficulty, requiredLevel: d.requiredLevel })
-            .onConflictDoUpdate({
-              target: [bossDifficulties.bossId, bossDifficulties.difficulty],
-              set: { requiredLevel: d.requiredLevel },
-            })
-          difficulties += 1
-        }
-      }
-
-      const leftover = await tx
-        .select({ key: bosses.key })
+      const [last] = await tx
+        .select({ max: sql<number | null>`max(${bosses.sortOrder})` })
         .from(bosses)
+      const sortOrder = (last?.max ?? -1) + 1
+      let row: { id: string } | undefined
+      try {
+        ;[row] = await tx
+          .insert(bosses)
+          .values({
+            key: input.key,
+            name: input.name,
+            alias: input.alias,
+            cycle: input.cycle,
+            portraitSlug: input.portraitSlug,
+            sortOrder,
+            updatedAt: new Date(),
+          })
+          .returning({ id: bosses.id })
+      } catch (error) {
+        if (isUniqueViolation(error)) throw new BossExists(input.key)
+        throw error
+      }
+      if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
+      await tx.insert(bossDifficulties).values(
+        input.difficulties.map((d) => ({
+          bossId: row.id,
+          difficulty: d.difficulty,
+          requiredLevel: d.requiredLevel,
+        })),
+      )
+      return row
+    })
+  }
+
+  /** 난이도 줄을 더하거나 요구 레벨을 갈아 끼운다. 보스의 updated_at 이 움직여 앱이 표를 다시 받는다. 모르는 보스면 false 다. */
+  async upsertDifficulty(key: string, input: DifficultyInput): Promise<boolean> {
+    const boss = await this.findByKey(key)
+    if (boss === null) return false
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(bossDifficulties)
+        .values({
+          bossId: boss.id,
+          difficulty: input.difficulty,
+          requiredLevel: input.requiredLevel,
+        })
+        .onConflictDoUpdate({
+          target: [bossDifficulties.bossId, bossDifficulties.difficulty],
+          set: { requiredLevel: input.requiredLevel },
+        })
+      await tx.update(bosses).set({ updatedAt: new Date() }).where(eq(bosses.id, boss.id))
+    })
+    return true
+  }
+
+  /** 난이도 줄을 지운다. 없으면 false, 마지막 줄이면 LastDifficulty 다. */
+  async deleteDifficulty(key: string, difficulty: DifficultyInput['difficulty']): Promise<boolean> {
+    const boss = await this.findByKey(key)
+    if (boss === null) return false
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select({ difficulty: bossDifficulties.difficulty })
+        .from(bossDifficulties)
+        .where(eq(bossDifficulties.bossId, boss.id))
+      if (!rows.some((r) => r.difficulty === difficulty)) return false
+      if (rows.length === 1) throw new LastDifficulty(key)
+      await tx
+        .delete(bossDifficulties)
         .where(
-          notInArray(
-            bosses.key,
-            input.bosses.map((b) => b.key),
-          ),
+          and(eq(bossDifficulties.bossId, boss.id), eq(bossDifficulties.difficulty, difficulty)),
         )
-        .orderBy(asc(bosses.sortOrder))
-      return { bosses: input.bosses.length, difficulties, leftover: leftover.map((r) => r.key) }
+      await tx.update(bosses).set({ updatedAt: new Date() }).where(eq(bosses.id, boss.id))
+      return true
     })
   }
 
@@ -151,4 +180,13 @@ export class BossesRepository {
     const [row] = await this.db.select({ id: bosses.id }).from(bosses).where(eq(bosses.key, key))
     return row ?? null
   }
+}
+
+/** pg 의 unique_violation. drizzle 이 DrizzleQueryError 로 감싸므로 cause 까지 내려가 SQLSTATE 를 본다. */
+function isUniqueViolation(error: unknown): boolean {
+  for (let current = error; typeof current === 'object' && current !== null;) {
+    if ((current as { code?: unknown }).code === '23505') return true
+    current = (current as { cause?: unknown }).cause
+  }
+  return false
 }

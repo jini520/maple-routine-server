@@ -68,8 +68,9 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.
-- **보스 표는 `/admin/bosses` 에 JSON 을 붙여 넣어 채운다.** 앱 저장소의 `src/data/bosses.json` 그대로다. 새 보스가
-  나오면 그 파일을 고쳐 다시 붙여 넣고, 앱은 `npm run sync:bosses` 로 번들을 맞춘다(앱 저장소 `ADR-349`).
+- **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 난이도 줄 더하기 · 레벨 · 지우기다. 보스와 마지막
+  난이도는 못 지운다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 씨앗은 앱 저장소에서 `npm run sync:bosses` 로 맞춘다
+  (앱 저장소 `ADR-349` 정정 1).
 - **운영자 공지는 `/admin/notices` 다.** CLI(`npm run notice -- send|list|push`)는 SSH 로 급히 쓸 때만이다.
 - **옛 서버의 공지 151줄은 2026-10-15 에 한 번 옮겼다.** 칸이 1:1 이라 `pg_dump --data-only --column-inserts -t notices`
   를 그대로 psql 에 넣었다. 다시 할 일은 없다(앱 저장소 `ADR-347` 결정 2).

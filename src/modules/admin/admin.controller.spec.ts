@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
-import { BossesRepository } from '../bosses/bosses.repository'
+import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
   AlreadyOpen,
@@ -11,23 +11,25 @@ import { OperatorNoticesService, SchedulePassed } from '../notices/operator-noti
 import { AdminController } from './admin.controller'
 
 const ROW = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
-const importBody = {
-  rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
-  bosses: [
-    {
-      key: 'kaling',
-      name: '카링',
-      alias: '카링',
-      cycle: 'weekly',
-      portraitSlug: 'kaling',
-      difficulties: [{ difficulty: 'easy', requiredLevel: 275 }],
-    },
-  ],
+const newBoss = {
+  key: 'kaling',
+  name: '카링',
+  alias: '카링',
+  cycle: 'weekly',
+  portraitSlug: 'kaling',
+  difficulties: [{ difficulty: 'easy', requiredLevel: 275 }],
 }
 
 describe('AdminController', () => {
   let app: NestFastifyApplication
-  const bosses = { import: jest.fn(), options: jest.fn(), findByKey: jest.fn() }
+  const bosses = {
+    setRules: jest.fn(),
+    createBoss: jest.fn(),
+    upsertDifficulty: jest.fn(),
+    deleteDifficulty: jest.fn(),
+    options: jest.fn(),
+    findByKey: jest.fn(),
+  }
   const manual = { rows: jest.fn(), openBoss: jest.fn(), close: jest.fn() }
   const notices = {
     list: jest.fn(),
@@ -84,29 +86,96 @@ describe('AdminController', () => {
     }
   })
 
-  it('POST /admin/bosses/import 는 검사한 JSON 을 넣고 결과를 낸다', async () => {
-    bosses.import.mockResolvedValue({ bosses: 1, difficulties: 1, leftover: ['zakum'] })
+  it('PUT /admin/bosses/rules 는 규칙 둘을 적고 204 다. 0 은 400 이다', async () => {
+    bosses.setRules.mockResolvedValue(undefined)
 
-    const res = await app.inject({
-      method: 'POST',
-      url: '/admin/bosses/import',
-      payload: importBody,
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/rules',
+      payload: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
+    })
+    expect(ok.statusCode).toBe(204)
+    expect(bosses.setRules).toHaveBeenCalledWith({
+      weeklyBossSelectionLimit: 12,
+      weeklyCrystalSaleLimit: 90,
     })
 
-    expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ bosses: 1, difficulties: 1, leftover: ['zakum'] })
-    expect(bosses.import).toHaveBeenCalledWith(importBody)
+    const bad = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/rules',
+      payload: { weeklyBossSelectionLimit: 0, weeklyCrystalSaleLimit: 90 },
+    })
+    expect(bad.statusCode).toBe(400)
   })
 
-  it('JSON 이 틀리면 400 이고 넣지 않는다', async () => {
-    const res = await app.inject({
+  it('POST /admin/bosses 는 새 보스를 더하고 201, 같은 key 는 409, 난이도 없으면 400 이다', async () => {
+    bosses.createBoss.mockResolvedValueOnce({ id: 'b1' })
+    const ok = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
+    expect(ok.statusCode).toBe(201)
+    expect(ok.json()).toEqual({ id: 'b1' })
+    expect(bosses.createBoss).toHaveBeenCalledWith(newBoss)
+
+    bosses.createBoss.mockRejectedValueOnce(new BossExists('kaling'))
+    const dup = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
+    expect(dup.statusCode).toBe(409)
+
+    const bad = await app.inject({
       method: 'POST',
-      url: '/admin/bosses/import',
-      payload: { ...importBody, bosses: [] },
+      url: '/admin/bosses',
+      payload: { ...newBoss, difficulties: [] },
+    })
+    expect(bad.statusCode).toBe(400)
+    expect(bosses.createBoss).toHaveBeenCalledTimes(2)
+  })
+
+  it('PUT /admin/bosses/:key/difficulties/:difficulty 는 줄을 적고 204, 모르는 보스는 404, 모르는 난이도는 400 이다', async () => {
+    bosses.upsertDifficulty.mockResolvedValueOnce(true)
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/kaling/difficulties/hard',
+      payload: { requiredLevel: 275 },
+    })
+    expect(ok.statusCode).toBe(204)
+    expect(bosses.upsertDifficulty).toHaveBeenCalledWith('kaling', {
+      difficulty: 'hard',
+      requiredLevel: 275,
     })
 
-    expect(res.statusCode).toBe(400)
-    expect(bosses.import).not.toHaveBeenCalled()
+    bosses.upsertDifficulty.mockResolvedValueOnce(false)
+    const gone = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/nobody/difficulties/hard',
+      payload: { requiredLevel: 275 },
+    })
+    expect(gone.statusCode).toBe(404)
+
+    const bad = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/kaling/difficulties/hell',
+      payload: { requiredLevel: 275 },
+    })
+    expect(bad.statusCode).toBe(400)
+  })
+
+  it('DELETE /admin/bosses/:key/difficulties/:difficulty 는 204, 없으면 404, 마지막 줄이면 409 다', async () => {
+    bosses.deleteDifficulty.mockResolvedValueOnce(true)
+    expect(
+      (await app.inject({ method: 'DELETE', url: '/admin/bosses/kaling/difficulties/hard' }))
+        .statusCode,
+    ).toBe(204)
+    expect(bosses.deleteDifficulty).toHaveBeenCalledWith('kaling', 'hard')
+
+    bosses.deleteDifficulty.mockResolvedValueOnce(false)
+    expect(
+      (await app.inject({ method: 'DELETE', url: '/admin/bosses/kaling/difficulties/hard' }))
+        .statusCode,
+    ).toBe(404)
+
+    bosses.deleteDifficulty.mockRejectedValueOnce(new LastDifficulty('kaling'))
+    expect(
+      (await app.inject({ method: 'DELETE', url: '/admin/bosses/kaling/difficulties/hard' }))
+        .statusCode,
+    ).toBe(409)
   })
 
   it('GET /admin/manual-completion/rows 는 줄과 고를 보스를 함께 낸다', async () => {

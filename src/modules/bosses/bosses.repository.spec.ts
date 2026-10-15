@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm'
 
-import { bossDifficulties, bosses, manualCompletionBosses } from '../../database/schema'
+import { bossDifficulties, bosses } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
-import type { BossesImport } from './bosses.dto'
-import { BossesRepository } from './bosses.repository'
+import type { BossInput } from './bosses.dto'
+import { BossesRepository, BossExists, LastDifficulty } from './bosses.repository'
 
-const lotus: BossesImport['bosses'][number] = {
+const lotus: BossInput = {
   key: 'lotus',
   name: '스우',
   alias: '스우',
@@ -17,7 +17,7 @@ const lotus: BossesImport['bosses'][number] = {
     { difficulty: 'hard', requiredLevel: 190 },
   ],
 }
-const meirin: BossesImport['bosses'][number] = {
+const meirin: BossInput = {
   key: 'meirin',
   name: '시즌 보스 메이린',
   alias: '메이린',
@@ -28,10 +28,7 @@ const meirin: BossesImport['bosses'][number] = {
     { difficulty: 'hard', requiredLevel: 280 },
   ],
 }
-const input = (list = [lotus, meirin]): BossesImport => ({
-  rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
-  bosses: list,
-})
+const rules = { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 }
 
 describeDb('BossesRepository', () => {
   let db: TestDb
@@ -54,66 +51,86 @@ describeDb('BossesRepository', () => {
     })
   })
 
-  it('import 는 보스 · 난이도 · 규칙을 넣고 catalog 가 순서대로 돌려준다', async () => {
-    const result = await repo.import(input())
+  it('규칙을 적고 보스를 더하면 catalog 가 더한 순서로 돌려준다. 난이도는 ENUM 순이다', async () => {
+    await repo.setRules(rules)
+    await repo.createBoss(lotus)
+    await repo.createBoss(meirin)
 
-    expect(result).toEqual({ bosses: 2, difficulties: 5, leftover: [] })
     const catalog = await repo.catalog()
     expect(catalog.updatedAt).not.toBeNull()
-    expect(catalog.rules).toEqual({ weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 })
+    expect(catalog.rules).toEqual(rules)
     expect(catalog.bosses.map((b) => b.key)).toEqual(['lotus', 'meirin'])
-    // 난이도는 넣은 순서가 아니라 ENUM 순서다
     expect(catalog.bosses[0]?.difficulties.map((d) => d.difficulty)).toEqual([
       'normal',
       'hard',
       'extreme',
     ])
     expect(catalog.bosses[1]).toEqual({ ...meirin })
+    const rows = await db.select().from(bosses).orderBy(bosses.sortOrder)
+    expect(rows.map((r) => r.sortOrder)).toEqual([0, 1])
   })
 
-  it('다시 넣으면 값을 덮고 빠진 난이도는 지우며 순서를 따라간다', async () => {
-    await repo.import(input())
+  it('규칙을 다시 적으면 덮는다', async () => {
+    await repo.setRules(rules)
+    await repo.setRules({ weeklyBossSelectionLimit: 14, weeklyCrystalSaleLimit: 90 })
 
-    const result = await repo.import(
-      input([
-        { ...meirin, name: '메이린' },
-        { ...lotus, difficulties: [{ difficulty: 'hard', requiredLevel: 200 }] },
-      ]),
+    expect((await repo.catalog()).rules.weeklyBossSelectionLimit).toBe(14)
+  })
+
+  it('같은 key 를 다시 더하면 BossExists 이고 아무것도 안 바뀐다', async () => {
+    await repo.createBoss(lotus)
+
+    await expect(repo.createBoss({ ...lotus, name: '다른 이름' })).rejects.toBeInstanceOf(
+      BossExists,
     )
-
-    expect(result).toEqual({ bosses: 2, difficulties: 3, leftover: [] })
-    const catalog = await repo.catalog()
-    expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin', 'lotus'])
-    expect(catalog.bosses[0]?.name).toBe('메이린')
-    expect(catalog.bosses[1]?.difficulties).toEqual([{ difficulty: 'hard', requiredLevel: 200 }])
-    expect(await db.select().from(bosses)).toHaveLength(2)
+    expect(await db.select().from(bosses)).toHaveLength(1)
     expect(await db.select().from(bossDifficulties)).toHaveLength(3)
   })
 
-  it('JSON 에 없는 보스는 지우지 않고 leftover 로 알린다', async () => {
-    await repo.import(input())
-    const [row] = await db.select({ id: bosses.id }).from(bosses).where(eq(bosses.key, 'meirin'))
-    await db.insert(manualCompletionBosses).values({ bossId: row.id, fromDate: '2026-10-01' })
+  it('난이도 줄을 더하거나 레벨을 갈아 끼우면 보스의 updated_at 이 움직인다', async () => {
+    const { id } = await repo.createBoss(meirin)
+    await db
+      .update(bosses)
+      .set({ updatedAt: new Date('2026-01-01T00:00:00Z') })
+      .where(eq(bosses.id, id))
 
-    const result = await repo.import(input([lotus]))
+    expect(
+      await repo.upsertDifficulty('meirin', { difficulty: 'extreme', requiredLevel: 290 }),
+    ).toBe(true)
+    expect(await repo.upsertDifficulty('meirin', { difficulty: 'hard', requiredLevel: 285 })).toBe(
+      true,
+    )
+    expect(await repo.upsertDifficulty('nobody', { difficulty: 'hard', requiredLevel: 1 })).toBe(
+      false,
+    )
 
-    expect(result.leftover).toEqual(['meirin'])
-    expect(await repo.findByKey('meirin')).not.toBeNull()
+    const catalog = await repo.catalog()
+    expect(catalog.bosses[0]?.difficulties).toEqual([
+      { difficulty: 'normal', requiredLevel: 270 },
+      { difficulty: 'hard', requiredLevel: 285 },
+      { difficulty: 'extreme', requiredLevel: 290 },
+    ])
+    expect(new Date(catalog.updatedAt ?? 0).getTime()).toBeGreaterThan(
+      Date.parse('2026-01-01T00:00:00Z'),
+    )
   })
 
-  it('도중에 실패하면 아무것도 안 바뀐다', async () => {
-    await repo.import(input())
-    const before = await repo.catalog()
+  it('난이도 줄을 지운다. 없으면 false, 마지막 줄이면 LastDifficulty 다', async () => {
+    await repo.createBoss(meirin)
 
-    // DTO 가 막는 값이지만 리포지토리만 놓고 보면 DB 의 ENUM 이 거절해 트랜잭션이 되돌아간다
-    const broken = { ...lotus, difficulties: [{ difficulty: 'hell' as 'easy', requiredLevel: 1 }] }
-    await expect(repo.import(input([{ ...meirin, name: '바뀐 이름' }, broken]))).rejects.toThrow()
+    expect(await repo.deleteDifficulty('meirin', 'hard')).toBe(true)
+    expect(await repo.deleteDifficulty('meirin', 'hard')).toBe(false)
+    expect(await repo.deleteDifficulty('nobody', 'hard')).toBe(false)
+    await expect(repo.deleteDifficulty('meirin', 'normal')).rejects.toBeInstanceOf(LastDifficulty)
 
-    expect(await repo.catalog()).toEqual(before)
+    expect((await repo.catalog()).bosses[0]?.difficulties).toEqual([
+      { difficulty: 'normal', requiredLevel: 270 },
+    ])
   })
 
   it('options 는 드롭다운용 셋만 순서대로 준다', async () => {
-    await repo.import(input())
+    await repo.createBoss(lotus)
+    await repo.createBoss(meirin)
 
     const options = await repo.options()
 

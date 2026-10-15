@@ -11,12 +11,20 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
-import { type BossesImport, bossesImport } from '../bosses/bosses.dto'
-import { BossesRepository } from '../bosses/bosses.repository'
+import {
+  type BossInput,
+  bossInput,
+  bossKeyParam,
+  difficultyParam,
+  type RulesInput,
+  rulesInput,
+} from '../bosses/bosses.dto'
+import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
 import {
   AlreadyOpen,
   ManualCompletionRepository,
@@ -33,6 +41,7 @@ import {
   noticeUpdateBody,
   type OpenBody,
   openBody,
+  requiredLevelBody,
   rowId,
 } from './admin.dto'
 import { BOSSES_HTML } from './views/bosses'
@@ -69,11 +78,58 @@ export class AdminController {
     return BOSSES_HTML
   }
 
-  /** JSON 을 받아 표를 채운다. 검사에 걸리면 400 이고 아무것도 안 바뀐다. */
-  @Post('bosses/import')
-  @HttpCode(200)
-  importBosses(@Body(new ZodValidationPipe(bossesImport)) body: BossesImport) {
-    return this.bosses.import(body)
+  /** 규칙 둘을 적는다. */
+  @Put('bosses/rules')
+  @HttpCode(204)
+  async setRules(@Body(new ZodValidationPipe(rulesInput)) body: RulesInput): Promise<void> {
+    await this.bosses.setRules(body)
+  }
+
+  /** 새 보스를 맨 뒤에 더한다. 같은 key 가 있으면 409 다. */
+  @Post('bosses')
+  @HttpCode(201)
+  async createBoss(@Body(new ZodValidationPipe(bossInput)) body: BossInput) {
+    try {
+      return await this.bosses.createBoss(body)
+    } catch (error) {
+      if (error instanceof BossExists) throw new ConflictException(`이미 있는 보스다: ${body.key}`)
+      throw error
+    }
+  }
+
+  /** 난이도 줄을 더하거나 요구 레벨을 갈아 끼운다. 모르는 보스는 404 다. */
+  @Put('bosses/:key/difficulties/:difficulty')
+  @HttpCode(204)
+  async upsertDifficulty(
+    @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
+    @Param('difficulty', new ZodValidationPipe(difficultyParam))
+    difficulty: BossInput['difficulties'][number]['difficulty'],
+    @Body(new ZodValidationPipe(requiredLevelBody)) body: { requiredLevel: number },
+  ): Promise<void> {
+    if (
+      !(await this.bosses.upsertDifficulty(key, { difficulty, requiredLevel: body.requiredLevel }))
+    ) {
+      throw new NotFoundException(`모르는 보스다: ${key}`)
+    }
+  }
+
+  /** 난이도 줄을 지운다. 없으면 404, 마지막 줄이면 409 다. */
+  @Delete('bosses/:key/difficulties/:difficulty')
+  @HttpCode(204)
+  async deleteDifficulty(
+    @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
+    @Param('difficulty', new ZodValidationPipe(difficultyParam))
+    difficulty: BossInput['difficulties'][number]['difficulty'],
+  ): Promise<void> {
+    try {
+      if (!(await this.bosses.deleteDifficulty(key, difficulty))) throw new NotFoundException()
+    } catch (error) {
+      if (error instanceof LastDifficulty)
+        throw new ConflictException(
+          '마지막 난이도는 못 지운다. 난이도 없는 보스는 앱이 표 전체를 거절한다',
+        )
+      throw error
+    }
   }
 
   @Get('manual-completion')

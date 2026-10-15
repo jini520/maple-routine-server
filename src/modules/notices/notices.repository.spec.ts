@@ -128,4 +128,46 @@ describeDb('NoticesRepository', () => {
     expect(rows.map((r) => r.noticeKey)).toEqual(['event-1', 'event-2'])
     expect(rows[0]).toHaveProperty('blocks')
   })
+
+  it('운영자 공지 다섯 메서드는 app 만 보고 넥슨 공지는 없는 것으로 친다', async () => {
+    const { id: appId } = await repo.insert(
+      notice({
+        noticeKey: 'notice-1',
+        kind: 'app',
+        body: '본문',
+        scheduledAt: new Date('2026-12-01T00:00:00Z'),
+      }),
+    )
+    const { id: gameId } = await repo.insert(notice({ noticeKey: 'game-1' }))
+
+    expect((await repo.listApp(10)).map((r) => r.noticeKey)).toEqual(['notice-1'])
+    expect(await repo.findAppById(gameId)).toBeNull()
+    expect((await repo.findAppById(appId))?.noticeKey).toBe('notice-1')
+
+    expect(await repo.updateApp(gameId, { title: 'x', body: 'y', link: null })).toBe(false)
+    expect(
+      await repo.updateApp(appId, { title: '고친 제목', body: '고친 본문', link: 'https://l' }),
+    ).toBe(true)
+    const updated = await repo.findAppById(appId)
+    expect(updated).toMatchObject({ title: '고친 제목', body: '고친 본문', link: 'https://l' })
+    expect(updated?.publishedAt).toEqual(new Date('2026-10-01T00:00:00Z'))
+
+    expect(await repo.cancelSchedule(appId)).toBe(true)
+    expect((await repo.findAppById(appId))?.scheduledAt).toBeNull()
+    expect(await repo.cancelSchedule(appId)).toBe(false)
+
+    expect(await repo.deleteApp(gameId)).toBe(false)
+    expect(await repo.deleteApp(appId)).toBe(true)
+    expect(await repo.findByKey('game-1')).not.toBeNull()
+    expect(await repo.findByKey('notice-1')).toBeNull()
+  })
+
+  it('이미 나간 예약은 취소할 수 없다', async () => {
+    const { id } = await repo.insert(
+      notice({ noticeKey: 'notice-2', kind: 'app', scheduledAt: new Date('2026-10-02T00:00:00Z') }),
+    )
+    await repo.markSent(id, new Date())
+
+    expect(await repo.cancelSchedule(id)).toBe(false)
+  })
 })

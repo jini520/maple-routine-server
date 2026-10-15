@@ -1,9 +1,143 @@
 {
-  "id": "56a9f3f3-25e6-4308-ae7d-78c441a1bf0b",
+  "id": "30fb78ad-76d1-4582-ac6a-eed2868a67d3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.boss_difficulties": {
+      "name": "boss_difficulties",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "boss_id": {
+          "name": "boss_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "difficulty": {
+          "name": "difficulty",
+          "type": "boss_difficulty",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "required_level": {
+          "name": "required_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "boss_difficulties_boss_id_bosses_id_fk": {
+          "name": "boss_difficulties_boss_id_bosses_id_fk",
+          "tableFrom": "boss_difficulties",
+          "tableTo": "bosses",
+          "columnsFrom": [
+            "boss_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "boss_difficulties_boss_difficulty_unique": {
+          "name": "boss_difficulties_boss_difficulty_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "boss_id",
+            "difficulty"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bosses": {
+      "name": "bosses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alias": {
+          "name": "alias",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cycle": {
+          "name": "cycle",
+          "type": "boss_cycle",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "portrait_slug": {
+          "name": "portrait_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bosses_key_unique": {
+          "name": "bosses_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.drop_prices": {
       "name": "drop_prices",
       "schema": "",
@@ -24,6 +158,13 @@
         "drop_record_id": {
           "name": "drop_record_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "identified_by": {
+          "name": "identified_by",
+          "type": "identity_source",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
@@ -125,11 +266,59 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "drop_prices_drop_record_id_unique": {
-          "name": "drop_prices_drop_record_id_unique",
+        "drop_prices_user_record_unique": {
+          "name": "drop_prices_user_record_unique",
           "nullsNotDistinct": false,
           "columns": [
+            "user_id",
             "drop_record_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.game_rules": {
+      "name": "game_rules",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "game_rules_key_unique": {
+          "name": "game_rules_key_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "key"
           ]
         }
       },
@@ -148,9 +337,9 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "boss": {
-          "name": "boss",
-          "type": "text",
+        "boss_id": {
+          "name": "boss_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -174,18 +363,41 @@
           "notNull": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "manual_completion_bosses_boss_unique": {
-          "name": "manual_completion_bosses_boss_unique",
-          "nullsNotDistinct": false,
+      "indexes": {
+        "manual_completion_bosses_open_unique": {
+          "name": "manual_completion_bosses_open_unique",
           "columns": [
-            "boss"
-          ]
+            {
+              "expression": "boss_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"manual_completion_bosses\".\"closed_at\" IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
+      "foreignKeys": {
+        "manual_completion_bosses_boss_id_bosses_id_fk": {
+          "name": "manual_completion_bosses_boss_id_bosses_id_fk",
+          "tableFrom": "manual_completion_bosses",
+          "tableTo": "bosses",
+          "columnsFrom": [
+            "boss_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -699,6 +911,34 @@
     }
   },
   "enums": {
+    "public.boss_cycle": {
+      "name": "boss_cycle",
+      "schema": "public",
+      "values": [
+        "weekly",
+        "event_weekly",
+        "monthly"
+      ]
+    },
+    "public.boss_difficulty": {
+      "name": "boss_difficulty",
+      "schema": "public",
+      "values": [
+        "easy",
+        "normal",
+        "hard",
+        "chaos",
+        "extreme"
+      ]
+    },
+    "public.identity_source": {
+      "name": "identity_source",
+      "schema": "public",
+      "values": [
+        "login",
+        "key"
+      ]
+    },
     "public.notice_kind": {
       "name": "notice_kind",
       "schema": "public",

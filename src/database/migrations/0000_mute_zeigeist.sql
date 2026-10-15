@@ -1,9 +1,33 @@
+CREATE TYPE "public"."boss_cycle" AS ENUM('weekly', 'event_weekly', 'monthly');--> statement-breakpoint
+CREATE TYPE "public"."boss_difficulty" AS ENUM('easy', 'normal', 'hard', 'chaos', 'extreme');--> statement-breakpoint
+CREATE TYPE "public"."identity_source" AS ENUM('login', 'key');--> statement-breakpoint
 CREATE TYPE "public"."notice_kind" AS ENUM('app', 'game', 'event', 'update', 'cashshop');--> statement-breakpoint
 CREATE TYPE "public"."platform" AS ENUM('ios', 'android');--> statement-breakpoint
+CREATE TABLE "boss_difficulties" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"boss_id" uuid NOT NULL,
+	"difficulty" "boss_difficulty" NOT NULL,
+	"required_level" integer NOT NULL,
+	CONSTRAINT "boss_difficulties_boss_difficulty_unique" UNIQUE("boss_id","difficulty")
+);
+--> statement-breakpoint
+CREATE TABLE "bosses" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"key" text NOT NULL,
+	"name" text NOT NULL,
+	"alias" text NOT NULL,
+	"cycle" "boss_cycle" NOT NULL,
+	"portrait_slug" text NOT NULL,
+	"sort_order" integer NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "bosses_key_unique" UNIQUE("key")
+);
+--> statement-breakpoint
 CREATE TABLE "drop_prices" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"drop_record_id" uuid NOT NULL,
+	"identified_by" "identity_source" NOT NULL,
 	"item_key" text NOT NULL,
 	"price_meso" bigint NOT NULL,
 	"period_key" text NOT NULL,
@@ -13,16 +37,23 @@ CREATE TABLE "drop_prices" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	CONSTRAINT "drop_prices_drop_record_id_unique" UNIQUE("drop_record_id")
+	CONSTRAINT "drop_prices_user_record_unique" UNIQUE("user_id","drop_record_id")
+);
+--> statement-breakpoint
+CREATE TABLE "game_rules" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"key" text NOT NULL,
+	"value" integer NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "game_rules_key_unique" UNIQUE("key")
 );
 --> statement-breakpoint
 CREATE TABLE "manual_completion_bosses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"boss" text NOT NULL,
+	"boss_id" uuid NOT NULL,
 	"from_date" text NOT NULL,
 	"opened_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"closed_at" timestamp with time zone,
-	CONSTRAINT "manual_completion_bosses_boss_unique" UNIQUE("boss")
+	"closed_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "nexon_login_attempts" (
@@ -86,10 +117,13 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_identity" CHECK ("users"."nexon_uid" IS NOT NULL OR "users"."api_key_hash" IS NOT NULL)
 );
 --> statement-breakpoint
+ALTER TABLE "boss_difficulties" ADD CONSTRAINT "boss_difficulties_boss_id_bosses_id_fk" FOREIGN KEY ("boss_id") REFERENCES "public"."bosses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "drop_prices" ADD CONSTRAINT "drop_prices_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "manual_completion_bosses" ADD CONSTRAINT "manual_completion_bosses_boss_id_bosses_id_fk" FOREIGN KEY ("boss_id") REFERENCES "public"."bosses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "nexon_login_attempts" ADD CONSTRAINT "nexon_login_attempts_session_id_nexon_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."nexon_sessions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "nexon_sessions" ADD CONSTRAINT "nexon_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "drop_prices_item_period_idx" ON "drop_prices" USING btree ("item_key","period_key") WHERE "drop_prices"."deleted_at" IS NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "manual_completion_bosses_open_unique" ON "manual_completion_bosses" USING btree ("boss_id") WHERE "manual_completion_bosses"."closed_at" IS NULL;--> statement-breakpoint
 CREATE INDEX "nexon_login_attempts_expires_at_idx" ON "nexon_login_attempts" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "nexon_sessions_user_id_idx" ON "nexon_sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "nexon_sessions_refresh_expires_at_idx" ON "nexon_sessions" USING btree ("refresh_expires_at");--> statement-breakpoint

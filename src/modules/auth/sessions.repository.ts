@@ -83,6 +83,11 @@ export class SessionsRepository {
     await this.db.delete(nexonSessions).where(eq(nexonSessions.sessionHash, sessionHash))
   }
 
+  /** 탈퇴가 부른다. 세션은 기록이 아니라 살아 있는 자격 증명이라 기기 둘 것을 다 거둔다. */
+  async deleteByUserId(userId: string): Promise<void> {
+    await this.db.delete(nexonSessions).where(eq(nexonSessions.userId, userId))
+  }
+
   /** 갱신 토큰이 죽은 세션은 누구에게도 쓸모가 없다. 추론이 아니라 기록이라 그냥 지운다. */
   async deleteExpired(): Promise<number> {
     const rows = await this.db

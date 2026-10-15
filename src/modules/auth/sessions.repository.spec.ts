@@ -89,6 +89,19 @@ describeDb('SessionsRepository', () => {
     expect(await repo.findByHash(sha256('s'))).toBeNull()
   })
 
+  it('deleteByUserId 는 그 사람의 세션을 전부 지우고 남의 것은 둔다', async () => {
+    await repo.create(input('ios'))
+    await repo.create({ ...input('android'), platform: 'android' })
+    const [other] = await db.insert(users).values({ nexonUid: 'o' }).returning({ id: users.id })
+    await repo.create({ ...input('other'), userId: other.id })
+
+    await repo.deleteByUserId(userId)
+
+    expect(await repo.findByHash(sha256('ios'))).toBeNull()
+    expect(await repo.findByHash(sha256('android'))).toBeNull()
+    expect(await repo.findByHash(sha256('other'))).not.toBeNull()
+  })
+
   it('deleteExpired 는 refresh 가 만료된 행만 지운다', async () => {
     await repo.create(input('live'))
     await repo.create({ ...input('dead'), refreshExpiresAt: new Date(Date.now() - 1_000) })

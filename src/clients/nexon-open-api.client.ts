@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
 import type { Env } from '../config/env.schema'
+import { errorNameOf } from './nexon-error'
 
 /** 넥슨이 주는 공지 분류 넷. app 은 여기 없다. */
 export type NexonNoticeKind = 'game' | 'update' | 'event' | 'cashshop'
@@ -25,11 +26,15 @@ export interface NexonNoticeDetail {
 }
 
 export class NexonOpenApiError extends Error {
+  /** 본문의 error.name. 결산 중(OPENAPI00009)을 여기서 가른다. */
+  readonly errorName: string | null
+
   constructor(
     readonly status: number,
     body: string,
   ) {
     super(`넥슨 Open API 가 ${status} 를 냈다: ${body}`)
+    this.errorName = errorNameOf(body)
   }
 }
 
@@ -82,6 +87,13 @@ export class NexonOpenApiClient {
       eventStart: strOrNull(body.date_event_start),
       eventEnd: strOrNull(body.date_event_end),
     }
+  }
+
+  /** 스케줄러 캐릭터 상태. 결산 중이면 넥슨이 400 OPENAPI00009 로 거절하고 그것이 신호다. 본문은 안 쓴다. */
+  async characterState(ocid: string, date: string): Promise<void> {
+    await this.getJson(
+      `/maplestory/v1/scheduler/character-state?ocid=${encodeURIComponent(ocid)}&date=${date}`,
+    )
   }
 
   private async getJson(path: string): Promise<unknown> {

@@ -25,6 +25,9 @@ const TABLES = [
   'users',
   'notices',
   'manual_completion_bosses',
+  'boss_difficulties',
+  'bosses',
+  'game_rules',
 ] as const
 
 export async function openTestDb(): Promise<{

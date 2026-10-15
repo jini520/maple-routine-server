@@ -1,15 +1,10 @@
 import { NestFactory } from '@nestjs/core'
 
+import { operatorNoticeKey } from '../modules/notices/notice-key'
 import { type NewNotice, NoticesRepository } from '../modules/notices/notices.repository'
 import { messageFor, type PushableNotice } from '../modules/push/push-text'
 import { PushService } from '../modules/push/push.service'
 import { parseNoticeArgs } from './notice-args'
-
-/** 운영자 공지의 열쇠. notice-YYYYMMDD-HHMMSS(UTC). 옛 줄과 같은 꼴이다. */
-function keyOf(now: Date): string {
-  const stamp = now.toISOString().replace(/[-:]/g, '')
-  return `notice-${stamp.slice(0, 8)}-${stamp.slice(9, 15)}`
-}
 
 async function main(): Promise<void> {
   const args = parseNoticeArgs(process.argv.slice(2))
@@ -24,7 +19,7 @@ async function main(): Promise<void> {
       case 'send': {
         const now = new Date()
         const row: NewNotice = {
-          noticeKey: args.id ?? keyOf(now),
+          noticeKey: args.id ?? operatorNoticeKey(now),
           kind: 'app',
           title: args.title,
           body: args.body,

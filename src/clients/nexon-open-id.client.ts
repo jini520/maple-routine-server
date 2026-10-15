@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
 import type { Env } from '../config/env.schema'
+import { errorNameOf } from './nexon-error'
 
 export type Platform = 'ios' | 'android'
 
@@ -151,15 +152,5 @@ export class NexonOpenIdClient {
       throw new NexonCredentialMissing(`${platform} 의 넥슨 자격 쌍이 env 에 없다`)
     }
     return { clientId, clientSecret }
-  }
-}
-
-/** 넥슨 에러 본문은 { error: { name, message } } 다. JSON 이 아니면 이름이 없다. */
-function errorNameOf(text: string): string | null {
-  try {
-    const body = JSON.parse(text) as { error?: { name?: unknown } }
-    return typeof body.error?.name === 'string' ? body.error.name : null
-  } catch {
-    return null
   }
 }

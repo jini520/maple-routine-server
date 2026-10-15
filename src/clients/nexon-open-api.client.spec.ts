@@ -102,4 +102,40 @@ describe('NexonOpenApiClient', () => {
 
     await expect(client.noticeList('game')).rejects.toThrow('429')
   })
+
+  it('characterState 는 ocid 와 date 를 실어 부르고 200 이면 조용히 끝난다', async () => {
+    fetchMock.mockImplementation(answer(200, { date: '2026-10-14' }))
+    const client = clientOf('KEY')
+
+    await expect(client.characterState('oc id', '2026-10-14')).resolves.toBeUndefined()
+
+    const [url] = fetchMock.mock.calls[0] as [string]
+    expect(url).toBe(
+      'https://open.api.nexon.com/maplestory/v1/scheduler/character-state?ocid=oc%20id&date=2026-10-14',
+    )
+  })
+
+  it('넥슨이 거절하면 본문의 error.name 을 든 에러를 던진다', async () => {
+    fetchMock.mockImplementation(
+      answer(400, { error: { name: 'OPENAPI00009', message: '데이터 준비 중' } }),
+    )
+    const client = clientOf('KEY')
+
+    await expect(client.characterState('o', '2026-10-14')).rejects.toMatchObject({
+      status: 400,
+      errorName: 'OPENAPI00009',
+    })
+  })
+
+  it('본문이 JSON 이 아니면 errorName 은 null 이다', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response('bad gateway', { status: 502 })),
+    )
+    const client = clientOf('KEY')
+
+    await expect(client.characterState('o', '2026-10-14')).rejects.toMatchObject({
+      status: 502,
+      errorName: null,
+    })
+  })
 })

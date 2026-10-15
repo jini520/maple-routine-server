@@ -10,6 +10,7 @@ import {
   pageLine,
   sanitizeBody,
 } from './lines'
+import { errorNameOf } from '../../clients/nexon-error'
 
 /** 넥슨 쪽 하나. status 0 은 못 닿은 것이다. */
 export interface PageResult {
@@ -84,7 +85,7 @@ export async function runStream(options: RunOptions): Promise<RunSummary> {
       if (signal.aborted) return
       if (page.status !== 200 || !isJsonObject(page.body)) {
         state.failed += 1
-        await sink.write(failLine(task, page.status))
+        await sink.write(failLine(task, page.status, errorNameOf(page.body.toString('utf8'))))
         return
       }
       const body = sanitizeBody(page.body)

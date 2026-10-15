@@ -16,8 +16,11 @@ export function pathOf(task: StreamTask, cursor: string | null): string {
   switch (task.kind) {
     case 'character-list':
       return '/maplestory/v1/character/list'
-    case 'character-state':
-      return `/maplestory/v1/scheduler/character-state?ocid=${encodeURIComponent(task.ocid)}&date=${task.date}`
+    case 'character-state': {
+      // date 가 없으면 오늘이다. 자정 전 결산 중에도 200 을 주는 조회라 앱이 그대로 쓴다.
+      const date = task.date === undefined ? '' : `&date=${task.date}`
+      return `/maplestory/v1/scheduler/character-state?ocid=${encodeURIComponent(task.ocid)}${date}`
+    }
     default: {
       const tail = cursor === null ? `date=${task.date}` : `cursor=${encodeURIComponent(cursor)}`
       return `/maplestory/v1/history/${task.kind}?count=${PAGE_SIZE}&${tail}`
@@ -65,9 +68,13 @@ export function doneLine(task: StreamTask, pages: number): Buffer {
   return Buffer.from(`${JSON.stringify({ t: 'done', ...task, pages })}\n`)
 }
 
-/** status 0 은 HTTP 가 아니다. 못 닿았거나 10초를 넘겼거나 쪽이 안전핀을 넘은 것이다. */
-export function failLine(task: StreamTask, status: number): Buffer {
-  return Buffer.from(`${JSON.stringify({ t: 'fail', ...task, status })}\n`)
+/**
+ * status 0 은 HTTP 가 아니다. 못 닿았거나 10초를 넘겼거나 쪽이 안전핀을 넘은 것이다.
+ * code 는 넥슨 본문의 error.name 이다. 앱이 400 을 날짜 문제(OPENAPI00004) · 결산 중(00009) · 영구 불가(00003)로 가른다.
+ */
+export function failLine(task: StreamTask, status: number, code: string | null = null): Buffer {
+  const line = code === null ? { t: 'fail', ...task, status } : { t: 'fail', ...task, status, code }
+  return Buffer.from(`${JSON.stringify(line)}\n`)
 }
 
 export function endLine(reason: EndReason): Buffer {

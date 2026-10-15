@@ -110,13 +110,13 @@ describe('AuthService', () => {
     expect(sealed.receiptHash.equals(sha256(receipt!))).toBe(true)
   })
 
-  it('안드로이드는 App Link 주소로 돌아간다', async () => {
+  it('안드로이드도 지금은 스킴으로 돌아간다. App Link 필터는 다음 스토어 빌드를 기다린다', async () => {
     const { service, attempts } = build()
     attempts.claim.mockResolvedValue({ id: 'aid', platform: 'android' })
 
     const url = await service.callback({ code: 'CODE', state: 'ST' })
 
-    expect(url.startsWith('https://mapleroutine.store/app/oauth/return?receipt=')).toBe(true)
+    expect(url.startsWith('com.mapleroutine.app://oauth/callback?receipt=')).toBe(true)
   })
 
   it('state 를 못 집으면 스킴 주소만 돌려준다', async () => {

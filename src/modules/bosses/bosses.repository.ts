@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { DB, type Db } from '../../database/database.module'
 import { bossDifficulties, bosses, gameRules } from '../../database/schema'
 import {
+  BOSS_DIFFICULTIES,
   type BossInput,
   type DifficultyInput,
   RULE_KEYS,
@@ -174,6 +175,22 @@ export class BossesRepository {
       .select({ id: bosses.id, key: bosses.key, name: bosses.name })
       .from(bosses)
       .orderBy(asc(bosses.sortOrder), asc(bosses.key))
+  }
+
+  /** 보스 key 와 난이도로 난이도 줄 하나. 표에 없는 쌍이거나 난이도가 ENUM 밖이면 null 이다. */
+  async findDifficulty(key: string, difficulty: string): Promise<{ id: string } | null> {
+    if (!(BOSS_DIFFICULTIES as readonly string[]).includes(difficulty)) return null
+    const [row] = await this.db
+      .select({ id: bossDifficulties.id })
+      .from(bossDifficulties)
+      .innerJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
+      .where(
+        and(
+          eq(bosses.key, key),
+          eq(bossDifficulties.difficulty, difficulty as DifficultyInput['difficulty']),
+        ),
+      )
+    return row ?? null
   }
 
   async findByKey(key: string): Promise<{ id: string } | null> {

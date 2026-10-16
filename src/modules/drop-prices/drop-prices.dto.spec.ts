@@ -8,12 +8,23 @@ const ok = {
   worldKey: 'scania',
   ringLevel: 4,
   slot: null,
+  boss: 'lucid',
+  difficulty: 'hard',
 }
 
 describe('dropPriceBody', () => {
   it('앱이 보내는 모양을 받는다. 월간 periodKey 도 된다', () => {
     expect(dropPriceBody.safeParse(ok).success).toBe(true)
     expect(dropPriceBody.safeParse({ ...ok, periodKey: '2026-10' }).success).toBe(true)
+  })
+
+  // 이 칸 둘이 생기기 전 OTA 가 둘 없이 보낸다. 거절하면 앱이 5회 뒤 그 건을 버린다.
+  it('보스 · 난이도는 없어도 받는다', () => {
+    const without: Record<string, unknown> = { ...ok }
+    delete without.boss
+    delete without.difficulty
+    expect(dropPriceBody.safeParse(without).success).toBe(true)
+    expect(dropPriceBody.safeParse({ ...ok, boss: '' }).success).toBe(false)
   })
 
   it('nullable 셋은 null 도 빠진 것도 받는다', () => {

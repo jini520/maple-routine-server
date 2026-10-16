@@ -66,4 +66,22 @@ describe('rulesInput · difficultyInput', () => {
     expect(periodInput.safeParse({ from: '2026-11-05', until: '2026-07-03' }).success).toBe(false)
     expect(periodInput.safeParse({ until: '2026-11-5' }).success).toBe(false)
   })
+
+  it('difficultyInput 도 유효 기간 둘을 받고 끝이 앞이면 거절한다', () => {
+    expect(
+      difficultyInput.safeParse({
+        difficulty: 'extreme',
+        requiredLevel: 1,
+        from: '2026-11-05T10:00',
+      }).success,
+    ).toBe(true)
+    expect(
+      difficultyInput.safeParse({
+        difficulty: 'extreme',
+        requiredLevel: 1,
+        from: '2026-11-05',
+        until: '2026-11-01',
+      }).success,
+    ).toBe(false)
+  })
 })

@@ -173,6 +173,9 @@ export const bossDifficulties = pgTable(
     requiredLevel: integer('required_level').notNull(),
     /** 결정석을 나누는 파티 인원 상한. NULL 이면 game_rules 의 default_max_party_size 다. */
     maxPartySize: integer('max_party_size'),
+    /** 난이도의 유효 기간. 보스의 기간과 겹치는 범위만 유효하다. 새로 생긴 난이도가 시작을 든다. */
+    from: text('from'),
+    until: text('until'),
   },
   (t) => [unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty)],
 )

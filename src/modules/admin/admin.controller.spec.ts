@@ -36,6 +36,7 @@ describe('AdminController', () => {
     catalog: jest.fn(),
     setMaxPartySize: jest.fn(),
     setPeriod: jest.fn(),
+    setDifficultyPeriod: jest.fn(),
   }
   const items = { section: jest.fn(), create: jest.fn(), update: jest.fn() }
   const boxes = {
@@ -766,6 +767,38 @@ describe('AdminController', () => {
           method: 'PUT',
           url: '/admin/bosses/meirin/period',
           payload: { from: '2026-11-05', until: '2026-07-03' },
+        })
+      ).statusCode,
+    ).toBe(400)
+  })
+
+  it('PUT /admin/bosses/:key/difficulties/:difficulty/period 는 204, 모르는 조합은 404 다', async () => {
+    bosses.setDifficultyPeriod.mockResolvedValue(true)
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/lotus/difficulties/extreme/period',
+      payload: { from: '2026-11-05T10:00' },
+    })
+    expect(ok.statusCode).toBe(204)
+    expect(bosses.setDifficultyPeriod).toHaveBeenCalledWith('lotus', 'extreme', {
+      from: '2026-11-05T10:00',
+    })
+    bosses.setDifficultyPeriod.mockResolvedValue(false)
+    expect(
+      (
+        await app.inject({
+          method: 'PUT',
+          url: '/admin/bosses/lotus/difficulties/easy/period',
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(404)
+    expect(
+      (
+        await app.inject({
+          method: 'PUT',
+          url: '/admin/bosses/lotus/difficulties/ultra/period',
+          payload: {},
         })
       ).statusCode,
     ).toBe(400)

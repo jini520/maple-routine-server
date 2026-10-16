@@ -151,7 +151,12 @@ describeDb('seedGameData', () => {
     expect(catalog.rules).toEqual(bossesSeed.rules)
     expect(catalog.bosses.map((b) => b.key)).toEqual(['lotus', 'meirin'])
     expect(catalog.bosses[0]?.difficulties).toEqual(
-      bossesSeed.bosses[0]?.difficulties.map((d) => ({ ...d, maxPartySize: null })),
+      bossesSeed.bosses[0]?.difficulties.map((d) => ({
+        ...d,
+        maxPartySize: null,
+        from: null,
+        until: null,
+      })),
     )
   })
 

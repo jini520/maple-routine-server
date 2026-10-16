@@ -160,6 +160,19 @@ export class AdminController {
       throw new NotFoundException(`모르는 보스다: ${key}`)
   }
 
+  /** 난이도 줄의 유효 기간 둘을 적는다. 새로 생긴 난이도의 시작이 그것이다. 모르는 조합은 404 다. */
+  @Put('bosses/:key/difficulties/:difficulty/period')
+  @HttpCode(204)
+  async setDifficultyPeriod(
+    @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
+    @Param('difficulty', new ZodValidationPipe(difficultyParam))
+    difficulty: BossInput['difficulties'][number]['difficulty'],
+    @Body(new ZodValidationPipe(periodInput)) body: PeriodInput,
+  ): Promise<void> {
+    if (!(await this.bosses.setDifficultyPeriod(key, difficulty, body)))
+      throw new NotFoundException(`모르는 보스 난이도다: ${key}/${difficulty}`)
+  }
+
   /** 난이도 줄을 더하거나 요구 레벨을 갈아 끼운다. 모르는 보스는 404 다. */
   @Put('bosses/:key/difficulties/:difficulty')
   @HttpCode(204)

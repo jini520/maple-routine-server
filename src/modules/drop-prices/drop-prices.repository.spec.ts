@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { dropPrices, users } from '../../database/schema'
+import { BossesRepository } from '../bosses/bosses.repository'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { type DropPriceInput, DropPricesRepository } from './drop-prices.repository'
 
@@ -24,6 +25,7 @@ describeDb('DropPricesRepository', () => {
     worldKey: 'scania',
     ringLevel: 4,
     slot: null,
+    bossDifficultyId: null,
     ...over,
   })
 
@@ -63,6 +65,32 @@ describeDb('DropPricesRepository', () => {
     expect(rows.map((r) => [r.userId, r.priceMeso])).toEqual([
       [me, 1],
       [other, 999],
+    ])
+  })
+
+  it('보스 난이도 줄을 가리킬 수 있고 recent 가 보스 key 와 난이도를 함께 낸다', async () => {
+    const bosses = new BossesRepository(db)
+    await bosses.createBoss({
+      key: 'lucid',
+      name: '루시드',
+      alias: '루시드',
+      cycle: 'weekly',
+      portraitSlug: 'lucid',
+      difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+    })
+    const found = await bosses.findDifficulty('lucid', 'hard')
+    expect(found).not.toBeNull()
+    expect(await bosses.findDifficulty('lucid', 'chaos')).toBeNull()
+    expect(await bosses.findDifficulty('nobody', 'hard')).toBeNull()
+    expect(await bosses.findDifficulty('lucid', 'ultra')).toBeNull()
+
+    await repo.upsert(input({ bossDifficultyId: found?.id ?? null }))
+    await repo.upsert(input({ dropRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a52', priceMeso: 5 }))
+
+    const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    expect(rows.map((r) => [r.priceMeso, r.boss, r.difficulty])).toEqual([
+      [5, null, null],
+      [100, 'lucid', 'hard'],
     ])
   })
 

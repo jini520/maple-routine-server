@@ -217,6 +217,10 @@ export const dropPrices = pgTable(
     worldKey: text('world_key'),
     ringLevel: integer('ring_level'),
     slot: text('slot'),
+    /** 어느 보스 · 난이도에서 얻었나. 표에 없는 쌍이거나 이 칸이 생기기 전 줄은 NULL. */
+    bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
     /** 가격을 뺐다. NULL 이 있다는 뜻. */

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { dropPrices } from '../../database/schema'
+import { bossDifficulties, bosses, dropPrices } from '../../database/schema'
 import type { IdentitySource } from '../identity/identity.guard'
 
 export interface DropPriceInput {
@@ -15,6 +15,8 @@ export interface DropPriceInput {
   worldKey: string | null
   ringLevel: number | null
   slot: string | null
+  /** 보스 난이도 줄. 표에 없는 쌍이면 null. */
+  bossDifficultyId: string | null
 }
 
 /** 관리 화면이 보는 줄. 뺀 가격도 deleted_at 을 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
@@ -29,6 +31,9 @@ export interface DropPriceAdminRow {
   worldKey: string | null
   ringLevel: number | null
   slot: string | null
+  /** 보스 key 와 난이도. 줄이 안 가리키면 둘 다 null. */
+  boss: string | null
+  difficulty: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -57,8 +62,14 @@ export class DropPricesRepository {
   /** 최근 것부터. 필터는 아이템 key 와 기간 key 둘이고 비우면 전부다. */
   async recent(filter: DropPriceFilter, limit: number): Promise<DropPriceAdminRow[]> {
     const rows = await this.db
-      .select()
+      .select({
+        price: dropPrices,
+        boss: bosses.key,
+        difficulty: bossDifficulties.difficulty,
+      })
       .from(dropPrices)
+      .leftJoin(bossDifficulties, eq(dropPrices.bossDifficultyId, bossDifficulties.id))
+      .leftJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
       .where(
         and(
           filter.itemKey === null ? undefined : eq(dropPrices.itemKey, filter.itemKey),
@@ -67,7 +78,7 @@ export class DropPricesRepository {
       )
       .orderBy(desc(dropPrices.updatedAt), desc(dropPrices.id))
       .limit(limit)
-    return rows.map((r) => ({
+    return rows.map(({ price: r, boss, difficulty }) => ({
       id: r.id,
       userId: r.userId,
       identifiedBy: r.identifiedBy,
@@ -78,6 +89,8 @@ export class DropPricesRepository {
       worldKey: r.worldKey,
       ringLevel: r.ringLevel,
       slot: r.slot,
+      boss,
+      difficulty,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       deletedAt: r.deletedAt?.toISOString() ?? null,

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
+import { BossesRepository } from '../bosses/bosses.repository'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
 import { type DropPriceBody, dropPriceBody, uuidLike } from './drop-prices.dto'
 import { DropPricesRepository } from './drop-prices.repository'
@@ -9,15 +10,22 @@ import { DropPricesRepository } from './drop-prices.repository'
 @Controller()
 @UseGuards(IdentityGuard)
 export class DropPricesController {
-  constructor(private readonly prices: DropPricesRepository) {}
+  constructor(
+    private readonly prices: DropPricesRepository,
+    private readonly bosses: BossesRepository,
+  ) {}
 
-  /** 한 건을 적는다. 같은 값을 다시 보내도 줄이 안 늘고 200 이다. */
+  /** 한 건을 적는다. 같은 값을 다시 보내도 줄이 안 늘고 200 이다. 보스 · 난이도는 표의 줄로 바꿔 적고, 못 찾으면 NULL 이다. */
   @Post('v1/drop-prices')
   @HttpCode(200)
   async upsert(
     @CurrentIdentity() identity: IdentityContext,
     @Body(new ZodValidationPipe(dropPriceBody)) body: DropPriceBody,
   ): Promise<{ ok: true }> {
+    const difficultyRow =
+      body.boss != null && body.difficulty != null
+        ? await this.bosses.findDifficulty(body.boss, body.difficulty)
+        : null
     await this.prices.upsert({
       userId: identity.userId,
       identifiedBy: identity.source,
@@ -28,6 +36,7 @@ export class DropPricesController {
       worldKey: body.worldKey ?? null,
       ringLevel: body.ringLevel ?? null,
       slot: body.slot ?? null,
+      bossDifficultyId: difficultyRow?.id ?? null,
     })
     return { ok: true }
   }

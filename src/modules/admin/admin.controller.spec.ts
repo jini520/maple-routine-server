@@ -66,14 +66,16 @@ describe('AdminController', () => {
     }
   })
 
+  const PAGES = [
+    '/admin',
+    '/admin/bosses',
+    '/admin/manual-completion',
+    '/admin/notices',
+    '/admin/drop-prices',
+  ]
+
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
-    for (const url of [
-      '/admin',
-      '/admin/bosses',
-      '/admin/manual-completion',
-      '/admin/notices',
-      '/admin/drop-prices',
-    ]) {
+    for (const url of PAGES) {
       const res = await app.inject({ method: 'GET', url })
       expect(res.statusCode).toBe(200)
       expect(res.headers['content-type']).toContain('text/html')
@@ -83,6 +85,15 @@ describe('AdminController', () => {
       const helper = res.body.indexOf('async function call(')
       const firstUse = res.body.indexOf("call('")
       if (firstUse >= 0) expect(helper).toBeLessThan(firstUse)
+    }
+  })
+
+  it('메뉴는 지금 보는 화면 하나에만 aria-current 를 단다', async () => {
+    for (const url of PAGES) {
+      const res = await app.inject({ method: 'GET', url })
+      const current = res.body.match(/<a [^>]*aria-current="page"[^>]*>/g) ?? []
+      expect(current).toHaveLength(1)
+      expect(current[0]).toContain(`href="${url}"`)
     }
   })
 

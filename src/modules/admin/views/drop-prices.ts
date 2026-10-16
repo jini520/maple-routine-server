@@ -5,22 +5,31 @@ import { layout } from './layout'
  * 노이즈를 눈으로 보는 자리라 뺀 가격도 줄에는 흐리게 남는다. 분포에는 안 들어간다.
  */
 export const DROP_PRICES_HTML = layout(
+  '/admin/drop-prices',
   '드롭 가격',
-  `<h1>드롭 가격</h1>
-<p>앱이 보낸 판매 총액이다. 분포는 뺀 가격을 빼고 세고, 줄 목록은 뺀 가격도 흐리게 보인다.</p>
-<div id="message"></div>
-<p>
-  <label>아이템 key <input id="item" type="text" placeholder="비우면 전부"></label>
-  <label>기간 key <input id="period" type="text" placeholder="2026-10-08 또는 2026-10"></label>
-  <label>줄 수 <input id="limit" type="number" min="1" max="1000" value="200" style="width:80px"></label>
-  <button id="load">보기</button>
-</p>
-<h2>분포</h2>
-<table><thead><tr><th>아이템</th><th>기간</th><th>개수</th><th>최소</th><th>중앙값</th><th>최대</th></tr></thead><tbody id="summary"></tbody></table>
-<h2>최근 줄</h2>
-<table><thead><tr><th>고친 때</th><th>아이템</th><th>기간</th><th>월드</th><th>반지 Lv</th><th>부위</th><th>가격</th><th>신원</th><th>사람</th></tr></thead><tbody id="rows"></tbody></table>
+  `<div class="head"><div><h1>드롭 가격</h1><p>앱이 보낸 판매 총액이다. 분포는 뺀 가격을 빼고 세고, 줄 목록은 뺀 가격도 흐리게 보인다.</p></div></div>
+<div id="message" class="msg" role="status" hidden></div>
+<section class="card">
+  <div class="body">
+    <div class="row">
+      <div class="field"><label for="item">아이템 key</label><input id="item" class="mono w-auto" type="text" placeholder="비우면 전부"></div>
+      <div class="field"><label for="period">기간 key</label><input id="period" class="mono w-md" type="text" placeholder="2026-10-08 또는 2026-10"></div>
+      <div class="field w-sm"><label for="limit">줄 수</label><input id="limit" type="number" min="1" max="1000" value="200"></div>
+      <button id="load" class="btn" type="button">보기</button>
+    </div>
+  </div>
+</section>
+<section class="card">
+  <header><h2>분포</h2><p>아이템 × 기간. 뺀 가격은 안 센다</p></header>
+  <div class="table"><table><thead><tr><th>아이템</th><th>기간</th><th class="num">개수</th><th class="num">최소</th><th class="num">중앙값</th><th class="num">최대</th></tr></thead><tbody id="summary"></tbody></table></div>
+</section>
+<section class="card">
+  <header><h2>최근 줄</h2><p id="rows-count"></p></header>
+  <div class="table"><table><thead><tr><th>고친 때</th><th>아이템</th><th>기간</th><th>월드</th><th class="num">반지 Lv</th><th>부위</th><th class="num">가격</th><th>신원</th><th>사람</th></tr></thead><tbody id="rows"></tbody></table></div>
+</section>
 <script>
-  function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); }
+  function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; }
+  function emptyRow(tbody, cols) { var tr = document.createElement('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = cols; tbody.appendChild(tr); }
   function meso(n) { return Number(n).toLocaleString('ko-KR'); }
   async function load() {
     var q = new URLSearchParams();
@@ -33,19 +42,21 @@ export const DROP_PRICES_HTML = layout(
     var summary = document.getElementById('summary'); summary.innerHTML = '';
     r.json.summary.forEach(function (s) {
       var tr = document.createElement('tr');
-      cell(tr, s.itemKey); cell(tr, s.periodKey); cell(tr, String(s.count), 'num');
+      cell(tr, s.itemKey, 'mono'); cell(tr, s.periodKey, 'mono'); cell(tr, String(s.count), 'num');
       cell(tr, meso(s.min), 'num'); cell(tr, meso(s.median), 'num'); cell(tr, meso(s.max), 'num');
       summary.appendChild(tr);
     });
-    if (r.json.summary.length === 0) { var e = document.createElement('tr'); cell(e, '없다'); summary.appendChild(e); }
+    if (r.json.summary.length === 0) emptyRow(summary, 6);
     var rows = document.getElementById('rows'); rows.innerHTML = '';
     r.json.rows.forEach(function (row) {
       var tr = document.createElement('tr'); if (row.deletedAt) tr.className = 'deleted';
-      cell(tr, row.updatedAt.replace('T', ' ').slice(0, 19)); cell(tr, row.itemKey); cell(tr, row.periodKey);
-      cell(tr, row.worldKey || '-'); cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel)); cell(tr, row.slot || '-');
-      cell(tr, meso(row.priceMeso), 'num'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8));
+      cell(tr, row.updatedAt.replace('T', ' ').slice(0, 19), 'mono'); cell(tr, row.itemKey, 'mono'); cell(tr, row.periodKey, 'mono');
+      cell(tr, row.worldKey || '-'); cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num'); cell(tr, row.slot || '-');
+      cell(tr, meso(row.priceMeso), 'num'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
       rows.appendChild(tr);
     });
+    if (r.json.rows.length === 0) emptyRow(rows, 9);
+    document.getElementById('rows-count').textContent = r.json.rows.length + '줄';
   }
   document.getElementById('load').addEventListener('click', load);
   load();

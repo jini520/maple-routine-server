@@ -185,11 +185,17 @@ export function layout(path: string, title: string, body: string): string {
     box.className = isError ? 'msg error' : 'msg ok';
     box.hidden = text === '';
   }
+  // 보이는 시각은 전부 KST 다. 브라우저 시간대에 기대지 않는다. KST 는 서머타임이 없어 +9 시간이 곧 KST 다.
   function when(iso) {
     if (!iso) return '';
-    var d = new Date(iso);
+    var d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
     var p = function (n) { return String(n).padStart(2, '0'); };
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds());
+  }
+  // datetime-local 값을 KST 로 읽는다. 브라우저가 어디 있든 같은 시각이다.
+  function kstLocalToIso(local) {
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(local)) return null;
+    return new Date((local.length === 16 ? local + ':00' : local) + '+09:00').toISOString();
   }
   async function call(method, url, body) {
     var res = await fetch(url, {

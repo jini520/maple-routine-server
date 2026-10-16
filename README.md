@@ -72,6 +72,10 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   난이도는 못 지운다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 씨앗은 앱 저장소에서 `npm run sync:bosses` 로 맞춘다
   (앱 저장소 `ADR-349` 정정 1).
 - **운영자 공지는 `/admin/notices` 다.** CLI(`npm run notice -- send|list|push`)는 SSH 로 급히 쓸 때만이다.
+- **관리 화면의 생김새는 `src/modules/admin/views/layout.ts` 하나가 정한다**(2026-10-15 사용자 선택, 시안 셋 중 B).
+  왼쪽 사이드바 메뉴, 차가운 중립 회색에 코발트 강조, 글꼴은 Google Fonts 의 IBM Plex Sans KR(못 받으면 시스템 글꼴).
+  각 화면은 부품 클래스(`card` · `field` · `btn` · `tag` · `table`)를 조립만 하고 색이나 둥글기를 직접 적지 않는다.
+  그래야 다음에 모양을 바꿀 때 한 파일만 고친다.
 - **옛 서버의 공지 151줄은 2026-10-15 에 한 번 옮겼다.** 칸이 1:1 이라 `pg_dump --data-only --column-inserts -t notices`
   를 그대로 psql 에 넣었다. 다시 할 일은 없다(앱 저장소 `ADR-347` 결정 2).
 - **옛 서버와 같이 도는 동안 `FCM_KEY` 를 비워 둔다.** 두 서버가 같은 넥슨 공지를 보고 각자 알림을 쏘면 사용자가

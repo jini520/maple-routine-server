@@ -4,7 +4,7 @@ import { layout } from './layout'
  * 운영자 공지. 위는 쓰는 폼, 아래는 쓴 것을 고치는 목록이다.
  *
  * 알림은 기본이 꺼짐이다. 켜면 지금 보내거나 시각을 예약한다. 수정 폼에는 예약이 없고, 오타를 고칠 때마다
- * 트레이가 울리지 않게 알림이 기본 꺼짐이다. 예약 시각은 datetime-local 을 ISO 로 바꿔 보낸다.
+ * 트레이가 울리지 않게 알림이 기본 꺼짐이다. 예약 시각은 datetime-local 을 KST 로 읽어 ISO 로 바꿔 보낸다.
  */
 export const NOTICES_HTML = layout(
   '/admin/notices',
@@ -50,7 +50,8 @@ export const NOTICES_HTML = layout(
       var later = document.querySelector('input[name=when]:checked').value === 'later';
       var local = document.getElementById('scheduled').value;
       if (later && !local) throw new Error('예약 시각을 고른다');
-      push.scheduledAt = later ? new Date(local).toISOString() : null;
+      push.scheduledAt = later ? kstLocalToIso(local) : null;
+      if (later && push.scheduledAt === null) throw new Error('예약 시각 모양이 틀리다');
     }
     return push;
   }

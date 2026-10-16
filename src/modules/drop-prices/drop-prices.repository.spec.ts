@@ -24,7 +24,6 @@ describeDb('DropPricesRepository', () => {
     periodKey: '2026-10-08',
     worldKey: 'scania',
     ringLevel: 4,
-    slot: null,
     bossDifficultyId: null,
     ...over,
   })

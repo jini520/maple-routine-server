@@ -1,0 +1,1 @@
+ALTER TABLE "drop_prices" DROP COLUMN "slot";

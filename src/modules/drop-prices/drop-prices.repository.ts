@@ -14,7 +14,6 @@ export interface DropPriceInput {
   periodKey: string
   worldKey: string | null
   ringLevel: number | null
-  slot: string | null
   /** 보스 난이도 줄. 표에 없는 쌍이면 null. */
   bossDifficultyId: string | null
 }
@@ -30,7 +29,6 @@ export interface DropPriceAdminRow {
   periodKey: string
   worldKey: string | null
   ringLevel: number | null
-  slot: string | null
   /** 보스 key 와 난이도. 줄이 안 가리키면 둘 다 null. */
   boss: string | null
   difficulty: string | null
@@ -88,7 +86,6 @@ export class DropPricesRepository {
       periodKey: r.periodKey,
       worldKey: r.worldKey,
       ringLevel: r.ringLevel,
-      slot: r.slot,
       boss,
       difficulty,
       createdAt: r.createdAt.toISOString(),

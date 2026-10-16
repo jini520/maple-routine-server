@@ -16,7 +16,6 @@ const body = {
   periodKey: '2026-10-08',
   worldKey: null,
   ringLevel: null,
-  slot: null,
 }
 
 describe('DropPricesController', () => {
@@ -78,7 +77,6 @@ describe('DropPricesController', () => {
       periodKey: '2026-10-08',
       worldKey: 'scania',
       ringLevel: 4,
-      slot: null,
       bossDifficultyId: null,
     })
   })

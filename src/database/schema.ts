@@ -216,7 +216,6 @@ export const dropPrices = pgTable(
     periodKey: text('period_key').notNull(),
     worldKey: text('world_key'),
     ringLevel: integer('ring_level'),
-    slot: text('slot'),
     /** 어느 보스 · 난이도에서 얻었나. 표에 없는 쌍이거나 이 칸이 생기기 전 줄은 NULL. */
     bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
       onDelete: 'set null',

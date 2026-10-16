@@ -25,7 +25,7 @@ export const DROP_PRICES_HTML = layout(
 </section>
 <section class="card">
   <header><h2>최근 줄</h2><p id="rows-count"></p></header>
-  <div class="table"><table><thead><tr><th>고친 때 (KST)</th><th>아이템</th><th>보스</th><th>난이도</th><th>기간</th><th>월드</th><th class="num">반지 Lv</th><th>부위</th><th class="num">가격</th><th>신원</th><th>사람</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>고친 때 (KST)</th><th>아이템</th><th>보스</th><th>난이도</th><th>기간</th><th>월드</th><th class="num">반지 Lv</th><th class="num">가격</th><th>신원</th><th>사람</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script>
   function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; }
@@ -51,11 +51,11 @@ export const DROP_PRICES_HTML = layout(
     r.json.rows.forEach(function (row) {
       var tr = document.createElement('tr'); if (row.deletedAt) tr.className = 'deleted';
       cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemKey, 'mono'); cell(tr, row.boss || '-', 'mono'); cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
-      cell(tr, row.worldKey || '-'); cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num'); cell(tr, row.slot || '-');
+      cell(tr, row.worldKey || '-'); cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num');
       cell(tr, meso(row.priceMeso), 'num'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
       rows.appendChild(tr);
     });
-    if (r.json.rows.length === 0) emptyRow(rows, 11);
+    if (r.json.rows.length === 0) emptyRow(rows, 10);
     document.getElementById('rows-count').textContent = r.json.rows.length + '줄';
   }
   document.getElementById('load').addEventListener('click', load);

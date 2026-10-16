@@ -90,7 +90,7 @@ export const BOSSES_HTML = layout(
         show(res.ok ? b.key + ' ' + d.difficulty + ' 레벨을 적었다' : fail('못 적었다', res), !res.ok); load();
       });
       cell(r, inline(lvl, save));
-      var dfrom = input('text', 'mono'); dfrom.placeholder = '시작'; dfrom.value = d.from || ''; var duntil = input('text', 'mono'); duntil.placeholder = '끝'; duntil.value = d.until || '';
+      var dfrom = input('text', 'mono w-period'); dfrom.placeholder = '시작'; dfrom.value = d.from || ''; var duntil = input('text', 'mono w-period'); duntil.placeholder = '끝'; duntil.value = d.until || '';
       var savePeriod = button('기간 저장', 'btn ghost sm');
       savePeriod.addEventListener('click', async function () {
         var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty + '/period', { from: orNull(dfrom.value), until: orNull(duntil.value) });
@@ -110,16 +110,17 @@ export const BOSSES_HTML = layout(
     var rest = DIFFS.filter(function (d) { return have.indexOf(d) < 0; });
     if (rest.length > 0) {
       var r = el('tr'); var sel = diffSelect(rest[0], rest); var lv = levelInput(''); var add = button('난이도 추가', 'btn sm');
+      var nfrom = input('text', 'mono w-period'); nfrom.placeholder = '시작 (패치 시각)'; var nuntil = input('text', 'mono w-period'); nuntil.placeholder = '끝';
       add.addEventListener('click', async function () {
-        var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + sel.value, { requiredLevel: Number(lv.value) });
+        var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + sel.value, { requiredLevel: Number(lv.value), from: orNull(nfrom.value), until: orNull(nuntil.value) });
         show(res.ok ? b.key + ' ' + sel.value + ' 을 적었다' : fail('못 적었다', res), !res.ok); load();
       });
-      cell(r, inline(sel)); cell(r, inline(lv, add)); cell(r, ''); cell(r, '');
+      cell(r, inline(sel)); cell(r, inline(lv)); cell(r, inline(nfrom, nuntil)); cell(r, add, 'act');
       tbody.appendChild(r);
     }
     box.appendChild(mini(['난이도', '요구 레벨', '유효 기간 (KST, 비우면 보스 기간 그대로)', ''], tbody));
-    var from = input('text', 'mono'); from.placeholder = '2026-07-03'; from.value = b.from || '';
-    var until = input('text', 'mono'); until.placeholder = '2026-11-05 또는 2026-11-05T10:00'; until.value = b.until || '';
+    var from = input('text', 'mono w-period'); from.placeholder = '2026-07-03'; from.value = b.from || '';
+    var until = input('text', 'mono w-period'); until.placeholder = '2026-11-05T10:00'; until.value = b.until || '';
     var savePeriod = button('기간 저장', 'btn ghost sm');
     savePeriod.addEventListener('click', async function () {
       var res = await call('PUT', '/admin/bosses/' + b.key + '/period', { from: orNull(from.value), until: orNull(until.value) });

@@ -118,6 +118,7 @@ export function layout(path: string, title: string, body: string): string {
   .inline { display: flex; align-items: center; gap: 6px }
   .inline input, .inline select { width: auto }
   .inline input[type=number] { width: 64px }
+  .inline input.w-period { width: 150px }
   .inline select { width: 100px }
 
   .btn { font: 600 13.5px/1 var(--font); padding: 9px 15px; border-radius: var(--r-btn); border: 1px solid transparent; background: var(--accent); color: var(--on-accent); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px }
@@ -142,13 +143,13 @@ export function layout(path: string, title: string, body: string): string {
   td.act { text-align: right; white-space: nowrap }
   td.empty { color: var(--text-3); text-align: center; padding: 22px 14px }
   tr.deleted td { color: var(--text-3); text-decoration: line-through }
-  .mini { border: 1px solid var(--line); border-radius: var(--r-input); overflow: hidden; background: var(--surface) }
+  .mini { border: 1px solid var(--line); border-radius: var(--r-input); overflow-x: auto; background: var(--surface) }
   .mini th { padding: 8px 12px }
   .mini td { padding: 6px 12px }
   tbody tr.open td, tbody tr.open:hover td { background: var(--accent-tint) }
   tbody tr.open td:first-child { box-shadow: inset 3px 0 0 var(--accent) }
   tbody tr.expand td, tbody tr.expand:hover td { background: var(--surface-2); padding: 14px 20px 18px; white-space: normal }
-  .editor { display: grid; gap: 12px; max-width: 640px }
+  .editor { display: grid; gap: 12px; max-width: 1040px }
   .editor h3 { margin: 0; font-size: 13.5px; font-weight: 600 }
 
   .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; border: 1px solid var(--line-strong); color: var(--text-2); background: var(--surface); white-space: nowrap }

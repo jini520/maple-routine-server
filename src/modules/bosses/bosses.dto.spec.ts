@@ -1,4 +1,4 @@
-import { bossInput, difficultyInput, rulesInput } from './bosses.dto'
+import { periodInput, bossInput, difficultyInput, rulesInput } from './bosses.dto'
 
 const lotus = {
   key: 'lotus',
@@ -55,5 +55,15 @@ describe('rulesInput · difficultyInput', () => {
     expect(difficultyInput.safeParse({ difficulty: 'chaos', requiredLevel: 1.5 }).success).toBe(
       false,
     )
+  })
+
+  it('periodInput 은 KST 글자 둘을 받고 끝이 시작보다 앞이면 거절한다', () => {
+    expect(periodInput.safeParse({ from: null, until: '2026-11-05' }).success).toBe(true)
+    expect(periodInput.safeParse({ from: '2026-07-03', until: '2026-11-05T10:00' }).success).toBe(
+      true,
+    )
+    expect(periodInput.safeParse({}).success).toBe(true)
+    expect(periodInput.safeParse({ from: '2026-11-05', until: '2026-07-03' }).success).toBe(false)
+    expect(periodInput.safeParse({ until: '2026-11-5' }).success).toBe(false)
   })
 })

@@ -6,7 +6,7 @@ import { layout } from './layout'
  *
  * 보스는 더하기만 있고 지우기는 없다. 직접 완료 줄이 참조할 수 있어서다. 이름 · 주기 · 초상화는 고치는 끝점이
  * 없다. 난이도 줄은 더하고 지우고 레벨을 갈아 끼운다. 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이
- * 표 전체를 거절한다.
+ * 표 전체를 거절한다. 유효 기간 둘은 편집기 아래 줄에서 적는다. 시즌 보스의 끝이 그것이다.
  */
 export const BOSSES_HTML = layout(
   '/admin/bosses',
@@ -63,7 +63,9 @@ export const BOSSES_HTML = layout(
     var tr = el('tr', undefined, isOpen ? 'open' : '');
     cell(tr, i + 1, 'n'); cell(tr, b.key, 'mono');
     var name = span(b.name); if (b.alias !== b.name) { name.appendChild(document.createTextNode(' ')); name.appendChild(span(b.alias, 'dim')); } cell(tr, name);
-    cell(tr, span(b.cycle, b.cycle === 'weekly' ? 'tag' : 'tag accent')); cell(tr, b.portraitSlug, 'mono');
+    var cyc = el('div', undefined, 'tags'); cyc.appendChild(span(b.cycle, b.cycle === 'weekly' ? 'tag' : 'tag accent'));
+    if (b.from || b.until) cyc.appendChild(span((b.from || '처음') + ' ~ ' + (b.until || ''), 'tag mono'));
+    cell(tr, cyc); cell(tr, b.portraitSlug, 'mono');
     var tags = el('div', undefined, 'tags');
     b.difficulties.forEach(function (d) { tags.appendChild(span(d.difficulty + ' ' + d.requiredLevel + (d.maxPartySize == null ? '' : ' · ' + d.maxPartySize + '인'), 'tag mono')); });
     cell(tr, tags);
@@ -109,7 +111,15 @@ export const BOSSES_HTML = layout(
       tbody.appendChild(r);
     }
     box.appendChild(mini(['난이도', '요구 레벨', ''], tbody));
-    box.appendChild(el('p', '이름 · 주기 · 초상화는 고치는 끝점이 없어 여기서 안 바꾼다. 마지막 난이도는 못 지운다.', 'hint'));
+    var from = input('text', 'mono'); from.placeholder = '2026-07-03'; from.value = b.from || '';
+    var until = input('text', 'mono'); until.placeholder = '2026-11-05 또는 2026-11-05T10:00'; until.value = b.until || '';
+    var savePeriod = button('기간 저장', 'btn ghost sm');
+    savePeriod.addEventListener('click', async function () {
+      var res = await call('PUT', '/admin/bosses/' + b.key + '/period', { from: orNull(from.value), until: orNull(until.value) });
+      show(res.ok ? b.key + ' 의 유효 기간을 적었다' : fail('못 적었다', res), !res.ok); load();
+    });
+    var prow = el('div', undefined, 'row'); prow.appendChild(field('시작', '비우면 처음부터', from)); prow.appendChild(field('끝', '비우면 끝없이. KST 글자. 그 날을 품은 주까지 서고 다음 주부터 안 선다', until)); prow.appendChild(savePeriod); box.appendChild(prow);
+    box.appendChild(el('p', '이름 · 주기 · 초상화는 고치는 끝점이 없어 여기서 안 바꾼다. 마지막 난이도는 못 지운다. 시즌 보스는 시즌이 끝나는 날을 끝에 적는다.', 'hint'));
     td.appendChild(box); tr.appendChild(td);
     return tr;
   }

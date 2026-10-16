@@ -155,6 +155,9 @@ export const bosses = pgTable('bosses', {
   portraitSlug: text('portrait_slug').notNull(),
   /** 배열 순서가 곧 화면 순서다. */
   sortOrder: integer('sort_order').notNull(),
+  /** 유효 기간. KST 글자 그대로. 없으면 처음부터 · 끝없이. 시즌 보스가 끝을 든다. 앱이 기간 첫날로 판정한다. */
+  from: text('from'),
+  until: text('until'),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 

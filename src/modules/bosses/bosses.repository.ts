@@ -8,6 +8,7 @@ import {
   BOSS_DIFFICULTIES,
   type BossInput,
   type DifficultyInput,
+  type PeriodInput,
   RULE_KEYS,
   type RuleField,
   type RulesInput,
@@ -19,6 +20,9 @@ export interface BossView {
   alias: string
   cycle: 'weekly' | 'event_weekly' | 'monthly'
   portraitSlug: string
+  /** 유효 기간. KST 글자. null 은 없음이다. */
+  from: string | null
+  until: string | null
   difficulties: {
     difficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme'
     requiredLevel: number
@@ -72,6 +76,8 @@ export class BossesRepository {
             alias: input.alias,
             cycle: input.cycle,
             portraitSlug: input.portraitSlug,
+            from: input.from ?? null,
+            until: input.until ?? null,
             sortOrder,
             updatedAt: new Date(),
           })
@@ -168,6 +174,8 @@ export class BossesRepository {
         alias: r.alias,
         cycle: r.cycle,
         portraitSlug: r.portraitSlug,
+        from: r.from,
+        until: r.until,
         difficulties: difficultyRows
           .filter((d) => d.bossId === r.id)
           .map((d) => ({
@@ -177,6 +185,16 @@ export class BossesRepository {
           })),
       })),
     }
+  }
+
+  /** 유효 기간 둘을 갈아 끼운다. 보스의 updated_at 이 움직여 앱이 표를 다시 받는다. 모르는 보스면 false 다. */
+  async setPeriod(key: string, period: PeriodInput): Promise<boolean> {
+    const rows = await this.db
+      .update(bosses)
+      .set({ from: period.from ?? null, until: period.until ?? null, updatedAt: new Date() })
+      .where(eq(bosses.key, key))
+      .returning({ id: bosses.id })
+    return rows.length > 0
   }
 
   /**

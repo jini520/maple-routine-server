@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common'
 
+import { BossDropsRepository, type BossDropsSection } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, type Catalog } from '../bosses/bosses.repository'
+import {
+  CrystalPricesRepository,
+  type CrystalPricesSection,
+} from '../crystal-prices/crystal-prices.repository'
+import { DropBoxesRepository, type DropBoxesSection } from '../drop-items/drop-boxes.repository'
+import { DropItemsRepository, type DropItemsSection } from '../drop-items/drop-items.repository'
 
 /**
  * GET /v1/game-data 의 몸체. 칸 하나가 표 하나이고 칸마다 updatedAt 을 든다.
@@ -9,13 +16,30 @@ import { BossesRepository, type Catalog } from '../bosses/bosses.repository'
  */
 export interface GameDataSnapshot {
   bosses: Catalog
+  dropItems: DropItemsSection
+  bossDrops: BossDropsSection
+  dropBoxes: DropBoxesSection
+  crystalPrices: CrystalPricesSection
 }
 
 @Injectable()
 export class GameDataService {
-  constructor(private readonly bosses: BossesRepository) {}
+  constructor(
+    private readonly bosses: BossesRepository,
+    private readonly dropItems: DropItemsRepository,
+    private readonly bossDrops: BossDropsRepository,
+    private readonly dropBoxes: DropBoxesRepository,
+    private readonly crystalPrices: CrystalPricesRepository,
+  ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
-    return { bosses: await this.bosses.catalog() }
+    const [bosses, dropItems, bossDrops, dropBoxes, crystalPrices] = await Promise.all([
+      this.bosses.catalog(),
+      this.dropItems.section(),
+      this.bossDrops.section(),
+      this.dropBoxes.section(),
+      this.crystalPrices.section(),
+    ])
+    return { bosses, dropItems, bossDrops, dropBoxes, crystalPrices }
   }
 }

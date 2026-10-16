@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+import { BOSS_DIFFICULTIES } from '../bosses/bosses.dto'
+import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
+
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
   boss: z.string().min(1),
@@ -48,3 +51,66 @@ export type DropPriceQuery = z.infer<typeof dropPriceQuery>
 
 /** 난이도 줄 하나의 본문. 난이도는 경로가 든다. */
 export const requiredLevelBody = z.object({ requiredLevel: z.number().int().min(1) })
+
+/** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
+export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)
+/** KST 기간 글자. 없으면 null 이다. */
+const periodText = z.string().regex(PERIOD_TEXT).nullish()
+const levelRange = <T extends { levelMin?: number | null; levelMax?: number | null }>(b: T) =>
+  (b.levelMin == null) === (b.levelMax == null) &&
+  (b.levelMin == null || b.levelMin <= (b.levelMax ?? 0))
+const LEVEL_MESSAGE = '레벨 범위는 둘 다 있거나 둘 다 없고, min 이 max 를 안 넘는다'
+
+export const dropItemCreateBody = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(100),
+  iconFile: z.string().min(1).max(200).nullish(),
+  valuable: z.boolean().default(false),
+})
+export type DropItemCreateBody = z.infer<typeof dropItemCreateBody>
+export const dropItemUpdateBody = dropItemCreateBody.omit({ key: true })
+export type DropItemUpdateBody = z.infer<typeof dropItemUpdateBody>
+
+export const dropBoxCreateBody = z
+  .object({
+    item: snakeKey,
+    levelMin: z.number().int().min(1).nullish(),
+    levelMax: z.number().int().min(1).nullish(),
+  })
+  .refine(levelRange, { message: LEVEL_MESSAGE })
+export type DropBoxCreateBody = z.infer<typeof dropBoxCreateBody>
+export const dropBoxLevelsBody = z
+  .object({
+    levelMin: z.number().int().min(1).nullish(),
+    levelMax: z.number().int().min(1).nullish(),
+  })
+  .refine(levelRange, { message: LEVEL_MESSAGE })
+export type DropBoxLevelsBody = z.infer<typeof dropBoxLevelsBody>
+export const boxContentBody = z.object({ item: snakeKey })
+export const moveBody = z.object({ direction: z.enum(['up', 'down']) })
+export type MoveBody = z.infer<typeof moveBody>
+
+export const bossDropQuery = z.object({ boss: snakeKey, difficulty: z.enum(BOSS_DIFFICULTIES) })
+export type BossDropQuery = z.infer<typeof bossDropQuery>
+export const bossDropCreateBody = z.object({
+  boss: snakeKey,
+  difficulty: z.enum(BOSS_DIFFICULTIES),
+  category: z.enum(['fixed', 'equipment', 'consumable']),
+  item: snakeKey,
+  amount: z.string().min(1).max(50).nullish(),
+  from: periodText,
+  until: periodText,
+})
+export type BossDropCreateBody = z.infer<typeof bossDropCreateBody>
+export const bossDropUpdateBody = bossDropCreateBody.pick({ amount: true, from: true, until: true })
+export type BossDropUpdateBody = z.infer<typeof bossDropUpdateBody>
+
+export const crystalPriceBody = z.object({
+  priceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  from: periodText,
+})
+export type CrystalPriceBody = z.infer<typeof crystalPriceBody>
+export const maxPartySizeBody = z.object({
+  maxPartySize: z.number().int().min(1).max(6).nullable(),
+})
+export type MaxPartySizeBody = z.infer<typeof maxPartySizeBody>

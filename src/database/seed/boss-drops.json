@@ -1,0 +1,3487 @@
+{
+  "rewards": [
+    {
+      "boss": "papulatus",
+      "difficulty": "chaos",
+      "category": "equipment",
+      "item": "papulatus_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "3개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "50",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "6개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "loose_control_machine_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "red_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "280",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "category": "equipment",
+      "item": "loose_control_machine_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "category": "equipment",
+      "item": "complete_under_control",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "3개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "50",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "6개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "magic_eyepatch",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "red_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "3개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "guardian_angel_ring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "70",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "equipment",
+      "item": "guardian_angel_ring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "black_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "3개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "5개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "twilight_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "50",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "dreamy_belt",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "twilight_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "red_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "3개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "5개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "twilight_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "mirror_world_core_gemstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "50",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "twilight_mark",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "cursed_spellbook_selection_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "red_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "5개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "estella_earring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "100",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "equipment",
+      "item": "giant_terror",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "equipment",
+      "item": "estella_earring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "black_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "70",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "5개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "daybreak_pendant",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "red_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "120",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "source_of_suffering",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "daybreak_pendant",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "black_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "160개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "5개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "estella_earring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "green_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "120",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "1개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "commander_force_earring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "estella_earring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "black_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "150",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "1개",
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "2개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "5개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "equipment",
+      "item": "daybreak_pendant",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "black_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "mitra_core_gemstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "220",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "daybreak_pendant",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "mitra_rage_selection_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "mitra_core_gemstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "560",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "30개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "equipment",
+      "item": "daybreak_pendant",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "clear_moonlight_potion",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "mitra_rage_selection_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "exceptional_hammer_face_accessory",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "200",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "250",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "lingering_kalos_will_fragment",
+      "amount": "3",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "3개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "400",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "fixed",
+      "item": "lingering_kalos_will",
+      "amount": "5",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "will_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "700",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "lingering_kalos_will",
+      "amount": "14",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "180개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "will_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "clear_moonlight_potion",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "exceptional_hammer_eye_accessory",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "200",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "280",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "linked_ancient_resolve_fragment",
+      "amount": "4",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "3개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_1",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "450",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "linked_ancient_resolve",
+      "amount": "6",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "30개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "immortal_legacy",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "ancient_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_1",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "750",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "linked_ancient_resolve",
+      "amount": "16",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "240개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "equipment",
+      "item": "immortal_legacy",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "ancient_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "clear_moonlight_potion",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "exceptional_hammer_medal",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "soul_ether_1",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "200",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "tangled_beast_link_fragment",
+      "amount": "1",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "8개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "300",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "tangled_beast_link_fragment",
+      "amount": "5",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "3개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_1",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "500",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "tangled_beast_link",
+      "amount": "7",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "60개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "beast_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_1",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "800",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "tangled_beast_link",
+      "amount": "18",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "480개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "beast_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "clear_moonlight_potion",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "exceptional_hammer_earring",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "soul_ether_1",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "350",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "enchanting_illusion_shard_fragment",
+      "amount": "6",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "3개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_2",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "550",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "enchanting_illusion_shard",
+      "amount": "18",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "90개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "enchanting_nightmare",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "illusion_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_2",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "200",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "easy",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "2개",
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "easy",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "290",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "cursed_wraith_remnant",
+      "amount": "1개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_2",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "590",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "cursed_wraith_remnant",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "starving_crimson_wraith",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "madness_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_2",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "400",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "distorted_desire_crystal",
+      "amount": "1개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_3",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "600",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "distorted_desire_crystal",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "60개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "whisper_of_origin",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "desire_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_3",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "450",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "eternal_loyalty_trace",
+      "amount": "1개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_3",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "650",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "eternal_loyalty_trace",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "120개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "oath_of_death",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "oath_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_3",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "500",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "twisted_longing_shard",
+      "amount": "1개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "45개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "soul_ether_4",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "700",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "twisted_longing_shard",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "erion_fragment",
+      "amount": "360개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "original_sin_of_arrogance",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "longing_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "chaos_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "life_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "faith_whetstone",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "soul_ether_4",
+      "amount": null,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "400",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "normal",
+      "category": "fixed",
+      "item": "meirin_lower_sol_erda_fragment_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "normal",
+      "category": "consumable",
+      "item": "meirin_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "550",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "meirin_upper_sol_erda_fragment_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "changing_fate_shard",
+      "amount": "2개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "meirin_pitch_black_accessory_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "fate_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "meirin_eternel_armor_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "spell_trace",
+      "amount": "800개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "300",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_gold_cube",
+      "amount": "8개",
+      "from": null,
+      "until": "2026-10-01"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_silver_cube",
+      "amount": "8개",
+      "from": "2026-10-01",
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "fixed",
+      "item": "memento_bronze_additional_cube",
+      "amount": "24개",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "equipment",
+      "item": "genesis_badge",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "fixed",
+      "item": "sol_erda_energy",
+      "amount": "600",
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "equipment",
+      "item": "genesis_badge",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "white_boss_ring_box",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "exceptional_hammer_belt",
+      "amount": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_accessory_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "premium_pet_equipment_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "category": "consumable",
+      "item": "magical_weapon_scroll_voucher",
+      "amount": null,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    }
+  ]
+}

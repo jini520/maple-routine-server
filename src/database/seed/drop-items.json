@@ -1,0 +1,658 @@
+{
+  "items": [
+    {
+      "key": "red_boss_ring_box",
+      "name": "홍옥의 보스 반지 상자",
+      "iconFile": "boss_ring_box_red.png",
+      "valuable": false
+    },
+    {
+      "key": "black_boss_ring_box",
+      "name": "흑옥의 보스 반지 상자",
+      "iconFile": "boss_ring_box_black.png",
+      "valuable": false
+    },
+    {
+      "key": "white_boss_ring_box",
+      "name": "백옥의 보스 반지 상자",
+      "iconFile": "boss_ring_box_white.png",
+      "valuable": false
+    },
+    {
+      "key": "life_boss_ring_box",
+      "name": "생명의 보스 반지 상자",
+      "iconFile": "boss_ring_box_life.png",
+      "valuable": false
+    },
+    {
+      "key": "green_boss_ring_box",
+      "name": "녹옥의 보스 반지 상자",
+      "iconFile": "boss_ring_box_green.png",
+      "valuable": false
+    },
+    {
+      "key": "giant_terror",
+      "name": "거대한 공포",
+      "iconFile": "dark_boss_ring.png",
+      "valuable": true
+    },
+    {
+      "key": "source_of_suffering",
+      "name": "고통의 근원",
+      "iconFile": "dark_boss_pendant.png",
+      "valuable": true
+    },
+    {
+      "key": "loose_control_machine_mark",
+      "name": "루즈 컨트롤 머신 마크",
+      "iconFile": "dark_boss_face_acc.png",
+      "valuable": true
+    },
+    {
+      "key": "magic_eyepatch",
+      "name": "마력이 깃든 안대",
+      "iconFile": "dark_boss_eye_acc.png",
+      "valuable": true
+    },
+    {
+      "key": "dreamy_belt",
+      "name": "몽환의 벨트",
+      "iconFile": "dark_boss_belt.png",
+      "valuable": true
+    },
+    {
+      "key": "commander_force_earring",
+      "name": "커맨더 포스 이어링",
+      "iconFile": "dark_boss_earring.png",
+      "valuable": true
+    },
+    {
+      "key": "complete_under_control",
+      "name": "컴플리트 언더컨트롤",
+      "iconFile": "dark_boss_complete_heart.png",
+      "valuable": true
+    },
+    {
+      "key": "chaos_pitch_black_accessory_box",
+      "name": "혼돈의 칠흑 장신구 상자",
+      "iconFile": "dark_boss_box.png",
+      "valuable": true
+    },
+    {
+      "key": "mitra_rage_selection_box",
+      "name": "미트라의 분노 선택 상자",
+      "iconFile": "dark_boss_emblem.png",
+      "valuable": true
+    },
+    {
+      "key": "cursed_spellbook_selection_box",
+      "name": "저주받은 마도서 선택 상자",
+      "iconFile": "dark_boss_pocket.png",
+      "valuable": true
+    },
+    {
+      "key": "immortal_legacy",
+      "name": "불멸의 유산",
+      "iconFile": "bright_boss_merit.png",
+      "valuable": true
+    },
+    {
+      "key": "oath_of_death",
+      "name": "죽음의 맹세",
+      "iconFile": "bright_boss_pendant.png",
+      "valuable": true
+    },
+    {
+      "key": "whisper_of_origin",
+      "name": "근원의 속삭임",
+      "iconFile": "bright_boss_ring.png",
+      "valuable": true
+    },
+    {
+      "key": "enchanting_nightmare",
+      "name": "황홀한 악몽",
+      "iconFile": "bright_boss_ring2.png",
+      "valuable": true
+    },
+    {
+      "key": "original_sin_of_arrogance",
+      "name": "오만의 원죄",
+      "iconFile": "bright_boss_face_acc.png",
+      "valuable": true
+    },
+    {
+      "key": "daybreak_pendant",
+      "name": "데이브레이크 펜던트",
+      "iconFile": "dawn_boss_pendant.png",
+      "valuable": false
+    },
+    {
+      "key": "estella_earring",
+      "name": "에스텔라 이어링",
+      "iconFile": "dawn_boss_earring.png",
+      "valuable": false
+    },
+    {
+      "key": "twilight_mark",
+      "name": "트와일라이트 마크",
+      "iconFile": "dawn_boss_face_acc.png",
+      "valuable": false
+    },
+    {
+      "key": "guardian_angel_ring",
+      "name": "가디언 엔젤 링",
+      "iconFile": "dawn_boss_ring.png",
+      "valuable": false
+    },
+    {
+      "key": "will_eternel_armor_box",
+      "name": "의지의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_kalos.png",
+      "valuable": false
+    },
+    {
+      "key": "ancient_eternel_armor_box",
+      "name": "고대의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_adversary.png",
+      "valuable": false
+    },
+    {
+      "key": "beast_eternel_armor_box",
+      "name": "흉수의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_kaling.png",
+      "valuable": false
+    },
+    {
+      "key": "illusion_eternel_armor_box",
+      "name": "환상의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_maleficStar.png",
+      "valuable": false
+    },
+    {
+      "key": "desire_eternel_armor_box",
+      "name": "욕망의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_limbo.png",
+      "valuable": false
+    },
+    {
+      "key": "oath_eternel_armor_box",
+      "name": "맹세의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_bardrix.png",
+      "valuable": false
+    },
+    {
+      "key": "longing_eternel_armor_box",
+      "name": "갈망의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_jupiter.png",
+      "valuable": false
+    },
+    {
+      "key": "distorted_desire_crystal",
+      "name": "왜곡된 욕망의 결정",
+      "iconFile": "frag_eternel_limbo.png",
+      "valuable": false
+    },
+    {
+      "key": "eternal_loyalty_trace",
+      "name": "영원한 충성의 흔적",
+      "iconFile": "frag_eternel_bardrix.png",
+      "valuable": false
+    },
+    {
+      "key": "twisted_longing_shard",
+      "name": "뒤틀린 갈망의 편린",
+      "iconFile": "frag_eternel_jupiter.png",
+      "valuable": false
+    },
+    {
+      "key": "exceptional_hammer_eye_accessory",
+      "name": "익셉셔널 해머(눈장식)",
+      "iconFile": "except_eye_acc.png",
+      "valuable": true
+    },
+    {
+      "key": "exceptional_hammer_medal",
+      "name": "익셉셔널 해머(훈장)",
+      "iconFile": "except_merit.png",
+      "valuable": true
+    },
+    {
+      "key": "exceptional_hammer_earring",
+      "name": "익셉셔널 해머(귀고리)",
+      "iconFile": "except_earring.png",
+      "valuable": true
+    },
+    {
+      "key": "exceptional_hammer_face_accessory",
+      "name": "익셉셔널 해머(얼굴장식)",
+      "iconFile": "except_face_acc.png",
+      "valuable": true
+    },
+    {
+      "key": "exceptional_hammer_belt",
+      "name": "익셉셔널 해머(벨트)",
+      "iconFile": "except_belt.png",
+      "valuable": true
+    },
+    {
+      "key": "life_whetstone",
+      "name": "생명의 연마석",
+      "iconFile": "whetstone_life.png",
+      "valuable": true
+    },
+    {
+      "key": "faith_whetstone",
+      "name": "신념의 연마석",
+      "iconFile": "whetstone_faith.png",
+      "valuable": true
+    },
+    {
+      "key": "erion_fragment",
+      "name": "에리온의 조각",
+      "iconFile": "erion_piece.png",
+      "valuable": false
+    },
+    {
+      "key": "clear_moonlight_potion",
+      "name": "영롱한 달빛 포션",
+      "iconFile": "luminous_moonshine_potion.png",
+      "valuable": false
+    },
+    {
+      "key": "genesis_badge",
+      "name": "창세의 뱃지",
+      "iconFile": "dark_boss_badge.png",
+      "valuable": true
+    },
+    {
+      "key": "papulatus_mark",
+      "name": "파풀라투스 마크",
+      "iconFile": "papulatus_mark.png",
+      "valuable": false
+    },
+    {
+      "key": "meirin_eternel_armor_box",
+      "name": "메이린의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_maerin.webp",
+      "valuable": false
+    },
+    {
+      "key": "fate_eternel_armor_box",
+      "name": "운명의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_destiny.webp",
+      "valuable": false
+    },
+    {
+      "key": "meirin_pitch_black_accessory_box",
+      "name": "메이린의 칠흑 장신구 상자",
+      "iconFile": "dark_boss_box_maerin.webp",
+      "valuable": true
+    },
+    {
+      "key": "meirin_upper_sol_erda_fragment_box",
+      "name": "메이린의 상급 솔 에르다 조각 상자",
+      "iconFile": "box_solerda_maerin_high.webp",
+      "valuable": false
+    },
+    {
+      "key": "meirin_lower_sol_erda_fragment_box",
+      "name": "메이린의 하급 솔 에르다 조각 상자",
+      "iconFile": "box_solerda_maerin_high.webp",
+      "valuable": false
+    },
+    {
+      "key": "changing_fate_shard",
+      "name": "변화하는 운명의 파편",
+      "iconFile": "frag_destiny.webp",
+      "valuable": false
+    },
+    {
+      "key": "memento_gold_cube",
+      "name": "메멘토 골드 큐브",
+      "iconFile": "cube_gold.png",
+      "valuable": false
+    },
+    {
+      "key": "memento_silver_cube",
+      "name": "메멘토 실버 큐브",
+      "iconFile": "cube_silver.png",
+      "valuable": false
+    },
+    {
+      "key": "memento_bronze_additional_cube",
+      "name": "메멘토 브론즈 에디셔널 큐브",
+      "iconFile": "cube_bronze_additional.png",
+      "valuable": false
+    },
+    {
+      "key": "spell_trace",
+      "name": "주문의 흔적",
+      "iconFile": "spell_trace.webp",
+      "valuable": false
+    },
+    {
+      "key": "mitra_core_gemstone",
+      "name": "미트라의 코어 젬스톤",
+      "iconFile": "core_gemstone_mitra.png",
+      "valuable": false
+    },
+    {
+      "key": "mirror_world_core_gemstone",
+      "name": "거울세계의 코어 젬스톤",
+      "iconFile": "core_gemstone_mirror.png",
+      "valuable": false
+    },
+    {
+      "key": "lingering_kalos_will",
+      "name": "남겨진 칼로스의 의지",
+      "iconFile": "kalos_will.webp",
+      "valuable": false
+    },
+    {
+      "key": "lingering_kalos_will_fragment",
+      "name": "남겨진 칼로스의 의지 조각",
+      "iconFile": "kalos_will_piece.webp",
+      "valuable": false
+    },
+    {
+      "key": "tangled_beast_link",
+      "name": "뒤엉킨 흉수의 고리",
+      "iconFile": "kaling_link.webp",
+      "valuable": false
+    },
+    {
+      "key": "tangled_beast_link_fragment",
+      "name": "뒤엉킨 흉수의 고리 조각",
+      "iconFile": "kaling_link_piece.webp",
+      "valuable": false
+    },
+    {
+      "key": "linked_ancient_resolve",
+      "name": "이어진 고대의 결의",
+      "iconFile": "adversary_resolve.webp",
+      "valuable": false
+    },
+    {
+      "key": "linked_ancient_resolve_fragment",
+      "name": "이어진 고대의 결의 조각",
+      "iconFile": "adversary_resolve_piece.webp",
+      "valuable": false
+    },
+    {
+      "key": "enchanting_illusion_shard",
+      "name": "황홀한 환상의 단편",
+      "iconFile": "maleficstar_shard.webp",
+      "valuable": false
+    },
+    {
+      "key": "enchanting_illusion_shard_fragment",
+      "name": "황홀한 환상의 단편 조각",
+      "iconFile": "maleficstar_shard_piece.webp",
+      "valuable": false
+    },
+    {
+      "key": "premium_accessory_scroll_voucher",
+      "name": "프리미엄 악세서리 스크롤 교환권",
+      "iconFile": "premium_accessory_scroll_coupon.png",
+      "valuable": false
+    },
+    {
+      "key": "premium_pet_equipment_scroll_voucher",
+      "name": "프리미엄 펫장비 스크롤 교환권",
+      "iconFile": "premium_petequip_scroll_coupon.png",
+      "valuable": false
+    },
+    {
+      "key": "magical_weapon_scroll_voucher",
+      "name": "매지컬 무기 주문서 교환권",
+      "iconFile": "magical_weapon_scroll_coupon.png",
+      "valuable": false
+    },
+    {
+      "key": "cursed_wraith_remnant",
+      "name": "저주받은 원혼의 잔재",
+      "iconFile": "frag_eternel_bellona.webp",
+      "valuable": false
+    },
+    {
+      "key": "madness_eternel_armor_box",
+      "name": "광기의 에테르넬 방어구 상자",
+      "iconFile": "box_eternel_bellona.webp",
+      "valuable": false
+    },
+    {
+      "key": "starving_crimson_wraith",
+      "name": "굶주리는 핏빛 원혼",
+      "iconFile": "bright_boss_eye_acc.webp",
+      "valuable": true
+    },
+    {
+      "key": "soul_ether_1",
+      "name": "1단계 소울 에테르",
+      "iconFile": "soul_ether_1.webp",
+      "valuable": true
+    },
+    {
+      "key": "soul_ether_2",
+      "name": "2단계 소울 에테르",
+      "iconFile": "soul_ether_2.webp",
+      "valuable": true
+    },
+    {
+      "key": "soul_ether_3",
+      "name": "3단계 소울 에테르",
+      "iconFile": "soul_ether_3.webp",
+      "valuable": true
+    },
+    {
+      "key": "soul_ether_4",
+      "name": "4단계 소울 에테르",
+      "iconFile": "soul_ether_4.webp",
+      "valuable": true
+    },
+    {
+      "key": "sol_erda_energy",
+      "name": "솔 에르다의 기운",
+      "iconFile": null,
+      "valuable": false
+    },
+    {
+      "key": "primordial_essence",
+      "name": "태초의 정수",
+      "iconFile": null,
+      "valuable": false
+    },
+    {
+      "key": "restraint_ring",
+      "name": "리스트레인트 링",
+      "iconFile": "Ring_of_Restraint.webp",
+      "valuable": false
+    },
+    {
+      "key": "continuous_ring",
+      "name": "컨티뉴어스 링",
+      "iconFile": "Continuous_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "weapon_puff_s_ring",
+      "name": "웨폰퍼프 - S링",
+      "iconFile": "Weapon_Jump_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "weapon_puff_i_ring",
+      "name": "웨폰퍼프 - I링",
+      "iconFile": "Weapon_Jump_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "weapon_puff_l_ring",
+      "name": "웨폰퍼프 - L링",
+      "iconFile": "Weapon_Jump_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "weapon_puff_d_ring",
+      "name": "웨폰퍼프 - D링",
+      "iconFile": "Weapon_Jump_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "ultimatum_ring",
+      "name": "얼티메이덤 링",
+      "iconFile": "Ultimatum_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "risk_taker_ring",
+      "name": "리스크테이커 링",
+      "iconFile": "Risk_Taker_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "ring_of_sum",
+      "name": "링 오브 썸",
+      "iconFile": "Totalling_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "critical_damage_ring",
+      "name": "크리데미지 링",
+      "iconFile": "Critical_Damage_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "crisis_hm_ring",
+      "name": "크라이시스 - HM링",
+      "iconFile": "Crisis_HM_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "burden_lift_ring",
+      "name": "버든리프트 링",
+      "iconFile": "Cleansing_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "overpass_ring",
+      "name": "오버패스 링",
+      "iconFile": "Overdrive_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "level_puff_s_ring",
+      "name": "레벨퍼프 - S링",
+      "iconFile": "Level_Jump_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "level_puff_i_ring",
+      "name": "레벨퍼프 - I링",
+      "iconFile": "Level_Jump_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "level_puff_l_ring",
+      "name": "레벨퍼프 - L링",
+      "iconFile": "Level_Jump_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "level_puff_d_ring",
+      "name": "레벨퍼프 - D링",
+      "iconFile": "Level_Jump_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "health_cut_ring",
+      "name": "헬스컷 링",
+      "iconFile": "Health_Cut_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "critical_defense_ring",
+      "name": "크리디펜스 링",
+      "iconFile": "Critical_Defense_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "limit_ring",
+      "name": "리밋 링",
+      "iconFile": "Limit_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "durability_ring",
+      "name": "듀라빌리티 링",
+      "iconFile": "Durability_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "recover_defense_ring",
+      "name": "리커버디펜스 링",
+      "iconFile": "Clean_Defense_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "shield_swap_ring",
+      "name": "실드스와프 링",
+      "iconFile": "Berserker_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "mana_cut_ring",
+      "name": "마나컷 링",
+      "iconFile": "Mana_Cut_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "crisis_h_ring",
+      "name": "크라이시스 - H링",
+      "iconFile": "Crisis_H_Ring.webp",
+      "valuable": false
+    },
+    {
+      "key": "crisis_m_ring",
+      "name": "크라이시스 - M링",
+      "iconFile": "Crisis_M_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "critical_shift_ring",
+      "name": "크리쉬프트 링",
+      "iconFile": "Critical_Shift_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "stance_shift_ring",
+      "name": "스탠스쉬프트 링",
+      "iconFile": "Stance_Shift_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "recover_stance_ring",
+      "name": "리커버스탠스 링",
+      "iconFile": "Clean_Stance_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "swift_ring",
+      "name": "스위프트 링",
+      "iconFile": "Swift_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "reflective_ring",
+      "name": "리플렉티브 링",
+      "iconFile": "Reflective_Ring.png",
+      "valuable": false
+    },
+    {
+      "key": "other_ring",
+      "name": "기타",
+      "iconFile": "Limit_Ring.webp",
+      "valuable": false
+    }
+  ]
+}

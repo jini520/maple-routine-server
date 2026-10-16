@@ -23,7 +23,7 @@ describe('GameDataController', () => {
     const snapshot = {
       bosses: {
         updatedAt: '2026-10-15T01:00:00.000Z',
-        rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
+        rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
         bosses: [],
       },
     }

@@ -1,0 +1,161 @@
+{
+  "boxes": [
+    {
+      "item": "green_boss_ring_box",
+      "levelMin": 1,
+      "levelMax": 3,
+      "contents": [
+        "restraint_ring",
+        "continuous_ring",
+        "weapon_puff_s_ring",
+        "weapon_puff_i_ring",
+        "weapon_puff_l_ring",
+        "weapon_puff_d_ring",
+        "ultimatum_ring",
+        "risk_taker_ring",
+        "ring_of_sum",
+        "critical_damage_ring",
+        "crisis_hm_ring",
+        "burden_lift_ring",
+        "overpass_ring",
+        "level_puff_s_ring",
+        "level_puff_i_ring",
+        "level_puff_l_ring",
+        "level_puff_d_ring",
+        "health_cut_ring",
+        "critical_defense_ring",
+        "limit_ring",
+        "durability_ring",
+        "recover_defense_ring",
+        "shield_swap_ring",
+        "mana_cut_ring",
+        "crisis_h_ring",
+        "crisis_m_ring",
+        "critical_shift_ring",
+        "stance_shift_ring",
+        "recover_stance_ring",
+        "swift_ring",
+        "reflective_ring"
+      ]
+    },
+    {
+      "item": "red_boss_ring_box",
+      "levelMin": 1,
+      "levelMax": 4,
+      "contents": [
+        "restraint_ring",
+        "continuous_ring",
+        "weapon_puff_s_ring",
+        "weapon_puff_i_ring",
+        "weapon_puff_l_ring",
+        "weapon_puff_d_ring",
+        "ultimatum_ring",
+        "risk_taker_ring",
+        "ring_of_sum",
+        "critical_damage_ring",
+        "crisis_hm_ring",
+        "burden_lift_ring",
+        "overpass_ring",
+        "level_puff_s_ring",
+        "level_puff_i_ring",
+        "level_puff_l_ring",
+        "level_puff_d_ring",
+        "health_cut_ring",
+        "critical_defense_ring",
+        "limit_ring",
+        "durability_ring",
+        "recover_defense_ring",
+        "shield_swap_ring",
+        "mana_cut_ring",
+        "crisis_h_ring",
+        "crisis_m_ring",
+        "critical_shift_ring",
+        "stance_shift_ring",
+        "recover_stance_ring",
+        "swift_ring",
+        "reflective_ring"
+      ]
+    },
+    {
+      "item": "black_boss_ring_box",
+      "levelMin": 1,
+      "levelMax": 4,
+      "contents": [
+        "restraint_ring",
+        "continuous_ring",
+        "weapon_puff_s_ring",
+        "weapon_puff_i_ring",
+        "weapon_puff_l_ring",
+        "weapon_puff_d_ring",
+        "ultimatum_ring",
+        "risk_taker_ring",
+        "ring_of_sum",
+        "critical_damage_ring",
+        "crisis_hm_ring"
+      ]
+    },
+    {
+      "item": "white_boss_ring_box",
+      "levelMin": 3,
+      "levelMax": 4,
+      "contents": [
+        "restraint_ring",
+        "continuous_ring",
+        "weapon_puff_s_ring",
+        "weapon_puff_i_ring",
+        "weapon_puff_l_ring",
+        "weapon_puff_d_ring",
+        "ultimatum_ring",
+        "risk_taker_ring",
+        "ring_of_sum",
+        "critical_damage_ring",
+        "crisis_hm_ring"
+      ]
+    },
+    {
+      "item": "life_boss_ring_box",
+      "levelMin": 3,
+      "levelMax": 4,
+      "contents": [
+        "restraint_ring",
+        "continuous_ring",
+        "weapon_puff_s_ring",
+        "weapon_puff_i_ring",
+        "weapon_puff_l_ring",
+        "weapon_puff_d_ring",
+        "risk_taker_ring",
+        "ring_of_sum",
+        "critical_damage_ring",
+        "life_whetstone"
+      ]
+    },
+    {
+      "item": "chaos_pitch_black_accessory_box",
+      "levelMin": null,
+      "levelMax": null,
+      "contents": [
+        "loose_control_machine_mark",
+        "magic_eyepatch",
+        "dreamy_belt",
+        "cursed_spellbook_selection_box",
+        "giant_terror",
+        "commander_force_earring",
+        "source_of_suffering"
+      ]
+    },
+    {
+      "item": "meirin_pitch_black_accessory_box",
+      "levelMin": null,
+      "levelMax": null,
+      "contents": [
+        "loose_control_machine_mark",
+        "magic_eyepatch",
+        "dreamy_belt",
+        "cursed_spellbook_selection_box",
+        "giant_terror",
+        "commander_force_earring",
+        "source_of_suffering"
+      ]
+    }
+  ]
+}

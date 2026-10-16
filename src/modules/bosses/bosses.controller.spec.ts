@@ -22,7 +22,7 @@ describe('BossesController', () => {
   it('GET /v1/bosses 는 catalog 를 그대로 낸다', async () => {
     const catalog = {
       updatedAt: '2026-10-15T01:00:00.000Z',
-      rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
+      rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
       bosses: [],
     }
     repo.catalog.mockResolvedValue(catalog)

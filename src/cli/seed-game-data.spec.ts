@@ -1,9 +1,16 @@
 import { describeDb, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
-import { parseBossesSeed, seedGameData } from './seed-game-data'
+import {
+  parseBossDropsSeed,
+  parseBossesSeed,
+  parseCrystalPricesSeed,
+  parseDropBoxesSeed,
+  parseDropItemsSeed,
+  seedGameData,
+} from './seed-game-data'
 
 const bossesSeed = {
-  rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
+  rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
   bosses: [
     {
       key: 'lotus',
@@ -53,6 +60,78 @@ describe('parseBossesSeed', () => {
   })
 })
 
+const dropItemsSeed = {
+  items: [
+    {
+      key: 'loose_control_machine_mark',
+      name: '루즈 컨트롤 머신 마크',
+      iconFile: 'x.png',
+      valuable: true,
+    },
+    { key: 'red_boss_ring_box', name: '홍옥의 보스 반지 상자', iconFile: null, valuable: false },
+    { key: 'restraint_ring', name: '리스트레인트 링', iconFile: null, valuable: false },
+  ],
+}
+const bossDropsSeed = {
+  rewards: [
+    {
+      boss: 'lotus',
+      difficulty: 'hard',
+      category: 'equipment',
+      item: 'loose_control_machine_mark',
+      amount: null,
+      from: null,
+      until: null,
+    },
+    {
+      boss: 'lotus',
+      difficulty: 'hard',
+      category: 'consumable',
+      item: 'red_boss_ring_box',
+      amount: null,
+      from: null,
+      until: null,
+    },
+  ],
+}
+const dropBoxesSeed = {
+  boxes: [{ item: 'red_boss_ring_box', levelMin: 1, levelMax: 4, contents: ['restraint_ring'] }],
+}
+const crystalPricesSeed = {
+  defaultMaxPartySize: 6,
+  maxPartySizes: [{ boss: 'lotus', difficulty: 'hard', maxPartySize: 2 }],
+  prices: [
+    { boss: 'lotus', difficulty: 'hard', priceMeso: 100, from: null, until: '2026-09-17T10:00' },
+    { boss: 'lotus', difficulty: 'hard', priceMeso: 200, from: '2026-09-17T10:00', until: null },
+  ],
+}
+
+describe('씨앗 넷의 모양', () => {
+  it('받고, 모양이 어긋나면 던진다', () => {
+    expect(parseDropItemsSeed(dropItemsSeed)).toEqual(dropItemsSeed)
+    expect(parseBossDropsSeed(bossDropsSeed)).toEqual(bossDropsSeed)
+    expect(parseDropBoxesSeed(dropBoxesSeed)).toEqual(dropBoxesSeed)
+    expect(parseCrystalPricesSeed(crystalPricesSeed)).toEqual(crystalPricesSeed)
+    expect(() =>
+      parseDropItemsSeed({
+        items: [{ key: 'Bad Key', name: 'x', iconFile: null, valuable: false }],
+      }),
+    ).toThrow()
+    expect(() =>
+      parseBossDropsSeed({ rewards: [{ ...bossDropsSeed.rewards[0], category: 'misc' }] }),
+    ).toThrow()
+    expect(() =>
+      parseDropBoxesSeed({ boxes: [{ ...dropBoxesSeed.boxes[0], levelMax: null }] }),
+    ).toThrow()
+    expect(() =>
+      parseCrystalPricesSeed({
+        ...crystalPricesSeed,
+        prices: [{ ...crystalPricesSeed.prices[0], from: '2026-9-17' }],
+      }),
+    ).toThrow()
+  })
+})
+
 describeDb('seedGameData', () => {
   let db: TestDb
   let close: () => Promise<void>
@@ -71,13 +150,19 @@ describeDb('seedGameData', () => {
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules).toEqual(bossesSeed.rules)
     expect(catalog.bosses.map((b) => b.key)).toEqual(['lotus', 'meirin'])
-    expect(catalog.bosses[0]?.difficulties).toEqual(bossesSeed.bosses[0]?.difficulties)
+    expect(catalog.bosses[0]?.difficulties).toEqual(
+      bossesSeed.bosses[0]?.difficulties.map((d) => ({ ...d, maxPartySize: null })),
+    )
   })
 
   // 운영자가 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 된다. 줄이 하나라도 있으면 그 표는 건너뛴다.
   it('줄이 있는 표는 건드리지 않는다', async () => {
     const repo = new BossesRepository(db)
-    await repo.setRules({ weeklyBossSelectionLimit: 10, weeklyCrystalSaleLimit: 80 })
+    await repo.setRules({
+      weeklyBossSelectionLimit: 10,
+      weeklyCrystalSaleLimit: 80,
+      defaultMaxPartySize: 6,
+    })
     await repo.createBoss({
       ...bossesSeed.bosses[1],
       cycle: 'event_weekly',
@@ -88,7 +173,57 @@ describeDb('seedGameData', () => {
 
     expect(result).toEqual({ bosses: 'skipped' })
     const catalog = await repo.catalog()
-    expect(catalog.rules).toEqual({ weeklyBossSelectionLimit: 10, weeklyCrystalSaleLimit: 80 })
+    expect(catalog.rules).toEqual({
+      weeklyBossSelectionLimit: 10,
+      weeklyCrystalSaleLimit: 80,
+      defaultMaxPartySize: 6,
+    })
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
+  })
+
+  it('넷을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+    const result = await seedGameData(db, {
+      bosses: parseBossesSeed(bossesSeed),
+      dropItems: parseDropItemsSeed(dropItemsSeed),
+      bossDrops: parseBossDropsSeed(bossDropsSeed),
+      dropBoxes: parseDropBoxesSeed(dropBoxesSeed),
+      crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
+    })
+    expect(result).toEqual({
+      bosses: 'seeded',
+      dropItems: 'seeded',
+      bossDrops: 'seeded',
+      dropBoxes: 'seeded',
+      crystalPrices: 'seeded',
+    })
+
+    const catalog = await new BossesRepository(db).catalog()
+    expect(catalog.rules.defaultMaxPartySize).toBe(6)
+    expect(catalog.bosses[0]?.difficulties.find((d) => d.difficulty === 'hard')?.maxPartySize).toBe(
+      2,
+    )
+
+    const again = await seedGameData(db, {
+      dropItems: parseDropItemsSeed(dropItemsSeed),
+      crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
+    })
+    expect(again).toEqual({ dropItems: 'skipped', crystalPrices: 'skipped' })
+  })
+
+  it('씨앗이 표에 없는 조합이나 아이템을 가리키면 던지고 아무것도 안 넣는다', async () => {
+    await seedGameData(db, {
+      bosses: parseBossesSeed(bossesSeed),
+      dropItems: parseDropItemsSeed(dropItemsSeed),
+    })
+    await expect(
+      seedGameData(db, {
+        bossDrops: parseBossDropsSeed({
+          rewards: [{ ...bossDropsSeed.rewards[0], item: 'nobody' }],
+        }),
+      }),
+    ).rejects.toThrow('씨앗이 가리키는 아이템이 표에 없다')
+    expect(await seedGameData(db, { bossDrops: parseBossDropsSeed(bossDropsSeed) })).toEqual({
+      bossDrops: 'seeded',
+    })
   })
 })

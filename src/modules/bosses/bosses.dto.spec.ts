@@ -40,7 +40,11 @@ describe('bossInput', () => {
 describe('rulesInput · difficultyInput', () => {
   it('한도 둘과 요구 레벨은 1 이상의 정수다', () => {
     expect(
-      rulesInput.safeParse({ weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 }).success,
+      rulesInput.safeParse({
+        weeklyBossSelectionLimit: 12,
+        weeklyCrystalSaleLimit: 90,
+        defaultMaxPartySize: 6,
+      }).success,
     ).toBe(true)
     expect(
       rulesInput.safeParse({ weeklyBossSelectionLimit: 0, weeklyCrystalSaleLimit: 90 }).success,

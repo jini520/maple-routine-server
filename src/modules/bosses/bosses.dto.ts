@@ -21,12 +21,19 @@ export const rulesInput = z.object({
 })
 export type RulesInput = z.infer<typeof rulesInput>
 
-/** 난이도 줄 하나. 요구 레벨과 파티 인원 상한(없으면 기본값). */
-export const difficultyInput = z.object({
-  difficulty: z.enum(BOSS_DIFFICULTIES),
-  requiredLevel: z.number().int().min(1),
-  maxPartySize: z.number().int().min(1).max(6).nullish(),
-})
+/** 난이도 줄 하나. 요구 레벨과 파티 인원 상한(없으면 기본값), 유효 기간(없으면 보스의 기간 그대로). */
+export const difficultyInput = z
+  .object({
+    difficulty: z.enum(BOSS_DIFFICULTIES),
+    requiredLevel: z.number().int().min(1),
+    maxPartySize: z.number().int().min(1).max(6).nullish(),
+    from: z.string().regex(PERIOD_TEXT).nullish(),
+    until: z.string().regex(PERIOD_TEXT).nullish(),
+  })
+  .refine((d) => d.from == null || d.until == null || d.from < d.until, {
+    message: '끝이 시작보다 뒤여야 한다',
+    path: ['until'],
+  })
 export type DifficultyInput = z.infer<typeof difficultyInput>
 
 /** 유효 기간 둘. 끝은 시작보다 뒤여야 한다. 기간 경계일 필요는 없다. 시즌이 끝나는 날을 그대로 적는다. */

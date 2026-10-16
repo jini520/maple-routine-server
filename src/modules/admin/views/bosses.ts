@@ -67,7 +67,7 @@ export const BOSSES_HTML = layout(
     if (b.from || b.until) cyc.appendChild(span((b.from || '처음') + ' ~ ' + (b.until || ''), 'tag mono'));
     cell(tr, cyc); cell(tr, b.portraitSlug, 'mono');
     var tags = el('div', undefined, 'tags');
-    b.difficulties.forEach(function (d) { tags.appendChild(span(d.difficulty + ' ' + d.requiredLevel + (d.maxPartySize == null ? '' : ' · ' + d.maxPartySize + '인'), 'tag mono')); });
+    b.difficulties.forEach(function (d) { tags.appendChild(span(d.difficulty + ' ' + d.requiredLevel + (d.maxPartySize == null ? '' : ' · ' + d.maxPartySize + '인') + (d.from || d.until ? ' · ' + (d.from || '처음') + '~' + (d.until || '') : ''), 'tag mono')); });
     cell(tr, tags);
     var toggle = button(isOpen ? '닫기' : '수정', 'btn ghost sm');
     toggle.addEventListener('click', function () { state.open = isOpen ? null : b.key; render(); });
@@ -90,6 +90,13 @@ export const BOSSES_HTML = layout(
         show(res.ok ? b.key + ' ' + d.difficulty + ' 레벨을 적었다' : fail('못 적었다', res), !res.ok); load();
       });
       cell(r, inline(lvl, save));
+      var dfrom = input('text', 'mono'); dfrom.placeholder = '시작'; dfrom.value = d.from || ''; var duntil = input('text', 'mono'); duntil.placeholder = '끝'; duntil.value = d.until || '';
+      var savePeriod = button('기간 저장', 'btn ghost sm');
+      savePeriod.addEventListener('click', async function () {
+        var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty + '/period', { from: orNull(dfrom.value), until: orNull(duntil.value) });
+        show(res.ok ? b.key + ' ' + d.difficulty + ' 의 유효 기간을 적었다' : fail('못 적었다', res), !res.ok); load();
+      });
+      cell(r, inline(dfrom, duntil, savePeriod));
       var del = button('지우기', 'btn danger sm');
       del.addEventListener('click', async function () {
         if (!window.confirm(b.name + ' ' + d.difficulty + ' 줄을 지운다.')) return;
@@ -107,10 +114,10 @@ export const BOSSES_HTML = layout(
         var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + sel.value, { requiredLevel: Number(lv.value) });
         show(res.ok ? b.key + ' ' + sel.value + ' 을 적었다' : fail('못 적었다', res), !res.ok); load();
       });
-      cell(r, inline(sel)); cell(r, inline(lv, add)); cell(r, '');
+      cell(r, inline(sel)); cell(r, inline(lv, add)); cell(r, ''); cell(r, '');
       tbody.appendChild(r);
     }
-    box.appendChild(mini(['난이도', '요구 레벨', ''], tbody));
+    box.appendChild(mini(['난이도', '요구 레벨', '유효 기간 (KST, 비우면 보스 기간 그대로)', ''], tbody));
     var from = input('text', 'mono'); from.placeholder = '2026-07-03'; from.value = b.from || '';
     var until = input('text', 'mono'); until.placeholder = '2026-11-05 또는 2026-11-05T10:00'; until.value = b.until || '';
     var savePeriod = button('기간 저장', 'btn ghost sm');

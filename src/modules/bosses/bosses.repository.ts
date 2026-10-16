@@ -28,6 +28,9 @@ export interface BossView {
     requiredLevel: number
     /** 결정석을 나누는 파티 인원 상한. null 이면 rules.defaultMaxPartySize 다. */
     maxPartySize: number | null
+    /** 난이도의 유효 기간. null 은 없음이다. 보스의 기간과 겹치는 범위만 유효하다. */
+    from: string | null
+    until: string | null
   }[]
 }
 
@@ -93,6 +96,8 @@ export class BossesRepository {
           difficulty: d.difficulty,
           requiredLevel: d.requiredLevel,
           maxPartySize: d.maxPartySize ?? null,
+          from: d.from ?? null,
+          until: d.until ?? null,
         })),
       )
       return row
@@ -111,6 +116,8 @@ export class BossesRepository {
           difficulty: input.difficulty,
           requiredLevel: input.requiredLevel,
           maxPartySize: input.maxPartySize ?? null,
+          from: input.from ?? null,
+          until: input.until ?? null,
         })
         .onConflictDoUpdate({
           target: [bossDifficulties.bossId, bossDifficulties.difficulty],
@@ -182,9 +189,32 @@ export class BossesRepository {
             difficulty: d.difficulty,
             requiredLevel: d.requiredLevel,
             maxPartySize: d.maxPartySize,
+            from: d.from,
+            until: d.until,
           })),
       })),
     }
+  }
+
+  /** 난이도 줄의 유효 기간 둘을 갈아 끼운다. 보스의 updated_at 이 움직인다. 모르는 조합이면 false 다. */
+  async setDifficultyPeriod(
+    key: string,
+    difficulty: DifficultyInput['difficulty'],
+    period: PeriodInput,
+  ): Promise<boolean> {
+    const row = await this.findDifficulty(key, difficulty)
+    if (row === null) return false
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(bossDifficulties)
+        .set({ from: period.from ?? null, until: period.until ?? null })
+        .where(eq(bossDifficulties.id, row.id))
+      await tx
+        .update(bosses)
+        .set({ updatedAt: new Date() })
+        .where(eq(bosses.id, sql`(select boss_id from boss_difficulties where id = ${row.id})`))
+    })
+    return true
   }
 
   /** 유효 기간 둘을 갈아 끼운다. 보스의 updated_at 이 움직여 앱이 표를 다시 받는다. 모르는 보스면 false 다. */

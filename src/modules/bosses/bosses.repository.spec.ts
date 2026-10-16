@@ -12,9 +12,9 @@ const lotus: BossInput = {
   cycle: 'weekly',
   portraitSlug: 'lotus',
   difficulties: [
-    { difficulty: 'extreme', requiredLevel: 190, maxPartySize: null },
-    { difficulty: 'normal', requiredLevel: 190, maxPartySize: null },
-    { difficulty: 'hard', requiredLevel: 190, maxPartySize: null },
+    { difficulty: 'extreme', requiredLevel: 190, maxPartySize: null, from: null, until: null },
+    { difficulty: 'normal', requiredLevel: 190, maxPartySize: null, from: null, until: null },
+    { difficulty: 'hard', requiredLevel: 190, maxPartySize: null, from: null, until: null },
   ],
 }
 const meirin: BossInput = {
@@ -24,8 +24,8 @@ const meirin: BossInput = {
   cycle: 'event_weekly',
   portraitSlug: 'maerin',
   difficulties: [
-    { difficulty: 'normal', requiredLevel: 270, maxPartySize: null },
-    { difficulty: 'hard', requiredLevel: 280, maxPartySize: null },
+    { difficulty: 'normal', requiredLevel: 270, maxPartySize: null, from: null, until: null },
+    { difficulty: 'hard', requiredLevel: 280, maxPartySize: null, from: null, until: null },
   ],
 }
 const rules = { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 }
@@ -73,7 +73,12 @@ describeDb('BossesRepository', () => {
       ...meirin,
       from: null,
       until: null,
-      difficulties: meirin.difficulties.map((d) => ({ ...d, maxPartySize: null })),
+      difficulties: meirin.difficulties.map((d) => ({
+        ...d,
+        maxPartySize: null,
+        from: null,
+        until: null,
+      })),
     })
     const rows = await db.select().from(bosses).orderBy(bosses.sortOrder)
     expect(rows.map((r) => r.sortOrder)).toEqual([0, 1])
@@ -131,9 +136,9 @@ describeDb('BossesRepository', () => {
 
     const catalog = await repo.catalog()
     expect(catalog.bosses[0]?.difficulties).toEqual([
-      { difficulty: 'normal', requiredLevel: 270, maxPartySize: null },
-      { difficulty: 'hard', requiredLevel: 285, maxPartySize: null },
-      { difficulty: 'extreme', requiredLevel: 290, maxPartySize: null },
+      { difficulty: 'normal', requiredLevel: 270, maxPartySize: null, from: null, until: null },
+      { difficulty: 'hard', requiredLevel: 285, maxPartySize: null, from: null, until: null },
+      { difficulty: 'extreme', requiredLevel: 290, maxPartySize: null, from: null, until: null },
     ])
     expect(new Date(catalog.updatedAt ?? 0).getTime()).toBeGreaterThan(
       Date.parse('2026-01-01T00:00:00Z'),
@@ -149,7 +154,7 @@ describeDb('BossesRepository', () => {
     await expect(repo.deleteDifficulty('meirin', 'normal')).rejects.toBeInstanceOf(LastDifficulty)
 
     expect((await repo.catalog()).bosses[0]?.difficulties).toEqual([
-      { difficulty: 'normal', requiredLevel: 270, maxPartySize: null },
+      { difficulty: 'normal', requiredLevel: 270, maxPartySize: null, from: null, until: null },
     ])
   })
 
@@ -182,6 +187,29 @@ describeDb('BossesRepository', () => {
       key: 'meirin',
       from: '2026-07-03',
       until: '2026-11-05T10:00',
+    })
+    expect(catalog.updatedAt).not.toBe(before)
+  })
+
+  it('난이도 줄의 유효 기간을 적으면 catalog 의 난이도 줄에 실리고 보스의 updated_at 이 움직인다', async () => {
+    await repo.setRules(rules)
+    await repo.createBoss(lotus)
+    const before = (await repo.catalog()).updatedAt
+    await new Promise((r) => setTimeout(r, 5))
+
+    expect(
+      await repo.setDifficultyPeriod('lotus', 'extreme', { from: '2026-11-05T10:00', until: null }),
+    ).toBe(true)
+    expect(await repo.setDifficultyPeriod('lotus', 'easy', { from: null, until: null })).toBe(false)
+
+    const catalog = await repo.catalog()
+    expect(catalog.bosses[0]?.difficulties.find((d) => d.difficulty === 'extreme')).toMatchObject({
+      from: '2026-11-05T10:00',
+      until: null,
+    })
+    expect(catalog.bosses[0]?.difficulties.find((d) => d.difficulty === 'hard')).toMatchObject({
+      from: null,
+      until: null,
     })
     expect(catalog.updatedAt).not.toBe(before)
   })

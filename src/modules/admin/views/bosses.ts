@@ -14,7 +14,7 @@ export const BOSSES_HTML = layout(
   `<div class="head">
   <div>
     <h1>보스 목록</h1>
-    <p>바꾸면 <code>GET /v1/bosses</code> 의 <code>updatedAt</code> 이 움직이고, 앱은 다음에 켤 때 표를 다시 받는다. 새 보스의 그림은 앱 번들에 있어야 그려진다.</p>
+    <p>바꾸면 <code>GET /v1/game-data</code> 의 <code>bosses.updatedAt</code> 이 움직이고, 앱은 다음에 켤 때 표를 다시 받는다. 새 보스의 그림은 앱 번들에 있어야 그려진다.</p>
   </div>
   <div class="stats">
     <div class="stat"><b id="stat-bosses">–</b><span>보스</span></div>

@@ -15,6 +15,8 @@ RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 # 마이그레이션 SQL 은 빌드 산출물이 아니라 그대로 실린다.
 COPY src/database/migrations ./src/database/migrations
+# 씨앗 JSON 도 같다. seed-game-data CLI 가 읽는다.
+COPY src/database/seed ./src/database/seed
 COPY drizzle.config.ts ./
 
 USER node

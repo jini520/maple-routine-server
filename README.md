@@ -58,6 +58,7 @@ rsync -az --delete --exclude node_modules --exclude dist --exclude legacy --excl
 cd ~/maple-routine-server
 docker compose build
 docker compose run --rm --no-deps server node dist/cli/migrate.js   # 새 마이그레이션이 있을 때
+docker compose run --rm --no-deps server node dist/cli/seed-game-data.js   # 게임 데이터 표가 비었을 때. 줄이 있는 표는 건너뛴다
 docker compose up -d
 curl -s http://127.0.0.1:4000/healthz
 docker logs --since 5m maple-routine-server
@@ -71,8 +72,11 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 - **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 난이도 줄 더하기 · 레벨 · 지우기다. 보스와 마지막
   난이도는 못 지운다. 화면은 보스 표 하나이고, 줄의 수정을 누르면 그 아래로 난이도 편집기가 펼쳐지며 새 보스는 같은
   편집기가 표 맨 위에 열린다(2026-10-16 사용자 선택, 구조 시안 셋 중 A). 난이도 표를 따로 두면 보스 이름이 56번
-  반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 씨앗은 앱 저장소에서 `npm run sync:bosses` 로 맞춘다
-  (앱 저장소 `ADR-349` 정정 1).
+  반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 사본은 앱 저장소에서 `node scripts/sync-game-data.mjs` 로 맞춘다
+  (앱 저장소 `ADR-349` 정정 1 · `ADR-350`).
+- **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-350`). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
+  든다. 지금은 `bosses` 칸뿐이고 표가 옮겨 올 때마다 칸이 는다. `GET /v1/bosses` 는 옛 OTA 가 불러 당분간 남긴다. 표의 첫
+  채움은 `node dist/cli/seed-game-data.js` 가 `src/database/seed/<표>.json` 으로 한다. 비어 있는 표만 채운다.
 - **운영자 공지는 `/admin/notices` 다.** CLI(`npm run notice -- send|list|push`)는 SSH 로 급히 쓸 때만이다.
 - **관리 화면의 생김새는 `src/modules/admin/views/layout.ts` 하나가 정한다**(2026-10-15 사용자 선택, 시안 셋 중 B).
   왼쪽 사이드바 메뉴, 차가운 중립 회색에 코발트 강조, 글꼴은 Google Fonts 의 IBM Plex Sans KR(못 받으면 시스템 글꼴).

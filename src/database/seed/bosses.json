@@ -1,0 +1,466 @@
+{
+  "rules": {
+    "weeklyBossSelectionLimit": 12,
+    "weeklyCrystalSaleLimit": 90
+  },
+  "bosses": [
+    {
+      "key": "zakum",
+      "name": "자쿰",
+      "alias": "자쿰",
+      "cycle": "weekly",
+      "portraitSlug": "zakum",
+      "difficulties": [
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 90
+        }
+      ]
+    },
+    {
+      "key": "magnus",
+      "name": "매그너스",
+      "alias": "매그너스",
+      "cycle": "weekly",
+      "portraitSlug": "magnus",
+      "difficulties": [
+        {
+          "difficulty": "hard",
+          "requiredLevel": 175
+        }
+      ]
+    },
+    {
+      "key": "papulatus",
+      "name": "파풀라투스",
+      "alias": "파풀라투스",
+      "cycle": "weekly",
+      "portraitSlug": "papulatus",
+      "difficulties": [
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 190
+        }
+      ]
+    },
+    {
+      "key": "von_bon",
+      "name": "반반",
+      "alias": "반반",
+      "cycle": "weekly",
+      "portraitSlug": "vonBon",
+      "difficulties": [
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 180
+        }
+      ]
+    },
+    {
+      "key": "pierre",
+      "name": "피에르",
+      "alias": "피에르",
+      "cycle": "weekly",
+      "portraitSlug": "pierre",
+      "difficulties": [
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 180
+        }
+      ]
+    },
+    {
+      "key": "crimson_queen",
+      "name": "블러디퀸",
+      "alias": "블러디퀸",
+      "cycle": "weekly",
+      "portraitSlug": "crimsonQueen",
+      "difficulties": [
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 180
+        }
+      ]
+    },
+    {
+      "key": "vellum",
+      "name": "벨룸",
+      "alias": "벨룸",
+      "cycle": "weekly",
+      "portraitSlug": "vellum",
+      "difficulties": [
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 180
+        }
+      ]
+    },
+    {
+      "key": "lotus",
+      "name": "스우",
+      "alias": "스우",
+      "cycle": "weekly",
+      "portraitSlug": "lotus",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 190
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 190
+        },
+        {
+          "difficulty": "extreme",
+          "requiredLevel": 190
+        }
+      ]
+    },
+    {
+      "key": "damien",
+      "name": "데미안",
+      "alias": "데미안",
+      "cycle": "weekly",
+      "portraitSlug": "damien",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 190
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 190
+        }
+      ]
+    },
+    {
+      "key": "guardian_angel_slime",
+      "name": "가디언 엔젤 슬라임",
+      "alias": "가엔슬",
+      "cycle": "weekly",
+      "portraitSlug": "slime",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 210
+        },
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 210
+        }
+      ]
+    },
+    {
+      "key": "lucid",
+      "name": "루시드",
+      "alias": "루시드",
+      "cycle": "weekly",
+      "portraitSlug": "lucid",
+      "difficulties": [
+        {
+          "difficulty": "easy",
+          "requiredLevel": 220
+        },
+        {
+          "difficulty": "normal",
+          "requiredLevel": 220
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 220
+        }
+      ]
+    },
+    {
+      "key": "will",
+      "name": "윌",
+      "alias": "윌",
+      "cycle": "weekly",
+      "portraitSlug": "will",
+      "difficulties": [
+        {
+          "difficulty": "easy",
+          "requiredLevel": 235
+        },
+        {
+          "difficulty": "normal",
+          "requiredLevel": 235
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 235
+        }
+      ]
+    },
+    {
+      "key": "gloom",
+      "name": "더스크",
+      "alias": "더스크",
+      "cycle": "weekly",
+      "portraitSlug": "gloom",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 245
+        },
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 245
+        }
+      ]
+    },
+    {
+      "key": "verus_hilla",
+      "name": "진 힐라",
+      "alias": "진 힐라",
+      "cycle": "weekly",
+      "portraitSlug": "verusHilla",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 250
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 250
+        }
+      ]
+    },
+    {
+      "key": "darknell",
+      "name": "듄켈",
+      "alias": "듄켈",
+      "cycle": "weekly",
+      "portraitSlug": "darknell",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 255
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 255
+        }
+      ]
+    },
+    {
+      "key": "chosen_seren",
+      "name": "선택받은 세렌",
+      "alias": "세렌",
+      "cycle": "weekly",
+      "portraitSlug": "seren",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 260
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 260
+        },
+        {
+          "difficulty": "extreme",
+          "requiredLevel": 260
+        }
+      ]
+    },
+    {
+      "key": "guardian_kalos",
+      "name": "감시자 칼로스",
+      "alias": "칼로스",
+      "cycle": "weekly",
+      "portraitSlug": "kalos",
+      "difficulties": [
+        {
+          "difficulty": "easy",
+          "requiredLevel": 265
+        },
+        {
+          "difficulty": "normal",
+          "requiredLevel": 265
+        },
+        {
+          "difficulty": "chaos",
+          "requiredLevel": 265
+        },
+        {
+          "difficulty": "extreme",
+          "requiredLevel": 265
+        }
+      ]
+    },
+    {
+      "key": "first_adversary",
+      "name": "최초의 대적자",
+      "alias": "최초의 대적자",
+      "cycle": "weekly",
+      "portraitSlug": "adversary",
+      "difficulties": [
+        {
+          "difficulty": "easy",
+          "requiredLevel": 270
+        },
+        {
+          "difficulty": "normal",
+          "requiredLevel": 270
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 270
+        },
+        {
+          "difficulty": "extreme",
+          "requiredLevel": 270
+        }
+      ]
+    },
+    {
+      "key": "kaling",
+      "name": "카링",
+      "alias": "카링",
+      "cycle": "weekly",
+      "portraitSlug": "kaling",
+      "difficulties": [
+        {
+          "difficulty": "easy",
+          "requiredLevel": 275
+        },
+        {
+          "difficulty": "normal",
+          "requiredLevel": 275
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 275
+        },
+        {
+          "difficulty": "extreme",
+          "requiredLevel": 275
+        }
+      ]
+    },
+    {
+      "key": "radiant_malefic_star",
+      "name": "찬란한 흉성",
+      "alias": "찬란한 흉성",
+      "cycle": "weekly",
+      "portraitSlug": "maleficStar",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 280
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 280
+        }
+      ]
+    },
+    {
+      "key": "bellona",
+      "name": "벨로나",
+      "alias": "벨로나",
+      "cycle": "weekly",
+      "portraitSlug": "bellona",
+      "difficulties": [
+        {
+          "difficulty": "easy",
+          "requiredLevel": 280
+        },
+        {
+          "difficulty": "normal",
+          "requiredLevel": 280
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 280
+        }
+      ]
+    },
+    {
+      "key": "limbo",
+      "name": "림보",
+      "alias": "림보",
+      "cycle": "weekly",
+      "portraitSlug": "limbo",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 285
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 285
+        }
+      ]
+    },
+    {
+      "key": "bardrix",
+      "name": "발드릭스",
+      "alias": "발드릭스",
+      "cycle": "weekly",
+      "portraitSlug": "bardrix",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 290
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 290
+        }
+      ]
+    },
+    {
+      "key": "jupiter",
+      "name": "유피테르",
+      "alias": "유피테르",
+      "cycle": "weekly",
+      "portraitSlug": "jupiter",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 295
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 295
+        }
+      ]
+    },
+    {
+      "key": "meirin",
+      "name": "시즌 보스 메이린",
+      "alias": "메이린",
+      "cycle": "event_weekly",
+      "portraitSlug": "maerin",
+      "difficulties": [
+        {
+          "difficulty": "normal",
+          "requiredLevel": 270
+        },
+        {
+          "difficulty": "hard",
+          "requiredLevel": 280
+        }
+      ]
+    },
+    {
+      "key": "black_mage",
+      "name": "검은 마법사",
+      "alias": "검은 마법사",
+      "cycle": "monthly",
+      "portraitSlug": "blackMage",
+      "difficulties": [
+        {
+          "difficulty": "hard",
+          "requiredLevel": 255
+        },
+        {
+          "difficulty": "extreme",
+          "requiredLevel": 255
+        }
+      ]
+    }
+  ]
+}

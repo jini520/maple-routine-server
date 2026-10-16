@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core'
 
+import { formatKst } from '../common/kst'
+
 import { operatorNoticeKey } from '../modules/notices/notice-key'
 import { type NewNotice, NoticesRepository } from '../modules/notices/notices.repository'
 import { messageFor, type PushableNotice } from '../modules/push/push-text'
@@ -55,7 +57,7 @@ async function main(): Promise<void> {
             [
               row.noticeKey,
               row.kind,
-              row.publishedAt.toISOString(),
+              formatKst(row.publishedAt),
               row.sentAt === null ? '-' : '보냄',
               row.title,
             ].join('\t'),

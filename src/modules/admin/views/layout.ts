@@ -83,9 +83,11 @@ export function layout(path: string, title: string, body: string): string {
   .msg.error { background: var(--danger-tint); color: var(--danger-ink); border-color: color-mix(in srgb, var(--danger-ink) 22%, transparent) }
 
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow); overflow: hidden }
-  .card > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; padding: 16px 20px 0 }
+  .card > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; padding: 16px 20px 0 }
   .card > header h2 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: -.01em }
   .card > header p { margin: 0; color: var(--text-3); font-size: 12.5px }
+  .card > header .grow { flex: 1 }
+  .hint { margin: 0; color: var(--text-3); font-size: 12.5px }
   .card > .body { padding: 16px 20px 18px; display: grid; gap: 14px }
   .card > .table { border-top: 1px solid var(--line); margin-top: 14px; overflow-x: auto }
   .card > .list { display: grid; gap: 1px; background: var(--line); border-top: 1px solid var(--line); margin-top: 14px }
@@ -136,9 +138,14 @@ export function layout(path: string, title: string, body: string): string {
   td.act { text-align: right; white-space: nowrap }
   td.empty { color: var(--text-3); text-align: center; padding: 22px 14px }
   tr.deleted td { color: var(--text-3); text-decoration: line-through }
-  .mini { border: 1px solid var(--line); border-radius: var(--r-input); overflow: hidden }
+  .mini { border: 1px solid var(--line); border-radius: var(--r-input); overflow: hidden; background: var(--surface) }
   .mini th { padding: 8px 12px }
   .mini td { padding: 6px 12px }
+  tbody tr.open td, tbody tr.open:hover td { background: var(--accent-tint) }
+  tbody tr.open td:first-child { box-shadow: inset 3px 0 0 var(--accent) }
+  tbody tr.expand td, tbody tr.expand:hover td { background: var(--surface-2); padding: 14px 20px 18px; white-space: normal }
+  .editor { display: grid; gap: 12px; max-width: 640px }
+  .editor h3 { margin: 0; font-size: 13.5px; font-weight: 600 }
 
   .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; border: 1px solid var(--line-strong); color: var(--text-2); background: var(--surface); white-space: nowrap }
   .tag.accent { background: var(--accent-tint); color: var(--accent-ink); border-color: transparent }

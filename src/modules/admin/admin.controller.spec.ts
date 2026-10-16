@@ -88,6 +88,13 @@ describe('AdminController', () => {
     }
   })
 
+  it('보스 목록 화면은 표 하나와 새 보스 단추를 든다. 편집기는 줄 아래로 펼쳐진다', async () => {
+    const res = await app.inject({ method: 'GET', url: '/admin/bosses' })
+    expect(res.body.match(/<table/g)).toHaveLength(1)
+    expect(res.body).toContain('id="b-new"')
+    expect(res.body).not.toContain('boss_difficulties')
+  })
+
   it('메뉴는 지금 보는 화면 하나에만 aria-current 를 단다', async () => {
     for (const url of PAGES) {
       const res = await app.inject({ method: 'GET', url })

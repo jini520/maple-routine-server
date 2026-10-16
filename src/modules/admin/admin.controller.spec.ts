@@ -35,6 +35,7 @@ describe('AdminController', () => {
     findByKey: jest.fn(),
     catalog: jest.fn(),
     setMaxPartySize: jest.fn(),
+    setPeriod: jest.fn(),
   }
   const items = { section: jest.fn(), create: jest.fn(), update: jest.fn() }
   const boxes = {
@@ -742,5 +743,31 @@ describe('AdminController', () => {
         ).statusCode,
       ).toBe(400)
     })
+  })
+
+  it('PUT /admin/bosses/:key/period 는 기간 둘을 적고 204, 모르는 보스는 404, 끝이 앞이면 400 이다', async () => {
+    bosses.setPeriod.mockResolvedValue(true)
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/meirin/period',
+      payload: { until: '2026-11-05' },
+    })
+    expect(ok.statusCode).toBe(204)
+    expect(bosses.setPeriod).toHaveBeenCalledWith('meirin', { until: '2026-11-05' })
+
+    bosses.setPeriod.mockResolvedValue(false)
+    expect(
+      (await app.inject({ method: 'PUT', url: '/admin/bosses/nobody/period', payload: {} }))
+        .statusCode,
+    ).toBe(404)
+    expect(
+      (
+        await app.inject({
+          method: 'PUT',
+          url: '/admin/bosses/meirin/period',
+          payload: { from: '2026-11-05', until: '2026-07-03' },
+        })
+      ).statusCode,
+    ).toBe(400)
   })
 })

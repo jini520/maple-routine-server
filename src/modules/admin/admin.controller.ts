@@ -21,6 +21,8 @@ import {
   bossInput,
   bossKeyParam,
   difficultyParam,
+  type PeriodInput,
+  periodInput,
   type RulesInput,
   rulesInput,
 } from '../bosses/bosses.dto'
@@ -145,6 +147,17 @@ export class AdminController {
       if (error instanceof BossExists) throw new ConflictException(`이미 있는 보스다: ${body.key}`)
       throw error
     }
+  }
+
+  /** 유효 기간 둘을 적는다. 시즌이 끝나는 날을 until 에 적으면 그 날을 품은 주까지 서고 다음 주부터 안 선다. 모르는 보스는 404 다. */
+  @Put('bosses/:key/period')
+  @HttpCode(204)
+  async setBossPeriod(
+    @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
+    @Body(new ZodValidationPipe(periodInput)) body: PeriodInput,
+  ): Promise<void> {
+    if (!(await this.bosses.setPeriod(key, body)))
+      throw new NotFoundException(`모르는 보스다: ${key}`)
   }
 
   /** 난이도 줄을 더하거나 요구 레벨을 갈아 끼운다. 모르는 보스는 404 다. */

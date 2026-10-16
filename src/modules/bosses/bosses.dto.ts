@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
+
 export const BOSS_DIFFICULTIES = ['easy', 'normal', 'hard', 'chaos', 'extreme'] as const
 export const BOSS_CYCLES = ['weekly', 'event_weekly', 'monthly'] as const
 
@@ -27,6 +29,18 @@ export const difficultyInput = z.object({
 })
 export type DifficultyInput = z.infer<typeof difficultyInput>
 
+/** 유효 기간 둘. 끝은 시작보다 뒤여야 한다. 기간 경계일 필요는 없다. 시즌이 끝나는 날을 그대로 적는다. */
+export const periodInput = z
+  .object({
+    from: z.string().regex(PERIOD_TEXT).nullish(),
+    until: z.string().regex(PERIOD_TEXT).nullish(),
+  })
+  .refine((p) => p.from == null || p.until == null || p.from < p.until, {
+    message: '끝이 시작보다 뒤여야 한다',
+    path: ['until'],
+  })
+export type PeriodInput = z.infer<typeof periodInput>
+
 /** 경로 조각. 앱의 snake_case key 라 모양을 좁게 본다. */
 export const bossKeyParam = z.string().regex(/^[a-z][a-z0-9_]*$/)
 export const difficultyParam = z.enum(BOSS_DIFFICULTIES)
@@ -40,6 +54,12 @@ export const bossInput = z
     cycle: z.enum(BOSS_CYCLES),
     portraitSlug: z.string().min(1).max(100),
     difficulties: z.array(difficultyInput).min(1),
+    from: z.string().regex(PERIOD_TEXT).nullish(),
+    until: z.string().regex(PERIOD_TEXT).nullish(),
+  })
+  .refine((b) => b.from == null || b.until == null || b.from < b.until, {
+    message: '끝이 시작보다 뒤여야 한다',
+    path: ['until'],
   })
   .refine((b) => new Set(b.difficulties.map((d) => d.difficulty)).size === b.difficulties.length, {
     message: '같은 난이도가 두 번 있다',

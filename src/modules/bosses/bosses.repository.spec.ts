@@ -71,6 +71,8 @@ describeDb('BossesRepository', () => {
     ])
     expect(catalog.bosses[1]).toEqual({
       ...meirin,
+      from: null,
+      until: null,
       difficulties: meirin.difficulties.map((d) => ({ ...d, maxPartySize: null })),
     })
     const rows = await db.select().from(bosses).orderBy(bosses.sortOrder)
@@ -162,5 +164,25 @@ describeDb('BossesRepository', () => {
       ['meirin', '시즌 보스 메이린'],
     ])
     expect(options[0]?.id).toBeDefined()
+  })
+
+  it('유효 기간을 적으면 catalog 의 줄에 실리고 보스의 updated_at 이 움직인다. 모르는 보스는 false 다', async () => {
+    await repo.setRules(rules)
+    await repo.createBoss(meirin)
+    const before = (await repo.catalog()).updatedAt
+    await new Promise((r) => setTimeout(r, 5))
+
+    expect(await repo.setPeriod('meirin', { from: '2026-07-03', until: '2026-11-05T10:00' })).toBe(
+      true,
+    )
+    expect(await repo.setPeriod('nobody', { from: null, until: null })).toBe(false)
+
+    const catalog = await repo.catalog()
+    expect(catalog.bosses[0]).toMatchObject({
+      key: 'meirin',
+      from: '2026-07-03',
+      until: '2026-11-05T10:00',
+    })
+    expect(catalog.updatedAt).not.toBe(before)
   })
 })

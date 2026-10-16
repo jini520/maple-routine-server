@@ -4,7 +4,13 @@ import type { Db } from '../../database/database.module'
 import { gameDataSections } from '../../database/schema'
 
 /** GET /v1/game-data 의 칸 이름. bosses 는 자기 표의 updated_at 으로 내서 여기 없다. */
-export const SECTION_KEYS = ['dropItems', 'bossDrops', 'dropBoxes', 'crystalPrices'] as const
+export const SECTION_KEYS = [
+  'dropItems',
+  'bossDrops',
+  'dropBoxes',
+  'crystalPrices',
+  'worlds',
+] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 
 /** 트랜잭션 안에서도 쓸 수 있게 둘 다 받는다. */

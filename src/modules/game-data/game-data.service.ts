@@ -8,6 +8,7 @@ import {
 } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository, type DropBoxesSection } from '../drop-items/drop-boxes.repository'
 import { DropItemsRepository, type DropItemsSection } from '../drop-items/drop-items.repository'
+import { WorldsRepository, type WorldsSection } from '../worlds/worlds.repository'
 
 /**
  * GET /v1/game-data 의 몸체. 칸 하나가 표 하나이고 칸마다 updatedAt 을 든다.
@@ -20,6 +21,7 @@ export interface GameDataSnapshot {
   bossDrops: BossDropsSection
   dropBoxes: DropBoxesSection
   crystalPrices: CrystalPricesSection
+  worlds: WorldsSection
 }
 
 @Injectable()
@@ -30,16 +32,18 @@ export class GameDataService {
     private readonly bossDrops: BossDropsRepository,
     private readonly dropBoxes: DropBoxesRepository,
     private readonly crystalPrices: CrystalPricesRepository,
+    private readonly worlds: WorldsRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
-    const [bosses, dropItems, bossDrops, dropBoxes, crystalPrices] = await Promise.all([
+    const [bosses, dropItems, bossDrops, dropBoxes, crystalPrices, worlds] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
       this.bossDrops.section(),
       this.dropBoxes.section(),
       this.crystalPrices.section(),
+      this.worlds.section(),
     ])
-    return { bosses, dropItems, bossDrops, dropBoxes, crystalPrices }
+    return { bosses, dropItems, bossDrops, dropBoxes, crystalPrices, worlds }
   }
 }

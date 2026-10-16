@@ -6,6 +6,7 @@ import {
   parseCrystalPricesSeed,
   parseDropBoxesSeed,
   parseDropItemsSeed,
+  parseWorldsSeed,
   seedGameData,
 } from './seed-game-data'
 
@@ -106,12 +107,23 @@ const crystalPricesSeed = {
   ],
 }
 
+const worldsSeed = {
+  worlds: [
+    { key: 'scania', name: '스카니아', emblem: 'scania', challengers: false, event: false },
+    { key: 'special', name: '스페셜', emblem: null, challengers: false, event: true },
+  ],
+}
+
 describe('씨앗 넷의 모양', () => {
   it('받고, 모양이 어긋나면 던진다', () => {
     expect(parseDropItemsSeed(dropItemsSeed)).toEqual(dropItemsSeed)
     expect(parseBossDropsSeed(bossDropsSeed)).toEqual(bossDropsSeed)
     expect(parseDropBoxesSeed(dropBoxesSeed)).toEqual(dropBoxesSeed)
     expect(parseCrystalPricesSeed(crystalPricesSeed)).toEqual(crystalPricesSeed)
+    expect(parseWorldsSeed(worldsSeed)).toEqual(worldsSeed)
+    expect(() =>
+      parseWorldsSeed({ worlds: [{ ...worldsSeed.worlds[0], key: 'Scania' }] }),
+    ).toThrow()
     expect(() =>
       parseDropItemsSeed({
         items: [{ key: 'Bad Key', name: 'x', iconFile: null, valuable: false }],
@@ -193,6 +205,7 @@ describeDb('seedGameData', () => {
       bossDrops: parseBossDropsSeed(bossDropsSeed),
       dropBoxes: parseDropBoxesSeed(dropBoxesSeed),
       crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
+      worlds: parseWorldsSeed(worldsSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -200,6 +213,7 @@ describeDb('seedGameData', () => {
       bossDrops: 'seeded',
       dropBoxes: 'seeded',
       crystalPrices: 'seeded',
+      worlds: 'seeded',
     })
 
     const catalog = await new BossesRepository(db).catalog()

@@ -9,6 +9,7 @@ const MENU = [
   ['/admin/drop-boxes', '상자'],
   ['/admin/boss-drops', '드롭 표'],
   ['/admin/crystal-prices', '결정석 가격'],
+  ['/admin/worlds', '월드'],
 ] as const
 
 /**

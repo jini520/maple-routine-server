@@ -31,6 +31,7 @@ const {
   dropBoxes,
   dropItems,
   gameRules,
+  worlds,
 } = schema
 
 /** 이미지에 그대로 실리는 씨앗 폴더. Dockerfile 이 `src/database/seed` 를 dist 옆에 복사한다. */
@@ -139,12 +140,31 @@ export function parseCrystalPricesSeed(value: unknown): CrystalPricesSeed {
   return crystalPricesSeed.parse(value)
 }
 
+const worldsSeed = z.object({
+  worlds: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        emblem: z.string().min(1).nullable(),
+        challengers: z.boolean(),
+        event: z.boolean(),
+      }),
+    )
+    .min(1),
+})
+export type WorldsSeed = z.infer<typeof worldsSeed>
+export function parseWorldsSeed(value: unknown): WorldsSeed {
+  return worldsSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
   bossDrops?: BossDropsSeed
   dropBoxes?: DropBoxesSeed
   crystalPrices?: CrystalPricesSeed
+  worlds?: WorldsSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -161,12 +181,27 @@ export async function seedGameData(
   if (seeds.dropBoxes !== undefined) result.dropBoxes = await seedDropBoxes(db, seeds.dropBoxes)
   if (seeds.crystalPrices !== undefined)
     result.crystalPrices = await seedCrystalPrices(db, seeds.crystalPrices)
+  if (seeds.worlds !== undefined) result.worlds = await seedWorlds(db, seeds.worlds)
   return result
+}
+
+async function seedWorlds(db: Db, seed: WorldsSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, worlds))) return 'skipped'
+  await db.transaction(async (tx) => {
+    await tx.insert(worlds).values(seed.worlds.map((w, sortOrder) => ({ ...w, sortOrder })))
+    await touchSection(tx, 'worlds')
+  })
+  return 'seeded'
 }
 
 async function isEmpty(
   db: Db,
-  table: typeof dropItems | typeof bossDropRewards | typeof dropBoxes | typeof bossCrystalPrices,
+  table:
+    | typeof dropItems
+    | typeof bossDropRewards
+    | typeof dropBoxes
+    | typeof bossCrystalPrices
+    | typeof worlds,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
   return (row?.n ?? 0) === 0
@@ -242,15 +277,13 @@ async function seedDropBoxes(db: Db, seed: DropBoxesSeed): Promise<SeedOutcome> 
         })
         .returning({ id: dropBoxes.id })
       if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
-      await tx
-        .insert(dropBoxContents)
-        .values(
-          box.contents.map((item, sortOrder) => ({
-            boxId: row.id,
-            itemId: must(items, item, '아이템'),
-            sortOrder,
-          })),
-        )
+      await tx.insert(dropBoxContents).values(
+        box.contents.map((item, sortOrder) => ({
+          boxId: row.id,
+          itemId: must(items, item, '아이템'),
+          sortOrder,
+        })),
+      )
     }
     await touchSection(tx, 'dropBoxes')
   })
@@ -319,6 +352,7 @@ async function main(): Promise<void> {
       bossDrops: parseBossDropsSeed(readSeed('boss-drops')),
       dropBoxes: parseDropBoxesSeed(readSeed('drop-boxes')),
       crystalPrices: parseCrystalPricesSeed(readSeed('crystal-prices')),
+      worlds: parseWorldsSeed(readSeed('worlds')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

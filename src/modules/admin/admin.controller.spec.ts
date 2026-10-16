@@ -6,6 +6,7 @@ import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.r
 import { CrystalPricesRepository, NotBoundary } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
+import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
   AlreadyOpen,
@@ -70,6 +71,8 @@ describe('AdminController', () => {
   }
   const prices = { summary: jest.fn(), recent: jest.fn() }
 
+  const worldsRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AdminController],
@@ -82,6 +85,7 @@ describe('AdminController', () => {
         { provide: DropBoxesRepository, useValue: boxes },
         { provide: BossDropsRepository, useValue: drops },
         { provide: CrystalPricesRepository, useValue: crystals },
+        { provide: WorldsRepository, useValue: worldsRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -99,6 +103,7 @@ describe('AdminController', () => {
       ...Object.values(boxes),
       ...Object.values(drops),
       ...Object.values(crystals),
+      ...Object.values(worldsRepo),
     ]) {
       mock.mockReset()
     }
@@ -114,6 +119,7 @@ describe('AdminController', () => {
     '/admin/drop-boxes',
     '/admin/boss-drops',
     '/admin/crystal-prices',
+    '/admin/worlds',
   ]
 
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
@@ -819,6 +825,79 @@ describe('AdminController', () => {
       requiredLevel: 290,
       from: '2026-10-22T10:00',
       until: null,
+    })
+  })
+
+  describe('월드', () => {
+    it('rows 는 칸 그대로이고, POST 는 201 · 같은 key 409, PUT 은 204 · 모르면 404, move 는 204 다', async () => {
+      worldsRepo.section.mockResolvedValue({ updatedAt: null, worlds: [] })
+      expect((await app.inject({ method: 'GET', url: '/admin/worlds/rows' })).json()).toEqual({
+        updatedAt: null,
+        worlds: [],
+      })
+
+      worldsRepo.create.mockResolvedValue({ id: ROW })
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/worlds',
+        payload: {
+          key: 'challengers_5',
+          name: '챌린저스5',
+          emblem: 'challengers',
+          challengers: true,
+        },
+      })
+      expect(created.statusCode).toBe(201)
+      expect(worldsRepo.create).toHaveBeenCalledWith({
+        key: 'challengers_5',
+        name: '챌린저스5',
+        emblem: 'challengers',
+        challengers: true,
+        event: false,
+      })
+      worldsRepo.create.mockRejectedValue(new WorldExists('challengers_5'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/worlds',
+            payload: { key: 'challengers_5', name: 'x' },
+          })
+        ).statusCode,
+      ).toBe(409)
+
+      worldsRepo.update.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/worlds/special',
+            payload: { name: '스페셜', event: true },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(worldsRepo.update).toHaveBeenCalledWith('special', {
+        name: '스페셜',
+        emblem: null,
+        challengers: false,
+        event: true,
+      })
+      worldsRepo.update.mockResolvedValue(false)
+      expect(
+        (await app.inject({ method: 'PUT', url: '/admin/worlds/nobody', payload: { name: 'x' } }))
+          .statusCode,
+      ).toBe(404)
+
+      worldsRepo.move.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/worlds/special/move',
+            payload: { direction: 'down' },
+          })
+        ).statusCode,
+      ).toBe(204)
     })
   })
 })

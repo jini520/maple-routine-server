@@ -3,6 +3,7 @@ import type { BossesRepository, Catalog } from '../bosses/bosses.repository'
 import type { CrystalPricesRepository } from '../crystal-prices/crystal-prices.repository'
 import type { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import type { DropItemsRepository } from '../drop-items/drop-items.repository'
+import type { WorldsRepository } from '../worlds/worlds.repository'
 import { GameDataService } from './game-data.service'
 
 const empty = (body: object) => ({
@@ -15,6 +16,7 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
     empty({ rewards: [] }) as unknown as BossDropsRepository,
     empty({ boxes: [] }) as unknown as DropBoxesRepository,
     empty({ prices: [] }) as unknown as CrystalPricesRepository,
+    empty({ worlds: [] }) as unknown as WorldsRepository,
   )
 }
 
@@ -34,6 +36,7 @@ describe('GameDataService', () => {
       bossDrops: { updatedAt: null, rewards: [] },
       dropBoxes: { updatedAt: null, boxes: [] },
       crystalPrices: { updatedAt: null, prices: [] },
+      worlds: { updatedAt: null, worlds: [] },
     })
   })
 

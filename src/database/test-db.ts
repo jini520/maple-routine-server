@@ -25,6 +25,7 @@ const TABLES = [
   'boss_drop_rewards',
   'drop_items',
   'game_data_sections',
+  'worlds',
   'drop_prices',
   'nexon_login_attempts',
   'nexon_sessions',

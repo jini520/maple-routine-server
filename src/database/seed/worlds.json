@@ -1,0 +1,137 @@
+{
+  "worlds": [
+    {
+      "key": "scania",
+      "name": "스카니아",
+      "emblem": "scania",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "bera",
+      "name": "베라",
+      "emblem": "bera",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "luna",
+      "name": "루나",
+      "emblem": "luna",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "zenith",
+      "name": "제니스",
+      "emblem": "zenith",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "croa",
+      "name": "크로아",
+      "emblem": "croa",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "union",
+      "name": "유니온",
+      "emblem": "union",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "elysium",
+      "name": "엘리시움",
+      "emblem": "elysium",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "enosis",
+      "name": "이노시스",
+      "emblem": "enosis",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "red",
+      "name": "레드",
+      "emblem": "red",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "aurora",
+      "name": "오로라",
+      "emblem": "aurora",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "arcane",
+      "name": "아케인",
+      "emblem": "arcane",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "nova",
+      "name": "노바",
+      "emblem": "nova",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "eos",
+      "name": "에오스",
+      "emblem": "eos",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "helios",
+      "name": "헬리오스",
+      "emblem": "helios",
+      "challengers": false,
+      "event": false
+    },
+    {
+      "key": "challengers",
+      "name": "챌린저스",
+      "emblem": "challengers",
+      "challengers": true,
+      "event": false
+    },
+    {
+      "key": "challengers_2",
+      "name": "챌린저스2",
+      "emblem": "challengers",
+      "challengers": true,
+      "event": false
+    },
+    {
+      "key": "challengers_3",
+      "name": "챌린저스3",
+      "emblem": "challengers",
+      "challengers": true,
+      "event": false
+    },
+    {
+      "key": "challengers_4",
+      "name": "챌린저스4",
+      "emblem": "challengers",
+      "challengers": true,
+      "event": false
+    },
+    {
+      "key": "special",
+      "name": "스페셜",
+      "emblem": null,
+      "challengers": false,
+      "event": true
+    }
+  ]
+}

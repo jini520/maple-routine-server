@@ -346,3 +346,20 @@ export const bossCrystalPrices = pgTable(
       .nullsNotDistinct(),
   ],
 )
+
+/** 월드 마스터 표. 기록 · 원장 · drop_prices.world_key 가 key 를 든다. 챌린저스 넷은 월드마다 key 이고 엠블럼만 같이 쓴다. */
+export const worlds = pgTable('worlds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  /** API world_name 표기. 보이는 이름이다. */
+  name: text('name').notNull(),
+  /** 앱 자산 파일 basename. 스페셜은 없다. */
+  emblem: text('emblem'),
+  /** 시즌 보스를 보이고 월드 리프를 묻는 월드. */
+  challengers: boolean('challengers').notNull().default(false),
+  /** 재화에 가치가 없어 강화 지출에서 빼는 월드. */
+  event: boolean('event').notNull().default(false),
+  /** 배열 순서가 곧 화면 순서다. */
+  sortOrder: integer('sort_order').notNull(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})

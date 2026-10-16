@@ -52,6 +52,7 @@ import {
 } from '../drop-items/drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
+import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import {
@@ -88,6 +89,10 @@ import {
   requiredLevelBody,
   rowId,
   snakeKey,
+  type WorldCreateBody,
+  worldCreateBody,
+  type WorldUpdateBody,
+  worldUpdateBody,
 } from './admin.dto'
 import { BOSS_DROPS_HTML } from './views/boss-drops'
 import { BOSSES_HTML } from './views/bosses'
@@ -95,6 +100,7 @@ import { CRYSTAL_PRICES_HTML } from './views/crystal-prices'
 import { DROP_BOXES_HTML } from './views/drop-boxes'
 import { DROP_ITEMS_HTML } from './views/drop-items'
 import { DROP_PRICES_HTML } from './views/drop-prices'
+import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
 import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
@@ -115,6 +121,7 @@ export class AdminController {
     private readonly boxes: DropBoxesRepository,
     private readonly drops: BossDropsRepository,
     private readonly crystals: CrystalPricesRepository,
+    private readonly worlds: WorldsRepository,
   ) {}
 
   @Get()
@@ -339,6 +346,55 @@ export class AdminController {
     ])
     return { summary, rows }
   }
+  /* ── 월드 ── */
+
+  @Get('worlds')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  worldsPage(): string {
+    return WORLDS_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  @Get('worlds/rows')
+  @Header('cache-control', 'no-store')
+  worldRows() {
+    return this.worlds.section()
+  }
+
+  /** 월드를 맨 뒤에 더한다. 같은 key 는 409 다. */
+  @Post('worlds')
+  @HttpCode(201)
+  async createWorld(@Body(new ZodValidationPipe(worldCreateBody)) body: WorldCreateBody) {
+    try {
+      return await this.worlds.create({ ...body, emblem: body.emblem ?? null })
+    } catch (error) {
+      if (error instanceof WorldExists) throw new ConflictException(`이미 있는 월드다: ${body.key}`)
+      throw error
+    }
+  }
+
+  /** 이름 · 엠블럼 · 챌린저스 · 이벤트를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 404 다. */
+  @Put('worlds/:key')
+  @HttpCode(204)
+  async updateWorld(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(worldUpdateBody)) body: WorldUpdateBody,
+  ): Promise<void> {
+    if (!(await this.worlds.update(key, { ...body, emblem: body.emblem ?? null })))
+      throw new NotFoundException(`모르는 월드다: ${key}`)
+  }
+
+  @Post('worlds/:key/move')
+  @HttpCode(204)
+  async moveWorld(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.worlds.move(key, body.direction)))
+      throw new NotFoundException(`모르는 월드다: ${key}`)
+  }
+
   /* ── 드롭 아이템 ── */
 
   @Get('drop-items')

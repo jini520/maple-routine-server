@@ -124,3 +124,14 @@ export const maxPartySizeBody = z.object({
   maxPartySize: z.number().int().min(1).max(6).nullable(),
 })
 export type MaxPartySizeBody = z.infer<typeof maxPartySizeBody>
+
+export const worldCreateBody = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(50),
+  emblem: z.string().min(1).max(100).nullish(),
+  challengers: z.boolean().default(false),
+  event: z.boolean().default(false),
+})
+export type WorldCreateBody = z.infer<typeof worldCreateBody>
+export const worldUpdateBody = worldCreateBody.omit({ key: true })
+export type WorldUpdateBody = z.infer<typeof worldUpdateBody>

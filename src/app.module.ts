@@ -21,8 +21,9 @@ import { NoticesModule } from './modules/notices/notices.module'
 import { PushModule } from './modules/push/push.module'
 import { SettlementModule } from './modules/settlement/settlement.module'
 import { UsersModule } from './modules/users/users.module'
+import { WorldsModule } from './modules/worlds/worlds.module'
 
-/** 루트. 가로 부품 넷을 먼저 세우고 기능 모듈 열다섯을 올린다. */
+/** 루트. 가로 부품 넷을 먼저 세우고 기능 모듈 열여섯을 올린다. */
 @Module({
   imports: [
     AppConfigModule,
@@ -35,6 +36,7 @@ import { UsersModule } from './modules/users/users.module'
     DropItemsModule,
     BossDropsModule,
     CrystalPricesModule,
+    WorldsModule,
     GameDataModule,
     FriendsModule,
     NoticesModule,

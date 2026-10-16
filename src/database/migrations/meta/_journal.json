@@ -43,6 +43,13 @@
       "when": 1792161302620,
       "tag": "0005_pale_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792162951503,
+      "tag": "0006_windy_nuke",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,7 @@ export const BOSSES_HTML = layout(
     <div class="row">
       <div class="field w-sm"><label for="rule-selection">주간 보스 선택 한도</label><input id="rule-selection" type="number" min="1"></div>
       <div class="field w-sm"><label for="rule-crystal">주간 결정석 판매 한도</label><input id="rule-crystal" type="number" min="1"></div>
+      <div class="field w-sm"><label for="rule-party">파티 인원 상한 기본값</label><input id="rule-party" type="number" min="1" max="6"></div>
       <button id="save-rules" class="btn ghost" type="button">규칙 저장</button>
       <span class="hint">앱의 n/12 배지와 결정석 판매 상한이 이 값을 본다</span>
     </div>
@@ -64,7 +65,7 @@ export const BOSSES_HTML = layout(
     var name = span(b.name); if (b.alias !== b.name) { name.appendChild(document.createTextNode(' ')); name.appendChild(span(b.alias, 'dim')); } cell(tr, name);
     cell(tr, span(b.cycle, b.cycle === 'weekly' ? 'tag' : 'tag accent')); cell(tr, b.portraitSlug, 'mono');
     var tags = el('div', undefined, 'tags');
-    b.difficulties.forEach(function (d) { tags.appendChild(span(d.difficulty + ' ' + d.requiredLevel, 'tag mono')); });
+    b.difficulties.forEach(function (d) { tags.appendChild(span(d.difficulty + ' ' + d.requiredLevel + (d.maxPartySize == null ? '' : ' · ' + d.maxPartySize + '인'), 'tag mono')); });
     cell(tr, tags);
     var toggle = button(isOpen ? '닫기' : '수정', 'btn ghost sm');
     toggle.addEventListener('click', function () { state.open = isOpen ? null : b.key; render(); });
@@ -165,6 +166,7 @@ export const BOSSES_HTML = layout(
     var r = await call('PUT', '/admin/bosses/rules', {
       weeklyBossSelectionLimit: Number(document.getElementById('rule-selection').value),
       weeklyCrystalSaleLimit: Number(document.getElementById('rule-crystal').value),
+      defaultMaxPartySize: Number(document.getElementById('rule-party').value),
     });
     show(r.ok ? '규칙을 저장했다' : fail('저장하지 못했다', r), !r.ok); load();
   });
@@ -175,6 +177,7 @@ export const BOSSES_HTML = layout(
     var c = r.json; state.table = c;
     document.getElementById('rule-selection').value = c.rules.weeklyBossSelectionLimit == null ? '' : c.rules.weeklyBossSelectionLimit;
     document.getElementById('rule-crystal').value = c.rules.weeklyCrystalSaleLimit == null ? '' : c.rules.weeklyCrystalSaleLimit;
+    document.getElementById('rule-party').value = c.rules.defaultMaxPartySize == null ? '' : c.rules.defaultMaxPartySize;
     var diffCount = 0; c.bosses.forEach(function (b) { diffCount += b.difficulties.length; });
     document.getElementById('stat-bosses').textContent = c.bosses.length;
     document.getElementById('stat-diffs').textContent = diffCount;

@@ -12,9 +12,9 @@ const lotus: BossInput = {
   cycle: 'weekly',
   portraitSlug: 'lotus',
   difficulties: [
-    { difficulty: 'extreme', requiredLevel: 190 },
-    { difficulty: 'normal', requiredLevel: 190 },
-    { difficulty: 'hard', requiredLevel: 190 },
+    { difficulty: 'extreme', requiredLevel: 190, maxPartySize: null },
+    { difficulty: 'normal', requiredLevel: 190, maxPartySize: null },
+    { difficulty: 'hard', requiredLevel: 190, maxPartySize: null },
   ],
 }
 const meirin: BossInput = {
@@ -24,11 +24,11 @@ const meirin: BossInput = {
   cycle: 'event_weekly',
   portraitSlug: 'maerin',
   difficulties: [
-    { difficulty: 'normal', requiredLevel: 270 },
-    { difficulty: 'hard', requiredLevel: 280 },
+    { difficulty: 'normal', requiredLevel: 270, maxPartySize: null },
+    { difficulty: 'hard', requiredLevel: 280, maxPartySize: null },
   ],
 }
-const rules = { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 }
+const rules = { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 }
 
 describeDb('BossesRepository', () => {
   let db: TestDb
@@ -46,7 +46,11 @@ describeDb('BossesRepository', () => {
   it('빈 표의 catalog 는 updatedAt 과 규칙이 null 이고 목록이 빈다', async () => {
     expect(await repo.catalog()).toEqual({
       updatedAt: null,
-      rules: { weeklyBossSelectionLimit: null, weeklyCrystalSaleLimit: null },
+      rules: {
+        weeklyBossSelectionLimit: null,
+        weeklyCrystalSaleLimit: null,
+        defaultMaxPartySize: null,
+      },
       bosses: [],
     })
   })
@@ -65,14 +69,21 @@ describeDb('BossesRepository', () => {
       'hard',
       'extreme',
     ])
-    expect(catalog.bosses[1]).toEqual({ ...meirin })
+    expect(catalog.bosses[1]).toEqual({
+      ...meirin,
+      difficulties: meirin.difficulties.map((d) => ({ ...d, maxPartySize: null })),
+    })
     const rows = await db.select().from(bosses).orderBy(bosses.sortOrder)
     expect(rows.map((r) => r.sortOrder)).toEqual([0, 1])
   })
 
   it('규칙을 다시 적으면 덮는다', async () => {
     await repo.setRules(rules)
-    await repo.setRules({ weeklyBossSelectionLimit: 14, weeklyCrystalSaleLimit: 90 })
+    await repo.setRules({
+      weeklyBossSelectionLimit: 14,
+      weeklyCrystalSaleLimit: 90,
+      defaultMaxPartySize: 6,
+    })
 
     expect((await repo.catalog()).rules.weeklyBossSelectionLimit).toBe(14)
   })
@@ -95,20 +106,32 @@ describeDb('BossesRepository', () => {
       .where(eq(bosses.id, id))
 
     expect(
-      await repo.upsertDifficulty('meirin', { difficulty: 'extreme', requiredLevel: 290 }),
+      await repo.upsertDifficulty('meirin', {
+        difficulty: 'extreme',
+        requiredLevel: 290,
+        maxPartySize: null,
+      }),
     ).toBe(true)
-    expect(await repo.upsertDifficulty('meirin', { difficulty: 'hard', requiredLevel: 285 })).toBe(
-      true,
-    )
-    expect(await repo.upsertDifficulty('nobody', { difficulty: 'hard', requiredLevel: 1 })).toBe(
-      false,
-    )
+    expect(
+      await repo.upsertDifficulty('meirin', {
+        difficulty: 'hard',
+        requiredLevel: 285,
+        maxPartySize: null,
+      }),
+    ).toBe(true)
+    expect(
+      await repo.upsertDifficulty('nobody', {
+        difficulty: 'hard',
+        requiredLevel: 1,
+        maxPartySize: null,
+      }),
+    ).toBe(false)
 
     const catalog = await repo.catalog()
     expect(catalog.bosses[0]?.difficulties).toEqual([
-      { difficulty: 'normal', requiredLevel: 270 },
-      { difficulty: 'hard', requiredLevel: 285 },
-      { difficulty: 'extreme', requiredLevel: 290 },
+      { difficulty: 'normal', requiredLevel: 270, maxPartySize: null },
+      { difficulty: 'hard', requiredLevel: 285, maxPartySize: null },
+      { difficulty: 'extreme', requiredLevel: 290, maxPartySize: null },
     ])
     expect(new Date(catalog.updatedAt ?? 0).getTime()).toBeGreaterThan(
       Date.parse('2026-01-01T00:00:00Z'),
@@ -124,7 +147,7 @@ describeDb('BossesRepository', () => {
     await expect(repo.deleteDifficulty('meirin', 'normal')).rejects.toBeInstanceOf(LastDifficulty)
 
     expect((await repo.catalog()).bosses[0]?.difficulties).toEqual([
-      { difficulty: 'normal', requiredLevel: 270 },
+      { difficulty: 'normal', requiredLevel: 270, maxPartySize: null },
     ])
   })
 

@@ -5,6 +5,10 @@ const MENU = [
   ['/admin/bosses', '보스 목록'],
   ['/admin/manual-completion', '직접 완료'],
   ['/admin/drop-prices', '드롭 가격'],
+  ['/admin/drop-items', '드롭 아이템'],
+  ['/admin/drop-boxes', '상자'],
+  ['/admin/boss-drops', '드롭 표'],
+  ['/admin/crystal-prices', '결정석 가격'],
 ] as const
 
 /**
@@ -197,6 +201,19 @@ export function layout(path: string, title: string, body: string): string {
     if (!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$/.test(local)) return null;
     return new Date((local.length === 16 ? local + ':00' : local) + '+09:00').toISOString();
   }
+  // 표 화면들이 함께 쓰는 DOM 도우미. 페이지가 같은 이름을 다시 선언하면 그쪽이 이긴다.
+  function el(tag, text, cls) { var e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; }
+  function span(text, cls) { return el('span', text, cls); }
+  function cell(tr, child, cls) { var td = document.createElement('td'); if (child === undefined || child === null) td.textContent = ''; else if (typeof child === 'string' || typeof child === 'number') td.textContent = String(child); else td.appendChild(child); if (cls) td.className = cls; tr.appendChild(td); return td; }
+  function input(type, cls) { var i = document.createElement('input'); i.type = type; if (cls) i.className = cls; return i; }
+  function select(options, value) { var s = document.createElement('select'); options.forEach(function (o) { var opt = document.createElement('option'); opt.value = o[0]; opt.textContent = o[1]; s.appendChild(opt); }); if (value !== undefined && value !== null) s.value = value; return s; }
+  function button(text, cls) { var b = el('button', text, cls); b.type = 'button'; return b; }
+  function inline() { var d = el('div', undefined, 'inline'); for (var i = 0; i < arguments.length; i++) d.appendChild(arguments[i]); return d; }
+  function field(label, small, control) { var d = el('div', undefined, 'field'); var l = el('label', label); if (small) { l.appendChild(document.createTextNode(' ')); l.appendChild(el('small', small)); } d.appendChild(l); d.appendChild(control); return d; }
+  function mini(headers, tbody) { var wrap = el('div', undefined, 'mini'); var t = el('table'); var thead = el('thead'); var hr = el('tr'); headers.forEach(function (h) { hr.appendChild(el('th', h)); }); thead.appendChild(hr); t.appendChild(thead); t.appendChild(tbody); wrap.appendChild(t); return wrap; }
+  function fail(what, r) { return what + ' ' + r.status + '\\n' + r.text; }
+  function orNull(v) { v = (v || '').trim(); return v === '' ? null : v; }
+  function meso(n) { return Number(n).toLocaleString('ko-KR'); }
   async function call(method, url, body) {
     var res = await fetch(url, {
       method: method,

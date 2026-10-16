@@ -1,0 +1,811 @@
+{
+  "defaultMaxPartySize": 6,
+  "maxPartySizes": [
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "maxPartySize": 2
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "easy",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "maxPartySize": 3
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "normal",
+      "maxPartySize": 1
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "maxPartySize": 1
+    }
+  ],
+  "prices": [
+    {
+      "boss": "zakum",
+      "difficulty": "chaos",
+      "priceMeso": 8080000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "zakum",
+      "difficulty": "chaos",
+      "priceMeso": 4040000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "magnus",
+      "difficulty": "hard",
+      "priceMeso": 8560000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "magnus",
+      "difficulty": "hard",
+      "priceMeso": 4280000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "papulatus",
+      "difficulty": "chaos",
+      "priceMeso": 13100000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "papulatus",
+      "difficulty": "chaos",
+      "priceMeso": 6550000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "von_bon",
+      "difficulty": "chaos",
+      "priceMeso": 8150000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "von_bon",
+      "difficulty": "chaos",
+      "priceMeso": 4070000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "pierre",
+      "difficulty": "chaos",
+      "priceMeso": 8170000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "pierre",
+      "difficulty": "chaos",
+      "priceMeso": 4080000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "crimson_queen",
+      "difficulty": "chaos",
+      "priceMeso": 8140000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "crimson_queen",
+      "difficulty": "chaos",
+      "priceMeso": 4070000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "vellum",
+      "difficulty": "chaos",
+      "priceMeso": 9280000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "vellum",
+      "difficulty": "chaos",
+      "priceMeso": 4640000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "normal",
+      "priceMeso": 16700000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "normal",
+      "priceMeso": 8350000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "priceMeso": 51500000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "hard",
+      "priceMeso": 48900000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "priceMeso": 574000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lotus",
+      "difficulty": "extreme",
+      "priceMeso": 545000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "normal",
+      "priceMeso": 17500000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "damien",
+      "difficulty": "normal",
+      "priceMeso": 8750000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "priceMeso": 48900000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "damien",
+      "difficulty": "hard",
+      "priceMeso": 46400000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "normal",
+      "priceMeso": 25500000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "normal",
+      "priceMeso": 12700000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "priceMeso": 75100000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_angel_slime",
+      "difficulty": "chaos",
+      "priceMeso": 71300000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "easy",
+      "priceMeso": 29800000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "easy",
+      "priceMeso": 14900000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "normal",
+      "priceMeso": 35600000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "normal",
+      "priceMeso": 17800000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "priceMeso": 62900000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "lucid",
+      "difficulty": "hard",
+      "priceMeso": 59700000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "easy",
+      "priceMeso": 32300000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "will",
+      "difficulty": "easy",
+      "priceMeso": 16100000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "normal",
+      "priceMeso": 41100000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "will",
+      "difficulty": "normal",
+      "priceMeso": 20500000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "priceMeso": 77100000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "will",
+      "difficulty": "hard",
+      "priceMeso": 73200000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "normal",
+      "priceMeso": 44000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "normal",
+      "priceMeso": 22000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "priceMeso": 69800000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "gloom",
+      "difficulty": "chaos",
+      "priceMeso": 66300000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "priceMeso": 71200000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "normal",
+      "priceMeso": 67600000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "priceMeso": 106000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "verus_hilla",
+      "difficulty": "hard",
+      "priceMeso": 100000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "normal",
+      "priceMeso": 47500000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "normal",
+      "priceMeso": 23700000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "priceMeso": 94400000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "darknell",
+      "difficulty": "hard",
+      "priceMeso": 89600000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "priceMeso": 239000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "normal",
+      "priceMeso": 167000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "priceMeso": 356000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "hard",
+      "priceMeso": 302000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "priceMeso": 2835000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "chosen_seren",
+      "difficulty": "extreme",
+      "priceMeso": 1840000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "priceMeso": 280000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "easy",
+      "priceMeso": 238000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "priceMeso": 505000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "normal",
+      "priceMeso": 479000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "priceMeso": 1273000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "chaos",
+      "priceMeso": 1230000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "guardian_kalos",
+      "difficulty": "extreme",
+      "priceMeso": 4104000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "priceMeso": 308000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "easy",
+      "priceMeso": 261000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "priceMeso": 560000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "normal",
+      "priceMeso": 532000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "priceMeso": 1435000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "hard",
+      "priceMeso": 1390000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "first_adversary",
+      "difficulty": "extreme",
+      "priceMeso": 4712000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "priceMeso": 377000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "easy",
+      "priceMeso": 320000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "priceMeso": 678000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "normal",
+      "priceMeso": 593000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "priceMeso": 1739000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "hard",
+      "priceMeso": 1560000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "kaling",
+      "difficulty": "extreme",
+      "priceMeso": 5387000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "priceMeso": 625000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "normal",
+      "priceMeso": 576000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "radiant_malefic_star",
+      "difficulty": "hard",
+      "priceMeso": 2678000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "easy",
+      "priceMeso": 440000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "easy",
+      "priceMeso": 396000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "priceMeso": 850000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "normal",
+      "priceMeso": 824000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bellona",
+      "difficulty": "hard",
+      "priceMeso": 2950000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "priceMeso": 1026000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "normal",
+      "priceMeso": 995000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "limbo",
+      "difficulty": "hard",
+      "priceMeso": 2385000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "priceMeso": 1368000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "normal",
+      "priceMeso": 1320000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "bardrix",
+      "difficulty": "hard",
+      "priceMeso": 3078000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "priceMeso": 1615000000,
+      "from": null,
+      "until": "2026-09-17T10:00"
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "normal",
+      "priceMeso": 1560000000,
+      "from": "2026-09-17T10:00",
+      "until": null
+    },
+    {
+      "boss": "jupiter",
+      "difficulty": "hard",
+      "priceMeso": 4845000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "normal",
+      "priceMeso": 300000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "meirin",
+      "difficulty": "hard",
+      "priceMeso": 600000000,
+      "from": null,
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "priceMeso": 665000000,
+      "from": null,
+      "until": "2026-10-01"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "hard",
+      "priceMeso": 465000000,
+      "from": "2026-10-01",
+      "until": null
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "priceMeso": 8740000000,
+      "from": null,
+      "until": "2026-10-01"
+    },
+    {
+      "boss": "black_mage",
+      "difficulty": "extreme",
+      "priceMeso": 5680000000,
+      "from": "2026-10-01",
+      "until": null
+    }
+  ]
+}

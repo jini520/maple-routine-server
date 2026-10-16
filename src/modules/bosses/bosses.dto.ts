@@ -7,20 +7,23 @@ export const BOSS_CYCLES = ['weekly', 'event_weekly', 'monthly'] as const
 export const RULE_KEYS = {
   weeklyBossSelectionLimit: 'weekly_boss_selection_limit',
   weeklyCrystalSaleLimit: 'weekly_crystal_sale_limit',
+  defaultMaxPartySize: 'default_max_party_size',
 } as const
 export type RuleField = keyof typeof RULE_KEYS
 
-/** 규칙 둘. 보스가 아니라 규칙이라 따로 받는다. */
+/** 규칙 셋. 보스가 아니라 규칙이라 따로 받는다. */
 export const rulesInput = z.object({
   weeklyBossSelectionLimit: z.number().int().min(1),
   weeklyCrystalSaleLimit: z.number().int().min(1),
+  defaultMaxPartySize: z.number().int().min(1).max(6),
 })
 export type RulesInput = z.infer<typeof rulesInput>
 
-/** 난이도 줄 하나. 요구 레벨만 든다. */
+/** 난이도 줄 하나. 요구 레벨과 파티 인원 상한(없으면 기본값). */
 export const difficultyInput = z.object({
   difficulty: z.enum(BOSS_DIFFICULTIES),
   requiredLevel: z.number().int().min(1),
+  maxPartySize: z.number().int().min(1).max(6).nullish(),
 })
 export type DifficultyInput = z.infer<typeof difficultyInput>
 

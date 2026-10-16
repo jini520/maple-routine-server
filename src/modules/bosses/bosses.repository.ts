@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
+import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { bossDifficulties, bosses, gameRules } from '../../database/schema'
 import {
@@ -21,6 +22,8 @@ export interface BossView {
   difficulties: {
     difficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme'
     requiredLevel: number
+    /** 결정석을 나누는 파티 인원 상한. null 이면 rules.defaultMaxPartySize 다. */
+    maxPartySize: number | null
   }[]
 }
 
@@ -83,6 +86,7 @@ export class BossesRepository {
           bossId: row.id,
           difficulty: d.difficulty,
           requiredLevel: d.requiredLevel,
+          maxPartySize: d.maxPartySize ?? null,
         })),
       )
       return row
@@ -100,6 +104,7 @@ export class BossesRepository {
           bossId: boss.id,
           difficulty: input.difficulty,
           requiredLevel: input.requiredLevel,
+          maxPartySize: input.maxPartySize ?? null,
         })
         .onConflictDoUpdate({
           target: [bossDifficulties.bossId, bossDifficulties.difficulty],
@@ -155,6 +160,7 @@ export class BossesRepository {
       rules: {
         weeklyBossSelectionLimit: ruleOf('weeklyBossSelectionLimit'),
         weeklyCrystalSaleLimit: ruleOf('weeklyCrystalSaleLimit'),
+        defaultMaxPartySize: ruleOf('defaultMaxPartySize'),
       },
       bosses: rows.map((r) => ({
         key: r.key,
@@ -164,9 +170,34 @@ export class BossesRepository {
         portraitSlug: r.portraitSlug,
         difficulties: difficultyRows
           .filter((d) => d.bossId === r.id)
-          .map((d) => ({ difficulty: d.difficulty, requiredLevel: d.requiredLevel })),
+          .map((d) => ({
+            difficulty: d.difficulty,
+            requiredLevel: d.requiredLevel,
+            maxPartySize: d.maxPartySize,
+          })),
       })),
     }
+  }
+
+  /**
+   * 난이도 줄의 파티 인원 상한을 적는다. null 이면 기본값으로 돌아간다. 보스의 updated_at 이 움직여 앱이 표를
+   * 다시 받는다. 모르는 조합이면 false 다.
+   */
+  async setMaxPartySize(
+    key: string,
+    difficulty: DifficultyInput['difficulty'],
+    maxPartySize: number | null,
+  ): Promise<boolean> {
+    const row = await this.findDifficulty(key, difficulty)
+    if (row === null) return false
+    await this.db.transaction(async (tx) => {
+      await tx.update(bossDifficulties).set({ maxPartySize }).where(eq(bossDifficulties.id, row.id))
+      await tx
+        .update(bosses)
+        .set({ updatedAt: new Date() })
+        .where(eq(bosses.id, sql`(select boss_id from boss_difficulties where id = ${row.id})`))
+    })
+    return true
   }
 
   /** 관리 화면의 드롭다운. */
@@ -197,13 +228,4 @@ export class BossesRepository {
     const [row] = await this.db.select({ id: bosses.id }).from(bosses).where(eq(bosses.key, key))
     return row ?? null
   }
-}
-
-/** pg 의 unique_violation. drizzle 이 DrizzleQueryError 로 감싸므로 cause 까지 내려가 SQLSTATE 를 본다. */
-function isUniqueViolation(error: unknown): boolean {
-  for (let current = error; typeof current === 'object' && current !== null;) {
-    if ((current as { code?: unknown }).code === '23505') return true
-    current = (current as { cause?: unknown }).cause
-  }
-  return false
 }

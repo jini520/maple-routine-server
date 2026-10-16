@@ -6,6 +6,7 @@
 import { sql } from 'drizzle-orm'
 import {
   bigint,
+  boolean,
   check,
   customType,
   index,
@@ -43,6 +44,8 @@ export const bossDifficultyEnum = pgEnum('boss_difficulty', [
 ])
 /** 앱 JSON 의 묶음 셋. event_weekly 는 주간 12 한도에서 빠진다. */
 export const bossCycleEnum = pgEnum('boss_cycle', ['weekly', 'event_weekly', 'monthly'])
+/** 드롭 표의 갈래. 앱 DROP_CATEGORIES 그대로이고 선언 순서가 화면 순서다. */
+export const dropCategoryEnum = pgEnum('drop_category', ['fixed', 'equipment', 'consumable'])
 
 export const users = pgTable(
   'users',
@@ -165,11 +168,13 @@ export const bossDifficulties = pgTable(
       .references(() => bosses.id, { onDelete: 'cascade' }),
     difficulty: bossDifficultyEnum('difficulty').notNull(),
     requiredLevel: integer('required_level').notNull(),
+    /** 결정석을 나누는 파티 인원 상한. NULL 이면 game_rules 의 default_max_party_size 다. */
+    maxPartySize: integer('max_party_size'),
   },
   (t) => [unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty)],
 )
 
-/** 보스가 아니라 규칙인 값. 선택 한도 12 · 결정석 판매 한도 90. */
+/** 보스가 아니라 규칙인 값. 선택 한도 12 · 결정석 판매 한도 90 · 파티 인원 상한 기본값 6. */
 export const gameRules = pgTable('game_rules', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
@@ -230,5 +235,108 @@ export const dropPrices = pgTable(
     index('drop_prices_item_period_idx')
       .on(t.itemKey, t.periodKey)
       .where(sql`${t.deletedAt} IS NULL`),
+  ],
+)
+
+/**
+ * 표마다 마지막으로 바뀐 시각. GET /v1/game-data 의 칸이 든 updatedAt 이다.
+ *
+ * 줄의 updated_at 최댓값으로 내면 줄을 지운 것이 안 보인다. 그래서 쓰기마다 이 표의 줄을 민다.
+ */
+export const gameDataSections = pgTable('game_data_sections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})
+
+/** 드롭 아이템 마스터 표. 기록과 drop_prices.item_key 가 key 를 든다. */
+export const dropItems = pgTable('drop_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  /** 앱 자산 파일명. 없으면 앱이 자리 그림을 그린다. */
+  iconFile: text('icon_file'),
+  /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */
+  valuable: boolean('valuable').notNull().default(false),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})
+
+/** 드롭 표. 보스 한 난이도의 보상 한 줄. sort_order 가 드롭 시트의 타일 차례다. */
+export const bossDropRewards = pgTable(
+  'boss_drop_rewards',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bossDifficultyId: uuid('boss_difficulty_id')
+      .notNull()
+      .references(() => bossDifficulties.id, { onDelete: 'cascade' }),
+    category: dropCategoryEnum('category').notNull(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => dropItems.id),
+    /** 고정 보상의 수량 글자. '160개'. */
+    amount: text('amount'),
+    /** KST 글자 그대로. YYYY-MM-DD 또는 YYYY-MM-DDTHH:mm. 앱의 기간 판정이 문자열 비교다. */
+    from: text('from'),
+    until: text('until'),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    unique('boss_drop_rewards_row_unique')
+      .on(t.bossDifficultyId, t.category, t.itemId, t.from)
+      .nullsNotDistinct(),
+  ],
+)
+
+/** 랜덤 상자. 반지 상자는 레벨 범위를 들고 장신구 상자는 둘 다 NULL 이다. */
+export const dropBoxes = pgTable(
+  'drop_boxes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .unique()
+      .references(() => dropItems.id),
+    levelMin: integer('level_min'),
+    levelMax: integer('level_max'),
+  },
+  (t) => [
+    check('drop_boxes_level_pair', sql`(${t.levelMin} IS NULL) = (${t.levelMax} IS NULL)`),
+    check('drop_boxes_level_order', sql`${t.levelMin} IS NULL OR ${t.levelMin} <= ${t.levelMax}`),
+  ],
+)
+
+/** 상자 내용물. sort_order 가 상자를 열면 서는 후보 차례다. */
+export const dropBoxContents = pgTable(
+  'drop_box_contents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boxId: uuid('box_id')
+      .notNull()
+      .references(() => dropBoxes.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => dropItems.id),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [unique('drop_box_contents_box_item_unique').on(t.boxId, t.itemId)],
+)
+
+/** 결정석 가격. 한 조합에 기간 줄이 여럿이고 until 이 없는 줄이 지금 가격이다. */
+export const bossCrystalPrices = pgTable(
+  'boss_crystal_prices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bossDifficultyId: uuid('boss_difficulty_id')
+      .notNull()
+      .references(() => bossDifficulties.id, { onDelete: 'cascade' }),
+    /** 1인 기준 정가. 모르는 조합은 줄을 안 넣는다. */
+    priceMeso: bigint('price_meso', { mode: 'number' }).notNull(),
+    from: text('from'),
+    until: text('until'),
+  },
+  (t) => [
+    unique('boss_crystal_prices_pair_from_unique')
+      .on(t.bossDifficultyId, t.from)
+      .nullsNotDistinct(),
   ],
 )

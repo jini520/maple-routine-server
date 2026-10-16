@@ -1,7 +1,11 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
+import { BossDropsRepository } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
+import { CrystalPricesRepository, NotBoundary } from '../crystal-prices/crystal-prices.repository'
+import { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
+import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
   AlreadyOpen,
@@ -29,6 +33,30 @@ describe('AdminController', () => {
     deleteDifficulty: jest.fn(),
     options: jest.fn(),
     findByKey: jest.fn(),
+    catalog: jest.fn(),
+    setMaxPartySize: jest.fn(),
+  }
+  const items = { section: jest.fn(), create: jest.fn(), update: jest.fn() }
+  const boxes = {
+    section: jest.fn(),
+    create: jest.fn(),
+    setLevels: jest.fn(),
+    addContent: jest.fn(),
+    removeContent: jest.fn(),
+    moveContent: jest.fn(),
+  }
+  const drops = {
+    rows: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+    move: jest.fn(),
+  }
+  const crystals = {
+    section: jest.fn(),
+    pairs: jest.fn(),
+    addPrice: jest.fn(),
+    removeLatest: jest.fn(),
   }
   const manual = { rows: jest.fn(), openBoss: jest.fn(), close: jest.fn() }
   const notices = {
@@ -48,6 +76,10 @@ describe('AdminController', () => {
         { provide: ManualCompletionRepository, useValue: manual },
         { provide: OperatorNoticesService, useValue: notices },
         { provide: DropPricesRepository, useValue: prices },
+        { provide: DropItemsRepository, useValue: items },
+        { provide: DropBoxesRepository, useValue: boxes },
+        { provide: BossDropsRepository, useValue: drops },
+        { provide: CrystalPricesRepository, useValue: crystals },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -61,6 +93,10 @@ describe('AdminController', () => {
       ...Object.values(manual),
       ...Object.values(notices),
       ...Object.values(prices),
+      ...Object.values(items),
+      ...Object.values(boxes),
+      ...Object.values(drops),
+      ...Object.values(crystals),
     ]) {
       mock.mockReset()
     }
@@ -72,6 +108,10 @@ describe('AdminController', () => {
     '/admin/manual-completion',
     '/admin/notices',
     '/admin/drop-prices',
+    '/admin/drop-items',
+    '/admin/drop-boxes',
+    '/admin/boss-drops',
+    '/admin/crystal-prices',
   ]
 
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
@@ -110,12 +150,13 @@ describe('AdminController', () => {
     const ok = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/rules',
-      payload: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90 },
+      payload: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
     })
     expect(ok.statusCode).toBe(204)
     expect(bosses.setRules).toHaveBeenCalledWith({
       weeklyBossSelectionLimit: 12,
       weeklyCrystalSaleLimit: 90,
+      defaultMaxPartySize: 6,
     })
 
     const bad = await app.inject({
@@ -434,6 +475,272 @@ describe('AdminController', () => {
       expect(bad.statusCode).toBe(400)
       const tooMany = await app.inject({ method: 'GET', url: '/admin/drop-prices/rows?limit=5000' })
       expect(tooMany.statusCode).toBe(400)
+    })
+  })
+
+  describe('게임 데이터 표 넷', () => {
+    it('GET rows 넷은 리포지토리의 칸을 그대로 내고, 상자는 이름을 붙인다', async () => {
+      items.section.mockResolvedValue({
+        updatedAt: null,
+        items: [
+          { key: 'restraint_ring', name: '리스트레인트 링', iconFile: null, valuable: false },
+        ],
+      })
+      boxes.section.mockResolvedValue({
+        updatedAt: null,
+        boxes: [
+          { item: 'green_boss_ring_box', levelMin: 1, levelMax: 3, contents: ['restraint_ring'] },
+        ],
+      })
+      drops.rows.mockResolvedValue([])
+      crystals.pairs.mockResolvedValue([])
+      crystals.section.mockResolvedValue({ updatedAt: null, prices: [] })
+      bosses.catalog.mockResolvedValue({
+        updatedAt: null,
+        rules: { defaultMaxPartySize: 6 },
+        bosses: [],
+      })
+
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/drop-items/rows' })).json<{
+          items: unknown[]
+        }>().items,
+      ).toHaveLength(1)
+      const box = (await app.inject({ method: 'GET', url: '/admin/drop-boxes/rows' })).json<{
+        boxes: unknown[]
+        items: unknown[]
+      }>()
+      expect(box.boxes[0]).toMatchObject({
+        name: 'green_boss_ring_box',
+        contents: [{ item: 'restraint_ring', name: '리스트레인트 링' }],
+      })
+      expect(box.items).toEqual([{ key: 'restraint_ring', name: '리스트레인트 링' }])
+      const rows = await app.inject({
+        method: 'GET',
+        url: '/admin/boss-drops/rows?boss=lotus&difficulty=hard',
+      })
+      expect(rows.statusCode).toBe(200)
+      expect(drops.rows).toHaveBeenCalledWith('lotus', 'hard')
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/boss-drops/rows?boss=lotus' })).statusCode,
+      ).toBe(400)
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/crystal-prices/rows' })).json(),
+      ).toEqual({ updatedAt: null, defaultMaxPartySize: 6, pairs: [] })
+    })
+
+    it('POST /admin/drop-items 는 201, 같은 key 는 409, key 모양이 틀리면 400 이다', async () => {
+      items.create.mockResolvedValue({ id: ROW })
+      const ok = await app.inject({
+        method: 'POST',
+        url: '/admin/drop-items',
+        payload: { key: 'dreamy_belt', name: '몽환의 벨트' },
+      })
+      expect(ok.statusCode).toBe(201)
+      expect(items.create).toHaveBeenCalledWith({
+        key: 'dreamy_belt',
+        name: '몽환의 벨트',
+        iconFile: null,
+        valuable: false,
+      })
+
+      items.create.mockRejectedValue(new DropItemExists('dreamy_belt'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/drop-items',
+            payload: { key: 'dreamy_belt', name: 'x' },
+          })
+        ).statusCode,
+      ).toBe(409)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/drop-items',
+            payload: { key: 'Dreamy Belt', name: 'x' },
+          })
+        ).statusCode,
+      ).toBe(400)
+    })
+
+    it('PUT /admin/drop-items/:key 는 204, 모르면 404 다', async () => {
+      items.update.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/drop-items/dreamy_belt',
+            payload: { name: '몽환의 벨트', valuable: true },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(items.update).toHaveBeenCalledWith('dreamy_belt', {
+        name: '몽환의 벨트',
+        iconFile: null,
+        valuable: true,
+      })
+      items.update.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/drop-items/nobody',
+            payload: { name: 'x' },
+          })
+        ).statusCode,
+      ).toBe(404)
+    })
+
+    it('상자의 레벨 범위는 둘 다 있거나 둘 다 없어야 400 이 아니다', async () => {
+      boxes.create.mockResolvedValue({ id: ROW })
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/drop-boxes',
+            payload: { item: 'green_boss_ring_box', levelMin: 1 },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/drop-boxes',
+            payload: { item: 'green_boss_ring_box', levelMin: 3, levelMax: 1 },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/drop-boxes',
+            payload: { item: 'chaos_pitch_black_accessory_box' },
+          })
+        ).statusCode,
+      ).toBe(201)
+      expect(boxes.create).toHaveBeenCalledWith({
+        item: 'chaos_pitch_black_accessory_box',
+        levelMin: null,
+        levelMax: null,
+      })
+    })
+
+    it('드롭 표 줄은 더하고 고치고 옮기고 지운다. 기간 글자가 틀리면 400 이다', async () => {
+      drops.create.mockResolvedValue({ id: ROW })
+      const body = {
+        boss: 'lotus',
+        difficulty: 'hard',
+        category: 'consumable',
+        item: 'red_boss_ring_box',
+        from: '2026-09-17T10:00',
+      }
+      expect(
+        (await app.inject({ method: 'POST', url: '/admin/boss-drops', payload: body })).statusCode,
+      ).toBe(201)
+      expect(drops.create).toHaveBeenCalledWith({ ...body, amount: null, until: null })
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/boss-drops',
+            payload: { ...body, from: '2026-9-17' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      drops.update.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: `/admin/boss-drops/${ROW}`,
+            payload: { until: '2026-09-17' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(drops.update).toHaveBeenCalledWith(ROW, {
+        amount: null,
+        from: null,
+        until: '2026-09-17',
+      })
+      drops.move.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: `/admin/boss-drops/${ROW}/move`,
+            payload: { direction: 'up' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      drops.remove.mockResolvedValue(false)
+      expect(
+        (await app.inject({ method: 'DELETE', url: `/admin/boss-drops/${ROW}` })).statusCode,
+      ).toBe(404)
+    })
+
+    it('결정석 가격은 새 줄을 열고(경계가 아니면 400), 지금 줄을 거두고, 상한을 적는다', async () => {
+      crystals.addPrice.mockResolvedValue({ id: ROW })
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/crystal-prices/lotus/hard',
+            payload: { priceMeso: 100, from: '2026-10-22' },
+          })
+        ).statusCode,
+      ).toBe(201)
+      expect(crystals.addPrice).toHaveBeenCalledWith('lotus', 'hard', {
+        priceMeso: 100,
+        from: '2026-10-22',
+      })
+      crystals.addPrice.mockRejectedValue(new NotBoundary('2026-10-23'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/crystal-prices/lotus/hard',
+            payload: { priceMeso: 100, from: '2026-10-23' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/crystal-prices/lotus/ultra',
+            payload: { priceMeso: 100 },
+          })
+        ).statusCode,
+      ).toBe(400)
+      crystals.removeLatest.mockResolvedValue(true)
+      expect(
+        (await app.inject({ method: 'DELETE', url: `/admin/crystal-prices/rows/${ROW}` }))
+          .statusCode,
+      ).toBe(204)
+      bosses.setMaxPartySize.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/crystal-prices/lotus/hard/max-party-size',
+            payload: { maxPartySize: null },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(bosses.setMaxPartySize).toHaveBeenCalledWith('lotus', 'hard', null)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/crystal-prices/lotus/hard/max-party-size',
+            payload: { maxPartySize: 7 },
+          })
+        ).statusCode,
+      ).toBe(400)
     })
   })
 })

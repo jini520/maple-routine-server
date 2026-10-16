@@ -19,6 +19,12 @@ export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
 export const describeDb = TEST_DATABASE_URL ? describe : describe.skip
 
 const TABLES = [
+  'boss_crystal_prices',
+  'drop_box_contents',
+  'drop_boxes',
+  'boss_drop_rewards',
+  'drop_items',
+  'game_data_sections',
   'drop_prices',
   'nexon_login_attempts',
   'nexon_sessions',

@@ -1,7 +1,8 @@
 {
   "rules": {
     "weeklyBossSelectionLimit": 12,
-    "weeklyCrystalSaleLimit": 90
+    "weeklyCrystalSaleLimit": 90,
+    "defaultMaxPartySize": 6
   },
   "bosses": [
     {

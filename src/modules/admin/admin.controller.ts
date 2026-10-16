@@ -84,6 +84,7 @@ import {
   noticeUpdateBody,
   type OpenBody,
   openBody,
+  type RequiredLevelBody,
   requiredLevelBody,
   rowId,
   snakeKey,
@@ -180,10 +181,15 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
     @Param('difficulty', new ZodValidationPipe(difficultyParam))
     difficulty: BossInput['difficulties'][number]['difficulty'],
-    @Body(new ZodValidationPipe(requiredLevelBody)) body: { requiredLevel: number },
+    @Body(new ZodValidationPipe(requiredLevelBody)) body: RequiredLevelBody,
   ): Promise<void> {
     if (
-      !(await this.bosses.upsertDifficulty(key, { difficulty, requiredLevel: body.requiredLevel }))
+      !(await this.bosses.upsertDifficulty(key, {
+        difficulty,
+        requiredLevel: body.requiredLevel,
+        from: body.from ?? null,
+        until: body.until ?? null,
+      }))
     ) {
       throw new NotFoundException(`모르는 보스다: ${key}`)
     }

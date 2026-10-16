@@ -200,6 +200,8 @@ describe('AdminController', () => {
     expect(bosses.upsertDifficulty).toHaveBeenCalledWith('kaling', {
       difficulty: 'hard',
       requiredLevel: 275,
+      from: null,
+      until: null,
     })
 
     bosses.upsertDifficulty.mockResolvedValueOnce(false)
@@ -802,5 +804,21 @@ describe('AdminController', () => {
         })
       ).statusCode,
     ).toBe(400)
+  })
+
+  it('PUT /admin/bosses/:key/difficulties/:difficulty 는 새 줄의 유효 기간도 함께 넘긴다', async () => {
+    bosses.upsertDifficulty.mockResolvedValue(true)
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/bardrix/difficulties/extreme',
+      payload: { requiredLevel: 290, from: '2026-10-22T10:00' },
+    })
+    expect(res.statusCode).toBe(204)
+    expect(bosses.upsertDifficulty).toHaveBeenCalledWith('bardrix', {
+      difficulty: 'extreme',
+      requiredLevel: 290,
+      from: '2026-10-22T10:00',
+      until: null,
+    })
   })
 })

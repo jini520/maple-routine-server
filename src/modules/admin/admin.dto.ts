@@ -49,8 +49,18 @@ export const dropPriceQuery = z.object({
 })
 export type DropPriceQuery = z.infer<typeof dropPriceQuery>
 
-/** 난이도 줄 하나의 본문. 난이도는 경로가 든다. */
-export const requiredLevelBody = z.object({ requiredLevel: z.number().int().min(1) })
+/** 난이도 줄 하나의 본문. 난이도는 경로가 든다. 유효 기간은 새 줄을 더할 때 함께 적고, 있는 줄은 period 끝점으로 고친다. */
+export const requiredLevelBody = z
+  .object({
+    requiredLevel: z.number().int().min(1),
+    from: z.string().regex(PERIOD_TEXT).nullish(),
+    until: z.string().regex(PERIOD_TEXT).nullish(),
+  })
+  .refine((d) => d.from == null || d.until == null || d.from < d.until, {
+    message: '끝이 시작보다 뒤여야 한다',
+    path: ['until'],
+  })
+export type RequiredLevelBody = z.infer<typeof requiredLevelBody>
 
 /** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
 export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)

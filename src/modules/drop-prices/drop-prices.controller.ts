@@ -35,7 +35,6 @@ export class DropPricesController {
       periodKey: body.periodKey,
       worldKey: body.worldKey ?? null,
       ringLevel: body.ringLevel ?? null,
-      slot: body.slot ?? null,
       bossDifficultyId: difficultyRow?.id ?? null,
     })
     return { ok: true }

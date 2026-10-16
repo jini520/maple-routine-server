@@ -7,7 +7,6 @@ const ok = {
   periodKey: '2026-10-08',
   worldKey: 'scania',
   ringLevel: 4,
-  slot: null,
   boss: 'lucid',
   difficulty: 'hard',
 }
@@ -27,7 +26,7 @@ describe('dropPriceBody', () => {
     expect(dropPriceBody.safeParse({ ...ok, boss: '' }).success).toBe(false)
   })
 
-  it('nullable 셋은 null 도 빠진 것도 받는다', () => {
+  it('nullable 둘은 null 도 빠진 것도 받는다', () => {
     const parsed = dropPriceBody.parse({
       dropRecordId: ok.dropRecordId,
       itemKey: ok.itemKey,
@@ -36,7 +35,6 @@ describe('dropPriceBody', () => {
     })
     expect(parsed.worldKey ?? null).toBeNull()
     expect(parsed.ringLevel ?? null).toBeNull()
-    expect(parsed.slot ?? null).toBeNull()
   })
 
   it('가격은 1 이상의 안전한 정수다', () => {

@@ -194,7 +194,7 @@ export function layout(path: string, title: string, body: string): string {
   }
   // datetime-local 값을 KST 로 읽는다. 브라우저가 어디 있든 같은 시각이다.
   function kstLocalToIso(local) {
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(local)) return null;
+    if (!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$/.test(local)) return null;
     return new Date((local.length === 16 ? local + ':00' : local) + '+09:00').toISOString();
   }
   async function call(method, url, body) {

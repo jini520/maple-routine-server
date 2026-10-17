@@ -34,6 +34,13 @@ import {
   EquipmentItemsRepository,
   EquipmentNameTaken,
 } from '../equipment-items/equipment-items.repository'
+import {
+  GroundKeyPrefix,
+  GroundNameTaken,
+  HuntingGroundsRepository,
+  NoRegion,
+  RegionExists,
+} from '../hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
@@ -144,6 +151,15 @@ describe('AdminController', () => {
     removeLastStarforceStep: jest.fn(),
   }
   const mvpRepo = { section: jest.fn(), update: jest.fn(), move: jest.fn() }
+  const huntingRepo = {
+    section: jest.fn(),
+    createRegion: jest.fn(),
+    updateRegion: jest.fn(),
+    moveRegion: jest.fn(),
+    createGround: jest.fn(),
+    updateGround: jest.fn(),
+    moveGround: jest.fn(),
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -164,6 +180,7 @@ describe('AdminController', () => {
         { provide: EquipmentItemsRepository, useValue: equipmentRepo },
         { provide: EnhancementCostsRepository, useValue: enhancementRepo },
         { provide: MvpGradesRepository, useValue: mvpRepo },
+        { provide: HuntingGroundsRepository, useValue: huntingRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -188,6 +205,7 @@ describe('AdminController', () => {
       ...Object.values(equipmentRepo),
       ...Object.values(enhancementRepo),
       ...Object.values(mvpRepo),
+      ...Object.values(huntingRepo),
     ]) {
       mock.mockReset()
     }
@@ -210,6 +228,7 @@ describe('AdminController', () => {
     '/admin/equipment-items',
     '/admin/enhancement-costs',
     '/admin/mvp-grades',
+    '/admin/hunting-grounds',
   ]
 
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
@@ -1739,6 +1758,182 @@ describe('AdminController', () => {
         ).statusCode,
       ).toBe(204)
       expect(mvpRepo.move).toHaveBeenCalledWith('gold', 'down')
+    })
+  })
+
+  describe('사냥터', () => {
+    const joy = {
+      key: 'road_of_vanishing_weathered_land_of_joy',
+      region: 'road_of_vanishing',
+      name: '풍화된 기쁨의 땅',
+      force: 30,
+      mobs: 22,
+      levels: [200],
+    }
+
+    it('지역 POST 201 · 같은 key 409, PUT 204 · 모르면 404, move 204 다', async () => {
+      huntingRepo.section.mockResolvedValue({
+        updatedAt: null,
+        regions: [],
+        grounds: [],
+        groundLevels: [],
+      })
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/hunting-grounds/rows' })).json(),
+      ).toEqual({ updatedAt: null, regions: [], grounds: [], groundLevels: [] })
+
+      huntingRepo.createRegion.mockResolvedValue({ id: ROW })
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/regions',
+            payload: { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
+          })
+        ).statusCode,
+      ).toBe(201)
+      expect(huntingRepo.createRegion).toHaveBeenCalledWith({
+        key: 'road_of_vanishing',
+        name: '소멸의 여로',
+        forceType: 'arcane',
+      })
+      huntingRepo.createRegion.mockRejectedValue(new RegionExists('road_of_vanishing'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/regions',
+            payload: { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
+          })
+        ).statusCode,
+      ).toBe(409)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/regions',
+            payload: { key: 'limen', name: '리멘', forceType: 'sacred' },
+          })
+        ).statusCode,
+      ).toBe(400)
+
+      huntingRepo.updateRegion.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/regions/cernium',
+            payload: { name: '세르니움', forceType: 'authentic' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      huntingRepo.updateRegion.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/regions/nobody',
+            payload: { name: 'x', forceType: 'arcane' },
+          })
+        ).statusCode,
+      ).toBe(404)
+
+      huntingRepo.moveRegion.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/regions/cernium/move',
+            payload: { direction: 'up' },
+          })
+        ).statusCode,
+      ).toBe(204)
+    })
+
+    it('사냥터 POST 201 · 모르는 지역 404 · 접두 어긋남 400 · 같은 이름 409 · 겹친 레벨 400, PUT 204 · 모르면 404, move 204 다', async () => {
+      huntingRepo.createGround.mockResolvedValue({ id: ROW })
+      expect(
+        (await app.inject({ method: 'POST', url: '/admin/hunting-grounds/grounds', payload: joy }))
+          .statusCode,
+      ).toBe(201)
+      expect(huntingRepo.createGround).toHaveBeenCalledWith(joy)
+      huntingRepo.createGround.mockRejectedValue(new NoRegion('limen'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/grounds',
+            payload: { ...joy, region: 'limen' },
+          })
+        ).statusCode,
+      ).toBe(404)
+      huntingRepo.createGround.mockRejectedValue(new GroundKeyPrefix('road_of_vanishing_'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/grounds',
+            payload: { ...joy, key: 'weathered_land' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      huntingRepo.createGround.mockRejectedValue(new GroundNameTaken(joy.key))
+      const taken = await app.inject({
+        method: 'POST',
+        url: '/admin/hunting-grounds/grounds',
+        payload: { ...joy, key: 'road_of_vanishing_other' },
+      })
+      expect(taken.statusCode).toBe(409)
+      expect(taken.json<{ message: string }>().message).toContain(joy.key)
+      huntingRepo.createGround.mockClear()
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/grounds',
+            payload: { ...joy, levels: [200, 200] },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(huntingRepo.createGround).not.toHaveBeenCalled()
+
+      huntingRepo.updateGround.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/' + joy.key,
+            payload: { name: '풍화된 기쁨의 땅', force: 30, mobs: 30, levels: [200, 201] },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(huntingRepo.updateGround).toHaveBeenCalledWith(joy.key, {
+        name: '풍화된 기쁨의 땅',
+        force: 30,
+        mobs: 30,
+        levels: [200, 201],
+      })
+      huntingRepo.updateGround.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/nobody',
+            payload: { name: 'x', force: 0, mobs: 1, levels: [1] },
+          })
+        ).statusCode,
+      ).toBe(404)
+
+      huntingRepo.moveGround.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/grounds/' + joy.key + '/move',
+            payload: { direction: 'down' },
+          })
+        ).statusCode,
+      ).toBe(204)
     })
   })
 })

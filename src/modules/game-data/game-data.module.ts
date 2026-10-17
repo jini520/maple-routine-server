@@ -7,6 +7,7 @@ import { CrystalPricesModule } from '../crystal-prices/crystal-prices.module'
 import { DropItemsModule } from '../drop-items/drop-items.module'
 import { EnhancementCostsModule } from '../enhancement-costs/enhancement-costs.module'
 import { EquipmentItemsModule } from '../equipment-items/equipment-items.module'
+import { HuntingGroundsModule } from '../hunting-grounds/hunting-grounds.module'
 import { MvpGradesModule } from '../mvp-grades/mvp-grades.module'
 import { SpendCatalogModule } from '../spend-catalog/spend-catalog.module'
 import { SymbolCostsModule } from '../symbol-costs/symbol-costs.module'
@@ -28,6 +29,7 @@ import { GameDataService } from './game-data.service'
     EquipmentItemsModule,
     EnhancementCostsModule,
     MvpGradesModule,
+    HuntingGroundsModule,
   ],
   controllers: [GameDataController],
   providers: [GameDataService],

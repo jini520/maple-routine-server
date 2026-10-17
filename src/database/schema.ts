@@ -1,5 +1,5 @@
 /**
- * Model. 표 서른하나와 ENUM 열여섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 서른넷과 ENUM 열일곱. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -717,5 +717,59 @@ export const mvpGrades = pgTable(
       'mvp_grades_starforce_discount_range',
       sql`${t.starforceDiscountPercent} BETWEEN 0 AND 100`,
     ),
+  ],
+)
+
+/** 지역이 요구하는 힘의 종류. 이름 · 아이콘은 앱 상수가 든다. */
+export const forceTypeEnum = pgEnum('force_type', ['arcane', 'authentic'])
+
+/** 사냥터의 지역. 사냥터가 지역을 가리켜 지우지 않는다. 심볼과는 key 글자가 같을 뿐 FK 가 없다. */
+export const huntingRegions = pgTable('hunting_regions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  forceType: forceTypeEnum('force_type').notNull(),
+  /** 파일의 차례. 앱은 역순으로 세운다. */
+  sortOrder: integer('sort_order').notNull(),
+})
+
+/** 사냥터 한 줄. 기록(income_records 의 사냥터 key)이 key 를 들어 지우지 않는다. */
+export const huntingGrounds = pgTable(
+  'hunting_grounds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** 지역 key_번역. 그 지역의 key 로 시작한다. */
+    key: text('key').notNull().unique(),
+    regionId: uuid('region_id')
+      .notNull()
+      .references(() => huntingRegions.id),
+    /** 전역 유일. 이름만 든 옛 기록을 key 로 옮기는 이관이 이름으로 찾는다. */
+    name: text('name').notNull().unique(),
+    /** 아케인 · 어센틱 포스 요구치. 어느 쪽인지는 지역이 안다. */
+    force: integer('force').notNull(),
+    /** 맵에 한 번에 뜨는 마릿수. 효율 조각이 이 수로 퍼센트를 만든다. */
+    mobs: integer('mobs').notNull(),
+    /** 지역 안의 차례. 레벨 차이 · 마릿수가 동률일 때의 차례다. */
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    check('hunting_grounds_force_nonnegative', sql`${t.force} >= 0`),
+    check('hunting_grounds_mobs_positive', sql`${t.mobs} >= 1`),
+  ],
+)
+
+/** 사냥터의 몬스터 레벨 한 줄. 레벨이 둘이면 레벨마다 재서 평균내므로 범위가 아니라 목록이다. */
+export const huntingGroundLevels = pgTable(
+  'hunting_ground_levels',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    groundId: uuid('ground_id')
+      .notNull()
+      .references(() => huntingGrounds.id, { onDelete: 'cascade' }),
+    level: integer('level').notNull(),
+  },
+  (t) => [
+    unique('hunting_ground_levels_ground_level_unique').on(t.groundId, t.level),
+    check('hunting_ground_levels_level_positive', sql`${t.level} >= 1`),
   ],
 )

@@ -3,6 +3,7 @@ import { BossesRepository } from '../modules/bosses/bosses.repository'
 import { ContentsRepository } from '../modules/contents/contents.repository'
 import { EnhancementCostsRepository } from '../modules/enhancement-costs/enhancement-costs.repository'
 import { EquipmentItemsRepository } from '../modules/equipment-items/equipment-items.repository'
+import { HuntingGroundsRepository } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../modules/mvp-grades/mvp-grades.repository'
 import { SpendCatalogRepository } from '../modules/spend-catalog/spend-catalog.repository'
 import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repository'
@@ -15,6 +16,7 @@ import {
   parseDropItemsSeed,
   parseEnhancementCostsSeed,
   parseEquipmentItemsSeed,
+  parseHuntingGroundsSeed,
   parseMvpGradesSeed,
   parseSpendCatalogSeed,
   parseSymbolCostsSeed,
@@ -322,6 +324,34 @@ const mvpGradesSeed = {
   ],
 }
 
+const huntingGroundsSeed = {
+  regions: [
+    { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
+    { key: 'cernium', name: '세르니움', forceType: 'authentic' },
+  ],
+  grounds: [
+    {
+      key: 'road_of_vanishing_weathered_land_of_joy',
+      region: 'road_of_vanishing',
+      name: '풍화된 기쁨의 땅',
+      force: 30,
+      mobs: 22,
+    },
+    {
+      key: 'cernium_royal_library_1',
+      region: 'cernium',
+      name: '왕립 도서관 제1구역',
+      force: 160,
+      mobs: 36,
+    },
+  ],
+  groundLevels: [
+    { ground: 'road_of_vanishing_weathered_land_of_joy', level: 200 },
+    { ground: 'cernium_royal_library_1', level: 260 },
+    { ground: 'cernium_royal_library_1', level: 261 },
+  ],
+}
+
 describe('씨앗 넷의 모양', () => {
   it('받고, 모양이 어긋나면 던진다', () => {
     expect(parseDropItemsSeed(dropItemsSeed)).toEqual(dropItemsSeed)
@@ -335,6 +365,7 @@ describe('씨앗 넷의 모양', () => {
     expect(parseEquipmentItemsSeed(equipmentItemsSeed)).toEqual(equipmentItemsSeed)
     expect(parseEnhancementCostsSeed(enhancementCostsSeed)).toEqual(enhancementCostsSeed)
     expect(parseMvpGradesSeed(mvpGradesSeed)).toEqual(mvpGradesSeed)
+    expect(parseHuntingGroundsSeed(huntingGroundsSeed)).toEqual(huntingGroundsSeed)
     expect(() =>
       parseSpendCatalogSeed({
         ...spendCatalogSeed,
@@ -367,6 +398,12 @@ describe('씨앗 넷의 모양', () => {
     ).toThrow()
     expect(() =>
       parseMvpGradesSeed({ grades: [{ ...mvpGradesSeed.grades[0], auctionFeePercent: 101 }] }),
+    ).toThrow()
+    expect(() =>
+      parseHuntingGroundsSeed({
+        ...huntingGroundsSeed,
+        regions: [{ ...huntingGroundsSeed.regions[0], forceType: 'sacred' }],
+      }),
     ).toThrow()
     expect(() =>
       parseDropItemsSeed({
@@ -442,7 +479,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('열둘을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열셋을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -456,6 +493,7 @@ describeDb('seedGameData', () => {
       equipmentItems: parseEquipmentItemsSeed(equipmentItemsSeed),
       enhancementCosts: parseEnhancementCostsSeed(enhancementCostsSeed),
       mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
+      huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -470,6 +508,7 @@ describeDb('seedGameData', () => {
       equipmentItems: 'seeded',
       enhancementCosts: 'seeded',
       mvpGrades: 'seeded',
+      huntingGrounds: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -496,6 +535,10 @@ describeDb('seedGameData', () => {
     )
     expect(enhancement.starforceSteps).toEqual(enhancementCostsSeed.starforceSteps)
     expect((await new MvpGradesRepository(db).section()).grades).toEqual(mvpGradesSeed.grades)
+    const hunting = await new HuntingGroundsRepository(db).section()
+    expect(hunting.regions).toEqual(huntingGroundsSeed.regions)
+    expect(hunting.grounds).toEqual(huntingGroundsSeed.grounds)
+    expect(hunting.groundLevels).toEqual(huntingGroundsSeed.groundLevels)
 
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules.defaultMaxPartySize).toBe(6)
@@ -511,6 +554,7 @@ describeDb('seedGameData', () => {
       contents: parseContentsSeed(contentsSeed),
       enhancementCosts: parseEnhancementCostsSeed(enhancementCostsSeed),
       mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
+      huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
@@ -520,6 +564,7 @@ describeDb('seedGameData', () => {
       contents: 'skipped',
       enhancementCosts: 'skipped',
       mvpGrades: 'skipped',
+      huntingGrounds: 'skipped',
     })
   })
 
@@ -543,6 +588,26 @@ describeDb('seedGameData', () => {
     expect(enhancement.potentialResetCosts).toEqual([])
     // 규칙 셋은 표보다 먼저 들어가고 그대로 남는다. 다른 표의 씨앗과 같은 규칙이다.
     expect(enhancement.rules.cubeAppraisalCoefficient).toBe(20)
+  })
+
+  it('사냥터 씨앗에 레벨 없는 사냥터나 지역 key 로 안 시작하는 key 가 있으면 던지고 아무것도 안 넣는다', async () => {
+    await expect(
+      seedGameData(db, {
+        huntingGrounds: parseHuntingGroundsSeed({
+          ...huntingGroundsSeed,
+          groundLevels: huntingGroundsSeed.groundLevels.slice(1),
+        }),
+      }),
+    ).rejects.toThrow('레벨이 없는 사냥터가 있다: road_of_vanishing_weathered_land_of_joy')
+    await expect(
+      seedGameData(db, {
+        huntingGrounds: parseHuntingGroundsSeed({
+          ...huntingGroundsSeed,
+          grounds: [{ ...huntingGroundsSeed.grounds[0], key: 'weathered_land_of_joy' }],
+        }),
+      }),
+    ).rejects.toThrow('사냥터 key 가 지역 key 로 시작하지 않는다: weathered_land_of_joy')
+    expect((await new HuntingGroundsRepository(db).section()).regions).toEqual([])
   })
 
   it('컨텐츠 씨앗의 갈래가 ENUM 을 다 안 들면 던지고 아무것도 안 넣는다', async () => {

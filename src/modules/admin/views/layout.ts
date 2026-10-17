@@ -16,6 +16,7 @@ const MENU = [
   ['/admin/equipment-items', '장비'],
   ['/admin/enhancement-costs', '강화 비용'],
   ['/admin/mvp-grades', 'MVP 등급'],
+  ['/admin/hunting-grounds', '사냥터'],
 ] as const
 
 /**

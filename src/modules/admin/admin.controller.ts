@@ -94,6 +94,14 @@ import {
   EquipmentItemsRepository,
   EquipmentNameTaken,
 } from '../equipment-items/equipment-items.repository'
+import {
+  GroundExists,
+  GroundKeyPrefix,
+  GroundNameTaken,
+  HuntingGroundsRepository,
+  NoRegion,
+  RegionExists,
+} from '../hunting-grounds/hunting-grounds.repository'
 import { type MvpGrade, MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
@@ -174,6 +182,14 @@ import {
   potentialTypeParam,
   type StarforceStepBody,
   starforceStepBody,
+  type HuntingGroundCreateBody,
+  huntingGroundCreateBody,
+  type HuntingGroundUpdateBody,
+  huntingGroundUpdateBody,
+  type HuntingRegionCreateBody,
+  huntingRegionCreateBody,
+  type HuntingRegionUpdateBody,
+  huntingRegionUpdateBody,
   type SymbolCreateBody,
   symbolCreateBody,
   type SymbolGroupCreateBody,
@@ -198,6 +214,7 @@ import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
 import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
 import { EQUIPMENT_ITEMS_HTML } from './views/equipment-items'
+import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
 import { MVP_GRADES_HTML } from './views/mvp-grades'
 import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
@@ -206,7 +223,7 @@ import { NOTICES_HTML } from './views/notices'
 
 /**
  * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
- * 강화 비용 · MVP 등급)도 여기다.
+ * 강화 비용 · MVP 등급 · 사냥터)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
@@ -228,6 +245,7 @@ export class AdminController {
     private readonly equipment: EquipmentItemsRepository,
     private readonly enhancement: EnhancementCostsRepository,
     private readonly mvp: MvpGradesRepository,
+    private readonly hunting: HuntingGroundsRepository,
   ) {}
 
   @Get()
@@ -1327,6 +1345,106 @@ export class AdminController {
     if (!(await this.mvp.move(key, body.direction)))
       throw new NotFoundException(`모르는 등급이다: ${key}`)
   }
+
+  /* ── 사냥터 ── */
+
+  @Get('hunting-grounds')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  huntingGroundsPage(): string {
+    return HUNTING_GROUNDS_HTML
+  }
+
+  @Get('hunting-grounds/rows')
+  @Header('cache-control', 'no-store')
+  huntingGroundRows() {
+    return this.hunting.section()
+  }
+
+  /** 지역을 맨 뒤에 더한다. 같은 key 는 409 다. */
+  @Post('hunting-grounds/regions')
+  @HttpCode(201)
+  async createHuntingRegion(
+    @Body(new ZodValidationPipe(huntingRegionCreateBody)) body: HuntingRegionCreateBody,
+  ) {
+    try {
+      return await this.hunting.createRegion(body)
+    } catch (error) {
+      if (error instanceof RegionExists)
+        throw new ConflictException(`이미 있는 지역이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  /** 이름 · 힘 종류를 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 404 다. */
+  @Put('hunting-grounds/regions/:key')
+  @HttpCode(204)
+  async updateHuntingRegion(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(huntingRegionUpdateBody)) body: HuntingRegionUpdateBody,
+  ): Promise<void> {
+    if (!(await this.hunting.updateRegion(key, body)))
+      throw new NotFoundException(`모르는 지역이다: ${key}`)
+  }
+
+  @Post('hunting-grounds/regions/:key/move')
+  @HttpCode(204)
+  async moveHuntingRegion(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.hunting.moveRegion(key, body.direction)))
+      throw new NotFoundException(`모르는 지역이다: ${key}`)
+  }
+
+  /** 사냥터를 지역 맨 뒤에 더한다. 모르는 지역 404, 접두가 어긋난 key 400, 같은 key · 이름 409 다. */
+  @Post('hunting-grounds/grounds')
+  @HttpCode(201)
+  async createHuntingGround(
+    @Body(new ZodValidationPipe(huntingGroundCreateBody)) body: HuntingGroundCreateBody,
+  ) {
+    try {
+      return await this.hunting.createGround(body)
+    } catch (error) {
+      throw huntingGroundError(error, body.key)
+    }
+  }
+
+  /** 사냥터를 갈아 끼운다. key 와 지역은 못 바꾼다. 레벨은 통째로 바뀐다. 모르면 404 다. */
+  @Put('hunting-grounds/grounds/:key')
+  @HttpCode(204)
+  async updateHuntingGround(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(huntingGroundUpdateBody)) body: HuntingGroundUpdateBody,
+  ): Promise<void> {
+    try {
+      if (!(await this.hunting.updateGround(key, body)))
+        throw new NotFoundException(`모르는 사냥터다: ${key}`)
+    } catch (error) {
+      throw huntingGroundError(error, key)
+    }
+  }
+
+  @Post('hunting-grounds/grounds/:key/move')
+  @HttpCode(204)
+  async moveHuntingGround(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.hunting.moveGround(key, body.direction)))
+      throw new NotFoundException(`모르는 사냥터다: ${key}`)
+  }
+}
+
+/** 사냥터 쓰기의 실패를 HTTP 로 옮긴다. 모르는 지역 404, 접두가 어긋난 key 400, 같은 key · 이름 409 다. */
+function huntingGroundError(error: unknown, key: string): unknown {
+  if (error instanceof NoRegion) return new NotFoundException(`모르는 지역이다: ${error.message}`)
+  if (error instanceof GroundKeyPrefix)
+    return new BadRequestException(`사냥터 key 는 지역 key 로 시작해야 한다: ${error.message}`)
+  if (error instanceof GroundExists) return new ConflictException(`이미 있는 사냥터다: ${key}`)
+  if (error instanceof GroundNameTaken)
+    return new ConflictException(`같은 이름의 사냥터가 이미 있다: ${error.message}`)
+  return error
 }
 
 /** 장비 쓰기의 실패를 HTTP 로 옮긴다. 같은 key · 겹치는 이름 · 드롭 표와 어긋난 key 는 409 다. */

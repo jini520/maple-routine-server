@@ -5,8 +5,8 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급. 뒤의 것이
- * 앞의 줄을 가리킨다.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터.
+ * 뒤의 것이 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
  */
@@ -33,6 +33,7 @@ import {
   POTENTIAL_GRADES,
   POTENTIAL_RESET_TYPES,
 } from '../modules/enhancement-costs/enhancement-costs.repository'
+import { FORCE_TYPES } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../modules/mvp-grades/mvp-grades.repository'
 import { touchSection } from '../modules/game-data/sections'
 import {
@@ -55,6 +56,9 @@ const {
   dropItems,
   equipmentItems,
   gameRules,
+  huntingGroundLevels,
+  huntingGrounds,
+  huntingRegions,
   mvpGrades,
   potentialResetCosts,
   soulPotentialResetCosts,
@@ -397,6 +401,28 @@ export function parseMvpGradesSeed(value: unknown): MvpGradesSeed {
   return mvpGradesSeed.parse(value)
 }
 
+const huntingGroundsSeed = z.object({
+  regions: z
+    .array(z.object({ key, name: z.string().min(1), forceType: z.enum(FORCE_TYPES) }))
+    .min(1),
+  grounds: z
+    .array(
+      z.object({
+        key,
+        region: key,
+        name: z.string().min(1),
+        force: z.number().int().min(0),
+        mobs: z.number().int().min(1),
+      }),
+    )
+    .min(1),
+  groundLevels: z.array(z.object({ ground: key, level: z.number().int().min(1) })).min(1),
+})
+export type HuntingGroundsSeed = z.infer<typeof huntingGroundsSeed>
+export function parseHuntingGroundsSeed(value: unknown): HuntingGroundsSeed {
+  return huntingGroundsSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -410,6 +436,7 @@ export interface GameDataSeeds {
   equipmentItems?: EquipmentItemsSeed
   enhancementCosts?: EnhancementCostsSeed
   mvpGrades?: MvpGradesSeed
+  huntingGrounds?: HuntingGroundsSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -437,6 +464,8 @@ export async function seedGameData(
   if (seeds.enhancementCosts !== undefined)
     result.enhancementCosts = await seedEnhancementCosts(db, seeds.enhancementCosts)
   if (seeds.mvpGrades !== undefined) result.mvpGrades = await seedMvpGrades(db, seeds.mvpGrades)
+  if (seeds.huntingGrounds !== undefined)
+    result.huntingGrounds = await seedHuntingGrounds(db, seeds.huntingGrounds)
   return result
 }
 
@@ -466,7 +495,8 @@ async function isEmpty(
     | typeof potentialResetCosts
     | typeof soulPotentialResetCosts
     | typeof starforceSteps
-    | typeof mvpGrades,
+    | typeof mvpGrades
+    | typeof huntingRegions,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
   return (row?.n ?? 0) === 0
@@ -795,6 +825,49 @@ async function seedMvpGrades(db: Db, seed: MvpGradesSeed): Promise<SeedOutcome> 
   return 'seeded'
 }
 
+/**
+ * 지역 표가 비어 있을 때만 셋을 함께 채운다. 사냥터 key 는 지역 key 로 시작해야 하고 레벨이 없는 사냥터는 못 넣는다. 둘 다
+ * 관리 화면의 쓰기 검사와 같은 규칙이라 씨앗도 지킨다.
+ */
+async function seedHuntingGrounds(db: Db, seed: HuntingGroundsSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, huntingRegions))) return 'skipped'
+  const badKey = seed.grounds.find((g) => !g.key.startsWith(`${g.region}_`))
+  if (badKey !== undefined)
+    throw new Error(`사냥터 key 가 지역 key 로 시작하지 않는다: ${badKey.key}`)
+  const withLevel = new Set(seed.groundLevels.map((l) => l.ground))
+  const noLevel = seed.grounds.filter((g) => !withLevel.has(g.key))
+  if (noLevel.length > 0)
+    throw new Error(`레벨이 없는 사냥터가 있다: ${noLevel.map((g) => g.key).join(', ')}`)
+  await db.transaction(async (tx) => {
+    const regionRows = await tx
+      .insert(huntingRegions)
+      .values(seed.regions.map((r, sortOrder) => ({ ...r, sortOrder })))
+      .returning({ id: huntingRegions.id, key: huntingRegions.key })
+    const regionIds = new Map(regionRows.map((r) => [r.key, r.id]))
+    const counters = new Map<string, number>()
+    const groundRows = await tx
+      .insert(huntingGrounds)
+      .values(
+        seed.grounds.map((g) => {
+          const regionId = must(regionIds, g.region, '지역')
+          const sortOrder = counters.get(regionId) ?? 0
+          counters.set(regionId, sortOrder + 1)
+          return { key: g.key, regionId, name: g.name, force: g.force, mobs: g.mobs, sortOrder }
+        }),
+      )
+      .returning({ id: huntingGrounds.id, key: huntingGrounds.key })
+    const groundIds = new Map(groundRows.map((r) => [r.key, r.id]))
+    await tx.insert(huntingGroundLevels).values(
+      seed.groundLevels.map((l) => ({
+        groundId: must(groundIds, l.ground, '사냥터'),
+        level: l.level,
+      })),
+    )
+    await touchSection(tx, 'huntingGrounds')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -826,6 +899,7 @@ async function main(): Promise<void> {
       equipmentItems: parseEquipmentItemsSeed(readSeed('equipment-items')),
       enhancementCosts: parseEnhancementCostsSeed(readSeed('enhancement-costs')),
       mvpGrades: parseMvpGradesSeed(readSeed('mvp-grades')),
+      huntingGrounds: parseHuntingGroundsSeed(readSeed('hunting-grounds')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

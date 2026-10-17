@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { bossDifficulties, bosses, dropItems, dropPrices, worlds } from '../../database/schema'
@@ -26,9 +26,13 @@ export interface DropPriceAdminRow {
   identifiedBy: IdentitySource
   dropRecordId: string
   itemKey: string
+  /** 아이템 표의 한글 이름. 화면이 key 대신 이것을 보인다. */
+  itemName: string
   priceMeso: number
   periodKey: string
   worldKey: string | null
+  /** 월드 표의 한글 이름. 월드가 없는 줄은 null. */
+  worldName: string | null
   ringLevel: number | null
   /** 보스 key 와 난이도. 줄이 안 가리키면 둘 다 null. */
   boss: string | null
@@ -41,6 +45,7 @@ export interface DropPriceAdminRow {
 /** 아이템 × 기간의 분포. 뺀 가격은 안 센다. */
 export interface DropPriceSummary {
   itemKey: string
+  itemName: string
   periodKey: string
   count: number
   min: number
@@ -48,9 +53,14 @@ export interface DropPriceSummary {
   max: number
 }
 
+/** itemKey 는 아이템 표의 key 또는 한글 이름 중 하나와 같으면 걸린다. 화면이 이름을 보이므로 이름으로도 거른다. */
 export interface DropPriceFilter {
   itemKey: string | null
   periodKey: string | null
+}
+
+function itemMatches(value: string | null) {
+  return value === null ? undefined : or(eq(dropItems.key, value), eq(dropItems.name, value))
 }
 
 /** 아이템 표에 없는 key 다. message 가 그 key 다. */
@@ -69,7 +79,9 @@ export class DropPricesRepository {
       .select({
         price: dropPrices,
         itemKey: dropItems.key,
+        itemName: dropItems.name,
         worldKey: worlds.key,
+        worldName: worlds.name,
         boss: bosses.key,
         difficulty: bossDifficulties.difficulty,
       })
@@ -80,21 +92,23 @@ export class DropPricesRepository {
       .leftJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
       .where(
         and(
-          filter.itemKey === null ? undefined : eq(dropItems.key, filter.itemKey),
+          itemMatches(filter.itemKey),
           filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
         ),
       )
       .orderBy(desc(dropPrices.updatedAt), desc(dropPrices.id))
       .limit(limit)
-    return rows.map(({ price: r, itemKey, worldKey, boss, difficulty }) => ({
+    return rows.map(({ price: r, itemKey, itemName, worldKey, worldName, boss, difficulty }) => ({
       id: r.id,
       userId: r.userId,
       identifiedBy: r.identifiedBy,
       dropRecordId: r.dropRecordId,
       itemKey,
+      itemName,
       priceMeso: r.priceMeso,
       periodKey: r.periodKey,
       worldKey,
+      worldName,
       ringLevel: r.ringLevel,
       boss,
       difficulty,
@@ -110,6 +124,7 @@ export class DropPricesRepository {
     const rows = await this.db
       .select({
         itemKey: dropItems.key,
+        itemName: dropItems.name,
         periodKey: dropPrices.periodKey,
         count: sql<number>`count(*)::int`,
         min: sql<number>`min(${dropPrices.priceMeso})::float8`,
@@ -121,11 +136,11 @@ export class DropPricesRepository {
       .where(
         and(
           isNull(dropPrices.deletedAt),
-          filter.itemKey === null ? undefined : eq(dropItems.key, filter.itemKey),
+          itemMatches(filter.itemKey),
           filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
         ),
       )
-      .groupBy(dropItems.key, dropPrices.periodKey)
+      .groupBy(dropItems.key, dropItems.name, dropPrices.periodKey)
       .orderBy(desc(dropPrices.periodKey), desc(sql`count(*)`), dropItems.key)
     return rows
   }

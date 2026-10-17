@@ -2,9 +2,10 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { bossDifficulties, bosses, dropPrices } from '../../database/schema'
+import { bossDifficulties, bosses, dropItems, dropPrices, worlds } from '../../database/schema'
 import type { IdentitySource } from '../identity/identity.guard'
 
+/** 전송값 그대로 key 를 든다. 서버가 적을 때 표에서 id 를 찾고, 모르는 key 는 NoDropItem · NoWorld 다. */
 export interface DropPriceInput {
   userId: string
   identifiedBy: IdentitySource
@@ -52,6 +53,11 @@ export interface DropPriceFilter {
   periodKey: string | null
 }
 
+/** 아이템 표에 없는 key 다. message 가 그 key 다. */
+export class NoDropItem extends Error {}
+/** 월드 표에 없는 key 다. message 가 그 key 다. */
+export class NoWorld extends Error {}
+
 /** 시세 표본. 같은 사람의 같은 기록은 한 줄이고, 뺀 가격은 deleted_at 으로 남는다. */
 @Injectable()
 export class DropPricesRepository {
@@ -62,29 +68,33 @@ export class DropPricesRepository {
     const rows = await this.db
       .select({
         price: dropPrices,
+        itemKey: dropItems.key,
+        worldKey: worlds.key,
         boss: bosses.key,
         difficulty: bossDifficulties.difficulty,
       })
       .from(dropPrices)
+      .innerJoin(dropItems, eq(dropPrices.itemId, dropItems.id))
+      .leftJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .leftJoin(bossDifficulties, eq(dropPrices.bossDifficultyId, bossDifficulties.id))
       .leftJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
       .where(
         and(
-          filter.itemKey === null ? undefined : eq(dropPrices.itemKey, filter.itemKey),
+          filter.itemKey === null ? undefined : eq(dropItems.key, filter.itemKey),
           filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
         ),
       )
       .orderBy(desc(dropPrices.updatedAt), desc(dropPrices.id))
       .limit(limit)
-    return rows.map(({ price: r, boss, difficulty }) => ({
+    return rows.map(({ price: r, itemKey, worldKey, boss, difficulty }) => ({
       id: r.id,
       userId: r.userId,
       identifiedBy: r.identifiedBy,
       dropRecordId: r.dropRecordId,
-      itemKey: r.itemKey,
+      itemKey,
       priceMeso: r.priceMeso,
       periodKey: r.periodKey,
-      worldKey: r.worldKey,
+      worldKey,
       ringLevel: r.ringLevel,
       boss,
       difficulty,
@@ -99,7 +109,7 @@ export class DropPricesRepository {
     // bigint 집계는 문자열로 오므로 float8 로 받는다. 시세는 안전한 정수 안이다.
     const rows = await this.db
       .select({
-        itemKey: dropPrices.itemKey,
+        itemKey: dropItems.key,
         periodKey: dropPrices.periodKey,
         count: sql<number>`count(*)::int`,
         min: sql<number>`min(${dropPrices.priceMeso})::float8`,
@@ -107,21 +117,40 @@ export class DropPricesRepository {
         max: sql<number>`max(${dropPrices.priceMeso})::float8`,
       })
       .from(dropPrices)
+      .innerJoin(dropItems, eq(dropPrices.itemId, dropItems.id))
       .where(
         and(
           isNull(dropPrices.deletedAt),
-          filter.itemKey === null ? undefined : eq(dropPrices.itemKey, filter.itemKey),
+          filter.itemKey === null ? undefined : eq(dropItems.key, filter.itemKey),
           filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
         ),
       )
-      .groupBy(dropPrices.itemKey, dropPrices.periodKey)
-      .orderBy(desc(dropPrices.periodKey), desc(sql`count(*)`), dropPrices.itemKey)
+      .groupBy(dropItems.key, dropPrices.periodKey)
+      .orderBy(desc(dropPrices.periodKey), desc(sql`count(*)`), dropItems.key)
     return rows
   }
 
-  /** 사람과 기록 id 로 upsert 한다. 다시 적으면 값을 덮고 뺐던 가격은 되살아난다. */
+  /**
+   * 사람과 기록 id 로 upsert 한다. 다시 적으면 값을 덮고 뺐던 가격은 되살아난다. 아이템 · 월드는 key 로 표에서 id 를
+   * 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null) 줄은 그대로 받는다.
+   */
   async upsert(input: DropPriceInput): Promise<void> {
-    const { userId, dropRecordId, ...values } = input
+    const { userId, dropRecordId, itemKey, worldKey, ...rest } = input
+    const [item] = await this.db
+      .select({ id: dropItems.id })
+      .from(dropItems)
+      .where(eq(dropItems.key, itemKey))
+    if (item === undefined) throw new NoDropItem(itemKey)
+    let worldId: string | null = null
+    if (worldKey !== null) {
+      const [world] = await this.db
+        .select({ id: worlds.id })
+        .from(worlds)
+        .where(eq(worlds.key, worldKey))
+      if (world === undefined) throw new NoWorld(worldKey)
+      worldId = world.id
+    }
+    const values = { ...rest, itemId: item.id, worldId }
     await this.db
       .insert(dropPrices)
       .values({ userId, dropRecordId, ...values })

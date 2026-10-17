@@ -221,12 +221,16 @@ export const dropPrices = pgTable(
     /** 기기가 만든 v4. 사람 안에서만 유일하다. 남의 기록 id 로 남의 줄을 못 덮는다. */
     dropRecordId: uuid('drop_record_id').notNull(),
     identifiedBy: identitySourceEnum('identified_by').notNull(),
-    itemKey: text('item_key').notNull(),
+    /** 어느 아이템의 시세인가. 서버가 전송값의 key 로 찾아 적고, 모르는 key 는 받지 않는다. */
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => dropItems.id),
     /** 판매 총액. 내 몫이 아니다. */
     priceMeso: bigint('price_meso', { mode: 'number' }).notNull(),
     /** 주간 YYYY-MM-DD · 월간 YYYY-MM. */
     periodKey: text('period_key').notNull(),
-    worldKey: text('world_key'),
+    /** 어느 월드에서 팔았나. 앱이 월드를 모르면 NULL 이고, 모르는 key 는 받지 않는다. */
+    worldId: uuid('world_id').references(() => worlds.id),
     ringLevel: integer('ring_level'),
     /** 어느 보스 · 난이도에서 얻었나. 표에 없는 쌍이거나 이 칸이 생기기 전 줄은 NULL. */
     bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
@@ -240,7 +244,7 @@ export const dropPrices = pgTable(
   (t) => [
     unique('drop_prices_user_record_unique').on(t.userId, t.dropRecordId),
     index('drop_prices_item_period_idx')
-      .on(t.itemKey, t.periodKey)
+      .on(t.itemId, t.periodKey)
       .where(sql`${t.deletedAt} IS NULL`),
   ],
 )

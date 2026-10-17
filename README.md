@@ -75,9 +75,10 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 사본은 앱 저장소에서 `node scripts/sync-game-data.mjs` 로 맞춘다
   (앱 저장소 `ADR-349` 정정 1 · `ADR-350`).
 - **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-350`). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
-  든다. 칸은 `bosses` · `dropItems` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` 여섯이고 표가 옮겨 올 때마다 는다(앱 저장소 `ADR-350` 정정 1). 드롭 묶음 넷의 관리 화면은
-  `/admin/drop-items` · `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 결정석의 새 가격은 지금 줄을 닫고 새 줄을 연다. 시작은 그
-  보스의 기간 경계(주간 · 시즌 목요일, 월간 1일)여야 한다. `GET /v1/bosses` 는 옛 OTA 가 불러 당분간 남긴다. 표의 첫
+  든다. 칸은 `bosses` · `dropItems` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` 여덟이고 표가 옮겨 올 때마다 는다(앱 저장소 `ADR-350` 정정 1 ~ 3). 드롭 묶음 넷의 관리 화면은
+  `/admin/drop-items` · `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 지출 카탈로그는 `/admin/spend-catalog`,
+  심볼 비용은 `/admin/symbol-costs` 다(ADR-350 정정 3. 묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 결정석의 새 가격은 지금 줄을 닫고 새 줄을 연다. 시작은 그
+  보스의 기간 경계(주간 · 시즌 목요일, 월간 1일)여야 한다. 심볼의 새 비용도 같다. 시작은 KST 날짜이고 지금 줄의 시작보다 뒤면 된다. 새 심볼은 레벨 전부를 한 번에 넣는다. `GET /v1/bosses` 는 옛 OTA 가 불러 당분간 남긴다. 표의 첫
   채움은 `node dist/cli/seed-game-data.js` 가 `src/database/seed/<표>.json` 으로 한다. 비어 있는 표만 채운다.
 - **시각은 timestamptz 로 저장하고, 사람이 보는 글자는 전부 KST `YYYY-MM-DD HH:mm:ss` 다**(앱 저장소 `ADR-347` 정정 2). 관리 화면은
   `layout.ts` 의 `when()` 으로만 시각을 그리고 `datetime-local` 입력도 KST 로 읽는다. CLI 는 `common/kst.ts` 의 `formatKst` 다. 브라우저와

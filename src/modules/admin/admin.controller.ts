@@ -52,6 +52,28 @@ import {
 } from '../drop-items/drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
+import {
+  NoSpendGroup,
+  NoSpendTile,
+  SpendCatalogRepository,
+  SpendGroupExists,
+  SpendItemExists,
+  SpendItemShape,
+  SpendTileExists,
+} from '../spend-catalog/spend-catalog.repository'
+import {
+  LevelOutOfRange,
+  LevelsAboveMax,
+  LevelsIncomplete,
+  NoSymbol,
+  NoSymbolGroup,
+  NotAfterCurrent as NotAfterCurrentCost,
+  NotLatest as NotLatestCost,
+  OnlyRow,
+  SymbolCostsRepository,
+  SymbolExists,
+  SymbolGroupExists,
+} from '../symbol-costs/symbol-costs.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
@@ -89,6 +111,30 @@ import {
   requiredLevelBody,
   rowId,
   snakeKey,
+  type SpendGroupCreateBody,
+  spendGroupCreateBody,
+  type SpendGroupUpdateBody,
+  spendGroupUpdateBody,
+  type SpendItemCreateBody,
+  spendItemCreateBody,
+  type SpendItemUpdateBody,
+  spendItemUpdateBody,
+  type SpendRulesBody,
+  spendRulesBody,
+  type SpendTileCreateBody,
+  spendTileCreateBody,
+  type SpendTileUpdateBody,
+  spendTileUpdateBody,
+  type SymbolCostsBody,
+  symbolCostsBody,
+  type SymbolCreateBody,
+  symbolCreateBody,
+  type SymbolGroupCreateBody,
+  symbolGroupCreateBody,
+  type SymbolGroupUpdateBody,
+  symbolGroupUpdateBody,
+  type SymbolUpdateBody,
+  symbolUpdateBody,
   type WorldCreateBody,
   worldCreateBody,
   type WorldUpdateBody,
@@ -100,13 +146,15 @@ import { CRYSTAL_PRICES_HTML } from './views/crystal-prices'
 import { DROP_BOXES_HTML } from './views/drop-boxes'
 import { DROP_ITEMS_HTML } from './views/drop-items'
 import { DROP_PRICES_HTML } from './views/drop-prices'
+import { SPEND_CATALOG_HTML } from './views/spend-catalog'
+import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
 import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표 넷(드롭 아이템 · 상자 · 드롭 표 · 결정석 가격)도 여기다.
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
@@ -122,6 +170,8 @@ export class AdminController {
     private readonly drops: BossDropsRepository,
     private readonly crystals: CrystalPricesRepository,
     private readonly worlds: WorldsRepository,
+    private readonly spend: SpendCatalogRepository,
+    private readonly symbolCosts: SymbolCostsRepository,
   ) {}
 
   @Get()
@@ -393,6 +443,265 @@ export class AdminController {
   ): Promise<void> {
     if (!(await this.worlds.move(key, body.direction)))
       throw new NotFoundException(`모르는 월드다: ${key}`)
+  }
+
+  /* ── 지출 카탈로그 ── */
+
+  @Get('spend-catalog')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  spendCatalogPage(): string {
+    return SPEND_CATALOG_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  @Get('spend-catalog/rows')
+  @Header('cache-control', 'no-store')
+  spendCatalogRows() {
+    return this.spend.section()
+  }
+
+  /** 관세율과 주화 판매가를 적는다. */
+  @Put('spend-catalog/rules')
+  @HttpCode(204)
+  async setSpendRules(
+    @Body(new ZodValidationPipe(spendRulesBody)) body: SpendRulesBody,
+  ): Promise<void> {
+    await this.spend.setRules(body)
+  }
+
+  /** 묶음을 맨 뒤에 더한다. 같은 key 는 409 다. */
+  @Post('spend-catalog/groups')
+  @HttpCode(201)
+  async createSpendGroup(
+    @Body(new ZodValidationPipe(spendGroupCreateBody)) body: SpendGroupCreateBody,
+  ) {
+    try {
+      return await this.spend.createGroup(body)
+    } catch (error) {
+      if (error instanceof SpendGroupExists)
+        throw new ConflictException(`이미 있는 묶음이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  /** 이름 · 갈래 · 열림을 갈아 끼운다. 닫기가 곧 active 끄기다. 모르면 404 다. */
+  @Put('spend-catalog/groups/:key')
+  @HttpCode(204)
+  async updateSpendGroup(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(spendGroupUpdateBody)) body: SpendGroupUpdateBody,
+  ): Promise<void> {
+    if (!(await this.spend.updateGroup(key, body)))
+      throw new NotFoundException(`모르는 묶음이다: ${key}`)
+  }
+
+  @Post('spend-catalog/groups/:key/move')
+  @HttpCode(204)
+  async moveSpendGroup(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.spend.moveGroup(key, body.direction)))
+      throw new NotFoundException(`모르는 묶음이다: ${key}`)
+  }
+
+  /** 타일을 더한다. 같은 key 는 409 다. */
+  @Post('spend-catalog/tiles')
+  @HttpCode(201)
+  async createSpendTile(
+    @Body(new ZodValidationPipe(spendTileCreateBody)) body: SpendTileCreateBody,
+  ) {
+    try {
+      return await this.spend.createTile({
+        key: body.key,
+        name: body.name,
+        iconFile: body.iconFile ?? null,
+        iconMap: body.iconMap ?? null,
+      })
+    } catch (error) {
+      if (error instanceof SpendTileExists)
+        throw new ConflictException(`이미 있는 타일이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  @Put('spend-catalog/tiles/:key')
+  @HttpCode(204)
+  async updateSpendTile(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(spendTileUpdateBody)) body: SpendTileUpdateBody,
+  ): Promise<void> {
+    if (
+      !(await this.spend.updateTile(key, {
+        name: body.name,
+        iconFile: body.iconFile ?? null,
+        iconMap: body.iconMap ?? null,
+      }))
+    )
+      throw new NotFoundException(`모르는 타일이다: ${key}`)
+  }
+
+  /** 항목을 묶음 맨 뒤에 더한다. 모르는 묶음 · 타일은 404, 같은 key 는 409, 시트가 못 가르는 모양은 400 이다. */
+  @Post('spend-catalog/items')
+  @HttpCode(201)
+  async createSpendItem(
+    @Body(new ZodValidationPipe(spendItemCreateBody)) body: SpendItemCreateBody,
+  ) {
+    try {
+      return await this.spend.createItem({
+        key: body.key,
+        group: body.group,
+        ...spendItemFields(body),
+      })
+    } catch (error) {
+      throw spendItemError(error, body.key)
+    }
+  }
+
+  /** 항목을 갈아 끼운다. key 와 묶음은 못 바꾼다. 모르면 404 다. */
+  @Put('spend-catalog/items/:key')
+  @HttpCode(204)
+  async updateSpendItem(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(spendItemUpdateBody)) body: SpendItemUpdateBody,
+  ): Promise<void> {
+    try {
+      if (!(await this.spend.updateItem(key, spendItemFields(body))))
+        throw new NotFoundException(`모르는 항목이다: ${key}`)
+    } catch (error) {
+      throw spendItemError(error, key)
+    }
+  }
+
+  @Post('spend-catalog/items/:key/move')
+  @HttpCode(204)
+  async moveSpendItem(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.spend.moveItem(key, body.direction)))
+      throw new NotFoundException(`모르는 항목이다: ${key}`)
+  }
+
+  /* ── 심볼 비용 ── */
+
+  @Get('symbol-costs')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  symbolCostsPage(): string {
+    return SYMBOL_COSTS_HTML
+  }
+
+  /** 화면이 부른다. 묶음 → 심볼 → 레벨 → 가격 줄 전부다. */
+  @Get('symbol-costs/rows')
+  @Header('cache-control', 'no-store')
+  symbolCostRows() {
+    return this.symbolCosts.adminRows()
+  }
+
+  @Post('symbol-costs/groups')
+  @HttpCode(201)
+  async createSymbolGroup(
+    @Body(new ZodValidationPipe(symbolGroupCreateBody)) body: SymbolGroupCreateBody,
+  ) {
+    try {
+      return await this.symbolCosts.createGroup(body)
+    } catch (error) {
+      if (error instanceof SymbolGroupExists)
+        throw new ConflictException(`이미 있는 묶음이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  /** 이름 · 만렙 · 기본 범위를 갈아 끼운다. 만렙 위에 비용 줄이 있으면 409 다. 모르면 404 다. */
+  @Put('symbol-costs/groups/:key')
+  @HttpCode(204)
+  async updateSymbolGroup(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(symbolGroupUpdateBody)) body: SymbolGroupUpdateBody,
+  ): Promise<void> {
+    try {
+      if (!(await this.symbolCosts.updateGroup(key, body)))
+        throw new NotFoundException(`모르는 묶음이다: ${key}`)
+    } catch (error) {
+      if (error instanceof LevelsAboveMax)
+        throw new ConflictException(`만렙 위에 비용 줄이 있다. 레벨 ${error.message} 까지 있다`)
+      throw error
+    }
+  }
+
+  /** 심볼을 묶음 맨 뒤에 더한다. 비용은 따로 한 번에 넣는다. 모르는 묶음은 404, 같은 key 는 409 다. */
+  @Post('symbol-costs/symbols')
+  @HttpCode(201)
+  async createSymbol(@Body(new ZodValidationPipe(symbolCreateBody)) body: SymbolCreateBody) {
+    try {
+      return await this.symbolCosts.createSymbol(body)
+    } catch (error) {
+      if (error instanceof NoSymbolGroup)
+        throw new NotFoundException(`모르는 묶음이다: ${body.group}`)
+      if (error instanceof SymbolExists)
+        throw new ConflictException(`이미 있는 심볼이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  @Put('symbol-costs/symbols/:key')
+  @HttpCode(204)
+  async updateSymbol(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(symbolUpdateBody)) body: SymbolUpdateBody,
+  ): Promise<void> {
+    if (!(await this.symbolCosts.updateSymbol(key, body)))
+      throw new NotFoundException(`모르는 심볼이다: ${key}`)
+  }
+
+  @Post('symbol-costs/symbols/:key/move')
+  @HttpCode(204)
+  async moveSymbol(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.symbolCosts.moveSymbol(key, body.direction)))
+      throw new NotFoundException(`모르는 심볼이다: ${key}`)
+  }
+
+  /** 레벨 여럿의 새 비용을 한 번에 연다. 지금 줄은 닫힌다. 모르는 심볼은 404, 시작 · 레벨 · 빠진 레벨은 400 이다. */
+  @Post('symbol-costs/symbols/:key/costs')
+  @HttpCode(201)
+  async addSymbolCosts(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(symbolCostsBody)) body: SymbolCostsBody,
+  ) {
+    try {
+      return await this.symbolCosts.addCosts(key, { from: body.from ?? null, costs: body.costs })
+    } catch (error) {
+      if (error instanceof NoSymbol) throw new NotFoundException(`모르는 심볼이다: ${key}`)
+      if (error instanceof LevelOutOfRange)
+        throw new BadRequestException(`레벨이 범위 밖이다: ${error.message}`)
+      if (error instanceof LevelsIncomplete)
+        throw new BadRequestException(
+          `레벨 ${error.message} 의 비용이 없다. 1 부터 만렙 - 1 까지 전부 있어야 한다`,
+        )
+      if (error instanceof NotAfterCurrentCost)
+        throw new BadRequestException(`시작이 지금 줄보다 뒤여야 한다: ${error.message}`)
+      throw error
+    }
+  }
+
+  /** 지금 비용 줄을 거둔다. 바로 앞 줄이 다시 열린다. 없으면 404, 지난 줄이거나 유일한 줄이면 409 다. */
+  @Delete('symbol-costs/rows/:id')
+  @HttpCode(204)
+  async removeSymbolCost(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    try {
+      if (!(await this.symbolCosts.removeLatest(id))) throw new NotFoundException()
+    } catch (error) {
+      if (error instanceof NotLatestCost)
+        throw new ConflictException('지난 줄은 못 거둔다. 과거 기록이 그 값을 읽었다')
+      if (error instanceof OnlyRow)
+        throw new ConflictException('그 레벨의 유일한 줄이다. 거두면 빈 레벨이 생긴다')
+      throw error
+    }
   }
 
   /* ── 드롭 아이템 ── */
@@ -691,6 +1000,35 @@ export class AdminController {
 }
 
 /** 화면이 읽는 모양. 시각은 ISO 문자열이다. */
+/** 항목 본문의 nullish 칸을 null 로 맞춘다. 만드는 쪽과 고치는 쪽이 같은 칸을 든다. */
+function spendItemFields(body: SpendItemUpdateBody) {
+  return {
+    tile: body.tile,
+    name: body.name,
+    tier: body.tier ?? null,
+    currency: body.currency,
+    unitPrice: body.unitPrice ?? null,
+    unit: body.unit,
+    maxQuantity: body.maxQuantity ?? null,
+    rewardCoins: body.rewardCoins ?? null,
+    from: body.from ?? null,
+    until: body.until ?? null,
+    options: body.options,
+    forms: body.forms,
+  }
+}
+
+/** 항목 쓰기의 실패를 HTTP 로 옮긴다. 모르는 참조는 404, 같은 key 는 409, 시트가 못 가르는 모양은 400 이다. */
+function spendItemError(error: unknown, key: string): unknown {
+  if (error instanceof NoSpendGroup)
+    return new NotFoundException(`모르는 묶음이다: ${error.message}`)
+  if (error instanceof NoSpendTile)
+    return new NotFoundException(`모르는 타일이다: ${error.message}`)
+  if (error instanceof SpendItemExists) return new ConflictException(`이미 있는 항목이다: ${key}`)
+  if (error instanceof SpendItemShape) return new BadRequestException(error.message)
+  return error
+}
+
 function toAdminNotice(row: NoticeRow) {
   return {
     id: row.id,

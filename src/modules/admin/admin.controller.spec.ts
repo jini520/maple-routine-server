@@ -6,6 +6,19 @@ import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.r
 import { CrystalPricesRepository, NotBoundary } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
+import {
+  NoSpendTile,
+  SpendCatalogRepository,
+  SpendGroupExists,
+  SpendItemShape,
+} from '../spend-catalog/spend-catalog.repository'
+import {
+  LevelsAboveMax,
+  LevelsIncomplete,
+  NoSymbolGroup,
+  OnlyRow,
+  SymbolCostsRepository,
+} from '../symbol-costs/symbol-costs.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -72,6 +85,28 @@ describe('AdminController', () => {
   const prices = { summary: jest.fn(), recent: jest.fn() }
 
   const worldsRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
+  const spendRepo = {
+    section: jest.fn(),
+    setRules: jest.fn(),
+    createGroup: jest.fn(),
+    updateGroup: jest.fn(),
+    moveGroup: jest.fn(),
+    createTile: jest.fn(),
+    updateTile: jest.fn(),
+    createItem: jest.fn(),
+    updateItem: jest.fn(),
+    moveItem: jest.fn(),
+  }
+  const symbolRepo = {
+    adminRows: jest.fn(),
+    createGroup: jest.fn(),
+    updateGroup: jest.fn(),
+    createSymbol: jest.fn(),
+    updateSymbol: jest.fn(),
+    moveSymbol: jest.fn(),
+    addCosts: jest.fn(),
+    removeLatest: jest.fn(),
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -86,6 +121,8 @@ describe('AdminController', () => {
         { provide: BossDropsRepository, useValue: drops },
         { provide: CrystalPricesRepository, useValue: crystals },
         { provide: WorldsRepository, useValue: worldsRepo },
+        { provide: SpendCatalogRepository, useValue: spendRepo },
+        { provide: SymbolCostsRepository, useValue: symbolRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -104,6 +141,8 @@ describe('AdminController', () => {
       ...Object.values(drops),
       ...Object.values(crystals),
       ...Object.values(worldsRepo),
+      ...Object.values(spendRepo),
+      ...Object.values(symbolRepo),
     ]) {
       mock.mockReset()
     }
@@ -120,6 +159,8 @@ describe('AdminController', () => {
     '/admin/boss-drops',
     '/admin/crystal-prices',
     '/admin/worlds',
+    '/admin/spend-catalog',
+    '/admin/symbol-costs',
   ]
 
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
@@ -825,6 +866,251 @@ describe('AdminController', () => {
       requiredLevel: 290,
       from: '2026-10-22T10:00',
       until: null,
+    })
+  })
+
+  describe('지출 카탈로그', () => {
+    it('rows 는 칸 그대로이고, 규칙은 204 · 범위 밖은 400, 묶음은 201 · 같은 key 409 · 모르면 404 다', async () => {
+      const section = {
+        updatedAt: null,
+        rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
+        groups: [],
+        tiles: [],
+        items: [],
+        itemOptions: [],
+        itemForms: [],
+      }
+      spendRepo.section.mockResolvedValue(section)
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/spend-catalog/rows' })).json(),
+      ).toEqual(section)
+
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/rules',
+            payload: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(spendRepo.setRules).toHaveBeenCalledWith({
+        tariffPercent: 10,
+        rewardCoinPriceMeso: 40_000_000,
+      })
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/rules',
+            payload: { tariffPercent: 101, rewardCoinPriceMeso: 1 },
+          })
+        ).statusCode,
+      ).toBe(400)
+
+      spendRepo.createGroup.mockResolvedValue({ id: ROW })
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/spend-catalog/groups',
+        payload: { key: 'event', name: '이벤트', category: 'event_bm' },
+      })
+      expect(created.statusCode).toBe(201)
+      expect(spendRepo.createGroup).toHaveBeenCalledWith({
+        key: 'event',
+        name: '이벤트',
+        category: 'event_bm',
+        active: true,
+      })
+      spendRepo.createGroup.mockRejectedValue(new SpendGroupExists('event'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/spend-catalog/groups',
+            payload: { key: 'event', name: '이벤트', category: 'event_bm' },
+          })
+        ).statusCode,
+      ).toBe(409)
+      spendRepo.updateGroup.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/groups/nobody',
+            payload: { name: 'x', category: 'buff', active: false },
+          })
+        ).statusCode,
+      ).toBe(404)
+    })
+
+    it('항목은 nullish 칸을 null 로 넘기고 축 값 · 형태가 비면 빈 배열이다. 모양 오류는 400, 모르는 타일은 404 다', async () => {
+      spendRepo.createItem.mockResolvedValue({ id: ROW })
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/spend-catalog/items',
+        payload: {
+          key: 'boss_killer_potion',
+          group: 'boss_buff',
+          tile: 'boss_killer_potion',
+          name: '보스 킬러 비약',
+          currency: 'meso',
+          unitPrice: null,
+          unit: '개',
+        },
+      })
+      expect(created.statusCode).toBe(201)
+      expect(spendRepo.createItem).toHaveBeenCalledWith({
+        key: 'boss_killer_potion',
+        group: 'boss_buff',
+        tile: 'boss_killer_potion',
+        name: '보스 킬러 비약',
+        tier: null,
+        currency: 'meso',
+        unitPrice: null,
+        unit: '개',
+        maxQuantity: null,
+        rewardCoins: null,
+        from: null,
+        until: null,
+        options: [],
+        forms: [],
+      })
+      spendRepo.createItem.mockRejectedValue(new SpendItemShape('단계와 축 값을 함께 못 든다'))
+      const shape = await app.inject({
+        method: 'POST',
+        url: '/admin/spend-catalog/items',
+        payload: {
+          key: 'x',
+          group: 'scroll',
+          tile: 'magical_scroll',
+          name: 'x',
+          tier: '1단계',
+          currency: 'meso',
+          unit: '개',
+          options: [{ axis: '무기', value: '한손무기' }],
+        },
+      })
+      expect(shape.statusCode).toBe(400)
+      expect(shape.json<{ message: string }>().message).toContain('함께 못 든다')
+      spendRepo.updateItem.mockRejectedValue(new NoSpendTile('nobody'))
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/items/x',
+            payload: { tile: 'nobody', name: 'x', currency: 'meso', unit: '개' },
+          })
+        ).statusCode,
+      ).toBe(404)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/items/x',
+            payload: {
+              tile: 't',
+              name: 'x',
+              currency: 'meso',
+              unit: '개',
+              from: '2026-10-22',
+              until: '2026-10-01',
+            },
+          })
+        ).statusCode,
+      ).toBe(400)
+    })
+  })
+
+  describe('심볼 비용', () => {
+    it('rows 는 관리 줄이고, 묶음 수정은 비용 줄 위로 내리면 409, 심볼은 모르는 묶음이면 404 다', async () => {
+      symbolRepo.adminRows.mockResolvedValue({ updatedAt: null, groups: [] })
+      expect((await app.inject({ method: 'GET', url: '/admin/symbol-costs/rows' })).json()).toEqual(
+        { updatedAt: null, groups: [] },
+      )
+      symbolRepo.createGroup.mockResolvedValue({ id: ROW })
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/symbol-costs/groups',
+            payload: { key: 'arcane', name: '아케인', maxLevel: 20, defaultFrom: 7, defaultTo: 12 },
+          })
+        ).statusCode,
+      ).toBe(201)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/symbol-costs/groups',
+            payload: { key: 'arcane', name: '아케인', maxLevel: 20, defaultFrom: 12, defaultTo: 7 },
+          })
+        ).statusCode,
+      ).toBe(400)
+      symbolRepo.updateGroup.mockRejectedValue(new LevelsAboveMax('19'))
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/symbol-costs/groups/arcane',
+            payload: { name: '아케인', maxLevel: 10, defaultFrom: 1, defaultTo: 2 },
+          })
+        ).statusCode,
+      ).toBe(409)
+      symbolRepo.createSymbol.mockRejectedValue(new NoSymbolGroup('nobody'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/symbol-costs/symbols',
+            payload: {
+              key: 'tallahart',
+              group: 'nobody',
+              name: '탈라하트',
+              requiredLevel: 290,
+              iconFile: 't.webp',
+            },
+          })
+        ).statusCode,
+      ).toBe(404)
+    })
+
+    it('비용은 시작 없이도 넘기고 빠진 레벨은 400, 거두기는 유일한 줄이면 409 · 없으면 404 다', async () => {
+      symbolRepo.addCosts.mockResolvedValue({ inserted: 2 })
+      const added = await app.inject({
+        method: 'POST',
+        url: '/admin/symbol-costs/symbols/tallahart/costs',
+        payload: {
+          costs: [
+            { level: 1, costMeso: 100 },
+            { level: 2, costMeso: 200 },
+          ],
+        },
+      })
+      expect(added.statusCode).toBe(201)
+      expect(symbolRepo.addCosts).toHaveBeenCalledWith('tallahart', {
+        from: null,
+        costs: [
+          { level: 1, costMeso: 100 },
+          { level: 2, costMeso: 200 },
+        ],
+      })
+      symbolRepo.addCosts.mockRejectedValue(new LevelsIncomplete('3'))
+      const incomplete = await app.inject({
+        method: 'POST',
+        url: '/admin/symbol-costs/symbols/tallahart/costs',
+        payload: { from: '2026-10-22', costs: [{ level: 1, costMeso: 100 }] },
+      })
+      expect(incomplete.statusCode).toBe(400)
+      expect(incomplete.json<{ message: string }>().message).toContain('레벨 3')
+
+      symbolRepo.removeLatest.mockRejectedValue(new OnlyRow(ROW))
+      expect(
+        (await app.inject({ method: 'DELETE', url: `/admin/symbol-costs/rows/${ROW}` })).statusCode,
+      ).toBe(409)
+      symbolRepo.removeLatest.mockResolvedValue(false)
+      expect(
+        (await app.inject({ method: 'DELETE', url: `/admin/symbol-costs/rows/${ROW}` })).statusCode,
+      ).toBe(404)
     })
   })
 

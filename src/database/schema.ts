@@ -1,5 +1,5 @@
 /**
- * Model. 표 아홉과 ENUM 다섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 스물넷과 ENUM 아홉. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -363,3 +363,152 @@ export const worlds = pgTable('worlds', {
   sortOrder: integer('sort_order').notNull(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
+
+/** 지출 카탈로그의 갈래. 앱 SPEND_CATEGORIES 그대로이고 이름은 앱이 든다. 묶음마다 하나라 묶음 칸이다. */
+export const spendCategoryEnum = pgEnum('spend_category', ['content', 'event_bm', 'buff', 'scroll'])
+export const spendCurrencyEnum = pgEnum('spend_currency', ['point', 'meso'])
+/** 에픽던전 추가 리워드가 값을 받는 형태. 앱 SPEND_FORMS 그대로이고 이름은 앱이 든다. */
+export const spendFormEnum = pgEnum('spend_form', ['exp', 'sol_erda'])
+
+/** 지출 목록의 제목 한 줄. active 가 열기 · 닫기 스위치다. 날짜로 판정하지 않는다. */
+export const spendGroups = pgTable('spend_groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  category: spendCategoryEnum('category').notNull(),
+  /** 닫힌 묶음은 앱에서 흐리게 서고 못 고른다. 과거 기록은 그대로다. */
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull(),
+})
+
+/** 지출 목록의 한 칸. 같은 타일의 항목이 한 칸으로 접힌다. 그림은 아이템 파일과 지역 아이콘 중 하나다. */
+export const spendTiles = pgTable(
+  'spend_tiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    /** 앱 자산 src/assets/items/ 의 파일명. */
+    iconFile: text('icon_file'),
+    /** 앱 자산 src/assets/maps/icons/ 의 slug. 에픽던전 넷. */
+    iconMap: text('icon_map'),
+  },
+  (t) => [check('spend_tiles_icon_one', sql`${t.iconFile} IS NULL OR ${t.iconMap} IS NULL`)],
+)
+
+/** 지출 항목. 기록이 key 를 든다. 가격 하나와 그 단위다. 지우지 않고 until 로 닫는다. */
+export const spendItems = pgTable(
+  'spend_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => spendGroups.id),
+    tileId: uuid('tile_id')
+      .notNull()
+      .references(() => spendTiles.id),
+    name: text('name').notNull(),
+    /** 타일 안의 단계. 축 값(spend_item_options)을 든 항목은 NULL 이다. */
+    tier: text('tier'),
+    currency: spendCurrencyEnum('currency').notNull(),
+    /** NULL 은 경매장 값이라 앱이 적을 때 친다. */
+    unitPrice: bigint('unit_price', { mode: 'number' }),
+    /** 회 · 개 · 포인트 · 시간. 수량 칸의 라벨이다. */
+    unit: text('unit').notNull(),
+    /** 기록 한 건의 수량 상한. */
+    maxQuantity: integer('max_quantity'),
+    /** 한 형태에서 받는 세라자르 주화 개수. 형태를 든 항목만 든다. */
+    rewardCoins: integer('reward_coins'),
+    /** KST 글자 그대로. 앱이 적는 날짜가 든 주간 기간의 첫날로 판정한다. */
+    from: text('from'),
+    until: text('until'),
+    /** 묶음 안의 차례. 타일 차례는 첫 항목의 차례다. */
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    check('spend_items_unit_price_nonnegative', sql`${t.unitPrice} IS NULL OR ${t.unitPrice} >= 0`),
+  ],
+)
+
+/** 축이 둘인 타일의 항목이 드는 축 값. 앱은 고른 값과 꼭 맞는 항목 하나를 찾는다. */
+export const spendItemOptions = pgTable(
+  'spend_item_options',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => spendItems.id, { onDelete: 'cascade' }),
+    axis: text('axis').notNull(),
+    value: text('value').notNull(),
+  },
+  (t) => [unique('spend_item_options_item_axis_unique').on(t.itemId, t.axis)],
+)
+
+/** 항목이 값을 받는 형태. 가격을 안 바꾸고 형태마다 단계를 따로 고른다. */
+export const spendItemForms = pgTable(
+  'spend_item_forms',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => spendItems.id, { onDelete: 'cascade' }),
+    form: spendFormEnum('form').notNull(),
+  },
+  (t) => [unique('spend_item_forms_item_form_unique').on(t.itemId, t.form)],
+)
+
+/** 심볼 묶음. 아케인 · 어센틱 · 그랜드 어센틱. 만렙과 고르면 서는 기본 범위를 든다. */
+export const symbolGroups = pgTable(
+  'symbol_groups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    maxLevel: integer('max_level').notNull(),
+    defaultFrom: integer('default_from').notNull(),
+    defaultTo: integer('default_to').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    check(
+      'symbol_groups_default_range',
+      sql`${t.defaultFrom} < ${t.defaultTo} AND ${t.defaultTo} <= ${t.maxLevel}`,
+    ),
+  ],
+)
+
+/** 심볼. key 는 기록의 item_key 이고 사냥터 표의 지역 key 와 같다. */
+export const symbols = pgTable('symbols', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  groupId: uuid('group_id')
+    .notNull()
+    .references(() => symbolGroups.id),
+  /** 넥슨 응답의 심볼 이름이 이것으로 끝나야 레벨이 맞춰진다. */
+  name: text('name').notNull(),
+  /** 착용 레벨. 캐릭터 레벨 이하인 것만 드롭다운에 선다. */
+  requiredLevel: integer('required_level').notNull(),
+  iconFile: text('icon_file').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+})
+
+/** 심볼 한 레벨의 강화 비용. 결정석 가격처럼 한 조합(심볼 · 레벨)에 기간 줄이 여럿이고 until 이 없는 줄이 지금 값이다. */
+export const symbolLevelCosts = pgTable(
+  'symbol_level_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    symbolId: uuid('symbol_id')
+      .notNull()
+      .references(() => symbols.id, { onDelete: 'cascade' }),
+    /** 강화 전 레벨. Lv.level → level+1 의 값이다. 1 부터 max_level - 1 까지. */
+    level: integer('level').notNull(),
+    costMeso: bigint('cost_meso', { mode: 'number' }).notNull(),
+    from: text('from'),
+    until: text('until'),
+  },
+  (t) => [
+    unique('symbol_level_costs_row_unique').on(t.symbolId, t.level, t.from).nullsNotDistinct(),
+    check('symbol_level_costs_level_positive', sql`${t.level} >= 1`),
+  ],
+)

@@ -5,7 +5,7 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격. 뒤의 것이 앞의 줄을 가리킨다.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼. 뒤의 것이 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
  */
@@ -21,6 +21,13 @@ import * as schema from '../database/schema'
 import { BOSS_DIFFICULTIES, bossInput, rulesInput } from '../modules/bosses/bosses.dto'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
 import { touchSection } from '../modules/game-data/sections'
+import {
+  SPEND_CATEGORIES,
+  SPEND_CURRENCIES,
+  SPEND_FORMS,
+  SPEND_RULE_KEYS,
+  type SpendRuleField,
+} from '../modules/spend-catalog/spend-catalog.repository'
 
 const {
   bossCrystalPrices,
@@ -31,6 +38,14 @@ const {
   dropBoxes,
   dropItems,
   gameRules,
+  spendGroups,
+  spendItemForms,
+  spendItemOptions,
+  spendItems,
+  spendTiles,
+  symbolGroups,
+  symbolLevelCosts,
+  symbols,
   worlds,
 } = schema
 
@@ -158,6 +173,97 @@ export function parseWorldsSeed(value: unknown): WorldsSeed {
   return worldsSeed.parse(value)
 }
 
+const spendCatalogSeed = z.object({
+  rules: z.object({
+    tariffPercent: z.number().int().min(0).max(100),
+    rewardCoinPriceMeso: z.number().int().min(1),
+  }),
+  groups: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        category: z.enum(SPEND_CATEGORIES),
+        active: z.boolean(),
+      }),
+    )
+    .min(1),
+  tiles: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        iconFile: z.string().min(1).nullable(),
+        iconMap: z.string().min(1).nullable(),
+      }),
+    )
+    .min(1),
+  items: z
+    .array(
+      z.object({
+        key,
+        group: key,
+        tile: key,
+        name: z.string().min(1),
+        tier: z.string().min(1).nullable(),
+        currency: z.enum(SPEND_CURRENCIES),
+        unitPrice: z.number().int().min(0).nullable(),
+        unit: z.string().min(1),
+        maxQuantity: z.number().int().min(1).nullable(),
+        rewardCoins: z.number().int().min(1).nullable(),
+        from: period,
+        until: period,
+      }),
+    )
+    .min(1),
+  itemOptions: z.array(z.object({ item: key, axis: z.string().min(1), value: z.string().min(1) })),
+  itemForms: z.array(z.object({ item: key, form: z.enum(SPEND_FORMS) })),
+})
+export type SpendCatalogSeed = z.infer<typeof spendCatalogSeed>
+export function parseSpendCatalogSeed(value: unknown): SpendCatalogSeed {
+  return spendCatalogSeed.parse(value)
+}
+
+const symbolCostsSeed = z.object({
+  groups: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        maxLevel: z.number().int().min(2),
+        defaultFrom: z.number().int().min(1),
+        defaultTo: z.number().int().min(1),
+      }),
+    )
+    .min(1),
+  symbols: z
+    .array(
+      z.object({
+        key,
+        group: key,
+        name: z.string().min(1),
+        requiredLevel: z.number().int().min(1),
+        iconFile: z.string().min(1),
+      }),
+    )
+    .min(1),
+  levelCosts: z
+    .array(
+      z.object({
+        symbol: key,
+        level: z.number().int().min(1),
+        costMeso: z.number().int().min(1),
+        from: period,
+        until: period,
+      }),
+    )
+    .min(1),
+})
+export type SymbolCostsSeed = z.infer<typeof symbolCostsSeed>
+export function parseSymbolCostsSeed(value: unknown): SymbolCostsSeed {
+  return symbolCostsSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -165,6 +271,8 @@ export interface GameDataSeeds {
   dropBoxes?: DropBoxesSeed
   crystalPrices?: CrystalPricesSeed
   worlds?: WorldsSeed
+  spendCatalog?: SpendCatalogSeed
+  symbolCosts?: SymbolCostsSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -182,6 +290,10 @@ export async function seedGameData(
   if (seeds.crystalPrices !== undefined)
     result.crystalPrices = await seedCrystalPrices(db, seeds.crystalPrices)
   if (seeds.worlds !== undefined) result.worlds = await seedWorlds(db, seeds.worlds)
+  if (seeds.spendCatalog !== undefined)
+    result.spendCatalog = await seedSpendCatalog(db, seeds.spendCatalog)
+  if (seeds.symbolCosts !== undefined)
+    result.symbolCosts = await seedSymbolCosts(db, seeds.symbolCosts)
   return result
 }
 
@@ -201,7 +313,11 @@ async function isEmpty(
     | typeof bossDropRewards
     | typeof dropBoxes
     | typeof bossCrystalPrices
-    | typeof worlds,
+    | typeof worlds
+    | typeof spendGroups
+    | typeof spendTiles
+    | typeof spendItems
+    | typeof symbolGroups,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
   return (row?.n ?? 0) === 0
@@ -328,6 +444,125 @@ async function seedCrystalPrices(db: Db, seed: CrystalPricesSeed): Promise<SeedO
   return 'seeded'
 }
 
+/**
+ * 규칙 둘은 없을 때만 넣고 늘 본다. 표 셋(묶음 · 타일 · 항목)은 전부 비어 있을 때만 채운다. 하나라도 줄이 있으면
+ * 운영자가 손댄 것이라 건너뛴다.
+ */
+async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOutcome> {
+  await db.transaction(async (tx) => {
+    for (const field of Object.keys(SPEND_RULE_KEYS) as SpendRuleField[]) {
+      await tx
+        .insert(gameRules)
+        .values({ key: SPEND_RULE_KEYS[field], value: seed.rules[field], updatedAt: new Date() })
+        .onConflictDoNothing({ target: gameRules.key })
+    }
+  })
+  const empties = await Promise.all([
+    isEmpty(db, spendGroups),
+    isEmpty(db, spendTiles),
+    isEmpty(db, spendItems),
+  ])
+  if (!empties.every(Boolean)) return 'skipped'
+  await db.transaction(async (tx) => {
+    const groupRows = await tx
+      .insert(spendGroups)
+      .values(seed.groups.map((g, sortOrder) => ({ ...g, sortOrder })))
+      .returning({ id: spendGroups.id, key: spendGroups.key })
+    const tileRows = await tx
+      .insert(spendTiles)
+      .values(seed.tiles)
+      .returning({ id: spendTiles.id, key: spendTiles.key })
+    const groupIds = new Map(groupRows.map((r) => [r.key, r.id]))
+    const tileIds = new Map(tileRows.map((r) => [r.key, r.id]))
+    const counters = new Map<string, number>()
+    const itemRows = await tx
+      .insert(spendItems)
+      .values(
+        seed.items.map((i) => {
+          const groupId = must(groupIds, i.group, '묶음')
+          const sortOrder = counters.get(groupId) ?? 0
+          counters.set(groupId, sortOrder + 1)
+          return {
+            key: i.key,
+            groupId,
+            tileId: must(tileIds, i.tile, '타일'),
+            name: i.name,
+            tier: i.tier,
+            currency: i.currency,
+            unitPrice: i.unitPrice,
+            unit: i.unit,
+            maxQuantity: i.maxQuantity,
+            rewardCoins: i.rewardCoins,
+            from: i.from,
+            until: i.until,
+            sortOrder,
+          }
+        }),
+      )
+      .returning({ id: spendItems.id, key: spendItems.key })
+    const itemIds = new Map(itemRows.map((r) => [r.key, r.id]))
+    if (seed.itemOptions.length > 0)
+      await tx.insert(spendItemOptions).values(
+        seed.itemOptions.map((o) => ({
+          itemId: must(itemIds, o.item, '항목'),
+          axis: o.axis,
+          value: o.value,
+        })),
+      )
+    if (seed.itemForms.length > 0)
+      await tx
+        .insert(spendItemForms)
+        .values(
+          seed.itemForms.map((f) => ({ itemId: must(itemIds, f.item, '항목'), form: f.form })),
+        )
+    await touchSection(tx, 'spendCatalog')
+  })
+  return 'seeded'
+}
+
+/** 묶음 표가 비어 있을 때만 셋을 채운다. */
+async function seedSymbolCosts(db: Db, seed: SymbolCostsSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, symbolGroups))) return 'skipped'
+  await db.transaction(async (tx) => {
+    const groupRows = await tx
+      .insert(symbolGroups)
+      .values(seed.groups.map((g, sortOrder) => ({ ...g, sortOrder })))
+      .returning({ id: symbolGroups.id, key: symbolGroups.key })
+    const groupIds = new Map(groupRows.map((r) => [r.key, r.id]))
+    const counters = new Map<string, number>()
+    const symbolRows = await tx
+      .insert(symbols)
+      .values(
+        seed.symbols.map((s) => {
+          const groupId = must(groupIds, s.group, '심볼 묶음')
+          const sortOrder = counters.get(groupId) ?? 0
+          counters.set(groupId, sortOrder + 1)
+          return {
+            key: s.key,
+            groupId,
+            name: s.name,
+            requiredLevel: s.requiredLevel,
+            iconFile: s.iconFile,
+            sortOrder,
+          }
+        }),
+      )
+      .returning({ id: symbols.id, key: symbols.key })
+    const symbolIds = new Map(symbolRows.map((r) => [r.key, r.id]))
+    await tx.insert(symbolLevelCosts).values(
+      seed.levelCosts.map((c) => ({
+        symbolId: must(symbolIds, c.symbol, '심볼'),
+        level: c.level,
+        costMeso: c.costMeso,
+        from: c.from,
+        until: c.until,
+      })),
+    )
+    await touchSection(tx, 'symbolCosts')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -353,6 +588,8 @@ async function main(): Promise<void> {
       dropBoxes: parseDropBoxesSeed(readSeed('drop-boxes')),
       crystalPrices: parseCrystalPricesSeed(readSeed('crystal-prices')),
       worlds: parseWorldsSeed(readSeed('worlds')),
+      spendCatalog: parseSpendCatalogSeed(readSeed('spend-catalog')),
+      symbolCosts: parseSymbolCostsSeed(readSeed('symbol-costs')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

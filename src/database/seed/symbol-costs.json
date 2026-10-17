@@ -1,0 +1,1485 @@
+{
+  "groups": [
+    {
+      "key": "arcane",
+      "name": "아케인 심볼",
+      "maxLevel": 20,
+      "defaultFrom": 7,
+      "defaultTo": 12
+    },
+    {
+      "key": "authentic",
+      "name": "어센틱 심볼",
+      "maxLevel": 11,
+      "defaultFrom": 5,
+      "defaultTo": 8
+    },
+    {
+      "key": "grand_authentic",
+      "name": "그랜드 어센틱 심볼",
+      "maxLevel": 11,
+      "defaultFrom": 5,
+      "defaultTo": 8
+    }
+  ],
+  "symbols": [
+    {
+      "key": "road_of_vanishing",
+      "group": "arcane",
+      "name": "소멸의 여로",
+      "requiredLevel": 200,
+      "iconFile": "arcane_symbol_road_of_vanishing.webp"
+    },
+    {
+      "key": "chew_chew",
+      "group": "arcane",
+      "name": "츄츄 아일랜드",
+      "requiredLevel": 210,
+      "iconFile": "arcane_symbol_chew_chew.webp"
+    },
+    {
+      "key": "lacheln",
+      "group": "arcane",
+      "name": "레헬른",
+      "requiredLevel": 220,
+      "iconFile": "arcane_symbol_lacheln.webp"
+    },
+    {
+      "key": "arcana",
+      "group": "arcane",
+      "name": "아르카나",
+      "requiredLevel": 225,
+      "iconFile": "arcane_symbol_arcana.webp"
+    },
+    {
+      "key": "morass",
+      "group": "arcane",
+      "name": "모라스",
+      "requiredLevel": 230,
+      "iconFile": "arcane_symbol_morass.webp"
+    },
+    {
+      "key": "esfera",
+      "group": "arcane",
+      "name": "에스페라",
+      "requiredLevel": 235,
+      "iconFile": "arcane_symbol_esfera.webp"
+    },
+    {
+      "key": "cernium",
+      "group": "authentic",
+      "name": "세르니움",
+      "requiredLevel": 260,
+      "iconFile": "authentic_symbol_cernium.webp"
+    },
+    {
+      "key": "arcs",
+      "group": "authentic",
+      "name": "아르크스",
+      "requiredLevel": 265,
+      "iconFile": "authentic_symbol_arcs.webp"
+    },
+    {
+      "key": "odium",
+      "group": "authentic",
+      "name": "오디움",
+      "requiredLevel": 270,
+      "iconFile": "authentic_symbol_odium.webp"
+    },
+    {
+      "key": "dowonkyung",
+      "group": "authentic",
+      "name": "도원경",
+      "requiredLevel": 275,
+      "iconFile": "authentic_symbol_dowonkyung.webp"
+    },
+    {
+      "key": "arteria",
+      "group": "authentic",
+      "name": "아르테리아",
+      "requiredLevel": 280,
+      "iconFile": "authentic_symbol_arteria.webp"
+    },
+    {
+      "key": "carcion",
+      "group": "authentic",
+      "name": "카르시온",
+      "requiredLevel": 285,
+      "iconFile": "authentic_symbol_carcion.webp"
+    },
+    {
+      "key": "tallahart",
+      "group": "grand_authentic",
+      "name": "탈라하트",
+      "requiredLevel": 290,
+      "iconFile": "grand_authentic_symbol_tallahart.webp"
+    },
+    {
+      "key": "geardrak",
+      "group": "grand_authentic",
+      "name": "기어드락",
+      "requiredLevel": 295,
+      "iconFile": "grand_authentic_symbol_geardrak.webp"
+    }
+  ],
+  "levelCosts": [
+    {
+      "symbol": "road_of_vanishing",
+      "level": 1,
+      "costMeso": 670000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 2,
+      "costMeso": 860000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 3,
+      "costMeso": 1160000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 4,
+      "costMeso": 1580000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 5,
+      "costMeso": 2140000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 6,
+      "costMeso": 2820000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 7,
+      "costMeso": 3650000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 8,
+      "costMeso": 4620000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 9,
+      "costMeso": 5720000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 10,
+      "costMeso": 6990000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 11,
+      "costMeso": 8400000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 12,
+      "costMeso": 9980000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 13,
+      "costMeso": 11710000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 14,
+      "costMeso": 13610000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 15,
+      "costMeso": 15690000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 16,
+      "costMeso": 17940000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 17,
+      "costMeso": 20370000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 18,
+      "costMeso": 22980000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "road_of_vanishing",
+      "level": 19,
+      "costMeso": 25770000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 1,
+      "costMeso": 840000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 2,
+      "costMeso": 1070000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 3,
+      "costMeso": 1440000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 4,
+      "costMeso": 1960000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 5,
+      "costMeso": 2640000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 6,
+      "costMeso": 3480000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 7,
+      "costMeso": 4490000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 8,
+      "costMeso": 5670000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 9,
+      "costMeso": 7010000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 10,
+      "costMeso": 8540000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 11,
+      "costMeso": 10250000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 12,
+      "costMeso": 12150000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 13,
+      "costMeso": 14230000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 14,
+      "costMeso": 16510000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 15,
+      "costMeso": 18990000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 16,
+      "costMeso": 21670000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 17,
+      "costMeso": 24570000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 18,
+      "costMeso": 27670000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "chew_chew",
+      "level": 19,
+      "costMeso": 30980000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 1,
+      "costMeso": 1010000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 2,
+      "costMeso": 1280000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 3,
+      "costMeso": 1720000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 4,
+      "costMeso": 2330000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 5,
+      "costMeso": 3150000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 6,
+      "costMeso": 4140000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 7,
+      "costMeso": 5330000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 8,
+      "costMeso": 6720000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 9,
+      "costMeso": 8300000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 10,
+      "costMeso": 10100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 11,
+      "costMeso": 12100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 12,
+      "costMeso": 14320000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 13,
+      "costMeso": 16750000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 14,
+      "costMeso": 19410000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 15,
+      "costMeso": 22300000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 16,
+      "costMeso": 25410000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 17,
+      "costMeso": 28770000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 18,
+      "costMeso": 32360000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "lacheln",
+      "level": 19,
+      "costMeso": 36190000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 1,
+      "costMeso": 1180000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 2,
+      "costMeso": 1490000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 3,
+      "costMeso": 2000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 4,
+      "costMeso": 2710000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 5,
+      "costMeso": 3650000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 6,
+      "costMeso": 4800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 7,
+      "costMeso": 6170000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 8,
+      "costMeso": 7770000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 9,
+      "costMeso": 9590000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 10,
+      "costMeso": 11650000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 11,
+      "costMeso": 13950000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 12,
+      "costMeso": 16490000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 13,
+      "costMeso": 19270000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 14,
+      "costMeso": 22300000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 15,
+      "costMeso": 25600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 16,
+      "costMeso": 29150000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 17,
+      "costMeso": 32970000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 18,
+      "costMeso": 37050000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcana",
+      "level": 19,
+      "costMeso": 41390000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 1,
+      "costMeso": 1350000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 2,
+      "costMeso": 1700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 3,
+      "costMeso": 2280000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 4,
+      "costMeso": 3090000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 5,
+      "costMeso": 4150000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 6,
+      "costMeso": 5460000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 7,
+      "costMeso": 7010000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 8,
+      "costMeso": 8820000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 9,
+      "costMeso": 10870000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 10,
+      "costMeso": 13200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 11,
+      "costMeso": 15790000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 12,
+      "costMeso": 18660000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 13,
+      "costMeso": 21790000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 14,
+      "costMeso": 25200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 15,
+      "costMeso": 28910000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 16,
+      "costMeso": 32890000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 17,
+      "costMeso": 37170000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 18,
+      "costMeso": 41740000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "morass",
+      "level": 19,
+      "costMeso": 46600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 1,
+      "costMeso": 1510000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 2,
+      "costMeso": 1910000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 3,
+      "costMeso": 2560000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 4,
+      "costMeso": 3470000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 5,
+      "costMeso": 4660000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 6,
+      "costMeso": 6110000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 7,
+      "costMeso": 7850000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 8,
+      "costMeso": 9870000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 9,
+      "costMeso": 12160000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 10,
+      "costMeso": 14760000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 11,
+      "costMeso": 17640000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 12,
+      "costMeso": 20830000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 13,
+      "costMeso": 24310000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 14,
+      "costMeso": 28100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 15,
+      "costMeso": 32210000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 16,
+      "costMeso": 36630000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 17,
+      "costMeso": 41370000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 18,
+      "costMeso": 46430000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "esfera",
+      "level": 19,
+      "costMeso": 51810000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 1,
+      "costMeso": 36500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 2,
+      "costMeso": 91200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 3,
+      "costMeso": 160700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 4,
+      "costMeso": 241900000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 5,
+      "costMeso": 331500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 6,
+      "costMeso": 426200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 7,
+      "costMeso": 522900000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 8,
+      "costMeso": 618200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 9,
+      "costMeso": 709000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "cernium",
+      "level": 10,
+      "costMeso": 792000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 1,
+      "costMeso": 41700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 2,
+      "costMeso": 104800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 3,
+      "costMeso": 186100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 4,
+      "costMeso": 282200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 5,
+      "costMeso": 390000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 6,
+      "costMeso": 506100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 7,
+      "costMeso": 627400000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 8,
+      "costMeso": 750700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 9,
+      "costMeso": 872600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arcs",
+      "level": 10,
+      "costMeso": 990000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 1,
+      "costMeso": 46900000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 2,
+      "costMeso": 118500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 3,
+      "costMeso": 211500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 4,
+      "costMeso": 322500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 5,
+      "costMeso": 448500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 6,
+      "costMeso": 586000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 7,
+      "costMeso": 732000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 8,
+      "costMeso": 883200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 9,
+      "costMeso": 1036200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "odium",
+      "level": 10,
+      "costMeso": 1188000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 1,
+      "costMeso": 52200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 2,
+      "costMeso": 132200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 3,
+      "costMeso": 236800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 4,
+      "costMeso": 362800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 5,
+      "costMeso": 507000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 6,
+      "costMeso": 666000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 7,
+      "costMeso": 836600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 8,
+      "costMeso": 1015600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 9,
+      "costMeso": 1199800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "dowonkyung",
+      "level": 10,
+      "costMeso": 1386000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 1,
+      "costMeso": 57400000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 2,
+      "costMeso": 145900000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 3,
+      "costMeso": 262200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 4,
+      "costMeso": 403200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 5,
+      "costMeso": 565500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 6,
+      "costMeso": 745900000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 7,
+      "costMeso": 941200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 8,
+      "costMeso": 1148100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 9,
+      "costMeso": 1363500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "arteria",
+      "level": 10,
+      "costMeso": 1584000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 1,
+      "costMeso": 62600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 2,
+      "costMeso": 159600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 3,
+      "costMeso": 287600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 4,
+      "costMeso": 443500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 5,
+      "costMeso": 624000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 6,
+      "costMeso": 825800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 7,
+      "costMeso": 1045800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 8,
+      "costMeso": 1280600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 9,
+      "costMeso": 1527100000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "carcion",
+      "level": 10,
+      "costMeso": 1782000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 1,
+      "costMeso": 113600000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 2,
+      "costMeso": 293300000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 3,
+      "costMeso": 535800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 4,
+      "costMeso": 837700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 5,
+      "costMeso": 1196000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 6,
+      "costMeso": 1607200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 7,
+      "costMeso": 2068300000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 8,
+      "costMeso": 2576000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 9,
+      "costMeso": 3126900000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "tallahart",
+      "level": 10,
+      "costMeso": 3718000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 1,
+      "costMeso": 139700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 2,
+      "costMeso": 361700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 3,
+      "costMeso": 662700000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 4,
+      "costMeso": 1039300000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 5,
+      "costMeso": 1488500000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 6,
+      "costMeso": 2006800000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 7,
+      "costMeso": 2591200000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 8,
+      "costMeso": 3238400000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 9,
+      "costMeso": 3945000000,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "symbol": "geardrak",
+      "level": 10,
+      "costMeso": 4708000000,
+      "from": "2026-09-17",
+      "until": null
+    }
+  ]
+}

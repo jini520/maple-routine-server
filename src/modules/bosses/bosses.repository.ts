@@ -160,7 +160,10 @@ export class BossesRepository {
             .from(bossDifficulties)
             .where(inArray(bossDifficulties.bossId, ids))
             .orderBy(asc(bossDifficulties.difficulty))
-    const rules = await this.db.select().from(gameRules)
+    // 같은 표에 지출 규칙도 든다. 그 줄은 이 칸의 updatedAt 을 안 움직인다.
+    const rules = (await this.db.select().from(gameRules)).filter((r) =>
+      (Object.values(RULE_KEYS) as string[]).includes(r.key),
+    )
 
     const ruleOf = (field: RuleField): number | null =>
       rules.find((r) => r.key === RULE_KEYS[field])?.value ?? null

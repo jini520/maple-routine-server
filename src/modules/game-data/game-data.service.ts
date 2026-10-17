@@ -8,6 +8,14 @@ import {
 } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository, type DropBoxesSection } from '../drop-items/drop-boxes.repository'
 import { DropItemsRepository, type DropItemsSection } from '../drop-items/drop-items.repository'
+import {
+  SpendCatalogRepository,
+  type SpendCatalogSection,
+} from '../spend-catalog/spend-catalog.repository'
+import {
+  SymbolCostsRepository,
+  type SymbolCostsSection,
+} from '../symbol-costs/symbol-costs.repository'
 import { WorldsRepository, type WorldsSection } from '../worlds/worlds.repository'
 
 /**
@@ -22,6 +30,8 @@ export interface GameDataSnapshot {
   dropBoxes: DropBoxesSection
   crystalPrices: CrystalPricesSection
   worlds: WorldsSection
+  spendCatalog: SpendCatalogSection
+  symbolCosts: SymbolCostsSection
 }
 
 @Injectable()
@@ -33,17 +43,39 @@ export class GameDataService {
     private readonly dropBoxes: DropBoxesRepository,
     private readonly crystalPrices: CrystalPricesRepository,
     private readonly worlds: WorldsRepository,
+    private readonly spendCatalog: SpendCatalogRepository,
+    private readonly symbolCosts: SymbolCostsRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
-    const [bosses, dropItems, bossDrops, dropBoxes, crystalPrices, worlds] = await Promise.all([
+    const [
+      bosses,
+      dropItems,
+      bossDrops,
+      dropBoxes,
+      crystalPrices,
+      worlds,
+      spendCatalog,
+      symbolCosts,
+    ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
       this.bossDrops.section(),
       this.dropBoxes.section(),
       this.crystalPrices.section(),
       this.worlds.section(),
+      this.spendCatalog.section(),
+      this.symbolCosts.section(),
     ])
-    return { bosses, dropItems, bossDrops, dropBoxes, crystalPrices, worlds }
+    return {
+      bosses,
+      dropItems,
+      bossDrops,
+      dropBoxes,
+      crystalPrices,
+      worlds,
+      spendCatalog,
+      symbolCosts,
+    }
   }
 }

@@ -1,0 +1,1521 @@
+{
+  "rules": {
+    "tariffPercent": 10,
+    "rewardCoinPriceMeso": 40000000
+  },
+  "groups": [
+    {
+      "key": "epic_dungeon_bonus_reward",
+      "name": "에픽던전 추가 리워드",
+      "category": "content",
+      "active": true
+    },
+    {
+      "key": "monster_park",
+      "name": "몬스터 파크",
+      "category": "content",
+      "active": true
+    },
+    {
+      "key": "quick_pass",
+      "name": "퀵 패스",
+      "category": "content",
+      "active": true
+    },
+    {
+      "key": "maple_point_shop",
+      "name": "메이플 포인트 샵",
+      "category": "event_bm",
+      "active": false
+    },
+    {
+      "key": "event",
+      "name": "이벤트",
+      "category": "event_bm",
+      "active": true
+    },
+    {
+      "key": "vip_sauna",
+      "name": "VIP 사우나",
+      "category": "event_bm",
+      "active": true
+    },
+    {
+      "key": "etc",
+      "name": "기타",
+      "category": "event_bm",
+      "active": true
+    },
+    {
+      "key": "boss_buff",
+      "name": "보스 버프",
+      "category": "buff",
+      "active": true
+    },
+    {
+      "key": "hunting_buff",
+      "name": "사냥 버프",
+      "category": "buff",
+      "active": true
+    },
+    {
+      "key": "scroll",
+      "name": "주문서",
+      "category": "scroll",
+      "active": true
+    },
+    {
+      "key": "pet_equipment_scroll",
+      "name": "펫장비 주문서",
+      "category": "scroll",
+      "active": true
+    },
+    {
+      "key": "return_scroll",
+      "name": "리턴 스크롤",
+      "category": "scroll",
+      "active": true
+    }
+  ],
+  "tiles": [
+    {
+      "key": "high_mountain",
+      "name": "하이마운틴",
+      "iconFile": null,
+      "iconMap": "highMountain"
+    },
+    {
+      "key": "angler_company",
+      "name": "앵글러 컴퍼니",
+      "iconFile": null,
+      "iconMap": "anglerCompany"
+    },
+    {
+      "key": "nightmare_paradise",
+      "name": "악몽선경",
+      "iconFile": null,
+      "iconMap": "nightmareParadise"
+    },
+    {
+      "key": "aurum_regis",
+      "name": "아우룸 레기스",
+      "iconFile": null,
+      "iconMap": "aurumRegis"
+    },
+    {
+      "key": "monster_park",
+      "name": "몬스터 파크",
+      "iconFile": "monster_park_ticket.webp",
+      "iconMap": null
+    },
+    {
+      "key": "epic_dungeon_quick_pass",
+      "name": "에픽던전",
+      "iconFile": "cerzar.webp",
+      "iconMap": null
+    },
+    {
+      "key": "daily_quest_quick_pass",
+      "name": "일간 퀘스트",
+      "iconFile": "grandis_spiegelmann.webp",
+      "iconMap": null
+    },
+    {
+      "key": "weekly_quest_quick_pass",
+      "name": "주간 퀘스트",
+      "iconFile": "arcane_river_spiegelmann.webp",
+      "iconMap": null
+    },
+    {
+      "key": "mechaberry_farm",
+      "name": "메카베리 농장",
+      "iconFile": "mechaberry_farm_ticket.webp",
+      "iconMap": null
+    },
+    {
+      "key": "blueberry_farm",
+      "name": "블루베리 농장",
+      "iconFile": "blueberry_farm_ticket.webp",
+      "iconMap": null
+    },
+    {
+      "key": "sol_erda",
+      "name": "솔 에르다",
+      "iconFile": "sole_1000.webp",
+      "iconMap": null
+    },
+    {
+      "key": "black_circulator",
+      "name": "블랙 서큘레이터",
+      "iconFile": "black_circulator.webp",
+      "iconMap": null
+    },
+    {
+      "key": "mihoroid",
+      "name": "미호로이드",
+      "iconFile": "mihoroid.webp",
+      "iconMap": null
+    },
+    {
+      "key": "attendance_event_pass",
+      "name": "출석 이벤트 패스",
+      "iconFile": null,
+      "iconMap": null
+    },
+    {
+      "key": "tonic_buff_extra_purchase",
+      "name": "보약 버프 추가 구매",
+      "iconFile": null,
+      "iconMap": null
+    },
+    {
+      "key": "tonic_buff_reset",
+      "name": "보약 버프 초기화",
+      "iconFile": null,
+      "iconMap": null
+    },
+    {
+      "key": "vip_sauna",
+      "name": "VIP 사우나",
+      "iconFile": "vip_sauna_ticket.webp",
+      "iconMap": null
+    },
+    {
+      "key": "nickname_change",
+      "name": "닉네임 변경",
+      "iconFile": "npc_mr_newname.webp",
+      "iconMap": null
+    },
+    {
+      "key": "seiram_elixir",
+      "name": "세이람의 영약",
+      "iconFile": "seiram_elixir.webp",
+      "iconMap": null
+    },
+    {
+      "key": "alleria_elixir",
+      "name": "알레리아의 영약",
+      "iconFile": "alleria_elixir.webp",
+      "iconMap": null
+    },
+    {
+      "key": "collector_elixir",
+      "name": "콜렉터의 영약",
+      "iconFile": "collector_elixir.webp",
+      "iconMap": null
+    },
+    {
+      "key": "honor_elixir",
+      "name": "명예의 영약",
+      "iconFile": "honor_elixir.webp",
+      "iconMap": null
+    },
+    {
+      "key": "boss_killer_potion",
+      "name": "보스 킬러 비약",
+      "iconFile": "boss_rush_boost_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "advanced_boss_killer_potion",
+      "name": "고급 보스 킬러 비약",
+      "iconFile": "advanced_boss_rush_boost_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "great_hero_potion",
+      "name": "대영웅의 비약",
+      "iconFile": "boss_rush_boost_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "advanced_great_hero_potion",
+      "name": "고급 대영웅의 비약",
+      "iconFile": "advanced_boss_rush_boost_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "great_blessing_potion",
+      "name": "대축복의 비약",
+      "iconFile": "boss_rush_boost_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "advanced_great_blessing_potion",
+      "name": "고급 대축복의 비약",
+      "iconFile": "advanced_boss_rush_boost_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "legendary_hero_potion",
+      "name": "전설의 영웅 비약",
+      "iconFile": "legendary_blessing_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "shining_red_star_potion",
+      "name": "반짝이는 빨간 별 물약",
+      "iconFile": "red_star_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "radiant_moonlight_potion",
+      "name": "영롱한 달빛 포션",
+      "iconFile": "luminous_moonshine_potion.png",
+      "iconMap": null
+    },
+    {
+      "key": "enhanced_10_stat_potion",
+      "name": "향상된 10단계 물약",
+      "iconFile": "advanced_strength_potion_x.webp",
+      "iconMap": null
+    },
+    {
+      "key": "magic_whetstone",
+      "name": "마법의 숫돌",
+      "iconFile": "magic_whetstone.webp",
+      "iconMap": null
+    },
+    {
+      "key": "vip_buff_stat",
+      "name": "VIP 버프 (능력치)",
+      "iconFile": "vip_buff_stats.webp",
+      "iconMap": null
+    },
+    {
+      "key": "small_wealth_acquisition_potion",
+      "name": "소형 재물 획득의 비약",
+      "iconFile": "wealth_acquisition_potion_small.webp",
+      "iconMap": null
+    },
+    {
+      "key": "wealth_acquisition_potion",
+      "name": "재물 획득의 비약",
+      "iconFile": "wealth_acquisition_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "small_exp_accumulation_potion",
+      "name": "소형 경험 축적의 비약",
+      "iconFile": "small_exp_accumulation_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "small_concentrated_exp_accumulation_potion",
+      "name": "소형 고농축 경험 축적의 비약",
+      "iconFile": "small_concentrated_exp_accumulation_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "exp_accumulation_potion",
+      "name": "경험 축적의 비약",
+      "iconFile": "exp_accumulation_potion.webp",
+      "iconMap": null
+    },
+    {
+      "key": "extra_exp_50_coupon",
+      "name": "추가 경험치 50% 쿠폰",
+      "iconFile": "extra_exp_50_coupon.webp",
+      "iconMap": null
+    },
+    {
+      "key": "mvp_extra_exp_70_coupon",
+      "name": "MVP 추가 경험치 70% 쿠폰",
+      "iconFile": "mvp_extra_exp_70_coupon.webp",
+      "iconMap": null
+    },
+    {
+      "key": "exp_3x_coupon",
+      "name": "경험치 3배 쿠폰",
+      "iconFile": "exp_3x_coupon.webp",
+      "iconMap": null
+    },
+    {
+      "key": "exp_4x_coupon",
+      "name": "경험치 4배 쿠폰",
+      "iconFile": "exp_4x_coupon.webp",
+      "iconMap": null
+    },
+    {
+      "key": "vip_buff_exp",
+      "name": "VIP 버프 (경험치)",
+      "iconFile": "vip_buff_exp.webp",
+      "iconMap": null
+    },
+    {
+      "key": "magical_scroll",
+      "name": "매지컬 주문서",
+      "iconFile": "magical_onehand_attack_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "premium_accessory_scroll",
+      "name": "프악공·프악마",
+      "iconFile": "premium_accessory_attack_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "earring_scroll",
+      "name": "귀 장식 주문서",
+      "iconFile": "scroll_10_percent.webp",
+      "iconMap": null
+    },
+    {
+      "key": "amazing_positive_chaos_scroll",
+      "name": "놀라운 긍정의 혼돈 주문서",
+      "iconFile": "amazing_positive_chaos_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "pet_equipment_scroll",
+      "name": "펫장비 주문서",
+      "iconFile": "pet_equip_attack_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "premium_pet_equipment_scroll",
+      "name": "프펫공·프펫마",
+      "iconFile": "premium_pet_equip_attack_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "pet_equipment_innocent_scroll",
+      "name": "펫장비 이노센트",
+      "iconFile": "pet_equip_innocent_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "pet_equipment_clean_slate_scroll",
+      "name": "펫장비 순백의 주문서",
+      "iconFile": "pet_equip_pure_white_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "return_scroll",
+      "name": "리턴 스크롤",
+      "iconFile": "return_scroll.webp",
+      "iconMap": null
+    },
+    {
+      "key": "pet_equipment_return_scroll",
+      "name": "펫장비 리턴 스크롤",
+      "iconFile": "pet_equip_return_scroll.webp",
+      "iconMap": null
+    }
+  ],
+  "items": [
+    {
+      "key": "high_mountain_1",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "high_mountain",
+      "name": "하이마운틴 1단계",
+      "tier": "1단계",
+      "currency": "point",
+      "unitPrice": 7500,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 4,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "high_mountain_2",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "high_mountain",
+      "name": "하이마운틴 2단계",
+      "tier": "2단계",
+      "currency": "point",
+      "unitPrice": 30000,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 8,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "angler_company_1",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "angler_company",
+      "name": "앵글러 컴퍼니 1단계",
+      "tier": "1단계",
+      "currency": "point",
+      "unitPrice": 10000,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 4,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "angler_company_2",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "angler_company",
+      "name": "앵글러 컴퍼니 2단계",
+      "tier": "2단계",
+      "currency": "point",
+      "unitPrice": 40000,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 8,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "nightmare_paradise_1",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "nightmare_paradise",
+      "name": "악몽선경 1단계",
+      "tier": "1단계",
+      "currency": "point",
+      "unitPrice": 12500,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 4,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "nightmare_paradise_2",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "nightmare_paradise",
+      "name": "악몽선경 2단계",
+      "tier": "2단계",
+      "currency": "point",
+      "unitPrice": 50000,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 8,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "aurum_regis_1",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "aurum_regis",
+      "name": "아우룸 레기스 1단계",
+      "tier": "1단계",
+      "currency": "point",
+      "unitPrice": 15000,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 4,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "key": "aurum_regis_2",
+      "group": "epic_dungeon_bonus_reward",
+      "tile": "aurum_regis",
+      "name": "아우룸 레기스 2단계",
+      "tier": "2단계",
+      "currency": "point",
+      "unitPrice": 60000,
+      "unit": "회",
+      "maxQuantity": 1,
+      "rewardCoins": 8,
+      "from": "2026-09-17",
+      "until": null
+    },
+    {
+      "key": "monster_park",
+      "group": "monster_park",
+      "tile": "monster_park",
+      "name": "몬스터 파크",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 600,
+      "unit": "회",
+      "maxQuantity": 14,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "epic_dungeon_quick_pass",
+      "group": "quick_pass",
+      "tile": "epic_dungeon_quick_pass",
+      "name": "에픽던전",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 5000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "daily_quest_quick_pass",
+      "group": "quick_pass",
+      "tile": "daily_quest_quick_pass",
+      "name": "일간 퀘스트",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 200,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "weekly_quest_quick_pass",
+      "group": "quick_pass",
+      "tile": "weekly_quest_quick_pass",
+      "name": "주간 퀘스트",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 2000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "mechaberry_farm",
+      "group": "maple_point_shop",
+      "tile": "mechaberry_farm",
+      "name": "메카베리 농장",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 10000,
+      "unit": "회",
+      "maxQuantity": 2,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "blueberry_farm",
+      "group": "maple_point_shop",
+      "tile": "blueberry_farm",
+      "name": "블루베리 농장",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 7000,
+      "unit": "회",
+      "maxQuantity": 2,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "sol_erda",
+      "group": "maple_point_shop",
+      "tile": "sol_erda",
+      "name": "솔 에르다",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 2000,
+      "unit": "회",
+      "maxQuantity": 5,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "black_circulator",
+      "group": "maple_point_shop",
+      "tile": "black_circulator",
+      "name": "블랙 서큘레이터",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 3000,
+      "unit": "개",
+      "maxQuantity": 30,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "mihoroid",
+      "group": "maple_point_shop",
+      "tile": "mihoroid",
+      "name": "미호로이드",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 7500,
+      "unit": "개",
+      "maxQuantity": 1,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "attendance_event_pass",
+      "group": "event",
+      "tile": "attendance_event_pass",
+      "name": "출석 이벤트 패스",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 3000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "tonic_buff_extra_purchase",
+      "group": "event",
+      "tile": "tonic_buff_extra_purchase",
+      "name": "보약 버프 추가 구매",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 1000,
+      "unit": "포인트",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "tonic_buff_reset",
+      "group": "event",
+      "tile": "tonic_buff_reset",
+      "name": "보약 버프 초기화",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 9900,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "vip_sauna",
+      "group": "vip_sauna",
+      "tile": "vip_sauna",
+      "name": "VIP 사우나",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 3000,
+      "unit": "시간",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "nickname_change",
+      "group": "etc",
+      "tile": "nickname_change",
+      "name": "닉네임 변경",
+      "tier": null,
+      "currency": "point",
+      "unitPrice": 15000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "seiram_elixir",
+      "group": "boss_buff",
+      "tile": "seiram_elixir",
+      "name": "세이람의 영약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 2000000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "alleria_elixir",
+      "group": "boss_buff",
+      "tile": "alleria_elixir",
+      "name": "알레리아의 영약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 2000000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "collector_elixir",
+      "group": "boss_buff",
+      "tile": "collector_elixir",
+      "name": "콜렉터의 영약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 20000000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "honor_elixir",
+      "group": "boss_buff",
+      "tile": "honor_elixir",
+      "name": "명예의 영약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 5000000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "boss_killer_potion",
+      "group": "boss_buff",
+      "tile": "boss_killer_potion",
+      "name": "보스 킬러 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "advanced_boss_killer_potion",
+      "group": "boss_buff",
+      "tile": "advanced_boss_killer_potion",
+      "name": "고급 보스 킬러 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "great_hero_potion",
+      "group": "boss_buff",
+      "tile": "great_hero_potion",
+      "name": "대영웅의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "advanced_great_hero_potion",
+      "group": "boss_buff",
+      "tile": "advanced_great_hero_potion",
+      "name": "고급 대영웅의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "great_blessing_potion",
+      "group": "boss_buff",
+      "tile": "great_blessing_potion",
+      "name": "대축복의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "advanced_great_blessing_potion",
+      "group": "boss_buff",
+      "tile": "advanced_great_blessing_potion",
+      "name": "고급 대축복의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "legendary_hero_potion",
+      "group": "boss_buff",
+      "tile": "legendary_hero_potion",
+      "name": "전설의 영웅 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "shining_red_star_potion",
+      "group": "boss_buff",
+      "tile": "shining_red_star_potion",
+      "name": "반짝이는 빨간 별 물약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "radiant_moonlight_potion",
+      "group": "boss_buff",
+      "tile": "radiant_moonlight_potion",
+      "name": "영롱한 달빛 포션",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "enhanced_10_str_potion",
+      "group": "boss_buff",
+      "tile": "enhanced_10_stat_potion",
+      "name": "향상된 10단계 힘의 물약",
+      "tier": "힘",
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "enhanced_10_dex_potion",
+      "group": "boss_buff",
+      "tile": "enhanced_10_stat_potion",
+      "name": "향상된 10단계 민첩의 물약",
+      "tier": "민첩",
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "enhanced_10_int_potion",
+      "group": "boss_buff",
+      "tile": "enhanced_10_stat_potion",
+      "name": "향상된 10단계 지능의 물약",
+      "tier": "지능",
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "enhanced_10_luk_potion",
+      "group": "boss_buff",
+      "tile": "enhanced_10_stat_potion",
+      "name": "향상된 10단계 행운의 물약",
+      "tier": "행운",
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "magic_whetstone",
+      "group": "boss_buff",
+      "tile": "magic_whetstone",
+      "name": "마법의 숫돌",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "vip_buff_stat",
+      "group": "boss_buff",
+      "tile": "vip_buff_stat",
+      "name": "VIP 버프 (능력치)",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 500000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "small_wealth_acquisition_potion",
+      "group": "hunting_buff",
+      "tile": "small_wealth_acquisition_potion",
+      "name": "소형 재물 획득의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "wealth_acquisition_potion",
+      "group": "hunting_buff",
+      "tile": "wealth_acquisition_potion",
+      "name": "재물 획득의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "small_exp_accumulation_potion",
+      "group": "hunting_buff",
+      "tile": "small_exp_accumulation_potion",
+      "name": "소형 경험 축적의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "small_concentrated_exp_accumulation_potion",
+      "group": "hunting_buff",
+      "tile": "small_concentrated_exp_accumulation_potion",
+      "name": "소형 고농축 경험 축적의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "exp_accumulation_potion",
+      "group": "hunting_buff",
+      "tile": "exp_accumulation_potion",
+      "name": "경험 축적의 비약",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "extra_exp_50_coupon",
+      "group": "hunting_buff",
+      "tile": "extra_exp_50_coupon",
+      "name": "추가 경험치 50% 쿠폰",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "mvp_extra_exp_70_coupon",
+      "group": "hunting_buff",
+      "tile": "mvp_extra_exp_70_coupon",
+      "name": "MVP 추가 경험치 70% 쿠폰",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "exp_3x_coupon",
+      "group": "hunting_buff",
+      "tile": "exp_3x_coupon",
+      "name": "경험치 3배 쿠폰",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "exp_4x_coupon",
+      "group": "hunting_buff",
+      "tile": "exp_4x_coupon",
+      "name": "경험치 4배 쿠폰",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": null,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "vip_buff_exp",
+      "group": "hunting_buff",
+      "tile": "vip_buff_exp",
+      "name": "VIP 버프 (경험치)",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 500000,
+      "unit": "회",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "magical_one_handed_weapon_attack_scroll_100",
+      "group": "scroll",
+      "tile": "magical_scroll",
+      "name": "매지컬 한손무기 공격력 주문서 100%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "magical_one_handed_weapon_magic_attack_scroll_100",
+      "group": "scroll",
+      "tile": "magical_scroll",
+      "name": "매지컬 한손무기 마력 주문서 100%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "magical_two_handed_weapon_attack_scroll_100",
+      "group": "scroll",
+      "tile": "magical_scroll",
+      "name": "매지컬 두손무기 공격력 주문서 100%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "premium_accessory_attack_scroll_100",
+      "group": "scroll",
+      "tile": "premium_accessory_scroll",
+      "name": "프리미엄 악세서리 공격력 주문서 100%",
+      "tier": "공격력",
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "premium_accessory_magic_attack_scroll_100",
+      "group": "scroll",
+      "tile": "premium_accessory_scroll",
+      "name": "프리미엄 악세서리 마력 주문서 100%",
+      "tier": "마력",
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "earring_attack_str_scroll_10",
+      "group": "scroll",
+      "tile": "earring_scroll",
+      "name": "귀 장식 공격력(힘) 주문서 10%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 100000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "earring_attack_dex_scroll_10",
+      "group": "scroll",
+      "tile": "earring_scroll",
+      "name": "귀 장식 공격력(민첩) 주문서 10%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 100000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "earring_attack_luk_scroll_10",
+      "group": "scroll",
+      "tile": "earring_scroll",
+      "name": "귀 장식 공격력(운) 주문서 10%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 100000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "earring_magic_attack_scroll_10",
+      "group": "scroll",
+      "tile": "earring_scroll",
+      "name": "귀 장식 마력 주문서 10%",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 100000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "amazing_positive_chaos_scroll_60",
+      "group": "scroll",
+      "tile": "amazing_positive_chaos_scroll",
+      "name": "놀라운 긍정의 혼돈 주문서 60%",
+      "tier": "60%",
+      "currency": "meso",
+      "unitPrice": 500000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "amazing_positive_chaos_scroll_100",
+      "group": "scroll",
+      "tile": "amazing_positive_chaos_scroll",
+      "name": "놀라운 긍정의 혼돈 주문서 100%",
+      "tier": "100%",
+      "currency": "meso",
+      "unitPrice": 300000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "pet_equipment_attack_scroll_100",
+      "group": "pet_equipment_scroll",
+      "tile": "pet_equipment_scroll",
+      "name": "펫장비 공격력 주문서 100%",
+      "tier": "공격력",
+      "currency": "meso",
+      "unitPrice": 30000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "pet_equipment_magic_attack_scroll_100",
+      "group": "pet_equipment_scroll",
+      "tile": "pet_equipment_scroll",
+      "name": "펫장비 마력 주문서 100%",
+      "tier": "마력",
+      "currency": "meso",
+      "unitPrice": 30000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "premium_pet_equipment_attack_scroll_100",
+      "group": "pet_equipment_scroll",
+      "tile": "premium_pet_equipment_scroll",
+      "name": "프리미엄 펫장비 공격력 주문서 100%",
+      "tier": "공격력",
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "premium_pet_equipment_magic_attack_scroll_100",
+      "group": "pet_equipment_scroll",
+      "tile": "premium_pet_equipment_scroll",
+      "name": "프리미엄 펫장비 마력 주문서 100%",
+      "tier": "마력",
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "pet_equipment_innocent_scroll",
+      "group": "pet_equipment_scroll",
+      "tile": "pet_equipment_innocent_scroll",
+      "name": "펫장비 이노센트",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 1000000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "pet_equipment_clean_slate_scroll",
+      "group": "pet_equipment_scroll",
+      "tile": "pet_equipment_clean_slate_scroll",
+      "name": "펫장비 순백",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 60000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "return_scroll",
+      "group": "return_scroll",
+      "tile": "return_scroll",
+      "name": "리턴 스크롤",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 400000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "pet_equipment_return_scroll",
+      "group": "return_scroll",
+      "tile": "pet_equipment_return_scroll",
+      "name": "펫장비 리턴",
+      "tier": null,
+      "currency": "meso",
+      "unitPrice": 500000000,
+      "unit": "개",
+      "maxQuantity": null,
+      "rewardCoins": null,
+      "from": null,
+      "until": null
+    }
+  ],
+  "itemOptions": [
+    {
+      "item": "magical_one_handed_weapon_attack_scroll_100",
+      "axis": "무기",
+      "value": "한손무기"
+    },
+    {
+      "item": "magical_one_handed_weapon_attack_scroll_100",
+      "axis": "능력치",
+      "value": "공격력"
+    },
+    {
+      "item": "magical_one_handed_weapon_magic_attack_scroll_100",
+      "axis": "무기",
+      "value": "한손무기"
+    },
+    {
+      "item": "magical_one_handed_weapon_magic_attack_scroll_100",
+      "axis": "능력치",
+      "value": "마력"
+    },
+    {
+      "item": "magical_two_handed_weapon_attack_scroll_100",
+      "axis": "무기",
+      "value": "두손무기"
+    },
+    {
+      "item": "magical_two_handed_weapon_attack_scroll_100",
+      "axis": "능력치",
+      "value": "공격력"
+    },
+    {
+      "item": "earring_attack_str_scroll_10",
+      "axis": "능력치",
+      "value": "공격력"
+    },
+    {
+      "item": "earring_attack_str_scroll_10",
+      "axis": "스탯",
+      "value": "힘"
+    },
+    {
+      "item": "earring_attack_dex_scroll_10",
+      "axis": "능력치",
+      "value": "공격력"
+    },
+    {
+      "item": "earring_attack_dex_scroll_10",
+      "axis": "스탯",
+      "value": "민첩"
+    },
+    {
+      "item": "earring_attack_luk_scroll_10",
+      "axis": "능력치",
+      "value": "공격력"
+    },
+    {
+      "item": "earring_attack_luk_scroll_10",
+      "axis": "스탯",
+      "value": "운"
+    },
+    {
+      "item": "earring_magic_attack_scroll_10",
+      "axis": "능력치",
+      "value": "마력"
+    }
+  ],
+  "itemForms": [
+    {
+      "item": "high_mountain_1",
+      "form": "exp"
+    },
+    {
+      "item": "high_mountain_1",
+      "form": "sol_erda"
+    },
+    {
+      "item": "high_mountain_2",
+      "form": "exp"
+    },
+    {
+      "item": "high_mountain_2",
+      "form": "sol_erda"
+    },
+    {
+      "item": "angler_company_1",
+      "form": "exp"
+    },
+    {
+      "item": "angler_company_1",
+      "form": "sol_erda"
+    },
+    {
+      "item": "angler_company_2",
+      "form": "exp"
+    },
+    {
+      "item": "angler_company_2",
+      "form": "sol_erda"
+    },
+    {
+      "item": "nightmare_paradise_1",
+      "form": "exp"
+    },
+    {
+      "item": "nightmare_paradise_1",
+      "form": "sol_erda"
+    },
+    {
+      "item": "nightmare_paradise_2",
+      "form": "exp"
+    },
+    {
+      "item": "nightmare_paradise_2",
+      "form": "sol_erda"
+    },
+    {
+      "item": "aurum_regis_1",
+      "form": "exp"
+    },
+    {
+      "item": "aurum_regis_1",
+      "form": "sol_erda"
+    },
+    {
+      "item": "aurum_regis_2",
+      "form": "exp"
+    },
+    {
+      "item": "aurum_regis_2",
+      "form": "sol_erda"
+    }
+  ]
+}

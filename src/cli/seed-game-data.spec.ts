@@ -1,11 +1,15 @@
 import { describeDb, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
+import { SpendCatalogRepository } from '../modules/spend-catalog/spend-catalog.repository'
+import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repository'
 import {
   parseBossDropsSeed,
   parseBossesSeed,
   parseCrystalPricesSeed,
   parseDropBoxesSeed,
   parseDropItemsSeed,
+  parseSpendCatalogSeed,
+  parseSymbolCostsSeed,
   parseWorldsSeed,
   seedGameData,
 } from './seed-game-data'
@@ -114,6 +118,82 @@ const worldsSeed = {
   ],
 }
 
+const spendCatalogSeed = {
+  rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
+  groups: [
+    {
+      key: 'epic_dungeon_bonus_reward',
+      name: '에픽던전 추가 리워드',
+      category: 'content',
+      active: true,
+    },
+    { key: 'maple_point_shop', name: '메이플 포인트 샵', category: 'event_bm', active: false },
+  ],
+  tiles: [
+    { key: 'high_mountain', name: '하이마운틴', iconFile: null, iconMap: 'highMountain' },
+    { key: 'mihoroid', name: '미호로이드', iconFile: 'mihoroid.webp', iconMap: null },
+  ],
+  items: [
+    {
+      key: 'high_mountain_1',
+      group: 'epic_dungeon_bonus_reward',
+      tile: 'high_mountain',
+      name: '하이마운틴 1단계',
+      tier: '1단계',
+      currency: 'point',
+      unitPrice: 7500,
+      unit: '회',
+      maxQuantity: 1,
+      rewardCoins: 4,
+      from: null,
+      until: null,
+    },
+    {
+      key: 'mihoroid',
+      group: 'maple_point_shop',
+      tile: 'mihoroid',
+      name: '미호로이드',
+      tier: null,
+      currency: 'point',
+      unitPrice: 40000,
+      unit: '개',
+      maxQuantity: 1,
+      rewardCoins: null,
+      from: null,
+      until: null,
+    },
+  ],
+  itemOptions: [],
+  itemForms: [
+    { item: 'high_mountain_1', form: 'exp' },
+    { item: 'high_mountain_1', form: 'sol_erda' },
+  ],
+}
+const symbolCostsSeed = {
+  groups: [
+    {
+      key: 'grand_authentic',
+      name: '그랜드 어센틱 심볼',
+      maxLevel: 3,
+      defaultFrom: 1,
+      defaultTo: 2,
+    },
+  ],
+  symbols: [
+    {
+      key: 'tallahart',
+      group: 'grand_authentic',
+      name: '탈라하트',
+      requiredLevel: 290,
+      iconFile: 't.webp',
+    },
+  ],
+  levelCosts: [
+    { symbol: 'tallahart', level: 1, costMeso: 100, from: '2026-09-17', until: null },
+    { symbol: 'tallahart', level: 2, costMeso: 200, from: '2026-09-17', until: null },
+  ],
+}
+
 describe('씨앗 넷의 모양', () => {
   it('받고, 모양이 어긋나면 던진다', () => {
     expect(parseDropItemsSeed(dropItemsSeed)).toEqual(dropItemsSeed)
@@ -121,6 +201,20 @@ describe('씨앗 넷의 모양', () => {
     expect(parseDropBoxesSeed(dropBoxesSeed)).toEqual(dropBoxesSeed)
     expect(parseCrystalPricesSeed(crystalPricesSeed)).toEqual(crystalPricesSeed)
     expect(parseWorldsSeed(worldsSeed)).toEqual(worldsSeed)
+    expect(parseSpendCatalogSeed(spendCatalogSeed)).toEqual(spendCatalogSeed)
+    expect(parseSymbolCostsSeed(symbolCostsSeed)).toEqual(symbolCostsSeed)
+    expect(() =>
+      parseSpendCatalogSeed({
+        ...spendCatalogSeed,
+        groups: [{ ...spendCatalogSeed.groups[0], category: 'misc' }],
+      }),
+    ).toThrow()
+    expect(() =>
+      parseSymbolCostsSeed({
+        ...symbolCostsSeed,
+        levelCosts: [{ ...symbolCostsSeed.levelCosts[0], level: 0 }],
+      }),
+    ).toThrow()
     expect(() =>
       parseWorldsSeed({ worlds: [{ ...worldsSeed.worlds[0], key: 'Scania' }] }),
     ).toThrow()
@@ -198,7 +292,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('넷을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('여덟을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -206,6 +300,8 @@ describeDb('seedGameData', () => {
       dropBoxes: parseDropBoxesSeed(dropBoxesSeed),
       crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
       worlds: parseWorldsSeed(worldsSeed),
+      spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
+      symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -214,7 +310,20 @@ describeDb('seedGameData', () => {
       dropBoxes: 'seeded',
       crystalPrices: 'seeded',
       worlds: 'seeded',
+      spendCatalog: 'seeded',
+      symbolCosts: 'seeded',
     })
+
+    const spend = await new SpendCatalogRepository(db).section()
+    expect(spend.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 })
+    expect(spend.groups.map((g) => [g.key, g.active])).toEqual([
+      ['epic_dungeon_bonus_reward', true],
+      ['maple_point_shop', false],
+    ])
+    expect(spend.items.map((i) => i.key)).toEqual(['high_mountain_1', 'mihoroid'])
+    expect(spend.itemForms).toHaveLength(2)
+    const symbol = await new SymbolCostsRepository(db).section()
+    expect(symbol.levelCosts.map((c) => c.costMeso)).toEqual([100, 200])
 
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules.defaultMaxPartySize).toBe(6)
@@ -225,8 +334,15 @@ describeDb('seedGameData', () => {
     const again = await seedGameData(db, {
       dropItems: parseDropItemsSeed(dropItemsSeed),
       crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
+      spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
+      symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
     })
-    expect(again).toEqual({ dropItems: 'skipped', crystalPrices: 'skipped' })
+    expect(again).toEqual({
+      dropItems: 'skipped',
+      crystalPrices: 'skipped',
+      spendCatalog: 'skipped',
+      symbolCosts: 'skipped',
+    })
   })
 
   it('씨앗이 표에 없는 조합이나 아이템을 가리키면 던지고 아무것도 안 넣는다', async () => {

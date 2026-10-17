@@ -1,0 +1,371 @@
+{
+  "rules": {
+    "cubeAppraisalFreeMaxLevel": 120,
+    "cubeAppraisalCoefficient": 20,
+    "starforceDestroyDefenceSurchargePercent": 200
+  },
+  "potentialResetCosts": [
+    {
+      "type": "potential",
+      "minLevel": 1,
+      "grade": "rare",
+      "costMeso": 4000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 1,
+      "grade": "epic",
+      "costMeso": 16000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 1,
+      "grade": "unique",
+      "costMeso": 34000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 1,
+      "grade": "legendary",
+      "costMeso": 40000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 160,
+      "grade": "rare",
+      "costMeso": 4250000
+    },
+    {
+      "type": "potential",
+      "minLevel": 160,
+      "grade": "epic",
+      "costMeso": 17000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 160,
+      "grade": "unique",
+      "costMeso": 36125000
+    },
+    {
+      "type": "potential",
+      "minLevel": 160,
+      "grade": "legendary",
+      "costMeso": 42500000
+    },
+    {
+      "type": "potential",
+      "minLevel": 200,
+      "grade": "rare",
+      "costMeso": 4500000
+    },
+    {
+      "type": "potential",
+      "minLevel": 200,
+      "grade": "epic",
+      "costMeso": 18000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 200,
+      "grade": "unique",
+      "costMeso": 38250000
+    },
+    {
+      "type": "potential",
+      "minLevel": 200,
+      "grade": "legendary",
+      "costMeso": 45000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 250,
+      "grade": "rare",
+      "costMeso": 5000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 250,
+      "grade": "epic",
+      "costMeso": 20000000
+    },
+    {
+      "type": "potential",
+      "minLevel": 250,
+      "grade": "unique",
+      "costMeso": 42500000
+    },
+    {
+      "type": "potential",
+      "minLevel": 250,
+      "grade": "legendary",
+      "costMeso": 50000000
+    },
+    {
+      "type": "additional",
+      "minLevel": 1,
+      "grade": "rare",
+      "costMeso": 9750000
+    },
+    {
+      "type": "additional",
+      "minLevel": 1,
+      "grade": "epic",
+      "costMeso": 27300000
+    },
+    {
+      "type": "additional",
+      "minLevel": 1,
+      "grade": "unique",
+      "costMeso": 66300000
+    },
+    {
+      "type": "additional",
+      "minLevel": 1,
+      "grade": "legendary",
+      "costMeso": 78000000
+    },
+    {
+      "type": "additional",
+      "minLevel": 160,
+      "grade": "rare",
+      "costMeso": 10375000
+    },
+    {
+      "type": "additional",
+      "minLevel": 160,
+      "grade": "epic",
+      "costMeso": 29050000
+    },
+    {
+      "type": "additional",
+      "minLevel": 160,
+      "grade": "unique",
+      "costMeso": 70550000
+    },
+    {
+      "type": "additional",
+      "minLevel": 160,
+      "grade": "legendary",
+      "costMeso": 83000000
+    },
+    {
+      "type": "additional",
+      "minLevel": 200,
+      "grade": "rare",
+      "costMeso": 11000000
+    },
+    {
+      "type": "additional",
+      "minLevel": 200,
+      "grade": "epic",
+      "costMeso": 30800000
+    },
+    {
+      "type": "additional",
+      "minLevel": 200,
+      "grade": "unique",
+      "costMeso": 74800000
+    },
+    {
+      "type": "additional",
+      "minLevel": 200,
+      "grade": "legendary",
+      "costMeso": 88000000
+    },
+    {
+      "type": "additional",
+      "minLevel": 250,
+      "grade": "rare",
+      "costMeso": 12250000
+    },
+    {
+      "type": "additional",
+      "minLevel": 250,
+      "grade": "epic",
+      "costMeso": 34300000
+    },
+    {
+      "type": "additional",
+      "minLevel": 250,
+      "grade": "unique",
+      "costMeso": 83300000
+    },
+    {
+      "type": "additional",
+      "minLevel": 250,
+      "grade": "legendary",
+      "costMeso": 98000000
+    }
+  ],
+  "soulPotentialResetCosts": [
+    {
+      "grade": "rare",
+      "costMeso": 20000000
+    },
+    {
+      "grade": "epic",
+      "costMeso": 40000000
+    },
+    {
+      "grade": "unique",
+      "costMeso": 65000000
+    },
+    {
+      "grade": "legendary",
+      "costMeso": 88000000
+    }
+  ],
+  "starforceSteps": [
+    {
+      "fromStar": 0,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 1,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 2,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 3,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 4,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 5,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 6,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 7,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 8,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 9,
+      "exponent": 1,
+      "divisor": 36
+    },
+    {
+      "fromStar": 10,
+      "exponent": 2.7,
+      "divisor": 571
+    },
+    {
+      "fromStar": 11,
+      "exponent": 2.7,
+      "divisor": 314
+    },
+    {
+      "fromStar": 12,
+      "exponent": 2.7,
+      "divisor": 214
+    },
+    {
+      "fromStar": 13,
+      "exponent": 2.7,
+      "divisor": 157
+    },
+    {
+      "fromStar": 14,
+      "exponent": 2.7,
+      "divisor": 107
+    },
+    {
+      "fromStar": 15,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 16,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 17,
+      "exponent": 2.7,
+      "divisor": 150
+    },
+    {
+      "fromStar": 18,
+      "exponent": 2.7,
+      "divisor": 70
+    },
+    {
+      "fromStar": 19,
+      "exponent": 2.7,
+      "divisor": 45
+    },
+    {
+      "fromStar": 20,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 21,
+      "exponent": 2.7,
+      "divisor": 125
+    },
+    {
+      "fromStar": 22,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 23,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 24,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 25,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 26,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 27,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 28,
+      "exponent": 2.7,
+      "divisor": 200
+    },
+    {
+      "fromStar": 29,
+      "exponent": 2.7,
+      "divisor": 200
+    }
+  ]
+}

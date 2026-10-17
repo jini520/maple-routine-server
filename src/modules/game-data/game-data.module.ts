@@ -5,6 +5,9 @@ import { BossesModule } from '../bosses/bosses.module'
 import { ContentsModule } from '../contents/contents.module'
 import { CrystalPricesModule } from '../crystal-prices/crystal-prices.module'
 import { DropItemsModule } from '../drop-items/drop-items.module'
+import { EnhancementCostsModule } from '../enhancement-costs/enhancement-costs.module'
+import { EquipmentItemsModule } from '../equipment-items/equipment-items.module'
+import { MvpGradesModule } from '../mvp-grades/mvp-grades.module'
 import { SpendCatalogModule } from '../spend-catalog/spend-catalog.module'
 import { SymbolCostsModule } from '../symbol-costs/symbol-costs.module'
 import { WorldsModule } from '../worlds/worlds.module'
@@ -22,6 +25,9 @@ import { GameDataService } from './game-data.service'
     SpendCatalogModule,
     SymbolCostsModule,
     ContentsModule,
+    EquipmentItemsModule,
+    EnhancementCostsModule,
+    MvpGradesModule,
   ],
   controllers: [GameDataController],
   providers: [GameDataService],

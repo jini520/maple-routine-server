@@ -1,6 +1,9 @@
 import { describeDb, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
 import { ContentsRepository } from '../modules/contents/contents.repository'
+import { EnhancementCostsRepository } from '../modules/enhancement-costs/enhancement-costs.repository'
+import { EquipmentItemsRepository } from '../modules/equipment-items/equipment-items.repository'
+import { MvpGradesRepository } from '../modules/mvp-grades/mvp-grades.repository'
 import { SpendCatalogRepository } from '../modules/spend-catalog/spend-catalog.repository'
 import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repository'
 import {
@@ -10,6 +13,9 @@ import {
   parseCrystalPricesSeed,
   parseDropBoxesSeed,
   parseDropItemsSeed,
+  parseEnhancementCostsSeed,
+  parseEquipmentItemsSeed,
+  parseMvpGradesSeed,
   parseSpendCatalogSeed,
   parseSymbolCostsSeed,
   parseWorldsSeed,
@@ -265,6 +271,57 @@ const contentsSeed = {
   ],
 }
 
+const equipmentItemsSeed = {
+  items: [
+    { key: 'absolab_ancient_bow', name: '앱솔랩스에인션트보우', level: 160 },
+    { key: 'ascendant_pulse_ring', name: '어센던트펄스링', level: null },
+  ],
+}
+const band = (type: string, minLevel: number, rare: number) => [
+  { type, minLevel, grade: 'rare', costMeso: rare },
+  { type, minLevel, grade: 'epic', costMeso: rare * 4 },
+  { type, minLevel, grade: 'unique', costMeso: rare * 8 },
+  { type, minLevel, grade: 'legendary', costMeso: rare * 10 },
+]
+const enhancementCostsSeed = {
+  rules: {
+    cubeAppraisalFreeMaxLevel: 120,
+    cubeAppraisalCoefficient: 20,
+    starforceDestroyDefenceSurchargePercent: 200,
+  },
+  potentialResetCosts: [
+    ...band('potential', 1, 4_000_000),
+    ...band('potential', 250, 5_000_000),
+    ...band('additional', 1, 9_750_000),
+  ],
+  soulPotentialResetCosts: [
+    { grade: 'rare', costMeso: 20_000_000 },
+    { grade: 'legendary', costMeso: 88_000_000 },
+  ],
+  starforceSteps: [
+    { fromStar: 0, exponent: 1, divisor: 36 },
+    { fromStar: 1, exponent: 2.7, divisor: 571 },
+  ],
+}
+const grade = (key: string, name: string, fee: number, discount: number) => ({
+  key,
+  name,
+  auctionFeePercent: fee,
+  starforceDiscountPercent: discount,
+})
+const mvpGradesSeed = {
+  // 등급 줄은 ENUM 과 일대일이라 일곱을 다 든다.
+  grades: [
+    grade('normal', '일반', 5, 0),
+    grade('bronze', '브론즈', 5, 0),
+    grade('silver', '실버', 3, 3),
+    grade('gold', '골드', 3, 5),
+    grade('diamond', '다이아', 3, 10),
+    grade('red', '레드', 3, 10),
+    grade('black', '블랙', 3, 10),
+  ],
+}
+
 describe('씨앗 넷의 모양', () => {
   it('받고, 모양이 어긋나면 던진다', () => {
     expect(parseDropItemsSeed(dropItemsSeed)).toEqual(dropItemsSeed)
@@ -275,6 +332,9 @@ describe('씨앗 넷의 모양', () => {
     expect(parseSpendCatalogSeed(spendCatalogSeed)).toEqual(spendCatalogSeed)
     expect(parseSymbolCostsSeed(symbolCostsSeed)).toEqual(symbolCostsSeed)
     expect(parseContentsSeed(contentsSeed)).toEqual(contentsSeed)
+    expect(parseEquipmentItemsSeed(equipmentItemsSeed)).toEqual(equipmentItemsSeed)
+    expect(parseEnhancementCostsSeed(enhancementCostsSeed)).toEqual(enhancementCostsSeed)
+    expect(parseMvpGradesSeed(mvpGradesSeed)).toEqual(mvpGradesSeed)
     expect(() =>
       parseSpendCatalogSeed({
         ...spendCatalogSeed,
@@ -295,6 +355,18 @@ describe('씨앗 넷의 모양', () => {
         ...contentsSeed,
         contents: [{ ...contentsSeed.contents[0], shareScope: 'guild' }],
       }),
+    ).toThrow()
+    expect(() =>
+      parseEquipmentItemsSeed({ items: [{ ...equipmentItemsSeed.items[0], level: 0 }] }),
+    ).toThrow()
+    expect(() =>
+      parseEnhancementCostsSeed({
+        ...enhancementCostsSeed,
+        potentialResetCosts: [{ ...enhancementCostsSeed.potentialResetCosts[0], grade: 'normal' }],
+      }),
+    ).toThrow()
+    expect(() =>
+      parseMvpGradesSeed({ grades: [{ ...mvpGradesSeed.grades[0], auctionFeePercent: 101 }] }),
     ).toThrow()
     expect(() =>
       parseDropItemsSeed({
@@ -370,7 +442,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('아홉을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열둘을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -381,6 +453,9 @@ describeDb('seedGameData', () => {
       spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
       symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
       contents: parseContentsSeed(contentsSeed),
+      equipmentItems: parseEquipmentItemsSeed(equipmentItemsSeed),
+      enhancementCosts: parseEnhancementCostsSeed(enhancementCostsSeed),
+      mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -392,6 +467,9 @@ describeDb('seedGameData', () => {
       spendCatalog: 'seeded',
       symbolCosts: 'seeded',
       contents: 'seeded',
+      equipmentItems: 'seeded',
+      enhancementCosts: 'seeded',
+      mvpGrades: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -407,6 +485,17 @@ describeDb('seedGameData', () => {
     const content = await new ContentsRepository(db).section()
     expect(content.categories.map((c) => c.key)).toEqual(contentsSeed.categories.map((c) => c.key))
     expect(content.contents).toEqual([contentsSeed.contents[1], contentsSeed.contents[0]])
+    expect((await new EquipmentItemsRepository(db).section()).items).toEqual(
+      equipmentItemsSeed.items,
+    )
+    const enhancement = await new EnhancementCostsRepository(db).section()
+    expect(enhancement.rules).toEqual(enhancementCostsSeed.rules)
+    expect(enhancement.potentialResetCosts).toHaveLength(12)
+    expect(enhancement.soulPotentialResetCosts).toEqual(
+      enhancementCostsSeed.soulPotentialResetCosts,
+    )
+    expect(enhancement.starforceSteps).toEqual(enhancementCostsSeed.starforceSteps)
+    expect((await new MvpGradesRepository(db).section()).grades).toEqual(mvpGradesSeed.grades)
 
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules.defaultMaxPartySize).toBe(6)
@@ -420,6 +509,8 @@ describeDb('seedGameData', () => {
       spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
       symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
       contents: parseContentsSeed(contentsSeed),
+      enhancementCosts: parseEnhancementCostsSeed(enhancementCostsSeed),
+      mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
@@ -427,10 +518,33 @@ describeDb('seedGameData', () => {
       spendCatalog: 'skipped',
       symbolCosts: 'skipped',
       contents: 'skipped',
+      enhancementCosts: 'skipped',
+      mvpGrades: 'skipped',
     })
   })
 
   // 갈래 줄은 ENUM 과 일대일이다. 빠진 갈래의 컨텐츠는 관리 화면에서 영영 못 더하므로 채우지 않고 던진다.
+  it('MVP 씨앗이 등급 일곱을 다 안 들거나 잠재 씨앗에 1 구간이 없으면 던지고 아무것도 안 넣는다', async () => {
+    await expect(
+      seedGameData(db, {
+        mvpGrades: parseMvpGradesSeed({ grades: mvpGradesSeed.grades.slice(1) }),
+      }),
+    ).rejects.toThrow('씨앗의 MVP 등급이 ENUM 을 다 안 든다: normal')
+    expect((await new MvpGradesRepository(db).section()).grades).toEqual([])
+    await expect(
+      seedGameData(db, {
+        enhancementCosts: parseEnhancementCostsSeed({
+          ...enhancementCostsSeed,
+          potentialResetCosts: band('potential', 1, 4_000_000),
+        }),
+      }),
+    ).rejects.toThrow('잠재 재설정 씨앗에 min_level 1 구간이 없다: additional')
+    const enhancement = await new EnhancementCostsRepository(db).section()
+    expect(enhancement.potentialResetCosts).toEqual([])
+    // 규칙 셋은 표보다 먼저 들어가고 그대로 남는다. 다른 표의 씨앗과 같은 규칙이다.
+    expect(enhancement.rules.cubeAppraisalCoefficient).toBe(20)
+  })
+
   it('컨텐츠 씨앗의 갈래가 ENUM 을 다 안 들면 던지고 아무것도 안 넣는다', async () => {
     await expect(
       seedGameData(db, {

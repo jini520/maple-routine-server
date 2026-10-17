@@ -3,7 +3,7 @@ import { layout } from './layout'
 export const INDEX_HTML = layout(
   '/admin',
   '홈',
-  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 열둘. 인증은 앞단 nginx 가 한다.</p></div></div>
+  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 열다섯. 인증은 앞단 nginx 가 한다.</p></div></div>
 <div class="links">
   <a class="card" href="/admin/notices"><h2>공지</h2><p>운영자 공지를 쓰고 고치고 알림을 보낸다</p></a>
   <a class="card" href="/admin/bosses"><h2>보스 목록</h2><p>보스와 난이도, 주간 한도 둘을 폼으로 고친다</p></a>
@@ -17,5 +17,8 @@ export const INDEX_HTML = layout(
   <a class="card" href="/admin/spend-catalog"><h2>지출 카탈로그</h2><p>가계부 지출 목록. 묶음을 열고 닫고 항목 · 가격 · 타일을 고친다</p></a>
   <a class="card" href="/admin/symbol-costs"><h2>심볼 비용</h2><p>심볼 강화 비용. 패치마다 레벨별 새 비용 줄을 연다</p></a>
   <a class="card" href="/admin/contents"><h2>컨텐츠</h2><p>일간 · 주간 컨텐츠 표와 갈래. 공유 범위 · 위젯 글자 · 기간을 고친다</p></a>
+  <a class="card" href="/admin/equipment-items"><h2>장비</h2><p>강화 비용을 매길 장비 표. 이름 · 착용 레벨을 고치고 새 장비를 더한다</p></a>
+  <a class="card" href="/admin/enhancement-costs"><h2>강화 비용</h2><p>잠재 · 소울 재설정 비용과 스타포스 단계, 규칙 셋</p></a>
+  <a class="card" href="/admin/mvp-grades"><h2>MVP 등급</h2><p>등급마다 경매장 수수료와 스타포스 할인</p></a>
 </div>`,
 )

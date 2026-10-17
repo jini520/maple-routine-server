@@ -1,5 +1,5 @@
 /**
- * Model. 표 스물여섯과 ENUM 열셋. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 서른하나와 ENUM 열여섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -9,6 +9,7 @@ import {
   boolean,
   check,
   customType,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -620,6 +621,101 @@ export const contents = pgTable(
     check(
       'contents_max_count_override_positive',
       sql`${t.maxCountOverride} IS NULL OR ${t.maxCountOverride} >= 1`,
+    ),
+  ],
+)
+
+/** 잠재 재설정의 종류. API 의 '잠재능력 재설정' · '에디셔널 잠재능력 재설정' 을 앱 상수가 맞춘다. */
+export const potentialResetTypeEnum = pgEnum('potential_reset_type', ['potential', 'additional'])
+/** 잠재 등급. 노멀은 재설정할 수 없어 없다. API 의 한글 글자는 앱 상수가 맞춘다. */
+export const potentialGradeEnum = pgEnum('potential_grade', ['rare', 'epic', 'unique', 'legendary'])
+/** MVP 등급. 앱 MvpGradeKey 그대로다. 낮은 등급부터. */
+export const mvpGradeEnum = pgEnum('mvp_grade', [
+  'normal',
+  'bronze',
+  'silver',
+  'gold',
+  'diamond',
+  'red',
+  'black',
+])
+
+/** 강화 비용을 매길 장비. 기록(enhancement_history.item_key)이 key 를 들어 지우지 않는다. 강화할 수 없는 장비는 안 담는다. */
+export const equipmentItems = pgTable(
+  'equipment_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    /** 붙여 쓴 이름. 앱이 API target_item 을 NFC · 공백 제거 뒤 완전 일치로 key 를 얻는다. */
+    name: text('name').notNull().unique(),
+    /** 착용 레벨. NULL 은 모른다는 뜻이고 0 이 아니다. 그 장비의 스타포스는 안 매기고 건수만 센다. */
+    level: integer('level'),
+  },
+  (t) => [check('equipment_items_level_positive', sql`${t.level} IS NULL OR ${t.level} >= 1`)],
+)
+
+/** 잠재 재설정 1회 비용. 종류 · 레벨 구간 · 등급마다 한 줄이고 기간 줄이 없다. 비용은 누르기 전 등급으로 매긴다. */
+export const potentialResetCosts = pgTable(
+  'potential_reset_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: potentialResetTypeEnum('type').notNull(),
+    /** 구간의 시작. 장비 레벨 이하인 줄 중 가장 큰 것이 그 레벨의 줄이다. 종류마다 1 이 있어야 한다. */
+    minLevel: integer('min_level').notNull(),
+    grade: potentialGradeEnum('grade').notNull(),
+    costMeso: bigint('cost_meso', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    unique('potential_reset_costs_cell_unique').on(t.type, t.minLevel, t.grade),
+    check('potential_reset_costs_min_level_positive', sql`${t.minLevel} >= 1`),
+    check('potential_reset_costs_cost_nonnegative', sql`${t.costMeso} >= 0`),
+  ],
+)
+
+/** 소울 잠재 재설정 1회 비용. 등급 하나로 정해지고 장비 레벨을 안 본다. */
+export const soulPotentialResetCosts = pgTable(
+  'soul_potential_reset_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    grade: potentialGradeEnum('grade').notNull().unique(),
+    costMeso: bigint('cost_meso', { mode: 'number' }).notNull(),
+  },
+  (t) => [check('soul_potential_reset_costs_cost_nonnegative', sql`${t.costMeso} >= 0`)],
+)
+
+/** 스타포스 한 단계의 식 재료. 식 자체는 앱 코드가 든다. 0 부터 빠짐없이 있어야 한다. */
+export const starforceSteps = pgTable(
+  'starforce_steps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** 시도 전 성수. */
+    fromStar: integer('from_star').notNull().unique(),
+    exponent: doublePrecision('exponent').notNull(),
+    divisor: integer('divisor').notNull(),
+  },
+  (t) => [
+    check('starforce_steps_from_star_nonnegative', sql`${t.fromStar} >= 0`),
+    check('starforce_steps_divisor_positive', sql`${t.divisor} >= 1`),
+  ],
+)
+
+/** MVP 등급의 혜택. ENUM 일곱과 일대일이라 줄을 더하고 지우는 것은 마이그레이션이다. 차례가 높낮이다. */
+export const mvpGrades = pgTable(
+  'mvp_grades',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: mvpGradeEnum('key').notNull().unique(),
+    name: text('name').notNull(),
+    auctionFeePercent: integer('auction_fee_percent').notNull(),
+    starforceDiscountPercent: integer('starforce_discount_percent').notNull(),
+    /** 낮은 등급이 앞. 소속을 모르는 스타포스 줄이 그 날 가장 높은 등급을 찾을 때 쓴다. */
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    check('mvp_grades_auction_fee_range', sql`${t.auctionFeePercent} BETWEEN 0 AND 100`),
+    check(
+      'mvp_grades_starforce_discount_range',
+      sql`${t.starforceDiscountPercent} BETWEEN 0 AND 100`,
     ),
   ],
 )

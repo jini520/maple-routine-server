@@ -9,6 +9,11 @@ import {
 } from '../contents/contents.repository'
 import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
 import {
+  POTENTIAL_GRADES,
+  POTENTIAL_RESET_TYPES,
+} from '../enhancement-costs/enhancement-costs.repository'
+import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
+import {
   SPEND_CATEGORIES,
   SPEND_CURRENCIES,
   SPEND_FORMS,
@@ -322,3 +327,49 @@ export const contentCreateBody = contentRules(contentBase)
 export type ContentCreateBody = z.infer<typeof contentCreateBody>
 export const contentUpdateBody = contentRules(contentBase.omit({ key: true, section: true }))
 export type ContentUpdateBody = z.infer<typeof contentUpdateBody>
+
+/* ── 장비 · 강화 비용 · MVP 등급 ── */
+
+export const equipmentItemCreateBody = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(100),
+  level: z.number().int().min(1).max(300).nullish(),
+})
+export type EquipmentItemCreateBody = z.infer<typeof equipmentItemCreateBody>
+export const equipmentItemUpdateBody = equipmentItemCreateBody.omit({ key: true })
+export type EquipmentItemUpdateBody = z.infer<typeof equipmentItemUpdateBody>
+
+/** 규칙 셋. 감정비용 무료 상한 · 감정비용 계수 · 파괴 방지 추가분(%). game_rules 의 줄 셋이다. */
+export const enhancementRulesBody = z.object({
+  cubeAppraisalFreeMaxLevel: z.number().int().min(0).max(300),
+  cubeAppraisalCoefficient: z.number().int().min(0),
+  starforceDestroyDefenceSurchargePercent: z.number().int().min(0).max(1000),
+})
+export type EnhancementRulesBody = z.infer<typeof enhancementRulesBody>
+export const potentialTypeParam = z.enum(POTENTIAL_RESET_TYPES)
+export const potentialGradeParam = z.enum(POTENTIAL_GRADES)
+export const minLevelParam = z.coerce.number().int().min(1)
+export const fromStarParam = z.coerce.number().int().min(0)
+export const costBody = z.object({ costMeso: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) })
+export type CostBody = z.infer<typeof costBody>
+const meso = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
+/** 구간 하나. 등급 넷을 한 번에 받는다. */
+export const potentialBandBody = z.object({
+  type: potentialTypeParam,
+  minLevel: z.number().int().min(1),
+  costs: z.object({ rare: meso, epic: meso, unique: meso, legendary: meso }),
+})
+export type PotentialBandBody = z.infer<typeof potentialBandBody>
+export const starforceStepBody = z.object({
+  exponent: z.number().min(0).max(10),
+  divisor: z.number().int().min(1),
+})
+export type StarforceStepBody = z.infer<typeof starforceStepBody>
+
+export const mvpGradeParam = z.enum(MVP_GRADES)
+export const mvpGradeUpdateBody = z.object({
+  name: z.string().min(1).max(20),
+  auctionFeePercent: z.number().int().min(0).max(100),
+  starforceDiscountPercent: z.number().int().min(0).max(100),
+})
+export type MvpGradeUpdateBody = z.infer<typeof mvpGradeUpdateBody>

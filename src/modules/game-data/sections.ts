@@ -13,6 +13,9 @@ export const SECTION_KEYS = [
   'spendCatalog',
   'symbolCosts',
   'contents',
+  'equipmentItems',
+  'enhancementCosts',
+  'mvpGrades',
 ] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 

@@ -10,6 +10,15 @@ import {
 import { DropBoxesRepository, type DropBoxesSection } from '../drop-items/drop-boxes.repository'
 import { DropItemsRepository, type DropItemsSection } from '../drop-items/drop-items.repository'
 import {
+  EnhancementCostsRepository,
+  type EnhancementCostsSection,
+} from '../enhancement-costs/enhancement-costs.repository'
+import {
+  EquipmentItemsRepository,
+  type EquipmentItemsSection,
+} from '../equipment-items/equipment-items.repository'
+import { MvpGradesRepository, type MvpGradesSection } from '../mvp-grades/mvp-grades.repository'
+import {
   SpendCatalogRepository,
   type SpendCatalogSection,
 } from '../spend-catalog/spend-catalog.repository'
@@ -34,6 +43,9 @@ export interface GameDataSnapshot {
   spendCatalog: SpendCatalogSection
   symbolCosts: SymbolCostsSection
   contents: ContentsSection
+  equipmentItems: EquipmentItemsSection
+  enhancementCosts: EnhancementCostsSection
+  mvpGrades: MvpGradesSection
 }
 
 @Injectable()
@@ -48,6 +60,9 @@ export class GameDataService {
     private readonly spendCatalog: SpendCatalogRepository,
     private readonly symbolCosts: SymbolCostsRepository,
     private readonly contents: ContentsRepository,
+    private readonly equipmentItems: EquipmentItemsRepository,
+    private readonly enhancementCosts: EnhancementCostsRepository,
+    private readonly mvpGrades: MvpGradesRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -61,6 +76,9 @@ export class GameDataService {
       spendCatalog,
       symbolCosts,
       contents,
+      equipmentItems,
+      enhancementCosts,
+      mvpGrades,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -71,6 +89,9 @@ export class GameDataService {
       this.spendCatalog.section(),
       this.symbolCosts.section(),
       this.contents.section(),
+      this.equipmentItems.section(),
+      this.enhancementCosts.section(),
+      this.mvpGrades.section(),
     ])
     return {
       bosses,
@@ -82,6 +103,9 @@ export class GameDataService {
       spendCatalog,
       symbolCosts,
       contents,
+      equipmentItems,
+      enhancementCosts,
+      mvpGrades,
     }
   }
 }

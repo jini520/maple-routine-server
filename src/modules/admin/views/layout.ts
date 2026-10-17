@@ -13,6 +13,9 @@ const MENU = [
   ['/admin/spend-catalog', '지출 카탈로그'],
   ['/admin/symbol-costs', '심볼 비용'],
   ['/admin/contents', '컨텐츠'],
+  ['/admin/equipment-items', '장비'],
+  ['/admin/enhancement-costs', '강화 비용'],
+  ['/admin/mvp-grades', 'MVP 등급'],
 ] as const
 
 /**

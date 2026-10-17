@@ -1,0 +1,2339 @@
+{
+  "items": [
+    {
+      "key": "absolab_ancient_bow",
+      "name": "앱솔랩스에인션트보우",
+      "level": 160
+    },
+    {
+      "key": "absolab_archer_cape",
+      "name": "앱솔랩스아처케이프",
+      "level": 160
+    },
+    {
+      "key": "absolab_archer_gloves",
+      "name": "앱솔랩스아처글러브",
+      "level": 160
+    },
+    {
+      "key": "absolab_archer_hood",
+      "name": "앱솔랩스아처후드",
+      "level": 160
+    },
+    {
+      "key": "absolab_archer_shoes",
+      "name": "앱솔랩스아처슈즈",
+      "level": 160
+    },
+    {
+      "key": "absolab_archer_shoulder",
+      "name": "앱솔랩스아처숄더",
+      "level": 160
+    },
+    {
+      "key": "absolab_archer_suit",
+      "name": "앱솔랩스아처슈트",
+      "level": 160
+    },
+    {
+      "key": "absolab_axe",
+      "name": "앱솔랩스엑스",
+      "level": 160
+    },
+    {
+      "key": "absolab_bandit_cap",
+      "name": "앱솔랩스시프캡",
+      "level": 160
+    },
+    {
+      "key": "absolab_bandit_cape",
+      "name": "앱솔랩스시프케이프",
+      "level": 160
+    },
+    {
+      "key": "absolab_bandit_gloves",
+      "name": "앱솔랩스시프글러브",
+      "level": 160
+    },
+    {
+      "key": "absolab_bandit_shoes",
+      "name": "앱솔랩스시프슈즈",
+      "level": 160
+    },
+    {
+      "key": "absolab_bandit_shoulder",
+      "name": "앱솔랩스시프숄더",
+      "level": 160
+    },
+    {
+      "key": "absolab_bandit_suit",
+      "name": "앱솔랩스시프슈트",
+      "level": 160
+    },
+    {
+      "key": "absolab_bit_hammer",
+      "name": "앱솔랩스비트해머",
+      "level": 160
+    },
+    {
+      "key": "absolab_blade_lord",
+      "name": "앱솔랩스슬래셔",
+      "level": 160
+    },
+    {
+      "key": "absolab_bladecaster",
+      "name": "앱솔랩스블레이드캐스터",
+      "level": 160
+    },
+    {
+      "key": "absolab_blast_cannon",
+      "name": "앱솔랩스블래스트캐논",
+      "level": 160
+    },
+    {
+      "key": "absolab_blast_knuckle",
+      "name": "앱솔랩스블로우너클",
+      "level": 160
+    },
+    {
+      "key": "absolab_broad_axe",
+      "name": "앱솔랩스브로드엑스",
+      "level": 160
+    },
+    {
+      "key": "absolab_broad_hammer",
+      "name": "앱솔랩스브로드해머",
+      "level": 160
+    },
+    {
+      "key": "absolab_broad_saber",
+      "name": "앱솔랩스브로드세이버",
+      "level": 160
+    },
+    {
+      "key": "absolab_celestial_light",
+      "name": "앱솔랩스셀레스티얼라이트",
+      "level": 160
+    },
+    {
+      "key": "absolab_chain",
+      "name": "앱솔랩스체인",
+      "level": 160
+    },
+    {
+      "key": "absolab_chakram",
+      "name": "앱솔랩스차크람",
+      "level": 160
+    },
+    {
+      "key": "absolab_crossbow",
+      "name": "앱솔랩스크로스보우",
+      "level": 160
+    },
+    {
+      "key": "absolab_desperado",
+      "name": "앱솔랩스데스페라도",
+      "level": 160
+    },
+    {
+      "key": "absolab_dual_bowguns",
+      "name": "앱솔랩스듀얼보우건",
+      "level": 160
+    },
+    {
+      "key": "absolab_forked_cane",
+      "name": "앱솔랩스포크드케인",
+      "level": 160
+    },
+    {
+      "key": "absolab_furious_sword",
+      "name": "앱솔랩스퓨리어스소드",
+      "level": 160
+    },
+    {
+      "key": "absolab_hellslayer",
+      "name": "앱솔랩스헬슬레이어",
+      "level": 160
+    },
+    {
+      "key": "absolab_katana",
+      "name": "앱솔랩스카타나",
+      "level": 160
+    },
+    {
+      "key": "absolab_knight_cape",
+      "name": "앱솔랩스나이트케이프",
+      "level": 160
+    },
+    {
+      "key": "absolab_knight_gloves",
+      "name": "앱솔랩스나이트글러브",
+      "level": 160
+    },
+    {
+      "key": "absolab_knight_helm",
+      "name": "앱솔랩스나이트헬름",
+      "level": 160
+    },
+    {
+      "key": "absolab_knight_shoes",
+      "name": "앱솔랩스나이트슈즈",
+      "level": 160
+    },
+    {
+      "key": "absolab_knight_shoulder",
+      "name": "앱솔랩스나이트숄더",
+      "level": 160
+    },
+    {
+      "key": "absolab_knight_suit",
+      "name": "앱솔랩스나이트슈트",
+      "level": 160
+    },
+    {
+      "key": "absolab_lucent_gauntlet",
+      "name": "앱솔랩스매직건틀렛",
+      "level": 160
+    },
+    {
+      "key": "absolab_mage_cape",
+      "name": "앱솔랩스메이지케이프",
+      "level": 160
+    },
+    {
+      "key": "absolab_mage_crown",
+      "name": "앱솔랩스메이지크라운",
+      "level": 160
+    },
+    {
+      "key": "absolab_mage_gloves",
+      "name": "앱솔랩스메이지글러브",
+      "level": 160
+    },
+    {
+      "key": "absolab_mage_shoes",
+      "name": "앱솔랩스메이지슈즈",
+      "level": 160
+    },
+    {
+      "key": "absolab_mage_shoulder",
+      "name": "앱솔랩스메이지숄더",
+      "level": 160
+    },
+    {
+      "key": "absolab_mage_suit",
+      "name": "앱솔랩스메이지슈트",
+      "level": 160
+    },
+    {
+      "key": "absolab_martial_brace",
+      "name": "앱솔랩스마샬브레이스",
+      "level": 160
+    },
+    {
+      "key": "absolab_memorial_staff",
+      "name": "앱솔랩스메모리얼스태프",
+      "level": 160
+    },
+    {
+      "key": "absolab_monster_ritual_fan",
+      "name": "앱솔랩스몬스터리추얼팬",
+      "level": 160
+    },
+    {
+      "key": "absolab_piercing_spear",
+      "name": "앱솔랩스피어싱스피어",
+      "level": 160
+    },
+    {
+      "key": "absolab_pile_god",
+      "name": "앱솔랩스파일갓",
+      "level": 160
+    },
+    {
+      "key": "absolab_pirate_cape",
+      "name": "앱솔랩스파이렛케이프",
+      "level": 160
+    },
+    {
+      "key": "absolab_pirate_fedora",
+      "name": "앱솔랩스파이렛페도라",
+      "level": 160
+    },
+    {
+      "key": "absolab_pirate_gloves",
+      "name": "앱솔랩스파이렛글러브",
+      "level": 160
+    },
+    {
+      "key": "absolab_pirate_shoes",
+      "name": "앱솔랩스파이렛슈즈",
+      "level": 160
+    },
+    {
+      "key": "absolab_pirate_shoulder",
+      "name": "앱솔랩스파이렛숄더",
+      "level": 160
+    },
+    {
+      "key": "absolab_pirate_suit",
+      "name": "앱솔랩스파이렛슈트",
+      "level": 160
+    },
+    {
+      "key": "absolab_point_gun",
+      "name": "앱솔랩스포인팅건",
+      "level": 160
+    },
+    {
+      "key": "absolab_psy_limiter",
+      "name": "앱솔랩스ESP리미터",
+      "level": 160
+    },
+    {
+      "key": "absolab_revenge_guard",
+      "name": "앱솔랩스리벤지가즈",
+      "level": 160
+    },
+    {
+      "key": "absolab_saber",
+      "name": "앱솔랩스세이버",
+      "level": 160
+    },
+    {
+      "key": "absolab_shining_rod",
+      "name": "앱솔랩스샤이닝로드",
+      "level": 160
+    },
+    {
+      "key": "absolab_soul_shooter",
+      "name": "앱솔랩스엔젤릭슈터",
+      "level": 160
+    },
+    {
+      "key": "absolab_spellsong_staff",
+      "name": "앱솔랩스스펠링스태프",
+      "level": 160
+    },
+    {
+      "key": "absolab_spellsong_wand",
+      "name": "앱솔랩스스펠링완드",
+      "level": 160
+    },
+    {
+      "key": "absolab_spirit_walker_fan",
+      "name": "앱솔랩스스피릿워커팬",
+      "level": 160
+    },
+    {
+      "key": "absolab_sureshot_bow",
+      "name": "앱솔랩스슈팅보우",
+      "level": 160
+    },
+    {
+      "key": "absolab_whip_blade",
+      "name": "앱솔랩스스플릿엣지",
+      "level": 160
+    },
+    {
+      "key": "absolab_whispershot",
+      "name": "앱솔랩스브레스슈터",
+      "level": 160
+    },
+    {
+      "key": "alchemists_ring",
+      "name": "연금술사의반지",
+      "level": 10
+    },
+    {
+      "key": "almighty_ring",
+      "name": "올마이티링",
+      "level": 30
+    },
+    {
+      "key": "aquatic_letter_eye_accessory",
+      "name": "아쿠아틱레터눈장식",
+      "level": 100
+    },
+    {
+      "key": "arcane_umbra_ancient_bow",
+      "name": "아케인셰이드에인션트보우",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_archer_cape",
+      "name": "아케인셰이드아처케이프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_archer_gloves",
+      "name": "아케인셰이드아처글러브",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_archer_hat",
+      "name": "아케인셰이드아처햇",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_archer_shoes",
+      "name": "아케인셰이드아처슈즈",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_archer_shoulder",
+      "name": "아케인셰이드아처숄더",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_archer_suit",
+      "name": "아케인셰이드아처슈트",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_axe",
+      "name": "아케인셰이드엑스",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_bladecaster",
+      "name": "아케인셰이드블레이드캐스터",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_bow",
+      "name": "아케인셰이드보우",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_cane",
+      "name": "아케인셰이드케인",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_celestial_light",
+      "name": "아케인셰이드셀레스티얼라이트",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_chain",
+      "name": "아케인셰이드체인",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_chakram",
+      "name": "아케인셰이드차크람",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_crossbow",
+      "name": "아케인셰이드크로스보우",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_dagger",
+      "name": "아케인셰이드대거",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_desperado",
+      "name": "아케인셰이드데스페라도",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_dual_bowguns",
+      "name": "아케인셰이드듀얼보우건",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_ellaha",
+      "name": "아케인셰이드엘라하",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_energy_chain",
+      "name": "아케인셰이드에너지체인",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_guards",
+      "name": "아케인셰이드가즈",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_hammer",
+      "name": "아케인셰이드해머",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_illusory_sword",
+      "name": "아케인셰이드일루저리소드",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_katana",
+      "name": "아케인셰이드카타나",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knight_cape",
+      "name": "아케인셰이드나이트케이프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knight_gloves",
+      "name": "아케인셰이드나이트글러브",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knight_hat",
+      "name": "아케인셰이드나이트햇",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knight_shoes",
+      "name": "아케인셰이드나이트슈즈",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knight_shoulder",
+      "name": "아케인셰이드나이트숄더",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knight_suit",
+      "name": "아케인셰이드나이트슈트",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_knuckle",
+      "name": "아케인셰이드클로",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_lucent_gauntlet",
+      "name": "아케인셰이드매직건틀렛",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_mage_cape",
+      "name": "아케인셰이드메이지케이프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_mage_gloves",
+      "name": "아케인셰이드메이지글러브",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_mage_hat",
+      "name": "아케인셰이드메이지햇",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_mage_shoes",
+      "name": "아케인셰이드메이지슈즈",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_mage_shoulder",
+      "name": "아케인셰이드메이지숄더",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_mage_suit",
+      "name": "아케인셰이드메이지슈트",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_martial_brace",
+      "name": "아케인셰이드마샬브레이스",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_memorial_staff",
+      "name": "아케인셰이드메모리얼스태프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pirate_cape",
+      "name": "아케인셰이드파이렛케이프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pirate_gloves",
+      "name": "아케인셰이드파이렛글러브",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pirate_hat",
+      "name": "아케인셰이드파이렛햇",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pirate_shoes",
+      "name": "아케인셰이드파이렛슈즈",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pirate_shoulder",
+      "name": "아케인셰이드파이렛숄더",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pirate_suit",
+      "name": "아케인셰이드파이렛슈트",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_pistol",
+      "name": "아케인셰이드피스톨",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_polearm",
+      "name": "아케인셰이드폴암",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_psy_limiter",
+      "name": "아케인셰이드ESP리미터",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_saber",
+      "name": "아케인셰이드세이버",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_shining_rod",
+      "name": "아케인셰이드샤이닝로드",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_siege_gun",
+      "name": "아케인셰이드시즈건",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_soul_shooter",
+      "name": "아케인셰이드소울슈터",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_spear",
+      "name": "아케인셰이드스피어",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_spirit_walker_fan",
+      "name": "아케인셰이드스피릿워커팬",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_staff",
+      "name": "아케인셰이드스태프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_super_ritual_fan",
+      "name": "아케인셰이드슈퍼리추얼팬",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_thief_cape",
+      "name": "아케인셰이드시프케이프",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_thief_gloves",
+      "name": "아케인셰이드시프글러브",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_thief_hat",
+      "name": "아케인셰이드시프햇",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_thief_shoes",
+      "name": "아케인셰이드시프슈즈",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_thief_shoulder",
+      "name": "아케인셰이드시프숄더",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_thief_suit",
+      "name": "아케인셰이드시프슈트",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_two_handed_axe",
+      "name": "아케인셰이드투핸드액스",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_two_handed_hammer",
+      "name": "아케인셰이드투핸드해머",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_two_handed_sword",
+      "name": "아케인셰이드투핸드소드",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_wand",
+      "name": "아케인셰이드완드",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_whispershot",
+      "name": "아케인셰이드브레스슈터",
+      "level": 200
+    },
+    {
+      "key": "archlords_meister_eternal_ring",
+      "name": "아크로드의마이스터이터널링",
+      "level": 90
+    },
+    {
+      "key": "awake_ring",
+      "name": "어웨이크링",
+      "level": 120
+    },
+    {
+      "key": "bears_green_pendant",
+      "name": "베어스그린펜던트",
+      "level": 100
+    },
+    {
+      "key": "bears_pink_pendant",
+      "name": "베어스핑크펜던트",
+      "level": 120
+    },
+    {
+      "key": "bears_purple_pendant",
+      "name": "베어스퍼플펜던트",
+      "level": 130
+    },
+    {
+      "key": "bears_red_pendant",
+      "name": "베어스레드펜던트",
+      "level": 110
+    },
+    {
+      "key": "loose_control_machine_mark",
+      "name": "루즈컨트롤머신마크",
+      "level": 160
+    },
+    {
+      "key": "berserkers_meister_immortal_ring",
+      "name": "버서커의마이스터임모탈링",
+      "level": 90
+    },
+    {
+      "key": "black_bean_mark",
+      "name": "블랙빈마크",
+      "level": 135
+    },
+    {
+      "key": "black_force_shield",
+      "name": "블랙포스실드",
+      "level": 100
+    },
+    {
+      "key": "black_soul_shield",
+      "name": "블랙소울실드",
+      "level": 100
+    },
+    {
+      "key": "bond_ring",
+      "name": "결속의반지",
+      "level": 120
+    },
+    {
+      "key": "chaos_horntail_necklace",
+      "name": "카오스혼테일의목걸이",
+      "level": 120
+    },
+    {
+      "key": "chaos_ring",
+      "name": "카오스링",
+      "level": 120
+    },
+    {
+      "key": "chaos_velum_helm",
+      "name": "카오스벨룸의헬름",
+      "level": 140
+    },
+    {
+      "key": "commander_force_earring",
+      "name": "커맨더포스이어링",
+      "level": 200
+    },
+    {
+      "key": "condensed_power_crystal",
+      "name": "응축된힘의결정석",
+      "level": 110
+    },
+    {
+      "key": "cosmos_ring",
+      "name": "코스모스링",
+      "level": 120
+    },
+    {
+      "key": "dawn_guardian_angel_ring",
+      "name": "여명의가디언엔젤링",
+      "level": 160
+    },
+    {
+      "key": "daybreak_pendant",
+      "name": "데이브레이크펜던트",
+      "level": 140
+    },
+    {
+      "key": "dea_sidus_earring",
+      "name": "데아시두스이어링",
+      "level": 130
+    },
+    {
+      "key": "deimos_darkness_shield",
+      "name": "데이모스다크니스실드",
+      "level": 130
+    },
+    {
+      "key": "deimos_sage_shield",
+      "name": "데이모스세이지실드",
+      "level": 130
+    },
+    {
+      "key": "destiny_ancient_bow",
+      "name": "데스티니에인션트보우",
+      "level": 250
+    },
+    {
+      "key": "destiny_axe",
+      "name": "데스티니엑스",
+      "level": 250
+    },
+    {
+      "key": "destiny_blast_cannon",
+      "name": "데스티니블래스트캐논",
+      "level": 250
+    },
+    {
+      "key": "destiny_bow",
+      "name": "데스티니보우",
+      "level": 250
+    },
+    {
+      "key": "destiny_breath_shooter",
+      "name": "데스티니브레스슈터",
+      "level": 250
+    },
+    {
+      "key": "destiny_cane",
+      "name": "데스티니케인",
+      "level": 250
+    },
+    {
+      "key": "destiny_celestial_light",
+      "name": "데스티니셀레스티얼라이트",
+      "level": 250
+    },
+    {
+      "key": "destiny_chain",
+      "name": "데스티니체인",
+      "level": 250
+    },
+    {
+      "key": "destiny_chakram",
+      "name": "데스티니차크람",
+      "level": 250
+    },
+    {
+      "key": "destiny_crossbow",
+      "name": "데스티니크로스보우",
+      "level": 250
+    },
+    {
+      "key": "destiny_dagger",
+      "name": "데스티니대거",
+      "level": 250
+    },
+    {
+      "key": "destiny_desperado",
+      "name": "데스티니데스페라도",
+      "level": 250
+    },
+    {
+      "key": "destiny_dual_bowgun",
+      "name": "데스티니듀얼보우건",
+      "level": 250
+    },
+    {
+      "key": "destiny_ellaha",
+      "name": "데스티니엘라하",
+      "level": 250
+    },
+    {
+      "key": "destiny_energy_chain",
+      "name": "데스티니에너지체인",
+      "level": 250
+    },
+    {
+      "key": "destiny_esp_limiter",
+      "name": "데스티니ESP리미터",
+      "level": 250
+    },
+    {
+      "key": "destiny_guard",
+      "name": "데스티니가즈",
+      "level": 250
+    },
+    {
+      "key": "destiny_hammer",
+      "name": "데스티니해머",
+      "level": 250
+    },
+    {
+      "key": "destiny_katana",
+      "name": "데스티니카타나",
+      "level": 250
+    },
+    {
+      "key": "destiny_knuckle",
+      "name": "데스티니클로",
+      "level": 250
+    },
+    {
+      "key": "destiny_lapis",
+      "name": "데스티니라피스",
+      "level": 250
+    },
+    {
+      "key": "destiny_lazuli",
+      "name": "데스티니라즐리",
+      "level": 250
+    },
+    {
+      "key": "destiny_magic_gauntlet",
+      "name": "데스티니매직건틀렛",
+      "level": 250
+    },
+    {
+      "key": "destiny_memorial_staff",
+      "name": "데스티니메모리얼스태프",
+      "level": 250
+    },
+    {
+      "key": "destiny_mukwon",
+      "name": "데스티니무권",
+      "level": 250
+    },
+    {
+      "key": "destiny_pistol",
+      "name": "데스티니피스톨",
+      "level": 250
+    },
+    {
+      "key": "destiny_polearm",
+      "name": "데스티니폴암",
+      "level": 250
+    },
+    {
+      "key": "destiny_saber",
+      "name": "데스티니세이버",
+      "level": 250
+    },
+    {
+      "key": "destiny_shining_rod",
+      "name": "데스티니샤이닝로드",
+      "level": 250
+    },
+    {
+      "key": "destiny_soul_shooter",
+      "name": "데스티니소울슈터",
+      "level": 250
+    },
+    {
+      "key": "destiny_spear",
+      "name": "데스티니스피어",
+      "level": 250
+    },
+    {
+      "key": "destiny_staff",
+      "name": "데스티니스태프",
+      "level": 250
+    },
+    {
+      "key": "destiny_transcendent_fan",
+      "name": "데스티니초월선",
+      "level": 250
+    },
+    {
+      "key": "destiny_tuner",
+      "name": "데스티니튜너",
+      "level": 250
+    },
+    {
+      "key": "destiny_two_handed_axe",
+      "name": "데스티니투핸드엑스",
+      "level": 250
+    },
+    {
+      "key": "destiny_two_handed_hammer",
+      "name": "데스티니투핸드해머",
+      "level": 250
+    },
+    {
+      "key": "destiny_two_handed_sword",
+      "name": "데스티니투핸드소드",
+      "level": 250
+    },
+    {
+      "key": "destiny_ultra_sword",
+      "name": "데스티니초극검",
+      "level": 250
+    },
+    {
+      "key": "destiny_wand",
+      "name": "데스티니완드",
+      "level": 250
+    },
+    {
+      "key": "destiny_yinyang_fan",
+      "name": "데스티니음양선",
+      "level": 250
+    },
+    {
+      "key": "dominator_pendant",
+      "name": "도미네이터펜던트",
+      "level": 140
+    },
+    {
+      "key": "dreamy_belt",
+      "name": "몽환의벨트",
+      "level": 200
+    },
+    {
+      "key": "eagle_eye_assassin_shirt",
+      "name": "이글아이어새신셔츠",
+      "level": 150
+    },
+    {
+      "key": "eagle_eye_dunwitch_robe",
+      "name": "이글아이던위치로브",
+      "level": 150
+    },
+    {
+      "key": "eagle_eye_ranger_cowl",
+      "name": "이글아이레인져후드",
+      "level": 150
+    },
+    {
+      "key": "eagle_eye_wanderer_coat",
+      "name": "이글아이원더러코트",
+      "level": 150
+    },
+    {
+      "key": "eagle_eye_warrior_armor",
+      "name": "이글아이워리어아머",
+      "level": 150
+    },
+    {
+      "key": "giant_terror",
+      "name": "거대한공포",
+      "level": 200
+    },
+    {
+      "key": "enraged_zakum_belt",
+      "name": "분노한자쿰의벨트",
+      "level": 150
+    },
+    {
+      "key": "enchanting_nightmare",
+      "name": "황홀한악몽",
+      "level": 250
+    },
+    {
+      "key": "estella_earring",
+      "name": "에스텔라이어링",
+      "level": 160
+    },
+    {
+      "key": "eternal_flame_ring",
+      "name": "이터널플레임링",
+      "level": 120
+    },
+    {
+      "key": "eternel_archer_cape",
+      "name": "에테르넬아처케이프",
+      "level": 250
+    },
+    {
+      "key": "eternel_archer_gloves",
+      "name": "에테르넬아처글러브",
+      "level": 250
+    },
+    {
+      "key": "eternel_archer_hat",
+      "name": "에테르넬아처햇",
+      "level": 250
+    },
+    {
+      "key": "eternel_archer_hood",
+      "name": "에테르넬아처후드",
+      "level": 250
+    },
+    {
+      "key": "eternel_archer_pants",
+      "name": "에테르넬아처팬츠",
+      "level": 250
+    },
+    {
+      "key": "eternel_archer_shoes",
+      "name": "에테르넬아처슈즈",
+      "level": 250
+    },
+    {
+      "key": "eternel_archer_shoulder",
+      "name": "에테르넬아처숄더",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_cape",
+      "name": "에테르넬메이지케이프",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_gloves",
+      "name": "에테르넬메이지글러브",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_hat",
+      "name": "에테르넬메이지햇",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_pants",
+      "name": "에테르넬메이지팬츠",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_robe",
+      "name": "에테르넬메이지로브",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_shoes",
+      "name": "에테르넬메이지슈즈",
+      "level": 250
+    },
+    {
+      "key": "eternel_mage_shoulder",
+      "name": "에테르넬메이지숄더",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_cape",
+      "name": "에테르넬파이렛케이프",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_coat",
+      "name": "에테르넬파이렛코트",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_gloves",
+      "name": "에테르넬파이렛글러브",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_hat",
+      "name": "에테르넬파이렛햇",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_pants",
+      "name": "에테르넬파이렛팬츠",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_shoes",
+      "name": "에테르넬파이렛슈즈",
+      "level": 250
+    },
+    {
+      "key": "eternel_pirate_shoulder",
+      "name": "에테르넬파이렛숄더",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_bandana",
+      "name": "에테르넬시프반다나",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_cape",
+      "name": "에테르넬시프케이프",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_gloves",
+      "name": "에테르넬시프글러브",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_pants",
+      "name": "에테르넬시프팬츠",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_shirt",
+      "name": "에테르넬시프셔츠",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_shoes",
+      "name": "에테르넬시프슈즈",
+      "level": 250
+    },
+    {
+      "key": "eternel_thief_shoulder",
+      "name": "에테르넬시프숄더",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_armor",
+      "name": "에테르넬나이트아머",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_cape",
+      "name": "에테르넬나이트케이프",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_gloves",
+      "name": "에테르넬나이트글러브",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_helm",
+      "name": "에테르넬나이트헬름",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_pants",
+      "name": "에테르넬나이트팬츠",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_shoes",
+      "name": "에테르넬나이트슈즈",
+      "level": 250
+    },
+    {
+      "key": "eternel_warrior_shoulder",
+      "name": "에테르넬나이트숄더",
+      "level": 250
+    },
+    {
+      "key": "evolving_force_shield_of_extremity",
+      "name": "이볼빙극한의포스실드",
+      "level": 100
+    },
+    {
+      "key": "evolving_soul_shield_of_justice",
+      "name": "이볼빙정의의소울실드",
+      "level": 100
+    },
+    {
+      "key": "fafnir_ancient_bow",
+      "name": "파프니르에인션트보우",
+      "level": 150
+    },
+    {
+      "key": "fafnir_angelic_shooter",
+      "name": "파프니르엔젤릭슈터",
+      "level": 150
+    },
+    {
+      "key": "fafnir_battle_cleaver",
+      "name": "파프니르배틀클리버",
+      "level": 150
+    },
+    {
+      "key": "fafnir_big_mountain",
+      "name": "파프니르빅마운틴",
+      "level": 150
+    },
+    {
+      "key": "fafnir_brionak",
+      "name": "파프니르브류나크",
+      "level": 150
+    },
+    {
+      "key": "fafnir_chain",
+      "name": "파프니르체인",
+      "level": 150
+    },
+    {
+      "key": "fafnir_chakram",
+      "name": "파프니르차크람",
+      "level": 150
+    },
+    {
+      "key": "fafnir_ciel_claire",
+      "name": "파프니르클레르시엘",
+      "level": 150
+    },
+    {
+      "key": "fafnir_damascus",
+      "name": "파프니르다마스커스",
+      "level": 150
+    },
+    {
+      "key": "fafnir_death_bringer",
+      "name": "파프니르데스브링어",
+      "level": 150
+    },
+    {
+      "key": "fafnir_dragon_ritual_fan",
+      "name": "파프니르용선",
+      "level": 150
+    },
+    {
+      "key": "fafnir_dual_windwing",
+      "name": "파프니르듀얼윈드윙",
+      "level": 150
+    },
+    {
+      "key": "fafnir_guardian_hammer",
+      "name": "파프니르골디언해머",
+      "level": 150
+    },
+    {
+      "key": "fafnir_lightning_striker",
+      "name": "파프니르라이트닝어",
+      "level": 150
+    },
+    {
+      "key": "fafnir_lost_cannon",
+      "name": "파프니르러스터캐논",
+      "level": 150
+    },
+    {
+      "key": "fafnir_lucent_gauntlet",
+      "name": "파프니르매직건틀렛",
+      "level": 150
+    },
+    {
+      "key": "fafnir_mana_cradle",
+      "name": "파프니르마나크래들",
+      "level": 150
+    },
+    {
+      "key": "fafnir_mana_crown",
+      "name": "파프니르마나크라운",
+      "level": 150
+    },
+    {
+      "key": "fafnir_mana_taker",
+      "name": "파프니르마나테이커",
+      "level": 150
+    },
+    {
+      "key": "fafnir_mercy",
+      "name": "파프니르포기브니스",
+      "level": 150
+    },
+    {
+      "key": "fafnir_mistilteinn",
+      "name": "파프니르미스틸테인",
+      "level": 150
+    },
+    {
+      "key": "fafnir_moon_glaive",
+      "name": "파프니르문글레이브",
+      "level": 150
+    },
+    {
+      "key": "fafnir_nightchaser",
+      "name": "파프니르나이트체이서",
+      "level": 150
+    },
+    {
+      "key": "fafnir_penitent_tears",
+      "name": "파프니르페니텐시아",
+      "level": 150
+    },
+    {
+      "key": "fafnir_perry_talon",
+      "name": "파프니르펜리르탈론",
+      "level": 150
+    },
+    {
+      "key": "fafnir_psy_limiter",
+      "name": "파프니르ESP리미터",
+      "level": 150
+    },
+    {
+      "key": "fafnir_rapid_edge",
+      "name": "파프니르래피드엣지",
+      "level": 150
+    },
+    {
+      "key": "fafnir_risk_holder",
+      "name": "파프니르리스크홀더",
+      "level": 150
+    },
+    {
+      "key": "fafnir_soaring_sword",
+      "name": "파프니르용천검",
+      "level": 150
+    },
+    {
+      "key": "fafnir_split_edge",
+      "name": "파프니르스플릿엣지",
+      "level": 150
+    },
+    {
+      "key": "fafnir_twin_cleaver",
+      "name": "파프니르트윈클리버",
+      "level": 150
+    },
+    {
+      "key": "fafnir_wind_chaser",
+      "name": "파프니르윈드체이서",
+      "level": 150
+    },
+    {
+      "key": "fafnir_windwing_shooter",
+      "name": "파프니르윈드윙슈터",
+      "level": 150
+    },
+    {
+      "key": "fafnir_zeliska",
+      "name": "파프니르첼리스카",
+      "level": 150
+    },
+    {
+      "key": "fearless_prelude",
+      "name": "피어리스프렐류드",
+      "level": 125
+    },
+    {
+      "key": "fearless_wristband",
+      "name": "피어리스리스트",
+      "level": 125
+    },
+    {
+      "key": "force_shield_of_extremity",
+      "name": "극한의포스실드",
+      "level": 100
+    },
+    {
+      "key": "genesis_ancient_bow",
+      "name": "제네시스에인션트보우",
+      "level": 200
+    },
+    {
+      "key": "genesis_axe",
+      "name": "제네시스엑스",
+      "level": 200
+    },
+    {
+      "key": "genesis_bow",
+      "name": "제네시스보우",
+      "level": 200
+    },
+    {
+      "key": "genesis_breath_shooter",
+      "name": "제네시스브레스슈터",
+      "level": 200
+    },
+    {
+      "key": "genesis_cane",
+      "name": "제네시스케인",
+      "level": 200
+    },
+    {
+      "key": "genesis_celestial_light",
+      "name": "제네시스셀레스티얼라이트",
+      "level": 200
+    },
+    {
+      "key": "genesis_chain",
+      "name": "제네시스체인",
+      "level": 200
+    },
+    {
+      "key": "genesis_creation_fan",
+      "name": "제네시스창세선",
+      "level": 200
+    },
+    {
+      "key": "genesis_crossbow",
+      "name": "제네시스크로스보우",
+      "level": 200
+    },
+    {
+      "key": "genesis_dagger",
+      "name": "제네시스대거",
+      "level": 200
+    },
+    {
+      "key": "genesis_desperado",
+      "name": "제네시스데스페라도",
+      "level": 200
+    },
+    {
+      "key": "genesis_dual_bowgun",
+      "name": "제네시스듀얼보우건",
+      "level": 200
+    },
+    {
+      "key": "genesis_eclipse",
+      "name": "제네시스이클립스",
+      "level": 200
+    },
+    {
+      "key": "genesis_ellaha",
+      "name": "제네시스엘라하",
+      "level": 200
+    },
+    {
+      "key": "genesis_energy_chain",
+      "name": "제네시스에너지체인",
+      "level": 200
+    },
+    {
+      "key": "genesis_esp_limiter",
+      "name": "제네시스ESP리미터",
+      "level": 200
+    },
+    {
+      "key": "genesis_god_sword",
+      "name": "제네시스창세검",
+      "level": 200
+    },
+    {
+      "key": "genesis_guard",
+      "name": "제네시스가즈",
+      "level": 200
+    },
+    {
+      "key": "genesis_hammer",
+      "name": "제네시스해머",
+      "level": 200
+    },
+    {
+      "key": "genesis_katana",
+      "name": "제네시스카타나",
+      "level": 200
+    },
+    {
+      "key": "genesis_knuckle",
+      "name": "제네시스클로",
+      "level": 200
+    },
+    {
+      "key": "genesis_lapis",
+      "name": "제네시스라피스",
+      "level": 200
+    },
+    {
+      "key": "genesis_lazuli",
+      "name": "제네시스라즐리",
+      "level": 200
+    },
+    {
+      "key": "genesis_magic_gauntlet",
+      "name": "제네시스매직건틀렛",
+      "level": 200
+    },
+    {
+      "key": "genesis_memorial_staff",
+      "name": "제네시스메모리얼스태프",
+      "level": 200
+    },
+    {
+      "key": "genesis_mukwon",
+      "name": "제네시스무권",
+      "level": 200
+    },
+    {
+      "key": "genesis_pistol",
+      "name": "제네시스피스톨",
+      "level": 200
+    },
+    {
+      "key": "genesis_polearm",
+      "name": "제네시스폴암",
+      "level": 200
+    },
+    {
+      "key": "genesis_saber",
+      "name": "제네시스세이버",
+      "level": 200
+    },
+    {
+      "key": "genesis_shining_rod",
+      "name": "제네시스샤이닝로드",
+      "level": 200
+    },
+    {
+      "key": "genesis_siege_gun",
+      "name": "제네시스시즈건",
+      "level": 200
+    },
+    {
+      "key": "genesis_soul_shooter",
+      "name": "제네시스소울슈터",
+      "level": 200
+    },
+    {
+      "key": "genesis_spear",
+      "name": "제네시스스피어",
+      "level": 200
+    },
+    {
+      "key": "genesis_staff",
+      "name": "제네시스스태프",
+      "level": 200
+    },
+    {
+      "key": "genesis_tuner",
+      "name": "제네시스튜너",
+      "level": 200
+    },
+    {
+      "key": "genesis_two_handed_axe",
+      "name": "제네시스투핸드엑스",
+      "level": 200
+    },
+    {
+      "key": "genesis_two_handed_hammer",
+      "name": "제네시스투핸드해머",
+      "level": 200
+    },
+    {
+      "key": "genesis_two_handed_sword",
+      "name": "제네시스투핸드소드",
+      "level": 200
+    },
+    {
+      "key": "genesis_wand",
+      "name": "제네시스완드",
+      "level": 200
+    },
+    {
+      "key": "genesis_yinyang_fan",
+      "name": "제네시스음양선",
+      "level": 200
+    },
+    {
+      "key": "golden_clover_belt",
+      "name": "골든클로버벨트",
+      "level": 140
+    },
+    {
+      "key": "greed_pendant",
+      "name": "그리드펜던트",
+      "level": 65
+    },
+    {
+      "key": "guardian_angel_ring",
+      "name": "가디언엔젤링",
+      "level": 160
+    },
+    {
+      "key": "guardians_meister_immortal_ring",
+      "name": "가디언의마이스터임모탈링",
+      "level": 90
+    },
+    {
+      "key": "gumihos_spirit_ring",
+      "name": "구미호의혼령반지",
+      "level": 100
+    },
+    {
+      "key": "half_earrings",
+      "name": "하프이어링",
+      "level": 75
+    },
+    {
+      "key": "horntail_necklace",
+      "name": "혼테일의목걸이",
+      "level": 120
+    },
+    {
+      "key": "starving_crimson_wraith",
+      "name": "굶주리는핏빛원혼",
+      "level": 250
+    },
+    {
+      "key": "ifias_earrings",
+      "name": "이피아의귀고리",
+      "level": 110
+    },
+    {
+      "key": "magic_eyepatch",
+      "name": "마력이깃든안대",
+      "level": 160
+    },
+    {
+      "key": "maple_treasure_force_shield",
+      "name": "메이플트레져포스실드",
+      "level": 110
+    },
+    {
+      "key": "maple_treasure_soul_shield",
+      "name": "메이플트레져소울실드",
+      "level": 110
+    },
+    {
+      "key": "mechanator_pendant",
+      "name": "매커네이터펜던트",
+      "level": 120
+    },
+    {
+      "key": "meister_almighty_ring",
+      "name": "마이스터올마이티링",
+      "level": 75
+    },
+    {
+      "key": "meister_ear_ring",
+      "name": "마이스터이어링",
+      "level": 140
+    },
+    {
+      "key": "meister_ring",
+      "name": "마이스터링",
+      "level": 140
+    },
+    {
+      "key": "meister_shoulder",
+      "name": "마이스터숄더",
+      "level": 140
+    },
+    {
+      "key": "metal_heart_earrings",
+      "name": "메탈하트이어링",
+      "level": 80
+    },
+    {
+      "key": "mitras_rage_bowman",
+      "name": "미트라의분노:궁수",
+      "level": 200
+    },
+    {
+      "key": "mitras_rage_magician",
+      "name": "미트라의분노:마법사",
+      "level": 200
+    },
+    {
+      "key": "mitras_rage_pirate",
+      "name": "미트라의분노:해적",
+      "level": 200
+    },
+    {
+      "key": "mitras_rage_thief",
+      "name": "미트라의분노:도적",
+      "level": 200
+    },
+    {
+      "key": "mitras_rage_warrior",
+      "name": "미트라의분노:전사",
+      "level": 200
+    },
+    {
+      "key": "murmurs_lord_ring",
+      "name": "무르무르의로드링",
+      "level": 100
+    },
+    {
+      "key": "murmurs_mage_ring",
+      "name": "무르무르의메이지링",
+      "level": 100
+    },
+    {
+      "key": "noble_ifias_ring",
+      "name": "고귀한이피아의반지",
+      "level": 120
+    },
+    {
+      "key": "oath_of_death",
+      "name": "죽음의맹세",
+      "level": 250
+    },
+    {
+      "key": "ocean_glow_earrings",
+      "name": "오션글로우이어링",
+      "level": 150
+    },
+    {
+      "key": "oracles_meister_eternal_ring",
+      "name": "오라클의마이스터이터널링",
+      "level": 90
+    },
+    {
+      "key": "original_sin_of_arrogance",
+      "name": "오만의원죄",
+      "level": 250
+    },
+    {
+      "key": "owls_green_pendant",
+      "name": "아울스그린펜던트",
+      "level": 100
+    },
+    {
+      "key": "owls_pink_pendant",
+      "name": "아울스핑크펜던트",
+      "level": 120
+    },
+    {
+      "key": "owls_purple_pendant",
+      "name": "아울스퍼플펜던트",
+      "level": 130
+    },
+    {
+      "key": "owls_red_pendant",
+      "name": "아울스레드펜던트",
+      "level": 110
+    },
+    {
+      "key": "papulatus_mark",
+      "name": "파풀라투스마크",
+      "level": 145
+    },
+    {
+      "key": "peacocks_green_pendant",
+      "name": "피콕스그린펜던트",
+      "level": 100
+    },
+    {
+      "key": "peacocks_pink_pendant",
+      "name": "피콕스핑크펜던트",
+      "level": 120
+    },
+    {
+      "key": "peacocks_purple_pendant",
+      "name": "피콕스퍼플펜던트",
+      "level": 130
+    },
+    {
+      "key": "peacocks_red_pendant",
+      "name": "피콕스레드펜던트",
+      "level": 110
+    },
+    {
+      "key": "red_archer_meister_symbol",
+      "name": "레드아처마이스터심볼",
+      "level": 100
+    },
+    {
+      "key": "red_magician_meister_symbol",
+      "name": "레드매지션마이스터심볼",
+      "level": 100
+    },
+    {
+      "key": "red_pirate_meister_symbol",
+      "name": "레드파이렛마이스터심볼",
+      "level": 100
+    },
+    {
+      "key": "red_thief_meister_symbol",
+      "name": "레드시프마이스터심볼",
+      "level": 100
+    },
+    {
+      "key": "red_warrior_meister_symbol",
+      "name": "레드워리어마이스터심볼",
+      "level": 100
+    },
+    {
+      "key": "rose_earrings",
+      "name": "장미꽃귀고리",
+      "level": 90
+    },
+    {
+      "key": "royal_assassin_hood",
+      "name": "하이네스어새신보닛",
+      "level": 150
+    },
+    {
+      "key": "royal_black_metal_shoulder",
+      "name": "로얄블랙메탈숄더",
+      "level": 120
+    },
+    {
+      "key": "royal_dunwitch_hat",
+      "name": "하이네스던위치햇",
+      "level": 150
+    },
+    {
+      "key": "royal_ranger_beret",
+      "name": "하이네스레인져베레",
+      "level": 150
+    },
+    {
+      "key": "royal_wanderer_hat",
+      "name": "하이네스원더러햇",
+      "level": 150
+    },
+    {
+      "key": "royal_warrior_helm",
+      "name": "하이네스워리어헬름",
+      "level": 150
+    },
+    {
+      "key": "ruin_force_shield",
+      "name": "루인포스실드",
+      "level": 100
+    },
+    {
+      "key": "scarlet_earring",
+      "name": "스칼렛이어링",
+      "level": 135
+    },
+    {
+      "key": "scarlet_ring",
+      "name": "스칼렛링",
+      "level": 135
+    },
+    {
+      "key": "scarlet_shoulder",
+      "name": "스칼렛숄더",
+      "level": 135
+    },
+    {
+      "key": "shaman_earrings",
+      "name": "샤먼이어링",
+      "level": 140
+    },
+    {
+      "key": "shiny_red_archer_meister_symbol",
+      "name": "샤이니레드아처마이스터심볼",
+      "level": 130
+    },
+    {
+      "key": "shiny_red_magician_meister_symbol",
+      "name": "샤이니레드매지션마이스터심볼",
+      "level": 130
+    },
+    {
+      "key": "shiny_red_pirate_meister_symbol",
+      "name": "샤이니레드파이렛마이스터심볼",
+      "level": 130
+    },
+    {
+      "key": "shiny_red_thief_meister_symbol",
+      "name": "샤이니레드시프마이스터심볼",
+      "level": 130
+    },
+    {
+      "key": "shiny_red_warrior_meister_symbol",
+      "name": "샤이니레드워리어마이스터심볼",
+      "level": 130
+    },
+    {
+      "key": "silver_blossom_ring",
+      "name": "실버블라썸링",
+      "level": 110
+    },
+    {
+      "key": "soul_shield_of_justice",
+      "name": "정의의소울실드",
+      "level": 100
+    },
+    {
+      "key": "source_of_suffering",
+      "name": "고통의근원",
+      "level": 160
+    },
+    {
+      "key": "ss_master_jewel_ring",
+      "name": "SS급마스터쥬얼링",
+      "level": 120
+    },
+    {
+      "key": "strawberry_earrings",
+      "name": "딸기귀고리",
+      "level": 85
+    },
+    {
+      "key": "supreme_glorion_ring",
+      "name": "슈프림글로리온링",
+      "level": 120
+    },
+    {
+      "key": "sword_earrings",
+      "name": "소드이어링",
+      "level": 100
+    },
+    {
+      "key": "tenebris_expedition_ring",
+      "name": "테네브리스원정대반지",
+      "level": 120
+    },
+    {
+      "key": "timeless_earrings",
+      "name": "타임리스이어링",
+      "level": 120
+    },
+    {
+      "key": "timeless_prelude",
+      "name": "타임리스프렐류드",
+      "level": 120
+    },
+    {
+      "key": "timeless_wristband",
+      "name": "타임리스리스트",
+      "level": 120
+    },
+    {
+      "key": "complete_under_control",
+      "name": "컴플리트언더컨트롤",
+      "level": 200
+    },
+    {
+      "key": "trickster_warrior_pants",
+      "name": "트릭스터워리어팬츠",
+      "level": 150
+    },
+    {
+      "key": "trixter_assassin_pants",
+      "name": "트릭스터어새신팬츠",
+      "level": 150
+    },
+    {
+      "key": "trixter_dunwitch_pants",
+      "name": "트릭스터던위치팬츠",
+      "level": 150
+    },
+    {
+      "key": "trixter_ranger_pants",
+      "name": "트릭스터레인져팬츠",
+      "level": 150
+    },
+    {
+      "key": "trixter_wanderer_pants",
+      "name": "트릭스터원더러팬츠",
+      "level": 150
+    },
+    {
+      "key": "twilight_mark",
+      "name": "트와일라이트마크",
+      "level": 140
+    },
+    {
+      "key": "vengeance_ring",
+      "name": "벤젼스링",
+      "level": 120
+    },
+    {
+      "key": "whisper_of_origin",
+      "name": "근원의속삭임",
+      "level": 250
+    },
+    {
+      "key": "will_o_the_wisps",
+      "name": "지옥의불꽃",
+      "level": 130
+    },
+    {
+      "key": "wolves_green_pendant",
+      "name": "울프스그린펜던트",
+      "level": 100
+    },
+    {
+      "key": "wolves_pink_pendant",
+      "name": "울프스핑크펜던트",
+      "level": 120
+    },
+    {
+      "key": "wolves_purple_pendant",
+      "name": "울프스퍼플펜던트",
+      "level": 130
+    },
+    {
+      "key": "wolves_red_pendant",
+      "name": "울프스레드펜던트",
+      "level": 110
+    },
+    {
+      "key": "astra_medal",
+      "name": "아스트라메달",
+      "level": 200
+    },
+    {
+      "key": "astra_sacred_aegis",
+      "name": "아스트라세이크리드이지스",
+      "level": 200
+    },
+    {
+      "key": "astra_rosario",
+      "name": "아스트라로자리오",
+      "level": 200
+    },
+    {
+      "key": "astra_chain",
+      "name": "아스트라체인",
+      "level": 200
+    },
+    {
+      "key": "astra_topaz_aegis",
+      "name": "아스트라토파즈이지스",
+      "level": 200
+    },
+    {
+      "key": "astra_topaz",
+      "name": "아스트라토파즈",
+      "level": 200
+    },
+    {
+      "key": "astra_soul_shield",
+      "name": "아스트라소울실드",
+      "level": 200
+    },
+    {
+      "key": "astra_baekhochu",
+      "name": "아스트라백호추",
+      "level": 200
+    },
+    {
+      "key": "astra_explosive_pill",
+      "name": "아스트라익스플로시브필",
+      "level": 200
+    },
+    {
+      "key": "astra_force_shield",
+      "name": "아스트라포스실드",
+      "level": 200
+    },
+    {
+      "key": "astra_nova_essence",
+      "name": "아스트라노바의정수",
+      "level": 200
+    },
+    {
+      "key": "astra_hourglass",
+      "name": "아스트라아워글라스",
+      "level": 200
+    },
+    {
+      "key": "astra_bracelet",
+      "name": "아스트라브레이슬릿",
+      "level": 200
+    },
+    {
+      "key": "astra_yeouiboju",
+      "name": "아스트라여의보주",
+      "level": 200
+    },
+    {
+      "key": "astra_arcane_shield",
+      "name": "아스트라아케인실드",
+      "level": 200
+    },
+    {
+      "key": "astra_ruby_shield",
+      "name": "아스트라루비실드",
+      "level": 200
+    },
+    {
+      "key": "astra_prominent_shield",
+      "name": "아스트라프로미넌트실드",
+      "level": 200
+    },
+    {
+      "key": "astra_orb",
+      "name": "아스트라오브",
+      "level": 200
+    },
+    {
+      "key": "astra_umbral_shield",
+      "name": "아스트라엄브럴실드",
+      "level": 200
+    },
+    {
+      "key": "astra_chesspiece_the_king",
+      "name": "아스트라체스피스디킹",
+      "level": 200
+    },
+    {
+      "key": "astra_magic_wing",
+      "name": "아스트라매직윙",
+      "level": 200
+    },
+    {
+      "key": "astra_saok_norigae",
+      "name": "아스트라사옥노리개",
+      "level": 200
+    },
+    {
+      "key": "astra_magic_quill",
+      "name": "아스트라마법깃펜",
+      "level": 200
+    },
+    {
+      "key": "astra_feather",
+      "name": "아스트라페더",
+      "level": 200
+    },
+    {
+      "key": "astra_bullseye",
+      "name": "아스트라불스아이",
+      "level": 200
+    },
+    {
+      "key": "astra_relic",
+      "name": "아스트라렐릭",
+      "level": 200
+    },
+    {
+      "key": "astra_emerald",
+      "name": "아스트라에메랄드",
+      "level": 200
+    },
+    {
+      "key": "astra_magic_arrow",
+      "name": "아스트라마법화살",
+      "level": 200
+    },
+    {
+      "key": "astra_wild_tusk",
+      "name": "아스트라와일드터스크",
+      "level": 200
+    },
+    {
+      "key": "astra_weapon_belt",
+      "name": "아스트라웨폰벨트",
+      "level": 200
+    },
+    {
+      "key": "astra_talisman",
+      "name": "아스트라탈리스만",
+      "level": 200
+    },
+    {
+      "key": "astra_vane_shield",
+      "name": "아스트라베인실드",
+      "level": 200
+    },
+    {
+      "key": "astra_blade",
+      "name": "아스트라블레이드",
+      "level": 200
+    },
+    {
+      "key": "astra_obsidian",
+      "name": "아스트라옵시디언",
+      "level": 200
+    },
+    {
+      "key": "astra_karte",
+      "name": "아스트라카르트",
+      "level": 200
+    },
+    {
+      "key": "astra_transmitter",
+      "name": "아스트라트랜스미터",
+      "level": 200
+    },
+    {
+      "key": "astra_hexseeker",
+      "name": "아스트라헥스시커",
+      "level": 200
+    },
+    {
+      "key": "astra_diamond_seonchu",
+      "name": "아스트라금강석선추",
+      "level": 200
+    },
+    {
+      "key": "astra_wrist_band",
+      "name": "아스트라리스트밴드",
+      "level": 200
+    },
+    {
+      "key": "astra_raven_eye",
+      "name": "아스트라레이븐아이",
+      "level": 200
+    },
+    {
+      "key": "astra_rimless",
+      "name": "아스트라림리스",
+      "level": 200
+    },
+    {
+      "key": "astra_sapphire",
+      "name": "아스트라사파이어",
+      "level": 200
+    },
+    {
+      "key": "astra_fox_marble",
+      "name": "아스트라여우구슬",
+      "level": 200
+    },
+    {
+      "key": "astra_magnum",
+      "name": "아스트라매그넘",
+      "level": 200
+    },
+    {
+      "key": "astra_soul_ring",
+      "name": "아스트라소울링",
+      "level": 200
+    },
+    {
+      "key": "astra_pass",
+      "name": "아스트라패스",
+      "level": 200
+    },
+    {
+      "key": "astra_decacore_controller",
+      "name": "아스트라데카코어컨트롤러",
+      "level": 200
+    },
+    {
+      "key": "genesis_karta",
+      "name": "제네시스카르타",
+      "level": 200
+    },
+    {
+      "key": "plasma_heart",
+      "name": "플라즈마하트",
+      "level": 130
+    },
+    {
+      "key": "fairy_heart",
+      "name": "페어리하트",
+      "level": 100
+    },
+    {
+      "key": "lithium_heart",
+      "name": "리튬하트",
+      "level": 30
+    },
+    {
+      "key": "metal_silver_earrings",
+      "name": "메탈실버이어링",
+      "level": 70
+    },
+    {
+      "key": "ascendant_pulse_ring",
+      "name": "어센던트펄스링",
+      "level": 130
+    }
+  ]
+}

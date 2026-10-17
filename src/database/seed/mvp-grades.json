@@ -1,0 +1,46 @@
+{
+  "grades": [
+    {
+      "key": "normal",
+      "name": "일반",
+      "auctionFeePercent": 5,
+      "starforceDiscountPercent": 0
+    },
+    {
+      "key": "bronze",
+      "name": "브론즈",
+      "auctionFeePercent": 5,
+      "starforceDiscountPercent": 0
+    },
+    {
+      "key": "silver",
+      "name": "실버",
+      "auctionFeePercent": 3,
+      "starforceDiscountPercent": 3
+    },
+    {
+      "key": "gold",
+      "name": "골드",
+      "auctionFeePercent": 3,
+      "starforceDiscountPercent": 5
+    },
+    {
+      "key": "diamond",
+      "name": "다이아",
+      "auctionFeePercent": 3,
+      "starforceDiscountPercent": 10
+    },
+    {
+      "key": "red",
+      "name": "레드",
+      "auctionFeePercent": 3,
+      "starforceDiscountPercent": 10
+    },
+    {
+      "key": "black",
+      "name": "블랙",
+      "auctionFeePercent": 3,
+      "starforceDiscountPercent": 10
+    }
+  ]
+}

@@ -4,6 +4,9 @@ import type { ContentsRepository } from '../contents/contents.repository'
 import type { CrystalPricesRepository } from '../crystal-prices/crystal-prices.repository'
 import type { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import type { DropItemsRepository } from '../drop-items/drop-items.repository'
+import type { EnhancementCostsRepository } from '../enhancement-costs/enhancement-costs.repository'
+import type { EquipmentItemsRepository } from '../equipment-items/equipment-items.repository'
+import type { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import type { SpendCatalogRepository } from '../spend-catalog/spend-catalog.repository'
 import type { SymbolCostsRepository } from '../symbol-costs/symbol-costs.repository'
 import type { WorldsRepository } from '../worlds/worlds.repository'
@@ -30,6 +33,18 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
     }) as unknown as SpendCatalogRepository,
     empty({ groups: [], symbols: [], levelCosts: [] }) as unknown as SymbolCostsRepository,
     empty({ categories: [], contents: [] }) as unknown as ContentsRepository,
+    empty({ items: [] }) as unknown as EquipmentItemsRepository,
+    empty({
+      rules: {
+        cubeAppraisalFreeMaxLevel: null,
+        cubeAppraisalCoefficient: null,
+        starforceDestroyDefenceSurchargePercent: null,
+      },
+      potentialResetCosts: [],
+      soulPotentialResetCosts: [],
+      starforceSteps: [],
+    }) as unknown as EnhancementCostsRepository,
+    empty({ grades: [] }) as unknown as MvpGradesRepository,
   )
 }
 
@@ -40,7 +55,7 @@ const catalog: Catalog = {
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 여덟은 각 리포지토리의 section 이다', async () => {
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열하나는 각 리포지토리의 section 이다', async () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
@@ -61,6 +76,19 @@ describe('GameDataService', () => {
       },
       symbolCosts: { updatedAt: null, groups: [], symbols: [], levelCosts: [] },
       contents: { updatedAt: null, categories: [], contents: [] },
+      equipmentItems: { updatedAt: null, items: [] },
+      enhancementCosts: {
+        updatedAt: null,
+        rules: {
+          cubeAppraisalFreeMaxLevel: null,
+          cubeAppraisalCoefficient: null,
+          starforceDestroyDefenceSurchargePercent: null,
+        },
+        potentialResetCosts: [],
+        soulPotentialResetCosts: [],
+        starforceSteps: [],
+      },
+      mvpGrades: { updatedAt: null, grades: [] },
     })
   })
 

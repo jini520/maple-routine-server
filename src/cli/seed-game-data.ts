@@ -5,7 +5,8 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠. 뒤의 것이 앞의 줄을 가리킨다.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급. 뒤의 것이
+ * 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
  */
@@ -26,6 +27,13 @@ import {
   CONTENT_TYPES,
   SHARE_SCOPES,
 } from '../modules/contents/contents.repository'
+import {
+  ENHANCEMENT_RULE_KEYS,
+  type EnhancementRuleField,
+  POTENTIAL_GRADES,
+  POTENTIAL_RESET_TYPES,
+} from '../modules/enhancement-costs/enhancement-costs.repository'
+import { MVP_GRADES } from '../modules/mvp-grades/mvp-grades.repository'
 import { touchSection } from '../modules/game-data/sections'
 import {
   SPEND_CATEGORIES,
@@ -45,12 +53,17 @@ const {
   dropBoxContents,
   dropBoxes,
   dropItems,
+  equipmentItems,
   gameRules,
+  mvpGrades,
+  potentialResetCosts,
+  soulPotentialResetCosts,
   spendGroups,
   spendItemForms,
   spendItemOptions,
   spendItems,
   spendTiles,
+  starforceSteps,
   symbolGroups,
   symbolLevelCosts,
   symbols,
@@ -317,6 +330,73 @@ export function parseContentsSeed(value: unknown): ContentsSeed {
   return contentsSeed.parse(value)
 }
 
+const equipmentItemsSeed = z.object({
+  items: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        level: z.number().int().min(1).nullable(),
+      }),
+    )
+    .min(1),
+})
+export type EquipmentItemsSeed = z.infer<typeof equipmentItemsSeed>
+export function parseEquipmentItemsSeed(value: unknown): EquipmentItemsSeed {
+  return equipmentItemsSeed.parse(value)
+}
+
+const enhancementCostsSeed = z.object({
+  rules: z.object({
+    cubeAppraisalFreeMaxLevel: z.number().int().min(0),
+    cubeAppraisalCoefficient: z.number().int().min(0),
+    starforceDestroyDefenceSurchargePercent: z.number().int().min(0),
+  }),
+  potentialResetCosts: z
+    .array(
+      z.object({
+        type: z.enum(POTENTIAL_RESET_TYPES),
+        minLevel: z.number().int().min(1),
+        grade: z.enum(POTENTIAL_GRADES),
+        costMeso: z.number().int().min(0),
+      }),
+    )
+    .min(1),
+  soulPotentialResetCosts: z
+    .array(z.object({ grade: z.enum(POTENTIAL_GRADES), costMeso: z.number().int().min(0) }))
+    .min(1),
+  starforceSteps: z
+    .array(
+      z.object({
+        fromStar: z.number().int().min(0),
+        exponent: z.number().min(0),
+        divisor: z.number().int().min(1),
+      }),
+    )
+    .min(1),
+})
+export type EnhancementCostsSeed = z.infer<typeof enhancementCostsSeed>
+export function parseEnhancementCostsSeed(value: unknown): EnhancementCostsSeed {
+  return enhancementCostsSeed.parse(value)
+}
+
+const mvpGradesSeed = z.object({
+  grades: z
+    .array(
+      z.object({
+        key: z.enum(MVP_GRADES),
+        name: z.string().min(1),
+        auctionFeePercent: z.number().int().min(0).max(100),
+        starforceDiscountPercent: z.number().int().min(0).max(100),
+      }),
+    )
+    .min(1),
+})
+export type MvpGradesSeed = z.infer<typeof mvpGradesSeed>
+export function parseMvpGradesSeed(value: unknown): MvpGradesSeed {
+  return mvpGradesSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -327,6 +407,9 @@ export interface GameDataSeeds {
   spendCatalog?: SpendCatalogSeed
   symbolCosts?: SymbolCostsSeed
   contents?: ContentsSeed
+  equipmentItems?: EquipmentItemsSeed
+  enhancementCosts?: EnhancementCostsSeed
+  mvpGrades?: MvpGradesSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -349,6 +432,11 @@ export async function seedGameData(
   if (seeds.symbolCosts !== undefined)
     result.symbolCosts = await seedSymbolCosts(db, seeds.symbolCosts)
   if (seeds.contents !== undefined) result.contents = await seedContents(db, seeds.contents)
+  if (seeds.equipmentItems !== undefined)
+    result.equipmentItems = await seedEquipmentItems(db, seeds.equipmentItems)
+  if (seeds.enhancementCosts !== undefined)
+    result.enhancementCosts = await seedEnhancementCosts(db, seeds.enhancementCosts)
+  if (seeds.mvpGrades !== undefined) result.mvpGrades = await seedMvpGrades(db, seeds.mvpGrades)
   return result
 }
 
@@ -373,7 +461,12 @@ async function isEmpty(
     | typeof spendTiles
     | typeof spendItems
     | typeof symbolGroups
-    | typeof contentCategories,
+    | typeof contentCategories
+    | typeof equipmentItems
+    | typeof potentialResetCosts
+    | typeof soulPotentialResetCosts
+    | typeof starforceSteps
+    | typeof mvpGrades,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
   return (row?.n ?? 0) === 0
@@ -646,6 +739,62 @@ async function seedContents(db: Db, seed: ContentsSeed): Promise<SeedOutcome> {
   return 'seeded'
 }
 
+async function seedEquipmentItems(db: Db, seed: EquipmentItemsSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, equipmentItems))) return 'skipped'
+  await db.transaction(async (tx) => {
+    await tx.insert(equipmentItems).values(seed.items)
+    await touchSection(tx, 'equipmentItems')
+  })
+  return 'seeded'
+}
+
+/** 규칙 셋은 없을 때만 넣고 늘 본다. 표 셋은 전부 비어 있을 때만 채운다. 잠재는 종류마다 min_level 1 이 있어야 한다. */
+async function seedEnhancementCosts(db: Db, seed: EnhancementCostsSeed): Promise<SeedOutcome> {
+  await db.transaction(async (tx) => {
+    for (const field of Object.keys(ENHANCEMENT_RULE_KEYS) as EnhancementRuleField[]) {
+      await tx
+        .insert(gameRules)
+        .values({
+          key: ENHANCEMENT_RULE_KEYS[field],
+          value: seed.rules[field],
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing({ target: gameRules.key })
+    }
+  })
+  const empties = await Promise.all([
+    isEmpty(db, potentialResetCosts),
+    isEmpty(db, soulPotentialResetCosts),
+    isEmpty(db, starforceSteps),
+  ])
+  if (!empties.every(Boolean)) return 'skipped'
+  const noBase = POTENTIAL_RESET_TYPES.filter(
+    (type) => !seed.potentialResetCosts.some((c) => c.type === type && c.minLevel === 1),
+  )
+  if (noBase.length > 0)
+    throw new Error(`잠재 재설정 씨앗에 min_level 1 구간이 없다: ${noBase.join(', ')}`)
+  await db.transaction(async (tx) => {
+    await tx.insert(potentialResetCosts).values(seed.potentialResetCosts)
+    await tx.insert(soulPotentialResetCosts).values(seed.soulPotentialResetCosts)
+    await tx.insert(starforceSteps).values(seed.starforceSteps)
+    await touchSection(tx, 'enhancementCosts')
+  })
+  return 'seeded'
+}
+
+/** 등급 표가 비어 있을 때만 채운다. 줄은 ENUM 과 일대일이라 씨앗이 일곱을 다 들어야 한다. */
+async function seedMvpGrades(db: Db, seed: MvpGradesSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, mvpGrades))) return 'skipped'
+  const missing = MVP_GRADES.filter((g) => !seed.grades.some((s) => s.key === g))
+  if (missing.length > 0)
+    throw new Error(`씨앗의 MVP 등급이 ENUM 을 다 안 든다: ${missing.join(', ')}`)
+  await db.transaction(async (tx) => {
+    await tx.insert(mvpGrades).values(seed.grades.map((g, sortOrder) => ({ ...g, sortOrder })))
+    await touchSection(tx, 'mvpGrades')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -674,6 +823,9 @@ async function main(): Promise<void> {
       spendCatalog: parseSpendCatalogSeed(readSeed('spend-catalog')),
       symbolCosts: parseSymbolCostsSeed(readSeed('symbol-costs')),
       contents: parseContentsSeed(readSeed('contents')),
+      equipmentItems: parseEquipmentItemsSeed(readSeed('equipment-items')),
+      enhancementCosts: parseEnhancementCostsSeed(readSeed('enhancement-costs')),
+      mvpGrades: parseMvpGradesSeed(readSeed('mvp-grades')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

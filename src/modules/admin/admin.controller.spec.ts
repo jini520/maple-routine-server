@@ -24,6 +24,17 @@ import {
   ContentsRepository,
   NoContentCategory,
 } from '../contents/contents.repository'
+import {
+  BandExists,
+  BaseBand,
+  EnhancementCostsRepository,
+} from '../enhancement-costs/enhancement-costs.repository'
+import {
+  DropItemKeyMismatch,
+  EquipmentItemsRepository,
+  EquipmentNameTaken,
+} from '../equipment-items/equipment-items.repository'
+import { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -120,6 +131,19 @@ describe('AdminController', () => {
     updateContent: jest.fn(),
     moveContent: jest.fn(),
   }
+  const equipmentRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn() }
+  const enhancementRepo = {
+    section: jest.fn(),
+    setRules: jest.fn(),
+    setPotentialResetCost: jest.fn(),
+    addPotentialResetBand: jest.fn(),
+    removePotentialResetBand: jest.fn(),
+    setSoulPotentialResetCost: jest.fn(),
+    setStarforceStep: jest.fn(),
+    addStarforceStep: jest.fn(),
+    removeLastStarforceStep: jest.fn(),
+  }
+  const mvpRepo = { section: jest.fn(), update: jest.fn(), move: jest.fn() }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -137,6 +161,9 @@ describe('AdminController', () => {
         { provide: SpendCatalogRepository, useValue: spendRepo },
         { provide: SymbolCostsRepository, useValue: symbolRepo },
         { provide: ContentsRepository, useValue: contentsRepo },
+        { provide: EquipmentItemsRepository, useValue: equipmentRepo },
+        { provide: EnhancementCostsRepository, useValue: enhancementRepo },
+        { provide: MvpGradesRepository, useValue: mvpRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -158,6 +185,9 @@ describe('AdminController', () => {
       ...Object.values(spendRepo),
       ...Object.values(symbolRepo),
       ...Object.values(contentsRepo),
+      ...Object.values(equipmentRepo),
+      ...Object.values(enhancementRepo),
+      ...Object.values(mvpRepo),
     ]) {
       mock.mockReset()
     }
@@ -177,6 +207,9 @@ describe('AdminController', () => {
     '/admin/spend-catalog',
     '/admin/symbol-costs',
     '/admin/contents',
+    '/admin/equipment-items',
+    '/admin/enhancement-costs',
+    '/admin/mvp-grades',
   ]
 
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
@@ -1401,6 +1434,311 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(204)
+    })
+  })
+
+  describe('장비', () => {
+    it('POST 는 201 · 겹치는 이름과 드롭 표 불일치는 409, PUT 은 204 · 모르면 404 이고 빈 레벨은 null 이다', async () => {
+      equipmentRepo.section.mockResolvedValue({ updatedAt: null, items: [] })
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/equipment-items/rows' })).json(),
+      ).toEqual({
+        updatedAt: null,
+        items: [],
+      })
+
+      equipmentRepo.create.mockResolvedValue({ id: ROW })
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/equipment-items',
+        payload: { key: 'ascendant_pulse_ring', name: '어센던트펄스링' },
+      })
+      expect(created.statusCode).toBe(201)
+      expect(equipmentRepo.create).toHaveBeenCalledWith({
+        key: 'ascendant_pulse_ring',
+        name: '어센던트펄스링',
+        level: null,
+      })
+      equipmentRepo.create.mockRejectedValue(new EquipmentNameTaken('ascendant_pulse_ring'))
+      const taken = await app.inject({
+        method: 'POST',
+        url: '/admin/equipment-items',
+        payload: { key: 'pulse_ring', name: '어센던트 펄스링', level: 130 },
+      })
+      expect(taken.statusCode).toBe(409)
+      expect(taken.json<{ message: string }>().message).toContain('ascendant_pulse_ring')
+      equipmentRepo.create.mockRejectedValue(new DropItemKeyMismatch('berserked'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/equipment-items',
+            payload: { key: 'great_terror', name: '거대한공포', level: 200 },
+          })
+        ).statusCode,
+      ).toBe(409)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/equipment-items',
+            payload: { key: 'zero', name: 'x', level: 0 },
+          })
+        ).statusCode,
+      ).toBe(400)
+
+      equipmentRepo.update.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/equipment-items/ascendant_pulse_ring',
+            payload: { name: '어센던트펄스링', level: 130 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(equipmentRepo.update).toHaveBeenCalledWith('ascendant_pulse_ring', {
+        name: '어센던트펄스링',
+        level: 130,
+      })
+      equipmentRepo.update.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/equipment-items/nobody',
+            payload: { name: 'x' },
+          })
+        ).statusCode,
+      ).toBe(404)
+    })
+  })
+
+  describe('강화 비용', () => {
+    it('규칙 PUT 204, 칸 PUT 204 · 모르면 404, 구간 POST 201 · 같은 구간 409, 구간 DELETE 204 · 1 구간 409 다', async () => {
+      enhancementRepo.setRules.mockResolvedValue(undefined)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/rules',
+            payload: {
+              cubeAppraisalFreeMaxLevel: 120,
+              cubeAppraisalCoefficient: 20,
+              starforceDestroyDefenceSurchargePercent: 200,
+            },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(enhancementRepo.setRules).toHaveBeenCalledWith({
+        cubeAppraisalFreeMaxLevel: 120,
+        cubeAppraisalCoefficient: 20,
+        starforceDestroyDefenceSurchargePercent: 200,
+      })
+
+      enhancementRepo.setPotentialResetCost.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/potential/additional/250/epic',
+            payload: { costMeso: 34_300_000 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(enhancementRepo.setPotentialResetCost).toHaveBeenCalledWith(
+        'additional',
+        250,
+        'epic',
+        34_300_000,
+      )
+      enhancementRepo.setPotentialResetCost.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/potential/potential/275/epic',
+            payload: { costMeso: 1 },
+          })
+        ).statusCode,
+      ).toBe(404)
+      // 종류 · 등급은 ENUM 밖이면 경로에서 400 이다.
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/potential/potential/250/normal',
+            payload: { costMeso: 1 },
+          })
+        ).statusCode,
+      ).toBe(400)
+
+      enhancementRepo.addPotentialResetBand.mockResolvedValue(undefined)
+      const bandBody = {
+        type: 'potential',
+        minLevel: 275,
+        costs: { rare: 1, epic: 2, unique: 3, legendary: 4 },
+      }
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/enhancement-costs/potential',
+            payload: bandBody,
+          })
+        ).statusCode,
+      ).toBe(201)
+      expect(enhancementRepo.addPotentialResetBand).toHaveBeenCalledWith('potential', 275, {
+        rare: 1,
+        epic: 2,
+        unique: 3,
+        legendary: 4,
+      })
+      enhancementRepo.addPotentialResetBand.mockRejectedValue(new BandExists('potential/275'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/enhancement-costs/potential',
+            payload: bandBody,
+          })
+        ).statusCode,
+      ).toBe(409)
+
+      enhancementRepo.removePotentialResetBand.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'DELETE',
+            url: '/admin/enhancement-costs/potential/potential/275',
+          })
+        ).statusCode,
+      ).toBe(204)
+      enhancementRepo.removePotentialResetBand.mockRejectedValue(new BaseBand('potential'))
+      expect(
+        (
+          await app.inject({
+            method: 'DELETE',
+            url: '/admin/enhancement-costs/potential/potential/1',
+          })
+        ).statusCode,
+      ).toBe(409)
+    })
+
+    it('소울 PUT 204, 스타포스 PUT 204 · 모르면 404, POST 201 이 성수를 돌려주고 DELETE last 는 204 · 비면 404 다', async () => {
+      enhancementRepo.setSoulPotentialResetCost.mockResolvedValue(undefined)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/soul/unique',
+            payload: { costMeso: 65_000_000 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(enhancementRepo.setSoulPotentialResetCost).toHaveBeenCalledWith('unique', 65_000_000)
+
+      enhancementRepo.setStarforceStep.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/starforce/15',
+            payload: { exponent: 2.7, divisor: 200 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(enhancementRepo.setStarforceStep).toHaveBeenCalledWith(15, {
+        exponent: 2.7,
+        divisor: 200,
+      })
+      enhancementRepo.setStarforceStep.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/enhancement-costs/starforce/40',
+            payload: { exponent: 2.7, divisor: 200 },
+          })
+        ).statusCode,
+      ).toBe(404)
+
+      enhancementRepo.addStarforceStep.mockResolvedValue({ fromStar: 30 })
+      const added = await app.inject({
+        method: 'POST',
+        url: '/admin/enhancement-costs/starforce',
+        payload: { exponent: 2.7, divisor: 200 },
+      })
+      expect(added.statusCode).toBe(201)
+      expect(added.json()).toEqual({ fromStar: 30 })
+
+      enhancementRepo.removeLastStarforceStep.mockResolvedValue(true)
+      expect(
+        (await app.inject({ method: 'DELETE', url: '/admin/enhancement-costs/starforce/last' }))
+          .statusCode,
+      ).toBe(204)
+      enhancementRepo.removeLastStarforceStep.mockResolvedValue(false)
+      expect(
+        (await app.inject({ method: 'DELETE', url: '/admin/enhancement-costs/starforce/last' }))
+          .statusCode,
+      ).toBe(404)
+    })
+  })
+
+  describe('MVP 등급', () => {
+    it('rows 는 칸 그대로이고, PUT 은 204 · 모르면 404 · ENUM 밖 key 는 400, move 는 204 다', async () => {
+      mvpRepo.section.mockResolvedValue({ updatedAt: null, grades: [] })
+      expect((await app.inject({ method: 'GET', url: '/admin/mvp-grades/rows' })).json()).toEqual({
+        updatedAt: null,
+        grades: [],
+      })
+
+      mvpRepo.update.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/mvp-grades/gold',
+            payload: { name: '골드', auctionFeePercent: 3, starforceDiscountPercent: 5 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(mvpRepo.update).toHaveBeenCalledWith('gold', {
+        name: '골드',
+        auctionFeePercent: 3,
+        starforceDiscountPercent: 5,
+      })
+      mvpRepo.update.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/mvp-grades/black',
+            payload: { name: '블랙', auctionFeePercent: 3, starforceDiscountPercent: 10 },
+          })
+        ).statusCode,
+      ).toBe(404)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/mvp-grades/platinum',
+            payload: { name: 'x', auctionFeePercent: 3, starforceDiscountPercent: 10 },
+          })
+        ).statusCode,
+      ).toBe(400)
+
+      mvpRepo.move.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/mvp-grades/gold/move',
+            payload: { direction: 'down' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(mvpRepo.move).toHaveBeenCalledWith('gold', 'down')
     })
   })
 })

@@ -81,6 +81,20 @@ import {
   ContentsRepository,
   NoContentCategory,
 } from '../contents/contents.repository'
+import {
+  BandExists,
+  BaseBand,
+  EnhancementCostsRepository,
+  type PotentialGrade,
+  type PotentialResetType,
+} from '../enhancement-costs/enhancement-costs.repository'
+import {
+  DropItemKeyMismatch,
+  EquipmentItemExists,
+  EquipmentItemsRepository,
+  EquipmentNameTaken,
+} from '../equipment-items/equipment-items.repository'
+import { type MvpGrade, MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
@@ -141,6 +155,25 @@ import {
   contentCreateBody,
   type ContentUpdateBody,
   contentUpdateBody,
+  type CostBody,
+  costBody,
+  type EnhancementRulesBody,
+  enhancementRulesBody,
+  type EquipmentItemCreateBody,
+  equipmentItemCreateBody,
+  type EquipmentItemUpdateBody,
+  equipmentItemUpdateBody,
+  fromStarParam,
+  minLevelParam,
+  mvpGradeParam,
+  type MvpGradeUpdateBody,
+  mvpGradeUpdateBody,
+  type PotentialBandBody,
+  potentialBandBody,
+  potentialGradeParam,
+  potentialTypeParam,
+  type StarforceStepBody,
+  starforceStepBody,
   type SymbolCreateBody,
   symbolCreateBody,
   type SymbolGroupCreateBody,
@@ -163,13 +196,17 @@ import { DROP_PRICES_HTML } from './views/drop-prices'
 import { SPEND_CATALOG_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
+import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
+import { EQUIPMENT_ITEMS_HTML } from './views/equipment-items'
+import { MVP_GRADES_HTML } from './views/mvp-grades'
 import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
 import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용 · 컨텐츠)도 여기다.
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
+ * 강화 비용 · MVP 등급)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
@@ -188,6 +225,9 @@ export class AdminController {
     private readonly spend: SpendCatalogRepository,
     private readonly symbolCosts: SymbolCostsRepository,
     private readonly contents: ContentsRepository,
+    private readonly equipment: EquipmentItemsRepository,
+    private readonly enhancement: EnhancementCostsRepository,
+    private readonly mvp: MvpGradesRepository,
   ) {}
 
   @Get()
@@ -1098,6 +1138,205 @@ export class AdminController {
     if (!(await this.contents.moveContent(key, body.direction)))
       throw new NotFoundException(`모르는 컨텐츠다: ${key}`)
   }
+
+  /* ── 장비 ── */
+
+  @Get('equipment-items')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  equipmentItemsPage(): string {
+    return EQUIPMENT_ITEMS_HTML
+  }
+
+  @Get('equipment-items/rows')
+  @Header('cache-control', 'no-store')
+  equipmentItemRows() {
+    return this.equipment.section()
+  }
+
+  /** 장비를 더한다. 같은 key · 공백만 다른 이름 · 드롭 표와 어긋난 key 는 409 다. */
+  @Post('equipment-items')
+  @HttpCode(201)
+  async createEquipmentItem(
+    @Body(new ZodValidationPipe(equipmentItemCreateBody)) body: EquipmentItemCreateBody,
+  ) {
+    try {
+      return await this.equipment.create({
+        key: body.key,
+        name: body.name,
+        level: body.level ?? null,
+      })
+    } catch (error) {
+      throw equipmentError(error, body.key)
+    }
+  }
+
+  /** 이름 · 레벨을 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 404 다. */
+  @Put('equipment-items/:key')
+  @HttpCode(204)
+  async updateEquipmentItem(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(equipmentItemUpdateBody)) body: EquipmentItemUpdateBody,
+  ): Promise<void> {
+    try {
+      if (!(await this.equipment.update(key, { name: body.name, level: body.level ?? null })))
+        throw new NotFoundException(`모르는 장비다: ${key}`)
+    } catch (error) {
+      throw equipmentError(error, key)
+    }
+  }
+
+  /* ── 강화 비용 ── */
+
+  @Get('enhancement-costs')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  enhancementCostsPage(): string {
+    return ENHANCEMENT_COSTS_HTML
+  }
+
+  @Get('enhancement-costs/rows')
+  @Header('cache-control', 'no-store')
+  enhancementCostRows() {
+    return this.enhancement.section()
+  }
+
+  /** 규칙 셋을 적는다. 셋 다 받는다. */
+  @Put('enhancement-costs/rules')
+  @HttpCode(204)
+  async setEnhancementRules(
+    @Body(new ZodValidationPipe(enhancementRulesBody)) body: EnhancementRulesBody,
+  ): Promise<void> {
+    await this.enhancement.setRules(body)
+  }
+
+  /** 잠재 재설정의 칸 하나를 고친다. 없는 칸은 404 다. */
+  @Put('enhancement-costs/potential/:type/:minLevel/:grade')
+  @HttpCode(204)
+  async setPotentialResetCost(
+    @Param('type', new ZodValidationPipe(potentialTypeParam)) type: PotentialResetType,
+    @Param('minLevel', new ZodValidationPipe(minLevelParam)) minLevel: number,
+    @Param('grade', new ZodValidationPipe(potentialGradeParam)) grade: PotentialGrade,
+    @Body(new ZodValidationPipe(costBody)) body: CostBody,
+  ): Promise<void> {
+    if (!(await this.enhancement.setPotentialResetCost(type, minLevel, grade, body.costMeso)))
+      throw new NotFoundException(`모르는 구간이다: ${type}/${minLevel}/${grade}`)
+  }
+
+  /** 구간을 등급 넷과 함께 더한다. 같은 구간은 409 다. */
+  @Post('enhancement-costs/potential')
+  @HttpCode(201)
+  async addPotentialResetBand(
+    @Body(new ZodValidationPipe(potentialBandBody)) body: PotentialBandBody,
+  ): Promise<void> {
+    try {
+      await this.enhancement.addPotentialResetBand(body.type, body.minLevel, body.costs)
+    } catch (error) {
+      if (error instanceof BandExists)
+        throw new ConflictException(`이미 있는 구간이다: ${error.message}`)
+      throw error
+    }
+  }
+
+  /** 구간을 등급 넷과 함께 지운다. min_level 1 은 409, 없으면 404 다. */
+  @Delete('enhancement-costs/potential/:type/:minLevel')
+  @HttpCode(204)
+  async removePotentialResetBand(
+    @Param('type', new ZodValidationPipe(potentialTypeParam)) type: PotentialResetType,
+    @Param('minLevel', new ZodValidationPipe(minLevelParam)) minLevel: number,
+  ): Promise<void> {
+    try {
+      if (!(await this.enhancement.removePotentialResetBand(type, minLevel)))
+        throw new NotFoundException(`모르는 구간이다: ${type}/${minLevel}`)
+    } catch (error) {
+      if (error instanceof BaseBand)
+        throw new ConflictException(
+          'min_level 1 구간은 못 지운다. 어느 레벨이든 한 줄에 걸려야 한다',
+        )
+      throw error
+    }
+  }
+
+  /** 소울 재설정의 등급 비용을 적는다. 등급은 ENUM 이라 없으면 만든다. */
+  @Put('enhancement-costs/soul/:grade')
+  @HttpCode(204)
+  async setSoulPotentialResetCost(
+    @Param('grade', new ZodValidationPipe(potentialGradeParam)) grade: PotentialGrade,
+    @Body(new ZodValidationPipe(costBody)) body: CostBody,
+  ): Promise<void> {
+    await this.enhancement.setSoulPotentialResetCost(grade, body.costMeso)
+  }
+
+  /** 단계의 지수 · 제수를 고친다. 없는 성수는 404 다. */
+  @Put('enhancement-costs/starforce/:fromStar')
+  @HttpCode(204)
+  async setStarforceStep(
+    @Param('fromStar', new ZodValidationPipe(fromStarParam)) fromStar: number,
+    @Body(new ZodValidationPipe(starforceStepBody)) body: StarforceStepBody,
+  ): Promise<void> {
+    if (!(await this.enhancement.setStarforceStep(fromStar, body)))
+      throw new NotFoundException(`모르는 성수다: ${fromStar}`)
+  }
+
+  /** 끝 성수 다음 단계를 더한다. 더한 성수를 돌려준다. */
+  @Post('enhancement-costs/starforce')
+  @HttpCode(201)
+  addStarforceStep(@Body(new ZodValidationPipe(starforceStepBody)) body: StarforceStepBody) {
+    return this.enhancement.addStarforceStep(body)
+  }
+
+  /** 끝 성수의 단계를 지운다. 비어 있으면 404 다. */
+  @Delete('enhancement-costs/starforce/last')
+  @HttpCode(204)
+  async removeLastStarforceStep(): Promise<void> {
+    if (!(await this.enhancement.removeLastStarforceStep()))
+      throw new NotFoundException('단계가 없다')
+  }
+
+  /* ── MVP 등급 ── */
+
+  @Get('mvp-grades')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  mvpGradesPage(): string {
+    return MVP_GRADES_HTML
+  }
+
+  @Get('mvp-grades/rows')
+  @Header('cache-control', 'no-store')
+  mvpGradeRows() {
+    return this.mvp.section()
+  }
+
+  /** 이름 · 퍼센트 둘을 갈아 끼운다. 등급은 ENUM 이라 더하고 지우는 끝점이 없다. 모르면 404 다. */
+  @Put('mvp-grades/:key')
+  @HttpCode(204)
+  async updateMvpGrade(
+    @Param('key', new ZodValidationPipe(mvpGradeParam)) key: MvpGrade,
+    @Body(new ZodValidationPipe(mvpGradeUpdateBody)) body: MvpGradeUpdateBody,
+  ): Promise<void> {
+    if (!(await this.mvp.update(key, body))) throw new NotFoundException(`모르는 등급이다: ${key}`)
+  }
+
+  @Post('mvp-grades/:key/move')
+  @HttpCode(204)
+  async moveMvpGrade(
+    @Param('key', new ZodValidationPipe(mvpGradeParam)) key: MvpGrade,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.mvp.move(key, body.direction)))
+      throw new NotFoundException(`모르는 등급이다: ${key}`)
+  }
+}
+
+/** 장비 쓰기의 실패를 HTTP 로 옮긴다. 같은 key · 겹치는 이름 · 드롭 표와 어긋난 key 는 409 다. */
+function equipmentError(error: unknown, key: string): unknown {
+  if (error instanceof EquipmentItemExists) return new ConflictException(`이미 있는 장비다: ${key}`)
+  if (error instanceof EquipmentNameTaken)
+    return new ConflictException(`공백만 다른 이름이 이미 있다: ${error.message}`)
+  if (error instanceof DropItemKeyMismatch)
+    return new ConflictException(`드롭 아이템 표에 같은 이름이 다른 key 로 있다: ${error.message}`)
+  return error
 }
 
 /** 컨텐츠 본문의 빈 칸을 null 로 맞춘다. key 와 섹션은 부르는 쪽이 든다. */

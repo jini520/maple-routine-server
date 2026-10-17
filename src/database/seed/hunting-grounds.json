@@ -1,0 +1,4809 @@
+{
+  "regions": [
+    {
+      "key": "road_of_vanishing",
+      "name": "소멸의 여로",
+      "forceType": "arcane"
+    },
+    {
+      "key": "reverse_city",
+      "name": "리버스 시티",
+      "forceType": "arcane"
+    },
+    {
+      "key": "chew_chew",
+      "name": "츄츄 아일랜드",
+      "forceType": "arcane"
+    },
+    {
+      "key": "yum_yum",
+      "name": "얌얌 아일랜드",
+      "forceType": "arcane"
+    },
+    {
+      "key": "lacheln",
+      "name": "레헬른",
+      "forceType": "arcane"
+    },
+    {
+      "key": "arcana",
+      "name": "아르카나",
+      "forceType": "arcane"
+    },
+    {
+      "key": "morass",
+      "name": "모라스",
+      "forceType": "arcane"
+    },
+    {
+      "key": "esfera",
+      "name": "에스페라",
+      "forceType": "arcane"
+    },
+    {
+      "key": "sellas",
+      "name": "셀라스",
+      "forceType": "arcane"
+    },
+    {
+      "key": "moon_bridge",
+      "name": "문브릿지",
+      "forceType": "arcane"
+    },
+    {
+      "key": "labyrinth_of_suffering",
+      "name": "고통의 미궁",
+      "forceType": "arcane"
+    },
+    {
+      "key": "limen",
+      "name": "리멘",
+      "forceType": "arcane"
+    },
+    {
+      "key": "cernium",
+      "name": "세르니움",
+      "forceType": "authentic"
+    },
+    {
+      "key": "burning_cernium",
+      "name": "불타는 세르니움",
+      "forceType": "authentic"
+    },
+    {
+      "key": "arcs",
+      "name": "호텔 아르크스",
+      "forceType": "authentic"
+    },
+    {
+      "key": "odium",
+      "name": "오디움",
+      "forceType": "authentic"
+    },
+    {
+      "key": "dowonkyung",
+      "name": "도원경",
+      "forceType": "authentic"
+    },
+    {
+      "key": "arteria",
+      "name": "아르테리아",
+      "forceType": "authentic"
+    },
+    {
+      "key": "carcion",
+      "name": "카르시온",
+      "forceType": "authentic"
+    },
+    {
+      "key": "tallahart",
+      "name": "탈라하트",
+      "forceType": "authentic"
+    },
+    {
+      "key": "geardrak",
+      "name": "기어드락",
+      "forceType": "authentic"
+    }
+  ],
+  "grounds": [
+    {
+      "key": "road_of_vanishing_weathered_land_of_joy",
+      "region": "road_of_vanishing",
+      "name": "풍화된 기쁨의 땅",
+      "force": 30,
+      "mobs": 22
+    },
+    {
+      "key": "road_of_vanishing_weathered_land_of_joy_and_anger",
+      "region": "road_of_vanishing",
+      "name": "풍화된 기쁨과 분노의 땅",
+      "force": 30,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_weathered_land_of_anger",
+      "region": "road_of_vanishing",
+      "name": "풍화된 분노의 땅",
+      "force": 30,
+      "mobs": 26
+    },
+    {
+      "key": "road_of_vanishing_weathered_land_of_anger_and_sorrow",
+      "region": "road_of_vanishing",
+      "name": "풍화된 분노와 슬픔의 땅",
+      "force": 30,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_weathered_land_of_sorrow",
+      "region": "road_of_vanishing",
+      "name": "풍화된 슬픔의 땅",
+      "force": 30,
+      "mobs": 26
+    },
+    {
+      "key": "road_of_vanishing_weathered_land_of_sorrow_and_delight",
+      "region": "road_of_vanishing",
+      "name": "풍화된 슬픔과 즐거움의 땅",
+      "force": 30,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_weathered_land_of_delight",
+      "region": "road_of_vanishing",
+      "name": "풍화된 즐거움의 땅",
+      "force": 30,
+      "mobs": 26
+    },
+    {
+      "key": "road_of_vanishing_hidden_lakeside",
+      "region": "road_of_vanishing",
+      "name": "숨겨진 호숫가",
+      "force": 80,
+      "mobs": 37
+    },
+    {
+      "key": "road_of_vanishing_territory_of_rock",
+      "region": "road_of_vanishing",
+      "name": "암석의 영토",
+      "force": 40,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_territory_of_rock_and_flame",
+      "region": "road_of_vanishing",
+      "name": "암석과 화염의 영토",
+      "force": 40,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_territory_of_flame",
+      "region": "road_of_vanishing",
+      "name": "화염의 영토",
+      "force": 40,
+      "mobs": 28
+    },
+    {
+      "key": "road_of_vanishing_territory_of_flame_and_soul",
+      "region": "road_of_vanishing",
+      "name": "화염과 영혼의 영토",
+      "force": 40,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_territory_of_soul",
+      "region": "road_of_vanishing",
+      "name": "영혼의 영토",
+      "force": 40,
+      "mobs": 26
+    },
+    {
+      "key": "road_of_vanishing_hidden_flame_zone",
+      "region": "road_of_vanishing",
+      "name": "숨겨진 화염지대",
+      "force": 80,
+      "mobs": 29
+    },
+    {
+      "key": "road_of_vanishing_three_way_road_1",
+      "region": "road_of_vanishing",
+      "name": "세 갈래길 1",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_cave_west_path_1",
+      "region": "road_of_vanishing",
+      "name": "동굴의 서쪽길 1",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_cave_west_path_2",
+      "region": "road_of_vanishing",
+      "name": "동굴의 서쪽길 2",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_cave_east_path_1",
+      "region": "road_of_vanishing",
+      "name": "동굴의 동쪽길 1",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_cave_east_path_2",
+      "region": "road_of_vanishing",
+      "name": "동굴의 동쪽길 2",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_three_way_road_2",
+      "region": "road_of_vanishing",
+      "name": "세 갈래길 2",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_upper_cave",
+      "region": "road_of_vanishing",
+      "name": "동굴 위쪽",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_lower_cave",
+      "region": "road_of_vanishing",
+      "name": "동굴 아래쪽",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_cave_depths",
+      "region": "road_of_vanishing",
+      "name": "동굴의 깊숙한 곳",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_arma_hideout",
+      "region": "road_of_vanishing",
+      "name": "아르마의 은신처",
+      "force": 60,
+      "mobs": 30
+    },
+    {
+      "key": "road_of_vanishing_hidden_cave",
+      "region": "road_of_vanishing",
+      "name": "숨겨진 동굴",
+      "force": 80,
+      "mobs": 30
+    },
+    {
+      "key": "reverse_city_underground_track_1",
+      "region": "reverse_city",
+      "name": "지하 선로1",
+      "force": 40,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_underground_track_2",
+      "region": "reverse_city",
+      "name": "지하 선로2",
+      "force": 40,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_underground_track_3",
+      "region": "reverse_city",
+      "name": "지하 선로3",
+      "force": 40,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_underground_track_4",
+      "region": "reverse_city",
+      "name": "지하 선로4",
+      "force": 40,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_underground_track_5",
+      "region": "reverse_city",
+      "name": "지하 선로5",
+      "force": 40,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_underground_track_6",
+      "region": "reverse_city",
+      "name": "지하 선로6",
+      "force": 40,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_t_boy_research_train_1",
+      "region": "reverse_city",
+      "name": "T-boy의 연구열차 1",
+      "force": 40,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_t_boy_research_train_2",
+      "region": "reverse_city",
+      "name": "T-boy의 연구열차 2",
+      "force": 40,
+      "mobs": 28
+    },
+    {
+      "key": "reverse_city_t_boy_research_train_3",
+      "region": "reverse_city",
+      "name": "T-boy의 연구열차 3",
+      "force": 40,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_hidden_research_train",
+      "region": "reverse_city",
+      "name": "숨겨진 연구열차",
+      "force": 100,
+      "mobs": 28
+    },
+    {
+      "key": "reverse_city_subway_train_1",
+      "region": "reverse_city",
+      "name": "지하열차 1",
+      "force": 60,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_subway_train_2",
+      "region": "reverse_city",
+      "name": "지하열차 2",
+      "force": 60,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_subway_train_3",
+      "region": "reverse_city",
+      "name": "지하열차 3",
+      "force": 60,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_hidden_subway_train",
+      "region": "reverse_city",
+      "name": "숨겨진 지하열차",
+      "force": 100,
+      "mobs": 28
+    },
+    {
+      "key": "reverse_city_surface_train_1",
+      "region": "reverse_city",
+      "name": "지상열차1",
+      "force": 60,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_surface_train_2",
+      "region": "reverse_city",
+      "name": "지상열차2",
+      "force": 60,
+      "mobs": 26
+    },
+    {
+      "key": "reverse_city_surface_train_3",
+      "region": "reverse_city",
+      "name": "지상열차3",
+      "force": 60,
+      "mobs": 27
+    },
+    {
+      "key": "reverse_city_m_tower_2",
+      "region": "reverse_city",
+      "name": "M타워2",
+      "force": 60,
+      "mobs": 35
+    },
+    {
+      "key": "reverse_city_m_tower_3",
+      "region": "reverse_city",
+      "name": "M타워3",
+      "force": 60,
+      "mobs": 34
+    },
+    {
+      "key": "reverse_city_m_tower_4",
+      "region": "reverse_city",
+      "name": "M타워4",
+      "force": 60,
+      "mobs": 34
+    },
+    {
+      "key": "reverse_city_hidden_m_tower",
+      "region": "reverse_city",
+      "name": "숨겨진 M타워",
+      "force": 100,
+      "mobs": 35
+    },
+    {
+      "key": "chew_chew_hill_entrance",
+      "region": "chew_chew",
+      "name": "동산 입구",
+      "force": 100,
+      "mobs": 33
+    },
+    {
+      "key": "chew_chew_colorful_forest_1",
+      "region": "chew_chew",
+      "name": "알록달록 숲지대 1",
+      "force": 100,
+      "mobs": 32
+    },
+    {
+      "key": "chew_chew_colorful_forest_2",
+      "region": "chew_chew",
+      "name": "알록달록 숲지대 2",
+      "force": 100,
+      "mobs": 34
+    },
+    {
+      "key": "chew_chew_colorful_forest_3",
+      "region": "chew_chew",
+      "name": "알록달록 숲지대 3",
+      "force": 100,
+      "mobs": 32
+    },
+    {
+      "key": "chew_chew_rainbow_hill_depths",
+      "region": "chew_chew",
+      "name": "오색동산 깊은 곳",
+      "force": 100,
+      "mobs": 31
+    },
+    {
+      "key": "chew_chew_long_round_forest_1",
+      "region": "chew_chew",
+      "name": "길쭉 동글숲 1",
+      "force": 100,
+      "mobs": 28
+    },
+    {
+      "key": "chew_chew_long_round_forest_2",
+      "region": "chew_chew",
+      "name": "길쭉 동글숲 2",
+      "force": 100,
+      "mobs": 29
+    },
+    {
+      "key": "chew_chew_stubby_round_forest_1",
+      "region": "chew_chew",
+      "name": "몽땅 동글숲 1",
+      "force": 100,
+      "mobs": 25
+    },
+    {
+      "key": "chew_chew_stubby_round_forest_2",
+      "region": "chew_chew",
+      "name": "몽땅 동글숲 2",
+      "force": 100,
+      "mobs": 30
+    },
+    {
+      "key": "chew_chew_slurp_forest_depths",
+      "region": "chew_chew",
+      "name": "츄릅포레스트 깊은 곳",
+      "force": 100,
+      "mobs": 28
+    },
+    {
+      "key": "chew_chew_village_entrance",
+      "region": "chew_chew",
+      "name": "츄츄빌리지 입구",
+      "force": 130,
+      "mobs": 30
+    },
+    {
+      "key": "chew_chew_rapids_1",
+      "region": "chew_chew",
+      "name": "격류지대 1",
+      "force": 130,
+      "mobs": 28
+    },
+    {
+      "key": "chew_chew_rapids_2",
+      "region": "chew_chew",
+      "name": "격류지대 2",
+      "force": 130,
+      "mobs": 26
+    },
+    {
+      "key": "chew_chew_rapids_3",
+      "region": "chew_chew",
+      "name": "격류지대 3",
+      "force": 130,
+      "mobs": 28
+    },
+    {
+      "key": "chew_chew_below_waterfall",
+      "region": "chew_chew",
+      "name": "폭포 아래",
+      "force": 130,
+      "mobs": 25
+    },
+    {
+      "key": "chew_chew_whale_mountain_foothill",
+      "region": "chew_chew",
+      "name": "고래산 초입",
+      "force": 160,
+      "mobs": 29
+    },
+    {
+      "key": "chew_chew_whale_mountain_midslope_1",
+      "region": "chew_chew",
+      "name": "고래산 중턱 1",
+      "force": 160,
+      "mobs": 28
+    },
+    {
+      "key": "chew_chew_whale_mountain_summit",
+      "region": "chew_chew",
+      "name": "고래산 정상",
+      "force": 160,
+      "mobs": 28
+    },
+    {
+      "key": "chew_chew_whale_mountain_midslope_2",
+      "region": "chew_chew",
+      "name": "고래산 중턱 2",
+      "force": 160,
+      "mobs": 30
+    },
+    {
+      "key": "chew_chew_giant_tail",
+      "region": "chew_chew",
+      "name": "거대한 꼬리",
+      "force": 160,
+      "mobs": 30
+    },
+    {
+      "key": "yum_yum_mushbird_forest_1",
+      "region": "yum_yum",
+      "name": "머쉬버드 숲 1",
+      "force": 130,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_mushbird_forest_2",
+      "region": "yum_yum",
+      "name": "머쉬버드 숲 2",
+      "force": 130,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_mushbird_forest_3",
+      "region": "yum_yum",
+      "name": "머쉬버드 숲 3",
+      "force": 130,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_mushbird_forest_4",
+      "region": "yum_yum",
+      "name": "머쉬버드 숲 4",
+      "force": 130,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_mushbird_forest_5",
+      "region": "yum_yum",
+      "name": "머쉬버드 숲 5",
+      "force": 130,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_mushbird_forest_6",
+      "region": "yum_yum",
+      "name": "머쉬버드 숲 6",
+      "force": 130,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_hidden_mushbird_forest",
+      "region": "yum_yum",
+      "name": "숨겨진 머쉬버드 숲",
+      "force": 190,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_illiyard_field_1",
+      "region": "yum_yum",
+      "name": "일리야드 들판 1",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_illiyard_field_2",
+      "region": "yum_yum",
+      "name": "일리야드 들판 2",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_illiyard_field_3",
+      "region": "yum_yum",
+      "name": "일리야드 들판 3",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_illiyard_field_4",
+      "region": "yum_yum",
+      "name": "일리야드 들판 4",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_illiyard_field_5",
+      "region": "yum_yum",
+      "name": "일리야드 들판 5",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_illiyard_field_6",
+      "region": "yum_yum",
+      "name": "일리야드 들판 6",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_hidden_illiyard_field",
+      "region": "yum_yum",
+      "name": "숨겨진 일리야드 들판",
+      "force": 190,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_fungos_forest_1",
+      "region": "yum_yum",
+      "name": "펑고스 숲 1",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_fungos_forest_2",
+      "region": "yum_yum",
+      "name": "펑고스 숲 2",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_fungos_forest_3",
+      "region": "yum_yum",
+      "name": "펑고스 숲 3",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_fungos_forest_4",
+      "region": "yum_yum",
+      "name": "펑고스 숲 4",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_fungos_forest_5",
+      "region": "yum_yum",
+      "name": "펑고스 숲 5",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_fungos_forest_6",
+      "region": "yum_yum",
+      "name": "펑고스 숲 6",
+      "force": 160,
+      "mobs": 27
+    },
+    {
+      "key": "yum_yum_hidden_fungos_forest",
+      "region": "yum_yum",
+      "name": "숨겨진 펑고스 숲",
+      "force": 190,
+      "mobs": 27
+    },
+    {
+      "key": "lacheln_outlaw_street_1",
+      "region": "lacheln",
+      "name": "무법자들의 거리 1",
+      "force": 190,
+      "mobs": 30
+    },
+    {
+      "key": "lacheln_outlaw_street_2",
+      "region": "lacheln",
+      "name": "무법자들의 거리 2",
+      "force": 190,
+      "mobs": 30
+    },
+    {
+      "key": "lacheln_outlaw_street_3",
+      "region": "lacheln",
+      "name": "무법자들의 거리 3",
+      "force": 190,
+      "mobs": 30
+    },
+    {
+      "key": "lacheln_where_chickens_play_1",
+      "region": "lacheln",
+      "name": "닭이 뛰노는 곳 1",
+      "force": 210,
+      "mobs": 27
+    },
+    {
+      "key": "lacheln_where_chickens_play_2",
+      "region": "lacheln",
+      "name": "닭이 뛰노는 곳 2",
+      "force": 210,
+      "mobs": 28
+    },
+    {
+      "key": "lacheln_where_chickens_play_3",
+      "region": "lacheln",
+      "name": "닭이 뛰노는 곳 3",
+      "force": 210,
+      "mobs": 39
+    },
+    {
+      "key": "lacheln_winners_plate_street_1",
+      "region": "lacheln",
+      "name": "우승 접시의 거리 1",
+      "force": 210,
+      "mobs": 31
+    },
+    {
+      "key": "lacheln_winners_plate_street_2",
+      "region": "lacheln",
+      "name": "우승 접시의 거리 2",
+      "force": 210,
+      "mobs": 31
+    },
+    {
+      "key": "lacheln_where_true_colors_show_1",
+      "region": "lacheln",
+      "name": "본색을 드러내는곳 1",
+      "force": 210,
+      "mobs": 31
+    },
+    {
+      "key": "lacheln_where_true_colors_show_2",
+      "region": "lacheln",
+      "name": "본색을 드러내는곳 2",
+      "force": 210,
+      "mobs": 27
+    },
+    {
+      "key": "lacheln_where_true_colors_show_3",
+      "region": "lacheln",
+      "name": "본색을 드러내는곳 3",
+      "force": 210,
+      "mobs": 25
+    },
+    {
+      "key": "lacheln_dancing_shoes_territory_1",
+      "region": "lacheln",
+      "name": "춤추는 구두 점령지 1",
+      "force": 210,
+      "mobs": 29
+    },
+    {
+      "key": "lacheln_dancing_shoes_territory_2",
+      "region": "lacheln",
+      "name": "춤추는 구두 점령지 2",
+      "force": 210,
+      "mobs": 31
+    },
+    {
+      "key": "lacheln_nightmare_clocktower_floor_1",
+      "region": "lacheln",
+      "name": "악몽의 시계탑 1층",
+      "force": 240,
+      "mobs": 40
+    },
+    {
+      "key": "lacheln_nightmare_clocktower_floor_2",
+      "region": "lacheln",
+      "name": "악몽의 시계탑 2층",
+      "force": 240,
+      "mobs": 40
+    },
+    {
+      "key": "lacheln_nightmare_clocktower_floor_3",
+      "region": "lacheln",
+      "name": "악몽의 시계탑 3층",
+      "force": 240,
+      "mobs": 40
+    },
+    {
+      "key": "lacheln_nightmare_clocktower_floor_4",
+      "region": "lacheln",
+      "name": "악몽의 시계탑 4층",
+      "force": 240,
+      "mobs": 38
+    },
+    {
+      "key": "lacheln_nightmare_clocktower_floor_5",
+      "region": "lacheln",
+      "name": "악몽의 시계탑 5층",
+      "force": 240,
+      "mobs": 40
+    },
+    {
+      "key": "arcana_forest_of_water",
+      "region": "arcana",
+      "name": "물의 숲",
+      "force": 280,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_sunlight",
+      "region": "arcana",
+      "name": "햇살의 숲",
+      "force": 280,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_water_and_sunlight",
+      "region": "arcana",
+      "name": "물과 햇살의 숲",
+      "force": 280,
+      "mobs": 34
+    },
+    {
+      "key": "arcana_forest_of_earth",
+      "region": "arcana",
+      "name": "흙의 숲",
+      "force": 280,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_sunlight_and_earth",
+      "region": "arcana",
+      "name": "햇살과 흙의 숲",
+      "force": 280,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_frost_clouds",
+      "region": "arcana",
+      "name": "서리구름의 숲",
+      "force": 320,
+      "mobs": 29
+    },
+    {
+      "key": "arcana_forest_of_lightning_clouds",
+      "region": "arcana",
+      "name": "번개구름의 숲",
+      "force": 320,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_frost_and_lightning_1",
+      "region": "arcana",
+      "name": "서리와 번개의 숲 1",
+      "force": 320,
+      "mobs": 24
+    },
+    {
+      "key": "arcana_forest_of_frost_and_lightning_2",
+      "region": "arcana",
+      "name": "서리와 번개의 숲 2",
+      "force": 320,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_venom",
+      "region": "arcana",
+      "name": "맹독의 숲",
+      "force": 320,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_explosions",
+      "region": "arcana",
+      "name": "폭발의 숲",
+      "force": 320,
+      "mobs": 32
+    },
+    {
+      "key": "arcana_forest_of_venom_and_explosions_1",
+      "region": "arcana",
+      "name": "맹독과 폭발의 숲 1",
+      "force": 320,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_forest_of_venom_and_explosions_2",
+      "region": "arcana",
+      "name": "맹독과 폭발의 숲 2",
+      "force": 320,
+      "mobs": 32
+    },
+    {
+      "key": "arcana_cave_upper_path",
+      "region": "arcana",
+      "name": "동굴 윗길",
+      "force": 360,
+      "mobs": 37
+    },
+    {
+      "key": "arcana_cave_upper_path_deep_1",
+      "region": "arcana",
+      "name": "동굴 윗길 깊은 곳 1",
+      "force": 360,
+      "mobs": 33
+    },
+    {
+      "key": "arcana_cave_upper_path_deep_2",
+      "region": "arcana",
+      "name": "동굴 윗길 깊은 곳 2",
+      "force": 360,
+      "mobs": 32
+    },
+    {
+      "key": "arcana_cave_upper_path_deepest",
+      "region": "arcana",
+      "name": "동굴 윗길 깊디 깊은 곳",
+      "force": 360,
+      "mobs": 29
+    },
+    {
+      "key": "arcana_cave_lower_path",
+      "region": "arcana",
+      "name": "동굴 아랫길",
+      "force": 360,
+      "mobs": 24
+    },
+    {
+      "key": "arcana_cave_lower_path_deep_1",
+      "region": "arcana",
+      "name": "동굴 아랫길 깊은 곳 1",
+      "force": 360,
+      "mobs": 26
+    },
+    {
+      "key": "arcana_cave_lower_path_deep_2",
+      "region": "arcana",
+      "name": "동굴 아랫길 깊은 곳 2",
+      "force": 360,
+      "mobs": 27
+    },
+    {
+      "key": "arcana_cave_lower_path_deepest",
+      "region": "arcana",
+      "name": "동굴 아랫길 깊디 깊은 곳",
+      "force": 360,
+      "mobs": 29
+    },
+    {
+      "key": "arcana_five_way_cave",
+      "region": "arcana",
+      "name": "다섯 갈래 동굴",
+      "force": 360,
+      "mobs": 33
+    },
+    {
+      "key": "arcana_five_way_cave_upper_path",
+      "region": "arcana",
+      "name": "다섯 갈래 동굴 윗길",
+      "force": 360,
+      "mobs": 31
+    },
+    {
+      "key": "arcana_five_way_cave_middle_path",
+      "region": "arcana",
+      "name": "다섯 갈래 동굴 사잇길",
+      "force": 360,
+      "mobs": 32
+    },
+    {
+      "key": "arcana_cave_under_spirit_tree",
+      "region": "arcana",
+      "name": "정령의 나무 밑 동굴",
+      "force": 360,
+      "mobs": 30
+    },
+    {
+      "key": "arcana_five_way_cave_lower_path",
+      "region": "arcana",
+      "name": "다섯 갈래 동굴 아랫길",
+      "force": 360,
+      "mobs": 30
+    },
+    {
+      "key": "morass_road_to_coral_forest_2",
+      "region": "morass",
+      "name": "산호 숲으로 가는길 2",
+      "force": 400,
+      "mobs": 31
+    },
+    {
+      "key": "morass_road_to_coral_forest_3",
+      "region": "morass",
+      "name": "산호 숲으로 가는길 3",
+      "force": 400,
+      "mobs": 34
+    },
+    {
+      "key": "morass_road_to_coral_forest_4",
+      "region": "morass",
+      "name": "산호 숲으로 가는길 4",
+      "force": 400,
+      "mobs": 31
+    },
+    {
+      "key": "morass_stray_cat_haunt_2",
+      "region": "morass",
+      "name": "도둑고양이 출물지 2",
+      "force": 440,
+      "mobs": 32
+    },
+    {
+      "key": "morass_stray_cat_haunt",
+      "region": "morass",
+      "name": "도둑고양이 출물지",
+      "force": 440,
+      "mobs": 30
+    },
+    {
+      "key": "morass_big_brothers_turf",
+      "region": "morass",
+      "name": "형님들 구역",
+      "force": 440,
+      "mobs": 32
+    },
+    {
+      "key": "morass_big_brothers_turf_2",
+      "region": "morass",
+      "name": "형님들 구역 2",
+      "force": 440,
+      "mobs": 36
+    },
+    {
+      "key": "morass_big_brothers_turf_3",
+      "region": "morass",
+      "name": "형님들 구역 3",
+      "force": 440,
+      "mobs": 37
+    },
+    {
+      "key": "morass_where_shadows_dance_2",
+      "region": "morass",
+      "name": "그림자가 춤추는 곳 2",
+      "force": 440,
+      "mobs": 38
+    },
+    {
+      "key": "morass_where_shadows_dance_3",
+      "region": "morass",
+      "name": "그림자가 춤추는 곳 3",
+      "force": 440,
+      "mobs": 38
+    },
+    {
+      "key": "morass_where_shadows_dance_4",
+      "region": "morass",
+      "name": "그림자가 춤추는 곳 4",
+      "force": 440,
+      "mobs": 38
+    },
+    {
+      "key": "morass_closed_zone",
+      "region": "morass",
+      "name": "폐쇄구역",
+      "force": 480,
+      "mobs": 35
+    },
+    {
+      "key": "morass_closed_zone_2",
+      "region": "morass",
+      "name": "폐쇄구역 2",
+      "force": 480,
+      "mobs": 38
+    },
+    {
+      "key": "morass_closed_zone_3",
+      "region": "morass",
+      "name": "폐쇄구역 3",
+      "force": 480,
+      "mobs": 39
+    },
+    {
+      "key": "morass_that_day_in_trueffet_2",
+      "region": "morass",
+      "name": "그날의 트뤼에페 2",
+      "force": 520,
+      "mobs": 40
+    },
+    {
+      "key": "morass_that_day_in_trueffet_3",
+      "region": "morass",
+      "name": "그날의 트뤼에페 3",
+      "force": 520,
+      "mobs": 40
+    },
+    {
+      "key": "morass_that_day_in_trueffet_4",
+      "region": "morass",
+      "name": "그날의 트뤼에페 4",
+      "force": 520,
+      "mobs": 33
+    },
+    {
+      "key": "esfera_where_life_begins_2",
+      "region": "esfera",
+      "name": "생명이 시작되는 곳 2",
+      "force": 560,
+      "mobs": 37
+    },
+    {
+      "key": "esfera_where_life_begins_3",
+      "region": "esfera",
+      "name": "생명이 시작되는 곳 3",
+      "force": 560,
+      "mobs": 37
+    },
+    {
+      "key": "esfera_where_life_begins_4",
+      "region": "esfera",
+      "name": "생명이 시작되는 곳 4",
+      "force": 560,
+      "mobs": 37
+    },
+    {
+      "key": "esfera_where_life_begins_5",
+      "region": "esfera",
+      "name": "생명이 시작되는 곳 5",
+      "force": 560,
+      "mobs": 37
+    },
+    {
+      "key": "esfera_where_life_begins_6",
+      "region": "esfera",
+      "name": "생명이 시작되는 곳 6",
+      "force": 560,
+      "mobs": 35
+    },
+    {
+      "key": "esfera_where_life_begins_7",
+      "region": "esfera",
+      "name": "생명이 시작되는 곳 7",
+      "force": 560,
+      "mobs": 36
+    },
+    {
+      "key": "esfera_mirror_lit_sea_2",
+      "region": "esfera",
+      "name": "거울빛에 물든 바다 2",
+      "force": 600,
+      "mobs": 30
+    },
+    {
+      "key": "esfera_mirror_lit_sea_3",
+      "region": "esfera",
+      "name": "거울빛에 물든 바다 3",
+      "force": 600,
+      "mobs": 30
+    },
+    {
+      "key": "esfera_mirror_lit_sea_4",
+      "region": "esfera",
+      "name": "거울빛에 물든 바다 4",
+      "force": 600,
+      "mobs": 30
+    },
+    {
+      "key": "esfera_mirror_lit_sea_5",
+      "region": "esfera",
+      "name": "거울빛에 물든 바다 5",
+      "force": 600,
+      "mobs": 32
+    },
+    {
+      "key": "esfera_mirror_lit_sea_6",
+      "region": "esfera",
+      "name": "거울빛에 물든 바다 6",
+      "force": 600,
+      "mobs": 31
+    },
+    {
+      "key": "esfera_mirror_lit_sea_7",
+      "region": "esfera",
+      "name": "거울빛에 물든 바다 7",
+      "force": 600,
+      "mobs": 32
+    },
+    {
+      "key": "esfera_temple_of_mirrored_light_2",
+      "region": "esfera",
+      "name": "거울에 비친 빛의 신전 2",
+      "force": 640,
+      "mobs": 38
+    },
+    {
+      "key": "esfera_temple_of_mirrored_light_3",
+      "region": "esfera",
+      "name": "거울에 비친 빛의 신전 3",
+      "force": 640,
+      "mobs": 38
+    },
+    {
+      "key": "esfera_temple_of_mirrored_light_4",
+      "region": "esfera",
+      "name": "거울에 비친 빛의 신전 4",
+      "force": 640,
+      "mobs": 37
+    },
+    {
+      "key": "sellas_where_light_last_reaches_1",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 1",
+      "force": 600,
+      "mobs": 27
+    },
+    {
+      "key": "sellas_where_light_last_reaches_2",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 2",
+      "force": 600,
+      "mobs": 33
+    },
+    {
+      "key": "sellas_where_light_last_reaches_3",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 3",
+      "force": 600,
+      "mobs": 38
+    },
+    {
+      "key": "sellas_where_light_last_reaches_4",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 4",
+      "force": 600,
+      "mobs": 26
+    },
+    {
+      "key": "sellas_where_light_last_reaches_5",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 5",
+      "force": 600,
+      "mobs": 33
+    },
+    {
+      "key": "sellas_where_light_last_reaches_6",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 6",
+      "force": 600,
+      "mobs": 39
+    },
+    {
+      "key": "sellas_where_light_last_reaches_7",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 7",
+      "force": 600,
+      "mobs": 26
+    },
+    {
+      "key": "sellas_where_light_last_reaches_8",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 8",
+      "force": 600,
+      "mobs": 32
+    },
+    {
+      "key": "sellas_where_light_last_reaches_9",
+      "region": "sellas",
+      "name": "빛이 마지막으로 닿는 곳 9",
+      "force": 600,
+      "mobs": 38
+    },
+    {
+      "key": "sellas_endlessly_falling_abyss_1",
+      "region": "sellas",
+      "name": "끝없이 추락하는 심해 1",
+      "force": 640,
+      "mobs": 26
+    },
+    {
+      "key": "sellas_endlessly_falling_abyss_2",
+      "region": "sellas",
+      "name": "끝없이 추락하는 심해 2",
+      "force": 640,
+      "mobs": 34
+    },
+    {
+      "key": "sellas_endlessly_falling_abyss_3",
+      "region": "sellas",
+      "name": "끝없이 추락하는 심해 3",
+      "force": 640,
+      "mobs": 38
+    },
+    {
+      "key": "sellas_endlessly_falling_abyss_4",
+      "region": "sellas",
+      "name": "끝없이 추락하는 심해 4",
+      "force": 640,
+      "mobs": 26
+    },
+    {
+      "key": "sellas_endlessly_falling_abyss_5",
+      "region": "sellas",
+      "name": "끝없이 추락하는 심해 5",
+      "force": 640,
+      "mobs": 33
+    },
+    {
+      "key": "sellas_endlessly_falling_abyss_6",
+      "region": "sellas",
+      "name": "끝없이 추락하는 심해 6",
+      "force": 640,
+      "mobs": 38
+    },
+    {
+      "key": "sellas_abyss_that_swallowed_stars_1",
+      "region": "sellas",
+      "name": "별이 삼켜진 심해 1",
+      "force": 670,
+      "mobs": 25
+    },
+    {
+      "key": "sellas_abyss_that_swallowed_stars_2",
+      "region": "sellas",
+      "name": "별이 삼켜진 심해 2",
+      "force": 670,
+      "mobs": 33
+    },
+    {
+      "key": "sellas_abyss_that_swallowed_stars_3",
+      "region": "sellas",
+      "name": "별이 삼켜진 심해 3",
+      "force": 670,
+      "mobs": 39
+    },
+    {
+      "key": "sellas_abyss_that_swallowed_stars_4",
+      "region": "sellas",
+      "name": "별이 삼켜진 심해 4",
+      "force": 670,
+      "mobs": 25
+    },
+    {
+      "key": "sellas_abyss_that_swallowed_stars_5",
+      "region": "sellas",
+      "name": "별이 삼켜진 심해 5",
+      "force": 670,
+      "mobs": 32
+    },
+    {
+      "key": "sellas_abyss_that_swallowed_stars_6",
+      "region": "sellas",
+      "name": "별이 삼켜진 심해 6",
+      "force": 670,
+      "mobs": 40
+    },
+    {
+      "key": "moon_bridge_edge_of_thought_1",
+      "region": "moon_bridge",
+      "name": "사상의 경계 1",
+      "force": 670,
+      "mobs": 37
+    },
+    {
+      "key": "moon_bridge_edge_of_thought_2",
+      "region": "moon_bridge",
+      "name": "사상의 경계 2",
+      "force": 670,
+      "mobs": 34
+    },
+    {
+      "key": "moon_bridge_edge_of_thought_3",
+      "region": "moon_bridge",
+      "name": "사상의 경계3",
+      "force": 670,
+      "mobs": 36
+    },
+    {
+      "key": "moon_bridge_edge_of_thought_4",
+      "region": "moon_bridge",
+      "name": "사상의 경계 4",
+      "force": 670,
+      "mobs": 38
+    },
+    {
+      "key": "moon_bridge_edge_of_thought_5",
+      "region": "moon_bridge",
+      "name": "사상의 경계 5",
+      "force": 670,
+      "mobs": 36
+    },
+    {
+      "key": "moon_bridge_edge_of_thought_6",
+      "region": "moon_bridge",
+      "name": "사상의 경계 6",
+      "force": 670,
+      "mobs": 39
+    },
+    {
+      "key": "moon_bridge_unknown_mist_1",
+      "region": "moon_bridge",
+      "name": "미지의 안개 1",
+      "force": 700,
+      "mobs": 36
+    },
+    {
+      "key": "moon_bridge_unknown_mist_2",
+      "region": "moon_bridge",
+      "name": "미지의 안개 2",
+      "force": 700,
+      "mobs": 33
+    },
+    {
+      "key": "moon_bridge_unknown_mist_3",
+      "region": "moon_bridge",
+      "name": "미지의 안개 3",
+      "force": 700,
+      "mobs": 37
+    },
+    {
+      "key": "moon_bridge_unknown_mist_4",
+      "region": "moon_bridge",
+      "name": "미지의 안개 4",
+      "force": 700,
+      "mobs": 37
+    },
+    {
+      "key": "moon_bridge_unknown_mist_5",
+      "region": "moon_bridge",
+      "name": "미지의 안개 5",
+      "force": 700,
+      "mobs": 37
+    },
+    {
+      "key": "moon_bridge_unknown_mist_6",
+      "region": "moon_bridge",
+      "name": "미지의 안개 6",
+      "force": 700,
+      "mobs": 36
+    },
+    {
+      "key": "moon_bridge_waves_of_void_1",
+      "region": "moon_bridge",
+      "name": "공허의 파도 1",
+      "force": 730,
+      "mobs": 35
+    },
+    {
+      "key": "moon_bridge_waves_of_void_2",
+      "region": "moon_bridge",
+      "name": "공허의 파도 2",
+      "force": 730,
+      "mobs": 36
+    },
+    {
+      "key": "moon_bridge_waves_of_void_3",
+      "region": "moon_bridge",
+      "name": "공허의 파도 3",
+      "force": 730,
+      "mobs": 34
+    },
+    {
+      "key": "moon_bridge_waves_of_void_4",
+      "region": "moon_bridge",
+      "name": "공허의 파도 4",
+      "force": 730,
+      "mobs": 35
+    },
+    {
+      "key": "moon_bridge_waves_of_void_5",
+      "region": "moon_bridge",
+      "name": "공허의 파도 5",
+      "force": 730,
+      "mobs": 36
+    },
+    {
+      "key": "moon_bridge_waves_of_void_6",
+      "region": "moon_bridge",
+      "name": "공허의 파도 6",
+      "force": 730,
+      "mobs": 36
+    },
+    {
+      "key": "labyrinth_of_suffering_interior_1",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 내부 1",
+      "force": 760,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_interior_2",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 내부 2",
+      "force": 760,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_interior_3",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 내부 3",
+      "force": 760,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_interior_4",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 내부 4",
+      "force": 760,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_interior_5",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 내부 5",
+      "force": 760,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_interior_6",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 내부 6",
+      "force": 760,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_core_1",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 1",
+      "force": 790,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_core_2",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 2",
+      "force": 790,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_core_3",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 3",
+      "force": 790,
+      "mobs": 37
+    },
+    {
+      "key": "labyrinth_of_suffering_core_4",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 4",
+      "force": 790,
+      "mobs": 37
+    },
+    {
+      "key": "labyrinth_of_suffering_core_5",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 5",
+      "force": 790,
+      "mobs": 36
+    },
+    {
+      "key": "labyrinth_of_suffering_core_6",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 6",
+      "force": 790,
+      "mobs": 37
+    },
+    {
+      "key": "labyrinth_of_suffering_core_7",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 중심부 7",
+      "force": 790,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_deepest_part_1",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 최심부 1",
+      "force": 820,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_deepest_part_2",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 최심부 2",
+      "force": 820,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_deepest_part_3",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 최심부 3",
+      "force": 820,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_deepest_part_4",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 최심부 4",
+      "force": 820,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_deepest_part_5",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 최심부 5",
+      "force": 820,
+      "mobs": 35
+    },
+    {
+      "key": "labyrinth_of_suffering_deepest_part_6",
+      "region": "labyrinth_of_suffering",
+      "name": "고통의 미궁 최심부 6",
+      "force": 820,
+      "mobs": 34
+    },
+    {
+      "key": "limen_worlds_tears_lower_1",
+      "region": "limen",
+      "name": "세계의 눈물 하단 1",
+      "force": 850,
+      "mobs": 33
+    },
+    {
+      "key": "limen_worlds_tears_lower_2",
+      "region": "limen",
+      "name": "세계의 눈물 하단 2",
+      "force": 850,
+      "mobs": 34
+    },
+    {
+      "key": "limen_worlds_tears_lower_3",
+      "region": "limen",
+      "name": "세계의 눈물 하단 3",
+      "force": 850,
+      "mobs": 34
+    },
+    {
+      "key": "limen_worlds_tears_middle_1",
+      "region": "limen",
+      "name": "세계의 눈물 중단 1",
+      "force": 850,
+      "mobs": 34
+    },
+    {
+      "key": "limen_worlds_tears_middle_2",
+      "region": "limen",
+      "name": "세계의 눈물 중단 2",
+      "force": 850,
+      "mobs": 34
+    },
+    {
+      "key": "limen_worlds_tears_middle_3",
+      "region": "limen",
+      "name": "세계의 눈물 중단 3",
+      "force": 850,
+      "mobs": 34
+    },
+    {
+      "key": "limen_worlds_tears_middle_4",
+      "region": "limen",
+      "name": "세계의 눈물 중단 4",
+      "force": 1000,
+      "mobs": 33
+    },
+    {
+      "key": "limen_where_the_world_ends_1_4",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 1-4",
+      "force": 880,
+      "mobs": 32
+    },
+    {
+      "key": "limen_where_the_world_ends_1_5",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 1-5",
+      "force": 880,
+      "mobs": 31
+    },
+    {
+      "key": "limen_where_the_world_ends_1_6",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 1-6",
+      "force": 880,
+      "mobs": 35
+    },
+    {
+      "key": "limen_where_the_world_ends_1_7",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 1-7",
+      "force": 880,
+      "mobs": 32
+    },
+    {
+      "key": "limen_where_the_world_ends_1_8",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 1-8",
+      "force": 880,
+      "mobs": 35
+    },
+    {
+      "key": "limen_where_the_world_ends_1_9",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 1-9",
+      "force": 1000,
+      "mobs": 35
+    },
+    {
+      "key": "limen_where_the_world_ends_2_3",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 2-3",
+      "force": 880,
+      "mobs": 32
+    },
+    {
+      "key": "limen_where_the_world_ends_2_4",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 2-4",
+      "force": 880,
+      "mobs": 33
+    },
+    {
+      "key": "limen_where_the_world_ends_2_5",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 2-5",
+      "force": 880,
+      "mobs": 33
+    },
+    {
+      "key": "limen_where_the_world_ends_2_6",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 2-6",
+      "force": 880,
+      "mobs": 33
+    },
+    {
+      "key": "limen_where_the_world_ends_2_7",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 2-7",
+      "force": 880,
+      "mobs": 33
+    },
+    {
+      "key": "limen_where_the_world_ends_2_8",
+      "region": "limen",
+      "name": "세계가 끝나는 곳 2-8",
+      "force": 1000,
+      "mobs": 35
+    },
+    {
+      "key": "cernium_beach_rocks_1",
+      "region": "cernium",
+      "name": "해변 암석 지대 1",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_beach_rocks_2",
+      "region": "cernium",
+      "name": "해변 암석 지대 2",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_beach_rocks_3",
+      "region": "cernium",
+      "name": "해변 암석 지대 3",
+      "force": 30,
+      "mobs": 38
+    },
+    {
+      "key": "cernium_beach_rocks_4",
+      "region": "cernium",
+      "name": "해변 암석 지대 4",
+      "force": 30,
+      "mobs": 38
+    },
+    {
+      "key": "cernium_west_rampart_1",
+      "region": "cernium",
+      "name": "세르니움 서쪽 성벽 1",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_west_rampart_2",
+      "region": "cernium",
+      "name": "세르니움 서쪽 성벽 2",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_west_rampart_3",
+      "region": "cernium",
+      "name": "세르니움 서쪽 성벽 3",
+      "force": 30,
+      "mobs": 39
+    },
+    {
+      "key": "cernium_east_rampart_1",
+      "region": "cernium",
+      "name": "세르니움 동쪽 성벽 1",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_east_rampart_2",
+      "region": "cernium",
+      "name": "세르니움 동쪽 성벽 2",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_east_rampart_3",
+      "region": "cernium",
+      "name": "세르니움 동쪽 성벽 3",
+      "force": 30,
+      "mobs": 38
+    },
+    {
+      "key": "cernium_royal_library_section_1",
+      "region": "cernium",
+      "name": "왕립 도서관 제 1구역",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_royal_library_section_2",
+      "region": "cernium",
+      "name": "왕립 도서관 제 2구역",
+      "force": 30,
+      "mobs": 33
+    },
+    {
+      "key": "cernium_royal_library_section_3",
+      "region": "cernium",
+      "name": "왕립 도서관 제 3구역",
+      "force": 30,
+      "mobs": 38
+    },
+    {
+      "key": "cernium_royal_library_section_4",
+      "region": "cernium",
+      "name": "왕립 도서관 제 4구역",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_royal_library_section_5",
+      "region": "cernium",
+      "name": "왕립 도서관 제 5구역",
+      "force": 30,
+      "mobs": 34
+    },
+    {
+      "key": "cernium_royal_library_section_6",
+      "region": "cernium",
+      "name": "왕립 도서관 제 6구역",
+      "force": 30,
+      "mobs": 38
+    },
+    {
+      "key": "burning_cernium_embattled_west_rampart_1",
+      "region": "burning_cernium",
+      "name": "격전의 서쪽 성벽 1",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_embattled_west_rampart_2",
+      "region": "burning_cernium",
+      "name": "격전의 서쪽 성벽 2",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_embattled_west_rampart_3",
+      "region": "burning_cernium",
+      "name": "격전의 서쪽 성벽 3",
+      "force": 50,
+      "mobs": 38
+    },
+    {
+      "key": "burning_cernium_embattled_west_rampart_4",
+      "region": "burning_cernium",
+      "name": "격전의 서쪽 성벽 4",
+      "force": 50,
+      "mobs": 38
+    },
+    {
+      "key": "burning_cernium_embattled_east_rampart_1",
+      "region": "burning_cernium",
+      "name": "격전의 동쪽 성벽 1",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_embattled_east_rampart_2",
+      "region": "burning_cernium",
+      "name": "격전의 동쪽 성벽 2",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_embattled_east_rampart_3",
+      "region": "burning_cernium",
+      "name": "격전의 동쪽 성벽 3",
+      "force": 50,
+      "mobs": 39
+    },
+    {
+      "key": "burning_cernium_embattled_east_rampart_4",
+      "region": "burning_cernium",
+      "name": "격전의 동쪽 성벽 4",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_embattled_east_rampart_5",
+      "region": "burning_cernium",
+      "name": "격전의 동쪽 성벽 5",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_embattled_east_rampart_6",
+      "region": "burning_cernium",
+      "name": "격전의 동쪽 성벽 6",
+      "force": 50,
+      "mobs": 38
+    },
+    {
+      "key": "burning_cernium_burning_royal_library_section_1",
+      "region": "burning_cernium",
+      "name": "불타는 왕립 도서관 제 1구역",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_burning_royal_library_section_2",
+      "region": "burning_cernium",
+      "name": "불타는 왕립 도서관 제 2구역",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_burning_royal_library_section_3",
+      "region": "burning_cernium",
+      "name": "불타는 왕립 도서관 제 3구역",
+      "force": 50,
+      "mobs": 39
+    },
+    {
+      "key": "burning_cernium_burning_royal_library_section_4",
+      "region": "burning_cernium",
+      "name": "불타는 왕립 도서관 제 4구역",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_burning_royal_library_section_5",
+      "region": "burning_cernium",
+      "name": "불타는 왕립 도서관 제 5구역",
+      "force": 50,
+      "mobs": 34
+    },
+    {
+      "key": "burning_cernium_burning_royal_library_section_6",
+      "region": "burning_cernium",
+      "name": "불타는 왕립 도서관 제 6구역",
+      "force": 50,
+      "mobs": 39
+    },
+    {
+      "key": "arcs_outlaw_ruled_wasteland_1",
+      "region": "arcs",
+      "name": "무법자들이 지배하는 황야 1",
+      "force": 70,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_outlaw_ruled_wasteland_2",
+      "region": "arcs",
+      "name": "무법자들이 지배하는 황야 2",
+      "force": 70,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_outlaw_ruled_wasteland_3",
+      "region": "arcs",
+      "name": "무법자들이 지배하는 황야 3",
+      "force": 70,
+      "mobs": 38
+    },
+    {
+      "key": "arcs_outlaw_ruled_wasteland_4",
+      "region": "arcs",
+      "name": "무법자들이 지배하는 황야 4",
+      "force": 70,
+      "mobs": 39
+    },
+    {
+      "key": "arcs_fading_romance_drive_in_theater_1",
+      "region": "arcs",
+      "name": "낭만이 저무는 자동차 극장 1",
+      "force": 70,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_fading_romance_drive_in_theater_2",
+      "region": "arcs",
+      "name": "낭만이 저무는 자동차 극장 2",
+      "force": 70,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_fading_romance_drive_in_theater_3",
+      "region": "arcs",
+      "name": "낭만이 저무는 자동차 극장 3",
+      "force": 70,
+      "mobs": 39
+    },
+    {
+      "key": "arcs_fading_romance_drive_in_theater_4",
+      "region": "arcs",
+      "name": "낭만이 저무는 자동차 극장 4",
+      "force": 70,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_fading_romance_drive_in_theater_5",
+      "region": "arcs",
+      "name": "낭만이 저무는 자동차 극장 5",
+      "force": 70,
+      "mobs": 33
+    },
+    {
+      "key": "arcs_fading_romance_drive_in_theater_6",
+      "region": "arcs",
+      "name": "낭만이 저무는 자동차 극장 6",
+      "force": 70,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_endless_cross_country_train_1",
+      "region": "arcs",
+      "name": "종착지 없는 횡단열차 1",
+      "force": 100,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_endless_cross_country_train_2",
+      "region": "arcs",
+      "name": "종착지 없는 횡단열차 2",
+      "force": 100,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_endless_cross_country_train_3",
+      "region": "arcs",
+      "name": "종착지 없는 횡단열차 3",
+      "force": 100,
+      "mobs": 38
+    },
+    {
+      "key": "arcs_endless_cross_country_train_4",
+      "region": "arcs",
+      "name": "종착지 없는 횡단열차 4",
+      "force": 100,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_endless_cross_country_train_5",
+      "region": "arcs",
+      "name": "종착지 없는 횡단열차 5",
+      "force": 100,
+      "mobs": 34
+    },
+    {
+      "key": "arcs_endless_cross_country_train_6",
+      "region": "arcs",
+      "name": "종착지 없는 횡단열차 6",
+      "force": 100,
+      "mobs": 38
+    },
+    {
+      "key": "odium_road_to_castle_gate_1",
+      "region": "odium",
+      "name": "성문으로 가는 길 1",
+      "force": 130,
+      "mobs": 34
+    },
+    {
+      "key": "odium_road_to_castle_gate_2",
+      "region": "odium",
+      "name": "성문으로 가는 길 2",
+      "force": 130,
+      "mobs": 34
+    },
+    {
+      "key": "odium_road_to_castle_gate_3",
+      "region": "odium",
+      "name": "성문으로 가는 길 3",
+      "force": 130,
+      "mobs": 37
+    },
+    {
+      "key": "odium_road_to_castle_gate_4",
+      "region": "odium",
+      "name": "성문으로 가는 길 4",
+      "force": 130,
+      "mobs": 39
+    },
+    {
+      "key": "odium_road_to_castle_gate_5",
+      "region": "odium",
+      "name": "성문으로 가는 길 5",
+      "force": 130,
+      "mobs": 39
+    },
+    {
+      "key": "odium_occupied_alley_1",
+      "region": "odium",
+      "name": "점령당한 골목 1",
+      "force": 160,
+      "mobs": 34
+    },
+    {
+      "key": "odium_occupied_alley_2",
+      "region": "odium",
+      "name": "점령당한 골목 2",
+      "force": 160,
+      "mobs": 34
+    },
+    {
+      "key": "odium_occupied_alley_3",
+      "region": "odium",
+      "name": "점령당한 골목 3",
+      "force": 160,
+      "mobs": 39
+    },
+    {
+      "key": "odium_occupied_alley_4",
+      "region": "odium",
+      "name": "점령당한 골목 4",
+      "force": 160,
+      "mobs": 39
+    },
+    {
+      "key": "odium_sunlit_laboratory_1",
+      "region": "odium",
+      "name": "볕 드는 실험실 1",
+      "force": 180,
+      "mobs": 34
+    },
+    {
+      "key": "odium_sunlit_laboratory_2",
+      "region": "odium",
+      "name": "볕 드는 실험실 2",
+      "force": 180,
+      "mobs": 39
+    },
+    {
+      "key": "odium_sunlit_laboratory_3",
+      "region": "odium",
+      "name": "볕 드는 실험실 3",
+      "force": 180,
+      "mobs": 39
+    },
+    {
+      "key": "odium_laboratory_behind_locked_door_1",
+      "region": "odium",
+      "name": "잠긴 문 뒤 실험실 1",
+      "force": 200,
+      "mobs": 34
+    },
+    {
+      "key": "odium_laboratory_behind_locked_door_2",
+      "region": "odium",
+      "name": "잠긴 문 뒤 실험실 2",
+      "force": 200,
+      "mobs": 39
+    },
+    {
+      "key": "odium_laboratory_behind_locked_door_3",
+      "region": "odium",
+      "name": "잠긴 문 뒤 실험실 3",
+      "force": 200,
+      "mobs": 39
+    },
+    {
+      "key": "odium_laboratory_behind_locked_door_4",
+      "region": "odium",
+      "name": "잠긴 문 뒤 실험실 4",
+      "force": 200,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_spring_of_returning_vitality_1",
+      "region": "dowonkyung",
+      "name": "생기가 돌아오는 봄 1",
+      "force": 230,
+      "mobs": 34
+    },
+    {
+      "key": "dowonkyung_spring_of_returning_vitality_2",
+      "region": "dowonkyung",
+      "name": "생기가 돌아오는 봄 2",
+      "force": 230,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_spring_of_returning_vitality_3",
+      "region": "dowonkyung",
+      "name": "생기가 돌아오는 봄 3",
+      "force": 230,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_spring_of_returning_vitality_4",
+      "region": "dowonkyung",
+      "name": "생기가 돌아오는 봄 4",
+      "force": 230,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_spring_of_returning_vitality_5",
+      "region": "dowonkyung",
+      "name": "생기가 돌아오는 봄 5",
+      "force": 230,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_summer_of_dim_light_1",
+      "region": "dowonkyung",
+      "name": "빛이 약한 여름 1",
+      "force": 260,
+      "mobs": 34
+    },
+    {
+      "key": "dowonkyung_summer_of_dim_light_2",
+      "region": "dowonkyung",
+      "name": "빛이 약한 여름 2",
+      "force": 260,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_summer_of_dim_light_3",
+      "region": "dowonkyung",
+      "name": "빛이 약한 여름 3",
+      "force": 260,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_summer_of_dim_light_4",
+      "region": "dowonkyung",
+      "name": "빛이 약한 여름 4",
+      "force": 260,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_summer_of_dim_light_5",
+      "region": "dowonkyung",
+      "name": "빛이 약한 여름 5",
+      "force": 260,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_autumn_of_faded_colors_1",
+      "region": "dowonkyung",
+      "name": "색깔이 옅은 가을 1",
+      "force": 280,
+      "mobs": 34
+    },
+    {
+      "key": "dowonkyung_autumn_of_faded_colors_2",
+      "region": "dowonkyung",
+      "name": "색깔이 옅은 가을 2",
+      "force": 280,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_autumn_of_faded_colors_3",
+      "region": "dowonkyung",
+      "name": "색깔이 옅은 가을 3",
+      "force": 280,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_autumn_of_faded_colors_4",
+      "region": "dowonkyung",
+      "name": "색깔이 옅은 가을 4",
+      "force": 280,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_autumn_of_faded_colors_5",
+      "region": "dowonkyung",
+      "name": "색깔이 옅은 가을 5",
+      "force": 280,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_winter_of_grim_traces_1",
+      "region": "dowonkyung",
+      "name": "참혹한 흔적의 겨울 1",
+      "force": 300,
+      "mobs": 34
+    },
+    {
+      "key": "dowonkyung_winter_of_grim_traces_2",
+      "region": "dowonkyung",
+      "name": "참혹한 흔적의 겨울 2",
+      "force": 300,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_winter_of_grim_traces_3",
+      "region": "dowonkyung",
+      "name": "참혹한 흔적의 겨울 3",
+      "force": 300,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_winter_of_grim_traces_4",
+      "region": "dowonkyung",
+      "name": "참혹한 흔적의 겨울 4",
+      "force": 300,
+      "mobs": 39
+    },
+    {
+      "key": "dowonkyung_winter_of_grim_traces_5",
+      "region": "dowonkyung",
+      "name": "참혹한 흔적의 겨울 5",
+      "force": 300,
+      "mobs": 39
+    },
+    {
+      "key": "arteria_north_outskirts",
+      "region": "arteria",
+      "name": "북쪽 외곽 지역",
+      "force": 330,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_west_outskirts",
+      "region": "arteria",
+      "name": "서쪽 외곽 지역",
+      "force": 330,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_east_outskirts",
+      "region": "arteria",
+      "name": "동쪽 외곽 지역",
+      "force": 330,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_south_outskirts",
+      "region": "arteria",
+      "name": "남쪽 외곽 지역",
+      "force": 330,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_outskirts_battle_zone_1",
+      "region": "arteria",
+      "name": "외곽 전투지역 1",
+      "force": 330,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_outskirts_battle_zone_2",
+      "region": "arteria",
+      "name": "외곽 전투지역 2",
+      "force": 330,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_lowest_level_passage_1",
+      "region": "arteria",
+      "name": "최하층 통로 1",
+      "force": 360,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_lowest_level_passage_2",
+      "region": "arteria",
+      "name": "최하층 통로 2",
+      "force": 360,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_lowest_level_passage_3",
+      "region": "arteria",
+      "name": "최하층 통로 3",
+      "force": 360,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_lowest_level_passage_4",
+      "region": "arteria",
+      "name": "최하층 통로 4",
+      "force": 360,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_lowest_level_passage_5",
+      "region": "arteria",
+      "name": "최하층 통로 5",
+      "force": 360,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_lowest_level_passage_6",
+      "region": "arteria",
+      "name": "최하층 통로 6",
+      "force": 360,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_top_level_passage_1",
+      "region": "arteria",
+      "name": "최상층 통로 1",
+      "force": 400,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_top_level_passage_2",
+      "region": "arteria",
+      "name": "최상층 통로 2",
+      "force": 400,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_top_level_passage_3",
+      "region": "arteria",
+      "name": "최상층 통로 3",
+      "force": 400,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_top_level_passage_4",
+      "region": "arteria",
+      "name": "최상층 통로 4",
+      "force": 400,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_top_level_passage_5",
+      "region": "arteria",
+      "name": "최상층 통로 5",
+      "force": 400,
+      "mobs": 36
+    },
+    {
+      "key": "arteria_top_level_passage_6",
+      "region": "arteria",
+      "name": "최상층 통로 6",
+      "force": 400,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_top_level_passage_7",
+      "region": "arteria",
+      "name": "최상층 통로 7",
+      "force": 400,
+      "mobs": 40
+    },
+    {
+      "key": "arteria_top_level_passage_8",
+      "region": "arteria",
+      "name": "최상층 통로 8",
+      "force": 400,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_giant_coral_colony_1",
+      "region": "carcion",
+      "name": "거대 산호 군락 1",
+      "force": 430,
+      "mobs": 36
+    },
+    {
+      "key": "carcion_giant_coral_colony_2",
+      "region": "carcion",
+      "name": "거대 산호 군락 2",
+      "force": 430,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_giant_coral_colony_3",
+      "region": "carcion",
+      "name": "거대 산호 군락 3",
+      "force": 430,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_calm_shore_1",
+      "region": "carcion",
+      "name": "잔잔한 해안가 1",
+      "force": 430,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_calm_shore_2",
+      "region": "carcion",
+      "name": "잔잔한 해안가 2",
+      "force": 430,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_calm_shore_3",
+      "region": "carcion",
+      "name": "잔잔한 해안가 3",
+      "force": 430,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_entangling_forest_1",
+      "region": "carcion",
+      "name": "휘감기는 숲 1",
+      "force": 460,
+      "mobs": 36
+    },
+    {
+      "key": "carcion_entangling_forest_2",
+      "region": "carcion",
+      "name": "휘감기는 숲 2",
+      "force": 460,
+      "mobs": 36
+    },
+    {
+      "key": "carcion_entangling_forest_3",
+      "region": "carcion",
+      "name": "휘감기는 숲 3",
+      "force": 460,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_darkening_tree_trunk_1",
+      "region": "carcion",
+      "name": "어둠이 내리는 나무줄기 1",
+      "force": 460,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_darkening_tree_trunk_2",
+      "region": "carcion",
+      "name": "어둠이 내리는 나무줄기 2",
+      "force": 460,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_darkening_tree_trunk_3",
+      "region": "carcion",
+      "name": "어둠이 내리는 나무줄기 3",
+      "force": 460,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_breathless_cave_1",
+      "region": "carcion",
+      "name": "숨이 멎어드는 동굴 1",
+      "force": 500,
+      "mobs": 36
+    },
+    {
+      "key": "carcion_breathless_cave_2",
+      "region": "carcion",
+      "name": "숨이 멎어드는 동굴 2",
+      "force": 500,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_breathless_cave_3",
+      "region": "carcion",
+      "name": "숨이 멎어드는 동굴 3",
+      "force": 500,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_breathless_cave_4",
+      "region": "carcion",
+      "name": "숨이 멎어드는 동굴 4",
+      "force": 500,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_sunken_ruins_1",
+      "region": "carcion",
+      "name": "가라앉은 유적지 1",
+      "force": 500,
+      "mobs": 36
+    },
+    {
+      "key": "carcion_sunken_ruins_2",
+      "region": "carcion",
+      "name": "가라앉은 유적지 2",
+      "force": 500,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_sunken_ruins_3",
+      "region": "carcion",
+      "name": "가라앉은 유적지 3",
+      "force": 500,
+      "mobs": 40
+    },
+    {
+      "key": "carcion_sunken_ruins_4",
+      "region": "carcion",
+      "name": "가라앉은 유적지 4",
+      "force": 500,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_land_of_ash_and_silence_1",
+      "region": "tallahart",
+      "name": "재와 침묵의 땅 1",
+      "force": 630,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_land_of_ash_and_silence_2",
+      "region": "tallahart",
+      "name": "재와 침묵의 땅 2",
+      "force": 630,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_land_of_ash_and_silence_3",
+      "region": "tallahart",
+      "name": "재와 침묵의 땅 3",
+      "force": 630,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_land_of_ash_and_silence_4",
+      "region": "tallahart",
+      "name": "재와 침묵의 땅 4",
+      "force": 630,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_land_of_ash_and_silence_5",
+      "region": "tallahart",
+      "name": "재와 침묵의 땅 5",
+      "force": 630,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_providence_and_fate_1",
+      "region": "tallahart",
+      "name": "섭리와 운명의 전쟁터 1",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_providence_and_fate_2",
+      "region": "tallahart",
+      "name": "섭리와 운명의 전쟁터 2",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_providence_and_fate_3",
+      "region": "tallahart",
+      "name": "섭리와 운명의 전쟁터 3",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_judgment_and_fate_1",
+      "region": "tallahart",
+      "name": "심판과 운명의 전쟁터 1",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_judgment_and_fate_2",
+      "region": "tallahart",
+      "name": "심판과 운명의 전쟁터 2",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_judgment_and_fate_3",
+      "region": "tallahart",
+      "name": "심판과 운명의 전쟁터 3",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_eternity_and_fate_1",
+      "region": "tallahart",
+      "name": "영원과 운명의 전쟁터 1",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_eternity_and_fate_2",
+      "region": "tallahart",
+      "name": "영원과 운명의 전쟁터 2",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_battlefield_of_eternity_and_fate_3",
+      "region": "tallahart",
+      "name": "영원과 운명의 전쟁터 3",
+      "force": 660,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_night_1",
+      "region": "tallahart",
+      "name": "밤의 길 1",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_night_2",
+      "region": "tallahart",
+      "name": "밤의 길 2",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_night_3",
+      "region": "tallahart",
+      "name": "밤의 길 3",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_night_4",
+      "region": "tallahart",
+      "name": "밤의 길 4",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_illusion_1",
+      "region": "tallahart",
+      "name": "환영의 길 1",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_illusion_2",
+      "region": "tallahart",
+      "name": "환영의 길 2",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_illusion_3",
+      "region": "tallahart",
+      "name": "환영의 길 3",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "tallahart_road_of_illusion_4",
+      "region": "tallahart",
+      "name": "환영의 길 4",
+      "force": 700,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_basement_1",
+      "region": "geardrak",
+      "name": "지하 1층",
+      "force": 740,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_basement_2_section_1",
+      "region": "geardrak",
+      "name": "지하 2층 1구역",
+      "force": 740,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_basement_2_section_2",
+      "region": "geardrak",
+      "name": "지하 2층 2구역",
+      "force": 740,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_basement_3_section_1",
+      "region": "geardrak",
+      "name": "지하 3층 1구역",
+      "force": 740,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_basement_3_section_2",
+      "region": "geardrak",
+      "name": "지하 3층 2구역",
+      "force": 740,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_basement_4",
+      "region": "geardrak",
+      "name": "지하 4층",
+      "force": 740,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_1",
+      "region": "geardrak",
+      "name": "로봇 창고 1",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_2",
+      "region": "geardrak",
+      "name": "로봇 창고 2",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_3",
+      "region": "geardrak",
+      "name": "로봇 창고 3",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_4",
+      "region": "geardrak",
+      "name": "로봇 창고 4",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_5",
+      "region": "geardrak",
+      "name": "로봇 창고 5",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_6",
+      "region": "geardrak",
+      "name": "로봇 창고 6",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_7",
+      "region": "geardrak",
+      "name": "로봇 창고 7",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_robot_warehouse_8",
+      "region": "geardrak",
+      "name": "로봇 창고 8",
+      "force": 770,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_1",
+      "region": "geardrak",
+      "name": "고브의 작업실 1",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_2",
+      "region": "geardrak",
+      "name": "고브의 작업실 2",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_3",
+      "region": "geardrak",
+      "name": "고브의 작업실 3",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_4",
+      "region": "geardrak",
+      "name": "고브의 작업실 4",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_5",
+      "region": "geardrak",
+      "name": "고브의 작업실 5",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_6",
+      "region": "geardrak",
+      "name": "고브의 작업실 6",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_7",
+      "region": "geardrak",
+      "name": "고브의 작업실 7",
+      "force": 810,
+      "mobs": 40
+    },
+    {
+      "key": "geardrak_gobs_workshop_8",
+      "region": "geardrak",
+      "name": "고브의 작업실 8",
+      "force": 810,
+      "mobs": 40
+    }
+  ],
+  "groundLevels": [
+    {
+      "ground": "road_of_vanishing_weathered_land_of_joy",
+      "level": 200
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_joy_and_anger",
+      "level": 200
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_joy_and_anger",
+      "level": 201
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_anger",
+      "level": 201
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_anger_and_sorrow",
+      "level": 201
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_anger_and_sorrow",
+      "level": 202
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_sorrow",
+      "level": 202
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_sorrow_and_delight",
+      "level": 202
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_sorrow_and_delight",
+      "level": 203
+    },
+    {
+      "ground": "road_of_vanishing_weathered_land_of_delight",
+      "level": 203
+    },
+    {
+      "ground": "road_of_vanishing_hidden_lakeside",
+      "level": 209
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_rock",
+      "level": 204
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_rock_and_flame",
+      "level": 204
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_rock_and_flame",
+      "level": 205
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_flame",
+      "level": 205
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_flame_and_soul",
+      "level": 205
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_flame_and_soul",
+      "level": 206
+    },
+    {
+      "ground": "road_of_vanishing_territory_of_soul",
+      "level": 206
+    },
+    {
+      "ground": "road_of_vanishing_hidden_flame_zone",
+      "level": 209
+    },
+    {
+      "ground": "road_of_vanishing_three_way_road_1",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_cave_west_path_1",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_cave_west_path_2",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_cave_east_path_1",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_cave_east_path_2",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_three_way_road_2",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_upper_cave",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_lower_cave",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_cave_depths",
+      "level": 207
+    },
+    {
+      "ground": "road_of_vanishing_arma_hideout",
+      "level": 209
+    },
+    {
+      "ground": "road_of_vanishing_hidden_cave",
+      "level": 209
+    },
+    {
+      "ground": "reverse_city_underground_track_1",
+      "level": 205
+    },
+    {
+      "ground": "reverse_city_underground_track_2",
+      "level": 205
+    },
+    {
+      "ground": "reverse_city_underground_track_3",
+      "level": 205
+    },
+    {
+      "ground": "reverse_city_underground_track_4",
+      "level": 205
+    },
+    {
+      "ground": "reverse_city_underground_track_5",
+      "level": 205
+    },
+    {
+      "ground": "reverse_city_underground_track_6",
+      "level": 205
+    },
+    {
+      "ground": "reverse_city_t_boy_research_train_1",
+      "level": 206
+    },
+    {
+      "ground": "reverse_city_t_boy_research_train_2",
+      "level": 206
+    },
+    {
+      "ground": "reverse_city_t_boy_research_train_3",
+      "level": 206
+    },
+    {
+      "ground": "reverse_city_hidden_research_train",
+      "level": 210
+    },
+    {
+      "ground": "reverse_city_subway_train_1",
+      "level": 207
+    },
+    {
+      "ground": "reverse_city_subway_train_2",
+      "level": 207
+    },
+    {
+      "ground": "reverse_city_subway_train_2",
+      "level": 208
+    },
+    {
+      "ground": "reverse_city_subway_train_3",
+      "level": 208
+    },
+    {
+      "ground": "reverse_city_hidden_subway_train",
+      "level": 211
+    },
+    {
+      "ground": "reverse_city_hidden_subway_train",
+      "level": 212
+    },
+    {
+      "ground": "reverse_city_surface_train_1",
+      "level": 207
+    },
+    {
+      "ground": "reverse_city_surface_train_2",
+      "level": 207
+    },
+    {
+      "ground": "reverse_city_surface_train_2",
+      "level": 208
+    },
+    {
+      "ground": "reverse_city_surface_train_3",
+      "level": 208
+    },
+    {
+      "ground": "reverse_city_m_tower_2",
+      "level": 209
+    },
+    {
+      "ground": "reverse_city_m_tower_3",
+      "level": 209
+    },
+    {
+      "ground": "reverse_city_m_tower_4",
+      "level": 209
+    },
+    {
+      "ground": "reverse_city_hidden_m_tower",
+      "level": 213
+    },
+    {
+      "ground": "chew_chew_hill_entrance",
+      "level": 210
+    },
+    {
+      "ground": "chew_chew_colorful_forest_1",
+      "level": 211
+    },
+    {
+      "ground": "chew_chew_colorful_forest_2",
+      "level": 210
+    },
+    {
+      "ground": "chew_chew_colorful_forest_3",
+      "level": 210
+    },
+    {
+      "ground": "chew_chew_colorful_forest_3",
+      "level": 211
+    },
+    {
+      "ground": "chew_chew_rainbow_hill_depths",
+      "level": 211
+    },
+    {
+      "ground": "chew_chew_long_round_forest_1",
+      "level": 212
+    },
+    {
+      "ground": "chew_chew_long_round_forest_2",
+      "level": 213
+    },
+    {
+      "ground": "chew_chew_stubby_round_forest_1",
+      "level": 212
+    },
+    {
+      "ground": "chew_chew_stubby_round_forest_2",
+      "level": 213
+    },
+    {
+      "ground": "chew_chew_slurp_forest_depths",
+      "level": 213
+    },
+    {
+      "ground": "chew_chew_village_entrance",
+      "level": 214
+    },
+    {
+      "ground": "chew_chew_rapids_1",
+      "level": 216
+    },
+    {
+      "ground": "chew_chew_rapids_2",
+      "level": 215
+    },
+    {
+      "ground": "chew_chew_rapids_3",
+      "level": 215
+    },
+    {
+      "ground": "chew_chew_rapids_3",
+      "level": 216
+    },
+    {
+      "ground": "chew_chew_below_waterfall",
+      "level": 216
+    },
+    {
+      "ground": "chew_chew_whale_mountain_foothill",
+      "level": 217
+    },
+    {
+      "ground": "chew_chew_whale_mountain_midslope_1",
+      "level": 217
+    },
+    {
+      "ground": "chew_chew_whale_mountain_midslope_1",
+      "level": 219
+    },
+    {
+      "ground": "chew_chew_whale_mountain_summit",
+      "level": 219
+    },
+    {
+      "ground": "chew_chew_whale_mountain_midslope_2",
+      "level": 218
+    },
+    {
+      "ground": "chew_chew_giant_tail",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_1",
+      "level": 215
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_2",
+      "level": 215
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_2",
+      "level": 216
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_3",
+      "level": 216
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_4",
+      "level": 215
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_5",
+      "level": 215
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_5",
+      "level": 216
+    },
+    {
+      "ground": "yum_yum_mushbird_forest_6",
+      "level": 215
+    },
+    {
+      "ground": "yum_yum_hidden_mushbird_forest",
+      "level": 220
+    },
+    {
+      "ground": "yum_yum_illiyard_field_1",
+      "level": 217
+    },
+    {
+      "ground": "yum_yum_illiyard_field_2",
+      "level": 217
+    },
+    {
+      "ground": "yum_yum_illiyard_field_2",
+      "level": 218
+    },
+    {
+      "ground": "yum_yum_illiyard_field_3",
+      "level": 218
+    },
+    {
+      "ground": "yum_yum_illiyard_field_4",
+      "level": 217
+    },
+    {
+      "ground": "yum_yum_illiyard_field_5",
+      "level": 217
+    },
+    {
+      "ground": "yum_yum_illiyard_field_5",
+      "level": 218
+    },
+    {
+      "ground": "yum_yum_illiyard_field_6",
+      "level": 218
+    },
+    {
+      "ground": "yum_yum_hidden_illiyard_field",
+      "level": 220
+    },
+    {
+      "ground": "yum_yum_fungos_forest_1",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_fungos_forest_2",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_fungos_forest_3",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_fungos_forest_4",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_fungos_forest_5",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_fungos_forest_6",
+      "level": 219
+    },
+    {
+      "ground": "yum_yum_hidden_fungos_forest",
+      "level": 220
+    },
+    {
+      "ground": "lacheln_outlaw_street_1",
+      "level": 220
+    },
+    {
+      "ground": "lacheln_outlaw_street_2",
+      "level": 220
+    },
+    {
+      "ground": "lacheln_outlaw_street_2",
+      "level": 221
+    },
+    {
+      "ground": "lacheln_outlaw_street_3",
+      "level": 221
+    },
+    {
+      "ground": "lacheln_where_chickens_play_1",
+      "level": 221
+    },
+    {
+      "ground": "lacheln_where_chickens_play_2",
+      "level": 222
+    },
+    {
+      "ground": "lacheln_where_chickens_play_3",
+      "level": 221
+    },
+    {
+      "ground": "lacheln_where_chickens_play_3",
+      "level": 222
+    },
+    {
+      "ground": "lacheln_winners_plate_street_1",
+      "level": 222
+    },
+    {
+      "ground": "lacheln_winners_plate_street_2",
+      "level": 223
+    },
+    {
+      "ground": "lacheln_where_true_colors_show_1",
+      "level": 223
+    },
+    {
+      "ground": "lacheln_where_true_colors_show_2",
+      "level": 224
+    },
+    {
+      "ground": "lacheln_where_true_colors_show_3",
+      "level": 223
+    },
+    {
+      "ground": "lacheln_where_true_colors_show_3",
+      "level": 224
+    },
+    {
+      "ground": "lacheln_dancing_shoes_territory_1",
+      "level": 224
+    },
+    {
+      "ground": "lacheln_dancing_shoes_territory_2",
+      "level": 225
+    },
+    {
+      "ground": "lacheln_nightmare_clocktower_floor_1",
+      "level": 226
+    },
+    {
+      "ground": "lacheln_nightmare_clocktower_floor_2",
+      "level": 226
+    },
+    {
+      "ground": "lacheln_nightmare_clocktower_floor_3",
+      "level": 227
+    },
+    {
+      "ground": "lacheln_nightmare_clocktower_floor_4",
+      "level": 228
+    },
+    {
+      "ground": "lacheln_nightmare_clocktower_floor_5",
+      "level": 227
+    },
+    {
+      "ground": "lacheln_nightmare_clocktower_floor_5",
+      "level": 228
+    },
+    {
+      "ground": "arcana_forest_of_water",
+      "level": 230
+    },
+    {
+      "ground": "arcana_forest_of_sunlight",
+      "level": 231
+    },
+    {
+      "ground": "arcana_forest_of_water_and_sunlight",
+      "level": 230
+    },
+    {
+      "ground": "arcana_forest_of_water_and_sunlight",
+      "level": 231
+    },
+    {
+      "ground": "arcana_forest_of_earth",
+      "level": 232
+    },
+    {
+      "ground": "arcana_forest_of_sunlight_and_earth",
+      "level": 231
+    },
+    {
+      "ground": "arcana_forest_of_sunlight_and_earth",
+      "level": 232
+    },
+    {
+      "ground": "arcana_forest_of_frost_clouds",
+      "level": 233
+    },
+    {
+      "ground": "arcana_forest_of_lightning_clouds",
+      "level": 234
+    },
+    {
+      "ground": "arcana_forest_of_frost_and_lightning_1",
+      "level": 233
+    },
+    {
+      "ground": "arcana_forest_of_frost_and_lightning_1",
+      "level": 234
+    },
+    {
+      "ground": "arcana_forest_of_frost_and_lightning_2",
+      "level": 233
+    },
+    {
+      "ground": "arcana_forest_of_frost_and_lightning_2",
+      "level": 234
+    },
+    {
+      "ground": "arcana_forest_of_venom",
+      "level": 235
+    },
+    {
+      "ground": "arcana_forest_of_explosions",
+      "level": 236
+    },
+    {
+      "ground": "arcana_forest_of_venom_and_explosions_1",
+      "level": 235
+    },
+    {
+      "ground": "arcana_forest_of_venom_and_explosions_1",
+      "level": 236
+    },
+    {
+      "ground": "arcana_forest_of_venom_and_explosions_2",
+      "level": 235
+    },
+    {
+      "ground": "arcana_forest_of_venom_and_explosions_2",
+      "level": 236
+    },
+    {
+      "ground": "arcana_cave_upper_path",
+      "level": 237
+    },
+    {
+      "ground": "arcana_cave_upper_path_deep_1",
+      "level": 237
+    },
+    {
+      "ground": "arcana_cave_upper_path_deep_1",
+      "level": 238
+    },
+    {
+      "ground": "arcana_cave_upper_path_deep_2",
+      "level": 238
+    },
+    {
+      "ground": "arcana_cave_upper_path_deepest",
+      "level": 238
+    },
+    {
+      "ground": "arcana_cave_upper_path_deepest",
+      "level": 239
+    },
+    {
+      "ground": "arcana_cave_lower_path",
+      "level": 237
+    },
+    {
+      "ground": "arcana_cave_lower_path_deep_1",
+      "level": 237
+    },
+    {
+      "ground": "arcana_cave_lower_path_deep_1",
+      "level": 239
+    },
+    {
+      "ground": "arcana_cave_lower_path_deep_2",
+      "level": 239
+    },
+    {
+      "ground": "arcana_cave_lower_path_deepest",
+      "level": 238
+    },
+    {
+      "ground": "arcana_cave_lower_path_deepest",
+      "level": 239
+    },
+    {
+      "ground": "arcana_five_way_cave",
+      "level": 238
+    },
+    {
+      "ground": "arcana_five_way_cave",
+      "level": 239
+    },
+    {
+      "ground": "arcana_five_way_cave_upper_path",
+      "level": 239
+    },
+    {
+      "ground": "arcana_five_way_cave_upper_path",
+      "level": 240
+    },
+    {
+      "ground": "arcana_five_way_cave_middle_path",
+      "level": 239
+    },
+    {
+      "ground": "arcana_five_way_cave_middle_path",
+      "level": 240
+    },
+    {
+      "ground": "arcana_cave_under_spirit_tree",
+      "level": 240
+    },
+    {
+      "ground": "arcana_five_way_cave_lower_path",
+      "level": 240
+    },
+    {
+      "ground": "morass_road_to_coral_forest_2",
+      "level": 236
+    },
+    {
+      "ground": "morass_road_to_coral_forest_3",
+      "level": 236
+    },
+    {
+      "ground": "morass_road_to_coral_forest_4",
+      "level": 236
+    },
+    {
+      "ground": "morass_stray_cat_haunt_2",
+      "level": 237
+    },
+    {
+      "ground": "morass_stray_cat_haunt",
+      "level": 237
+    },
+    {
+      "ground": "morass_big_brothers_turf",
+      "level": 238
+    },
+    {
+      "ground": "morass_big_brothers_turf_2",
+      "level": 238
+    },
+    {
+      "ground": "morass_big_brothers_turf_3",
+      "level": 238
+    },
+    {
+      "ground": "morass_where_shadows_dance_2",
+      "level": 239
+    },
+    {
+      "ground": "morass_where_shadows_dance_3",
+      "level": 239
+    },
+    {
+      "ground": "morass_where_shadows_dance_3",
+      "level": 240
+    },
+    {
+      "ground": "morass_where_shadows_dance_4",
+      "level": 240
+    },
+    {
+      "ground": "morass_closed_zone",
+      "level": 241
+    },
+    {
+      "ground": "morass_closed_zone_2",
+      "level": 241
+    },
+    {
+      "ground": "morass_closed_zone_3",
+      "level": 241
+    },
+    {
+      "ground": "morass_that_day_in_trueffet_2",
+      "level": 242
+    },
+    {
+      "ground": "morass_that_day_in_trueffet_2",
+      "level": 243
+    },
+    {
+      "ground": "morass_that_day_in_trueffet_3",
+      "level": 243
+    },
+    {
+      "ground": "morass_that_day_in_trueffet_3",
+      "level": 244
+    },
+    {
+      "ground": "morass_that_day_in_trueffet_4",
+      "level": 244
+    },
+    {
+      "ground": "morass_that_day_in_trueffet_4",
+      "level": 245
+    },
+    {
+      "ground": "esfera_where_life_begins_2",
+      "level": 240
+    },
+    {
+      "ground": "esfera_where_life_begins_3",
+      "level": 240
+    },
+    {
+      "ground": "esfera_where_life_begins_3",
+      "level": 241
+    },
+    {
+      "ground": "esfera_where_life_begins_4",
+      "level": 241
+    },
+    {
+      "ground": "esfera_where_life_begins_5",
+      "level": 242
+    },
+    {
+      "ground": "esfera_where_life_begins_6",
+      "level": 242
+    },
+    {
+      "ground": "esfera_where_life_begins_6",
+      "level": 243
+    },
+    {
+      "ground": "esfera_where_life_begins_7",
+      "level": 243
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_2",
+      "level": 244
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_3",
+      "level": 244
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_3",
+      "level": 245
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_4",
+      "level": 245
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_5",
+      "level": 246
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_6",
+      "level": 246
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_6",
+      "level": 247
+    },
+    {
+      "ground": "esfera_mirror_lit_sea_7",
+      "level": 247
+    },
+    {
+      "ground": "esfera_temple_of_mirrored_light_2",
+      "level": 248
+    },
+    {
+      "ground": "esfera_temple_of_mirrored_light_3",
+      "level": 248
+    },
+    {
+      "ground": "esfera_temple_of_mirrored_light_3",
+      "level": 249
+    },
+    {
+      "ground": "esfera_temple_of_mirrored_light_4",
+      "level": 249
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_1",
+      "level": 245
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_2",
+      "level": 245
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_3",
+      "level": 245
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_4",
+      "level": 246
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_5",
+      "level": 246
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_6",
+      "level": 246
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_7",
+      "level": 247
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_8",
+      "level": 247
+    },
+    {
+      "ground": "sellas_where_light_last_reaches_9",
+      "level": 247
+    },
+    {
+      "ground": "sellas_endlessly_falling_abyss_1",
+      "level": 248
+    },
+    {
+      "ground": "sellas_endlessly_falling_abyss_2",
+      "level": 248
+    },
+    {
+      "ground": "sellas_endlessly_falling_abyss_3",
+      "level": 248
+    },
+    {
+      "ground": "sellas_endlessly_falling_abyss_4",
+      "level": 249
+    },
+    {
+      "ground": "sellas_endlessly_falling_abyss_5",
+      "level": 249
+    },
+    {
+      "ground": "sellas_endlessly_falling_abyss_6",
+      "level": 249
+    },
+    {
+      "ground": "sellas_abyss_that_swallowed_stars_1",
+      "level": 250
+    },
+    {
+      "ground": "sellas_abyss_that_swallowed_stars_2",
+      "level": 250
+    },
+    {
+      "ground": "sellas_abyss_that_swallowed_stars_3",
+      "level": 250
+    },
+    {
+      "ground": "sellas_abyss_that_swallowed_stars_4",
+      "level": 251
+    },
+    {
+      "ground": "sellas_abyss_that_swallowed_stars_5",
+      "level": 251
+    },
+    {
+      "ground": "sellas_abyss_that_swallowed_stars_6",
+      "level": 251
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_1",
+      "level": 250
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_2",
+      "level": 251
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_3",
+      "level": 250
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_3",
+      "level": 251
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_4",
+      "level": 250
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_5",
+      "level": 251
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_6",
+      "level": 250
+    },
+    {
+      "ground": "moon_bridge_edge_of_thought_6",
+      "level": 251
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_1",
+      "level": 252
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_2",
+      "level": 253
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_3",
+      "level": 252
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_3",
+      "level": 253
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_4",
+      "level": 252
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_5",
+      "level": 253
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_6",
+      "level": 252
+    },
+    {
+      "ground": "moon_bridge_unknown_mist_6",
+      "level": 253
+    },
+    {
+      "ground": "moon_bridge_waves_of_void_1",
+      "level": 254
+    },
+    {
+      "ground": "moon_bridge_waves_of_void_2",
+      "level": 254
+    },
+    {
+      "ground": "moon_bridge_waves_of_void_3",
+      "level": 254
+    },
+    {
+      "ground": "moon_bridge_waves_of_void_4",
+      "level": 254
+    },
+    {
+      "ground": "moon_bridge_waves_of_void_5",
+      "level": 254
+    },
+    {
+      "ground": "moon_bridge_waves_of_void_6",
+      "level": 254
+    },
+    {
+      "ground": "labyrinth_of_suffering_interior_1",
+      "level": 255
+    },
+    {
+      "ground": "labyrinth_of_suffering_interior_2",
+      "level": 255
+    },
+    {
+      "ground": "labyrinth_of_suffering_interior_3",
+      "level": 255
+    },
+    {
+      "ground": "labyrinth_of_suffering_interior_4",
+      "level": 256
+    },
+    {
+      "ground": "labyrinth_of_suffering_interior_5",
+      "level": 256
+    },
+    {
+      "ground": "labyrinth_of_suffering_interior_6",
+      "level": 256
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_1",
+      "level": 257
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_2",
+      "level": 257
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_3",
+      "level": 257
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_4",
+      "level": 258
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_5",
+      "level": 258
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_6",
+      "level": 258
+    },
+    {
+      "ground": "labyrinth_of_suffering_core_7",
+      "level": 258
+    },
+    {
+      "ground": "labyrinth_of_suffering_deepest_part_1",
+      "level": 259
+    },
+    {
+      "ground": "labyrinth_of_suffering_deepest_part_2",
+      "level": 259
+    },
+    {
+      "ground": "labyrinth_of_suffering_deepest_part_3",
+      "level": 259
+    },
+    {
+      "ground": "labyrinth_of_suffering_deepest_part_4",
+      "level": 259
+    },
+    {
+      "ground": "labyrinth_of_suffering_deepest_part_5",
+      "level": 259
+    },
+    {
+      "ground": "labyrinth_of_suffering_deepest_part_6",
+      "level": 259
+    },
+    {
+      "ground": "limen_worlds_tears_lower_1",
+      "level": 260
+    },
+    {
+      "ground": "limen_worlds_tears_lower_2",
+      "level": 260
+    },
+    {
+      "ground": "limen_worlds_tears_lower_2",
+      "level": 261
+    },
+    {
+      "ground": "limen_worlds_tears_lower_3",
+      "level": 261
+    },
+    {
+      "ground": "limen_worlds_tears_middle_1",
+      "level": 261
+    },
+    {
+      "ground": "limen_worlds_tears_middle_2",
+      "level": 261
+    },
+    {
+      "ground": "limen_worlds_tears_middle_2",
+      "level": 262
+    },
+    {
+      "ground": "limen_worlds_tears_middle_3",
+      "level": 262
+    },
+    {
+      "ground": "limen_worlds_tears_middle_4",
+      "level": 262
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_4",
+      "level": 262
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_5",
+      "level": 262
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_5",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_6",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_7",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_8",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_1_9",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_3",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_4",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_4",
+      "level": 264
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_5",
+      "level": 264
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_6",
+      "level": 264
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_7",
+      "level": 263
+    },
+    {
+      "ground": "limen_where_the_world_ends_2_8",
+      "level": 264
+    },
+    {
+      "ground": "cernium_beach_rocks_1",
+      "level": 260
+    },
+    {
+      "ground": "cernium_beach_rocks_2",
+      "level": 260
+    },
+    {
+      "ground": "cernium_beach_rocks_3",
+      "level": 260
+    },
+    {
+      "ground": "cernium_beach_rocks_4",
+      "level": 260
+    },
+    {
+      "ground": "cernium_west_rampart_1",
+      "level": 260
+    },
+    {
+      "ground": "cernium_west_rampart_2",
+      "level": 260
+    },
+    {
+      "ground": "cernium_west_rampart_3",
+      "level": 260
+    },
+    {
+      "ground": "cernium_east_rampart_1",
+      "level": 261
+    },
+    {
+      "ground": "cernium_east_rampart_2",
+      "level": 261
+    },
+    {
+      "ground": "cernium_east_rampart_3",
+      "level": 261
+    },
+    {
+      "ground": "cernium_royal_library_section_1",
+      "level": 261
+    },
+    {
+      "ground": "cernium_royal_library_section_2",
+      "level": 261
+    },
+    {
+      "ground": "cernium_royal_library_section_3",
+      "level": 261
+    },
+    {
+      "ground": "cernium_royal_library_section_4",
+      "level": 261
+    },
+    {
+      "ground": "cernium_royal_library_section_5",
+      "level": 261
+    },
+    {
+      "ground": "cernium_royal_library_section_6",
+      "level": 261
+    },
+    {
+      "ground": "burning_cernium_embattled_west_rampart_1",
+      "level": 262
+    },
+    {
+      "ground": "burning_cernium_embattled_west_rampart_2",
+      "level": 262
+    },
+    {
+      "ground": "burning_cernium_embattled_west_rampart_3",
+      "level": 262
+    },
+    {
+      "ground": "burning_cernium_embattled_west_rampart_4",
+      "level": 262
+    },
+    {
+      "ground": "burning_cernium_embattled_east_rampart_1",
+      "level": 263
+    },
+    {
+      "ground": "burning_cernium_embattled_east_rampart_2",
+      "level": 263
+    },
+    {
+      "ground": "burning_cernium_embattled_east_rampart_3",
+      "level": 263
+    },
+    {
+      "ground": "burning_cernium_embattled_east_rampart_4",
+      "level": 263
+    },
+    {
+      "ground": "burning_cernium_embattled_east_rampart_5",
+      "level": 263
+    },
+    {
+      "ground": "burning_cernium_embattled_east_rampart_6",
+      "level": 263
+    },
+    {
+      "ground": "burning_cernium_burning_royal_library_section_1",
+      "level": 264
+    },
+    {
+      "ground": "burning_cernium_burning_royal_library_section_2",
+      "level": 264
+    },
+    {
+      "ground": "burning_cernium_burning_royal_library_section_3",
+      "level": 264
+    },
+    {
+      "ground": "burning_cernium_burning_royal_library_section_4",
+      "level": 264
+    },
+    {
+      "ground": "burning_cernium_burning_royal_library_section_5",
+      "level": 264
+    },
+    {
+      "ground": "burning_cernium_burning_royal_library_section_6",
+      "level": 264
+    },
+    {
+      "ground": "arcs_outlaw_ruled_wasteland_1",
+      "level": 265
+    },
+    {
+      "ground": "arcs_outlaw_ruled_wasteland_2",
+      "level": 265
+    },
+    {
+      "ground": "arcs_outlaw_ruled_wasteland_3",
+      "level": 265
+    },
+    {
+      "ground": "arcs_outlaw_ruled_wasteland_4",
+      "level": 265
+    },
+    {
+      "ground": "arcs_fading_romance_drive_in_theater_1",
+      "level": 266
+    },
+    {
+      "ground": "arcs_fading_romance_drive_in_theater_2",
+      "level": 266
+    },
+    {
+      "ground": "arcs_fading_romance_drive_in_theater_3",
+      "level": 266
+    },
+    {
+      "ground": "arcs_fading_romance_drive_in_theater_4",
+      "level": 267
+    },
+    {
+      "ground": "arcs_fading_romance_drive_in_theater_5",
+      "level": 267
+    },
+    {
+      "ground": "arcs_fading_romance_drive_in_theater_6",
+      "level": 267
+    },
+    {
+      "ground": "arcs_endless_cross_country_train_1",
+      "level": 268
+    },
+    {
+      "ground": "arcs_endless_cross_country_train_2",
+      "level": 268
+    },
+    {
+      "ground": "arcs_endless_cross_country_train_3",
+      "level": 268
+    },
+    {
+      "ground": "arcs_endless_cross_country_train_4",
+      "level": 269
+    },
+    {
+      "ground": "arcs_endless_cross_country_train_5",
+      "level": 269
+    },
+    {
+      "ground": "arcs_endless_cross_country_train_6",
+      "level": 269
+    },
+    {
+      "ground": "odium_road_to_castle_gate_1",
+      "level": 270
+    },
+    {
+      "ground": "odium_road_to_castle_gate_2",
+      "level": 270
+    },
+    {
+      "ground": "odium_road_to_castle_gate_3",
+      "level": 270
+    },
+    {
+      "ground": "odium_road_to_castle_gate_4",
+      "level": 270
+    },
+    {
+      "ground": "odium_road_to_castle_gate_5",
+      "level": 270
+    },
+    {
+      "ground": "odium_occupied_alley_1",
+      "level": 271
+    },
+    {
+      "ground": "odium_occupied_alley_2",
+      "level": 271
+    },
+    {
+      "ground": "odium_occupied_alley_3",
+      "level": 271
+    },
+    {
+      "ground": "odium_occupied_alley_4",
+      "level": 271
+    },
+    {
+      "ground": "odium_sunlit_laboratory_1",
+      "level": 272
+    },
+    {
+      "ground": "odium_sunlit_laboratory_2",
+      "level": 272
+    },
+    {
+      "ground": "odium_sunlit_laboratory_3",
+      "level": 272
+    },
+    {
+      "ground": "odium_laboratory_behind_locked_door_1",
+      "level": 273
+    },
+    {
+      "ground": "odium_laboratory_behind_locked_door_2",
+      "level": 273
+    },
+    {
+      "ground": "odium_laboratory_behind_locked_door_2",
+      "level": 274
+    },
+    {
+      "ground": "odium_laboratory_behind_locked_door_3",
+      "level": 274
+    },
+    {
+      "ground": "odium_laboratory_behind_locked_door_4",
+      "level": 274
+    },
+    {
+      "ground": "dowonkyung_spring_of_returning_vitality_1",
+      "level": 275
+    },
+    {
+      "ground": "dowonkyung_spring_of_returning_vitality_2",
+      "level": 275
+    },
+    {
+      "ground": "dowonkyung_spring_of_returning_vitality_3",
+      "level": 275
+    },
+    {
+      "ground": "dowonkyung_spring_of_returning_vitality_4",
+      "level": 275
+    },
+    {
+      "ground": "dowonkyung_spring_of_returning_vitality_5",
+      "level": 275
+    },
+    {
+      "ground": "dowonkyung_summer_of_dim_light_1",
+      "level": 276
+    },
+    {
+      "ground": "dowonkyung_summer_of_dim_light_2",
+      "level": 276
+    },
+    {
+      "ground": "dowonkyung_summer_of_dim_light_3",
+      "level": 276
+    },
+    {
+      "ground": "dowonkyung_summer_of_dim_light_4",
+      "level": 276
+    },
+    {
+      "ground": "dowonkyung_summer_of_dim_light_5",
+      "level": 276
+    },
+    {
+      "ground": "dowonkyung_autumn_of_faded_colors_1",
+      "level": 277
+    },
+    {
+      "ground": "dowonkyung_autumn_of_faded_colors_2",
+      "level": 277
+    },
+    {
+      "ground": "dowonkyung_autumn_of_faded_colors_3",
+      "level": 277
+    },
+    {
+      "ground": "dowonkyung_autumn_of_faded_colors_4",
+      "level": 277
+    },
+    {
+      "ground": "dowonkyung_autumn_of_faded_colors_5",
+      "level": 277
+    },
+    {
+      "ground": "dowonkyung_winter_of_grim_traces_1",
+      "level": 278
+    },
+    {
+      "ground": "dowonkyung_winter_of_grim_traces_2",
+      "level": 278
+    },
+    {
+      "ground": "dowonkyung_winter_of_grim_traces_2",
+      "level": 279
+    },
+    {
+      "ground": "dowonkyung_winter_of_grim_traces_3",
+      "level": 279
+    },
+    {
+      "ground": "dowonkyung_winter_of_grim_traces_4",
+      "level": 279
+    },
+    {
+      "ground": "dowonkyung_winter_of_grim_traces_5",
+      "level": 279
+    },
+    {
+      "ground": "arteria_north_outskirts",
+      "level": 280
+    },
+    {
+      "ground": "arteria_west_outskirts",
+      "level": 280
+    },
+    {
+      "ground": "arteria_east_outskirts",
+      "level": 281
+    },
+    {
+      "ground": "arteria_south_outskirts",
+      "level": 281
+    },
+    {
+      "ground": "arteria_outskirts_battle_zone_1",
+      "level": 280
+    },
+    {
+      "ground": "arteria_outskirts_battle_zone_2",
+      "level": 281
+    },
+    {
+      "ground": "arteria_lowest_level_passage_1",
+      "level": 282
+    },
+    {
+      "ground": "arteria_lowest_level_passage_2",
+      "level": 282
+    },
+    {
+      "ground": "arteria_lowest_level_passage_3",
+      "level": 282
+    },
+    {
+      "ground": "arteria_lowest_level_passage_4",
+      "level": 283
+    },
+    {
+      "ground": "arteria_lowest_level_passage_5",
+      "level": 283
+    },
+    {
+      "ground": "arteria_lowest_level_passage_6",
+      "level": 283
+    },
+    {
+      "ground": "arteria_top_level_passage_1",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_2",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_3",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_4",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_5",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_6",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_7",
+      "level": 284
+    },
+    {
+      "ground": "arteria_top_level_passage_8",
+      "level": 284
+    },
+    {
+      "ground": "carcion_giant_coral_colony_1",
+      "level": 285
+    },
+    {
+      "ground": "carcion_giant_coral_colony_2",
+      "level": 285
+    },
+    {
+      "ground": "carcion_giant_coral_colony_3",
+      "level": 286
+    },
+    {
+      "ground": "carcion_calm_shore_1",
+      "level": 286
+    },
+    {
+      "ground": "carcion_calm_shore_2",
+      "level": 286
+    },
+    {
+      "ground": "carcion_calm_shore_3",
+      "level": 286
+    },
+    {
+      "ground": "carcion_entangling_forest_1",
+      "level": 287
+    },
+    {
+      "ground": "carcion_entangling_forest_2",
+      "level": 287
+    },
+    {
+      "ground": "carcion_entangling_forest_3",
+      "level": 288
+    },
+    {
+      "ground": "carcion_darkening_tree_trunk_1",
+      "level": 288
+    },
+    {
+      "ground": "carcion_darkening_tree_trunk_2",
+      "level": 288
+    },
+    {
+      "ground": "carcion_darkening_tree_trunk_3",
+      "level": 288
+    },
+    {
+      "ground": "carcion_breathless_cave_1",
+      "level": 289
+    },
+    {
+      "ground": "carcion_breathless_cave_2",
+      "level": 289
+    },
+    {
+      "ground": "carcion_breathless_cave_3",
+      "level": 289
+    },
+    {
+      "ground": "carcion_breathless_cave_4",
+      "level": 289
+    },
+    {
+      "ground": "carcion_sunken_ruins_1",
+      "level": 289
+    },
+    {
+      "ground": "carcion_sunken_ruins_2",
+      "level": 289
+    },
+    {
+      "ground": "carcion_sunken_ruins_3",
+      "level": 289
+    },
+    {
+      "ground": "carcion_sunken_ruins_4",
+      "level": 289
+    },
+    {
+      "ground": "tallahart_land_of_ash_and_silence_1",
+      "level": 290
+    },
+    {
+      "ground": "tallahart_land_of_ash_and_silence_2",
+      "level": 290
+    },
+    {
+      "ground": "tallahart_land_of_ash_and_silence_3",
+      "level": 290
+    },
+    {
+      "ground": "tallahart_land_of_ash_and_silence_3",
+      "level": 291
+    },
+    {
+      "ground": "tallahart_land_of_ash_and_silence_4",
+      "level": 291
+    },
+    {
+      "ground": "tallahart_land_of_ash_and_silence_5",
+      "level": 291
+    },
+    {
+      "ground": "tallahart_battlefield_of_providence_and_fate_1",
+      "level": 291
+    },
+    {
+      "ground": "tallahart_battlefield_of_providence_and_fate_2",
+      "level": 291
+    },
+    {
+      "ground": "tallahart_battlefield_of_providence_and_fate_3",
+      "level": 291
+    },
+    {
+      "ground": "tallahart_battlefield_of_judgment_and_fate_1",
+      "level": 292
+    },
+    {
+      "ground": "tallahart_battlefield_of_judgment_and_fate_2",
+      "level": 292
+    },
+    {
+      "ground": "tallahart_battlefield_of_judgment_and_fate_3",
+      "level": 292
+    },
+    {
+      "ground": "tallahart_battlefield_of_eternity_and_fate_1",
+      "level": 293
+    },
+    {
+      "ground": "tallahart_battlefield_of_eternity_and_fate_2",
+      "level": 293
+    },
+    {
+      "ground": "tallahart_battlefield_of_eternity_and_fate_3",
+      "level": 293
+    },
+    {
+      "ground": "tallahart_road_of_night_1",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_night_2",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_night_3",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_night_4",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_illusion_1",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_illusion_2",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_illusion_3",
+      "level": 294
+    },
+    {
+      "ground": "tallahart_road_of_illusion_4",
+      "level": 294
+    },
+    {
+      "ground": "geardrak_basement_1",
+      "level": 295
+    },
+    {
+      "ground": "geardrak_basement_2_section_1",
+      "level": 295
+    },
+    {
+      "ground": "geardrak_basement_2_section_2",
+      "level": 295
+    },
+    {
+      "ground": "geardrak_basement_3_section_1",
+      "level": 296
+    },
+    {
+      "ground": "geardrak_basement_3_section_2",
+      "level": 296
+    },
+    {
+      "ground": "geardrak_basement_4",
+      "level": 296
+    },
+    {
+      "ground": "geardrak_robot_warehouse_1",
+      "level": 297
+    },
+    {
+      "ground": "geardrak_robot_warehouse_2",
+      "level": 297
+    },
+    {
+      "ground": "geardrak_robot_warehouse_3",
+      "level": 297
+    },
+    {
+      "ground": "geardrak_robot_warehouse_4",
+      "level": 297
+    },
+    {
+      "ground": "geardrak_robot_warehouse_5",
+      "level": 298
+    },
+    {
+      "ground": "geardrak_robot_warehouse_6",
+      "level": 298
+    },
+    {
+      "ground": "geardrak_robot_warehouse_7",
+      "level": 298
+    },
+    {
+      "ground": "geardrak_robot_warehouse_8",
+      "level": 298
+    },
+    {
+      "ground": "geardrak_gobs_workshop_1",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_2",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_3",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_4",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_5",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_6",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_7",
+      "level": 299
+    },
+    {
+      "ground": "geardrak_gobs_workshop_8",
+      "level": 299
+    }
+  ]
+}

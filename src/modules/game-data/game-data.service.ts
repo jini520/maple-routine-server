@@ -17,6 +17,10 @@ import {
   EquipmentItemsRepository,
   type EquipmentItemsSection,
 } from '../equipment-items/equipment-items.repository'
+import {
+  HuntingGroundsRepository,
+  type HuntingGroundsSection,
+} from '../hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository, type MvpGradesSection } from '../mvp-grades/mvp-grades.repository'
 import {
   SpendCatalogRepository,
@@ -46,6 +50,7 @@ export interface GameDataSnapshot {
   equipmentItems: EquipmentItemsSection
   enhancementCosts: EnhancementCostsSection
   mvpGrades: MvpGradesSection
+  huntingGrounds: HuntingGroundsSection
 }
 
 @Injectable()
@@ -63,6 +68,7 @@ export class GameDataService {
     private readonly equipmentItems: EquipmentItemsRepository,
     private readonly enhancementCosts: EnhancementCostsRepository,
     private readonly mvpGrades: MvpGradesRepository,
+    private readonly huntingGrounds: HuntingGroundsRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -79,6 +85,7 @@ export class GameDataService {
       equipmentItems,
       enhancementCosts,
       mvpGrades,
+      huntingGrounds,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -92,6 +99,7 @@ export class GameDataService {
       this.equipmentItems.section(),
       this.enhancementCosts.section(),
       this.mvpGrades.section(),
+      this.huntingGrounds.section(),
     ])
     return {
       bosses,
@@ -106,6 +114,7 @@ export class GameDataService {
       equipmentItems,
       enhancementCosts,
       mvpGrades,
+      huntingGrounds,
     }
   }
 }

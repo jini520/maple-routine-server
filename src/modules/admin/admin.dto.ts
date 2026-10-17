@@ -12,6 +12,7 @@ import {
   POTENTIAL_GRADES,
   POTENTIAL_RESET_TYPES,
 } from '../enhancement-costs/enhancement-costs.repository'
+import { FORCE_TYPES } from '../hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
 import {
   SPEND_CATEGORIES,
@@ -373,3 +374,32 @@ export const mvpGradeUpdateBody = z.object({
   starforceDiscountPercent: z.number().int().min(0).max(100),
 })
 export type MvpGradeUpdateBody = z.infer<typeof mvpGradeUpdateBody>
+
+/* ── 사냥터 ── */
+
+export const huntingRegionCreateBody = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(50),
+  forceType: z.enum(FORCE_TYPES),
+})
+export type HuntingRegionCreateBody = z.infer<typeof huntingRegionCreateBody>
+export const huntingRegionUpdateBody = huntingRegionCreateBody.omit({ key: true })
+export type HuntingRegionUpdateBody = z.infer<typeof huntingRegionUpdateBody>
+
+/** 사냥터 하나. 레벨은 하나 이상이고 겹치지 않는다. 모양 검사(지역 key 접두 · 이름 유일)는 리포지토리가 한다. */
+const huntingGroundBase = z.object({
+  key: snakeKey,
+  region: snakeKey,
+  name: z.string().min(1).max(100),
+  force: z.number().int().min(0),
+  mobs: z.number().int().min(1),
+  levels: z.array(z.number().int().min(1).max(400)).min(1).max(5),
+})
+const distinctLevels = (g: { levels: number[] }) => new Set(g.levels).size === g.levels.length
+const LEVELS_MESSAGE = { message: '같은 레벨은 못 겹친다', path: ['levels'] }
+export const huntingGroundCreateBody = huntingGroundBase.refine(distinctLevels, LEVELS_MESSAGE)
+export type HuntingGroundCreateBody = z.infer<typeof huntingGroundCreateBody>
+export const huntingGroundUpdateBody = huntingGroundBase
+  .omit({ key: true, region: true })
+  .refine(distinctLevels, LEVELS_MESSAGE)
+export type HuntingGroundUpdateBody = z.infer<typeof huntingGroundUpdateBody>

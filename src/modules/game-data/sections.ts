@@ -16,6 +16,7 @@ export const SECTION_KEYS = [
   'equipmentItems',
   'enhancementCosts',
   'mvpGrades',
+  'huntingGrounds',
 ] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 

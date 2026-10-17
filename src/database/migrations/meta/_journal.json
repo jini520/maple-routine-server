@@ -71,6 +71,13 @@
       "when": 1792218844216,
       "tag": "0009_enhancement",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792223396354,
+      "tag": "0010_hunting",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,12 @@
 import { describeDb, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
+import { ContentsRepository } from '../modules/contents/contents.repository'
 import { SpendCatalogRepository } from '../modules/spend-catalog/spend-catalog.repository'
 import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repository'
 import {
   parseBossDropsSeed,
   parseBossesSeed,
+  parseContentsSeed,
   parseCrystalPricesSeed,
   parseDropBoxesSeed,
   parseDropItemsSeed,
@@ -194,6 +196,75 @@ const symbolCostsSeed = {
   ],
 }
 
+const category = (key: string, name: string, extra: object = {}) => ({
+  key,
+  name,
+  countTag: null,
+  hideCountTag: false,
+  weeklyLimit: null,
+  sharedOrder: null,
+  ...extra,
+})
+const contentsSeed = {
+  // 갈래 줄은 ENUM 과 일대일이라 여덟을 다 든다.
+  categories: [
+    category('epic_dungeon', '에픽 던전', { countTag: 'ID당 1회', weeklyLimit: 3, sharedOrder: 2 }),
+    category('monster_park', '몬스터파크', { sharedOrder: 0 }),
+    category('guild', '길드'),
+    category('arcane_river_quest', '아케인리버 지역 퀘스트', { hideCountTag: true }),
+    category('weekly_quest', '주간 퀘스트'),
+    category('mu_lung_dojo', '무릉도장'),
+    category('maple_union', '메이플 유니온', { sharedOrder: 1 }),
+    category('daily_quest', '일일 퀘스트'),
+  ],
+  contents: [
+    {
+      key: 'epic_dungeon_high_mountain',
+      section: 'weekly',
+      apiName: '에픽 던전 : 하이마운틴',
+      category: 'epic_dungeon',
+      displayName: '하이마운틴',
+      shortName: '에픽 던전 : 하이마운틴',
+      backgroundMap: null,
+      backgroundPortrait: 'ancientGodMitra',
+      countTag: null,
+      type: 'contents',
+      maxCount: 5,
+      requiredLevel: 260,
+      from: null,
+      until: null,
+      shareScope: 'account',
+      sharedShortName: '하이마운틴',
+      onlyWhenScheduled: false,
+      trustRegistrationFlag: false,
+      cumulativeScore: false,
+      maxCountOverride: null,
+    },
+    {
+      key: 'monster_park',
+      section: 'daily',
+      apiName: '몬스터파크',
+      category: 'monster_park',
+      displayName: '몬스터파크',
+      shortName: '몬스터파크',
+      backgroundMap: 'monsterPark',
+      backgroundPortrait: null,
+      countTag: '월드 당 최대 14회',
+      type: 'contents',
+      maxCount: 14,
+      requiredLevel: 105,
+      from: null,
+      until: null,
+      shareScope: 'world',
+      sharedShortName: '일간',
+      onlyWhenScheduled: false,
+      trustRegistrationFlag: false,
+      cumulativeScore: false,
+      maxCountOverride: null,
+    },
+  ],
+}
+
 describe('씨앗 넷의 모양', () => {
   it('받고, 모양이 어긋나면 던진다', () => {
     expect(parseDropItemsSeed(dropItemsSeed)).toEqual(dropItemsSeed)
@@ -203,6 +274,7 @@ describe('씨앗 넷의 모양', () => {
     expect(parseWorldsSeed(worldsSeed)).toEqual(worldsSeed)
     expect(parseSpendCatalogSeed(spendCatalogSeed)).toEqual(spendCatalogSeed)
     expect(parseSymbolCostsSeed(symbolCostsSeed)).toEqual(symbolCostsSeed)
+    expect(parseContentsSeed(contentsSeed)).toEqual(contentsSeed)
     expect(() =>
       parseSpendCatalogSeed({
         ...spendCatalogSeed,
@@ -217,6 +289,12 @@ describe('씨앗 넷의 모양', () => {
     ).toThrow()
     expect(() =>
       parseWorldsSeed({ worlds: [{ ...worldsSeed.worlds[0], key: 'Scania' }] }),
+    ).toThrow()
+    expect(() =>
+      parseContentsSeed({
+        ...contentsSeed,
+        contents: [{ ...contentsSeed.contents[0], shareScope: 'guild' }],
+      }),
     ).toThrow()
     expect(() =>
       parseDropItemsSeed({
@@ -292,7 +370,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('여덟을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('아홉을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -302,6 +380,7 @@ describeDb('seedGameData', () => {
       worlds: parseWorldsSeed(worldsSeed),
       spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
       symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
+      contents: parseContentsSeed(contentsSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -312,6 +391,7 @@ describeDb('seedGameData', () => {
       worlds: 'seeded',
       spendCatalog: 'seeded',
       symbolCosts: 'seeded',
+      contents: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -324,6 +404,9 @@ describeDb('seedGameData', () => {
     expect(spend.itemForms).toHaveLength(2)
     const symbol = await new SymbolCostsRepository(db).section()
     expect(symbol.levelCosts.map((c) => c.costMeso)).toEqual([100, 200])
+    const content = await new ContentsRepository(db).section()
+    expect(content.categories.map((c) => c.key)).toEqual(contentsSeed.categories.map((c) => c.key))
+    expect(content.contents).toEqual([contentsSeed.contents[1], contentsSeed.contents[0]])
 
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules.defaultMaxPartySize).toBe(6)
@@ -336,12 +419,31 @@ describeDb('seedGameData', () => {
       crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
       spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
       symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
+      contents: parseContentsSeed(contentsSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
       crystalPrices: 'skipped',
       spendCatalog: 'skipped',
       symbolCosts: 'skipped',
+      contents: 'skipped',
+    })
+  })
+
+  // 갈래 줄은 ENUM 과 일대일이다. 빠진 갈래의 컨텐츠는 관리 화면에서 영영 못 더하므로 채우지 않고 던진다.
+  it('컨텐츠 씨앗의 갈래가 ENUM 을 다 안 들면 던지고 아무것도 안 넣는다', async () => {
+    await expect(
+      seedGameData(db, {
+        contents: parseContentsSeed({
+          ...contentsSeed,
+          categories: contentsSeed.categories.slice(1),
+        }),
+      }),
+    ).rejects.toThrow('씨앗의 갈래가 ENUM 을 다 안 든다: epic_dungeon')
+    expect(await new ContentsRepository(db).section()).toEqual({
+      updatedAt: null,
+      categories: [],
+      contents: [],
     })
   })
 

@@ -19,6 +19,11 @@ import {
   OnlyRow,
   SymbolCostsRepository,
 } from '../symbol-costs/symbol-costs.repository'
+import {
+  ApiNameTaken,
+  ContentsRepository,
+  NoContentCategory,
+} from '../contents/contents.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -107,6 +112,14 @@ describe('AdminController', () => {
     addCosts: jest.fn(),
     removeLatest: jest.fn(),
   }
+  const contentsRepo = {
+    section: jest.fn(),
+    updateCategory: jest.fn(),
+    moveCategory: jest.fn(),
+    createContent: jest.fn(),
+    updateContent: jest.fn(),
+    moveContent: jest.fn(),
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -123,6 +136,7 @@ describe('AdminController', () => {
         { provide: WorldsRepository, useValue: worldsRepo },
         { provide: SpendCatalogRepository, useValue: spendRepo },
         { provide: SymbolCostsRepository, useValue: symbolRepo },
+        { provide: ContentsRepository, useValue: contentsRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -143,6 +157,7 @@ describe('AdminController', () => {
       ...Object.values(worldsRepo),
       ...Object.values(spendRepo),
       ...Object.values(symbolRepo),
+      ...Object.values(contentsRepo),
     ]) {
       mock.mockReset()
     }
@@ -161,6 +176,7 @@ describe('AdminController', () => {
     '/admin/worlds',
     '/admin/spend-catalog',
     '/admin/symbol-costs',
+    '/admin/contents',
   ]
 
   it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
@@ -1180,6 +1196,207 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/worlds/special/move',
+            payload: { direction: 'down' },
+          })
+        ).statusCode,
+      ).toBe(204)
+    })
+  })
+
+  describe('컨텐츠', () => {
+    const highMountain = {
+      apiName: '에픽 던전 : 하이마운틴',
+      category: 'epic_dungeon',
+      displayName: '하이마운틴',
+      shortName: '에픽 던전 : 하이마운틴',
+      backgroundPortrait: 'ancientGodMitra',
+      type: 'contents',
+      maxCount: 5,
+      requiredLevel: 260,
+      shareScope: 'account',
+      sharedShortName: '하이마운틴',
+    }
+    const highMountainFields = {
+      apiName: '에픽 던전 : 하이마운틴',
+      category: 'epic_dungeon',
+      displayName: '하이마운틴',
+      shortName: '에픽 던전 : 하이마운틴',
+      backgroundMap: null,
+      backgroundPortrait: 'ancientGodMitra',
+      countTag: null,
+      type: 'contents',
+      maxCount: 5,
+      requiredLevel: 260,
+      from: null,
+      until: null,
+      shareScope: 'account',
+      sharedShortName: '하이마운틴',
+      onlyWhenScheduled: false,
+      trustRegistrationFlag: false,
+      cumulativeScore: false,
+      maxCountOverride: null,
+    }
+
+    it('rows 는 칸 그대로이고, 갈래는 PUT 204 · 모르면 404, move 는 204 다', async () => {
+      contentsRepo.section.mockResolvedValue({ updatedAt: null, categories: [], contents: [] })
+      expect((await app.inject({ method: 'GET', url: '/admin/contents/rows' })).json()).toEqual({
+        updatedAt: null,
+        categories: [],
+        contents: [],
+      })
+
+      contentsRepo.updateCategory.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/contents/categories/epic_dungeon',
+            payload: { name: '에픽 던전', countTag: 'ID당 1회', weeklyLimit: 3, sharedOrder: 2 },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(contentsRepo.updateCategory).toHaveBeenCalledWith('epic_dungeon', {
+        name: '에픽 던전',
+        countTag: 'ID당 1회',
+        hideCountTag: false,
+        weeklyLimit: 3,
+        sharedOrder: 2,
+      })
+      // 글자와 숨김을 함께 못 든다. 갈래 key 는 ENUM 밖이면 경로에서 400 이다.
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/contents/categories/epic_dungeon',
+            payload: { name: '에픽 던전', countTag: 'ID당 1회', hideCountTag: true },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/contents/categories/misc',
+            payload: { name: 'x' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      contentsRepo.updateCategory.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/contents/categories/guild',
+            payload: { name: '길드' },
+          })
+        ).statusCode,
+      ).toBe(404)
+
+      contentsRepo.moveCategory.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/contents/categories/guild/move',
+            payload: { direction: 'up' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(contentsRepo.moveCategory).toHaveBeenCalledWith('guild', 'up')
+    })
+
+    it('컨텐츠 POST 는 201 · 모르는 갈래 404 · 같은 key 와 겹치는 API 이름 409 · 모양이 틀리면 400 이다', async () => {
+      contentsRepo.createContent.mockResolvedValue({ id: ROW })
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/contents',
+        payload: { key: 'epic_dungeon_high_mountain', section: 'weekly', ...highMountain },
+      })
+      expect(created.statusCode).toBe(201)
+      expect(contentsRepo.createContent).toHaveBeenCalledWith({
+        key: 'epic_dungeon_high_mountain',
+        section: 'weekly',
+        ...highMountainFields,
+      })
+
+      contentsRepo.createContent.mockRejectedValue(new NoContentCategory('epic_dungeon'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/contents',
+            payload: { key: 'epic_dungeon_high_mountain', section: 'weekly', ...highMountain },
+          })
+        ).statusCode,
+      ).toBe(404)
+      contentsRepo.createContent.mockRejectedValue(new ApiNameTaken('epic_dungeon_high_mountain'))
+      const taken = await app.inject({
+        method: 'POST',
+        url: '/admin/contents',
+        payload: { key: 'epic_dungeon_high_mountain_2', section: 'weekly', ...highMountain },
+      })
+      expect(taken.statusCode).toBe(409)
+      expect(taken.json<{ message: string }>().message).toContain('epic_dungeon_high_mountain')
+
+      // 캐릭터 줄이 위젯 글자를 들거나, 공유 줄이 안 들거나, 그림 둘을 다 들면 400 이다.
+      for (const bad of [
+        { ...highMountain, shareScope: 'character' },
+        { ...highMountain, sharedShortName: null },
+        { ...highMountain, backgroundMap: 'highMountain' },
+        {
+          ...highMountain,
+          shareScope: 'character',
+          sharedShortName: null,
+          onlyWhenScheduled: true,
+        },
+        { ...highMountain, from: '2026-09-17', until: '2026-09-10' },
+      ]) {
+        contentsRepo.createContent.mockClear()
+        expect(
+          (
+            await app.inject({
+              method: 'POST',
+              url: '/admin/contents',
+              payload: { key: 'epic_dungeon_high_mountain', section: 'weekly', ...bad },
+            })
+          ).statusCode,
+        ).toBe(400)
+        expect(contentsRepo.createContent).not.toHaveBeenCalled()
+      }
+    })
+
+    it('컨텐츠 PUT 은 204 · 모르면 404 이고 key 와 섹션은 안 받는다. move 는 204 다', async () => {
+      contentsRepo.updateContent.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/contents/epic_dungeon_high_mountain',
+            payload: { ...highMountain, until: '2027-01-01' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(contentsRepo.updateContent).toHaveBeenCalledWith('epic_dungeon_high_mountain', {
+        ...highMountainFields,
+        until: '2027-01-01',
+      })
+      contentsRepo.updateContent.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/contents/nobody',
+            payload: highMountain,
+          })
+        ).statusCode,
+      ).toBe(404)
+
+      contentsRepo.moveContent.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/contents/epic_dungeon_high_mountain/move',
             payload: { direction: 'down' },
           })
         ).statusCode,

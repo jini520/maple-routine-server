@@ -1,6 +1,12 @@
 import { z } from 'zod'
 
 import { BOSS_DIFFICULTIES } from '../bosses/bosses.dto'
+import {
+  CONTENT_CATEGORIES,
+  CONTENT_SECTIONS,
+  CONTENT_TYPES,
+  SHARE_SCOPES,
+} from '../contents/contents.repository'
 import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
 import {
   SPEND_CATEGORIES,
@@ -250,3 +256,69 @@ export const symbolCostsBody = z.object({
     .max(100),
 })
 export type SymbolCostsBody = z.infer<typeof symbolCostsBody>
+
+/* ── 컨텐츠 ── */
+
+/** 갈래의 글자 · 태그 · 한도 · 공유 차례. key 는 ENUM 이라 경로가 든다. 태그는 글자와 숨김 중 하나다. */
+export const contentCategoryUpdateBody = z
+  .object({
+    name: z.string().min(1).max(50),
+    countTag: z.string().min(1).max(50).nullish(),
+    hideCountTag: z.boolean().default(false),
+    weeklyLimit: z.number().int().min(1).nullish(),
+    sharedOrder: z.number().int().min(0).nullish(),
+  })
+  .refine((c) => c.countTag == null || !c.hideCountTag, {
+    message: '태그는 글자와 숨김 중 하나다',
+    path: ['hideCountTag'],
+  })
+export type ContentCategoryUpdateBody = z.infer<typeof contentCategoryUpdateBody>
+export const contentCategoryParam = z.enum(CONTENT_CATEGORIES)
+
+/** 컨텐츠 한 줄. 공유 줄만 위젯 글자와 스위치 둘을 들고, 그림은 지도와 초상 중 하나다. */
+const contentBase = z.object({
+  key: snakeKey,
+  section: z.enum(CONTENT_SECTIONS),
+  apiName: z.string().min(1).max(100),
+  category: z.enum(CONTENT_CATEGORIES),
+  displayName: z.string().min(1).max(100),
+  shortName: z.string().min(1).max(100),
+  backgroundMap: z.string().min(1).max(100).nullish(),
+  backgroundPortrait: z.string().min(1).max(100).nullish(),
+  countTag: z.string().min(1).max(50).nullish(),
+  type: z.enum(CONTENT_TYPES),
+  maxCount: z.number().int().min(0),
+  requiredLevel: z.number().int().min(1).nullish(),
+  from: periodText,
+  until: periodText,
+  shareScope: z.enum(SHARE_SCOPES).default('character'),
+  sharedShortName: z.string().min(1).max(50).nullish(),
+  onlyWhenScheduled: z.boolean().default(false),
+  trustRegistrationFlag: z.boolean().default(false),
+  cumulativeScore: z.boolean().default(false),
+  maxCountOverride: z.number().int().min(1).nullish(),
+})
+/** 규칙은 key · 섹션을 안 보므로 더하기와 고치기가 같은 검사를 쓴다. */
+type ContentRuleShape = Omit<z.infer<typeof contentBase>, 'key' | 'section'>
+const contentRules = <T extends z.ZodType<ContentRuleShape>>(schema: T) =>
+  schema
+    .refine(periodOrder, PERIOD_MESSAGE)
+    .refine((c) => c.backgroundMap == null || c.backgroundPortrait == null, {
+      message: '그림은 지도와 초상 중 하나다',
+      path: ['backgroundPortrait'],
+    })
+    .refine((c) => (c.shareScope === 'character') === (c.sharedShortName == null), {
+      message: '공유 줄은 위젯 글자를 들고 캐릭터 줄은 못 든다',
+      path: ['sharedShortName'],
+    })
+    .refine(
+      (c) => c.shareScope !== 'character' || (!c.onlyWhenScheduled && !c.trustRegistrationFlag),
+      {
+        message: '캐릭터 줄은 스위치 둘을 못 켠다',
+        path: ['shareScope'],
+      },
+    )
+export const contentCreateBody = contentRules(contentBase)
+export type ContentCreateBody = z.infer<typeof contentCreateBody>
+export const contentUpdateBody = contentRules(contentBase.omit({ key: true, section: true }))
+export type ContentUpdateBody = z.infer<typeof contentUpdateBody>

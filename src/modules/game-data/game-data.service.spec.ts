@@ -1,5 +1,6 @@
 import type { BossDropsRepository } from '../boss-drops/boss-drops.repository'
 import type { BossesRepository, Catalog } from '../bosses/bosses.repository'
+import type { ContentsRepository } from '../contents/contents.repository'
 import type { CrystalPricesRepository } from '../crystal-prices/crystal-prices.repository'
 import type { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import type { DropItemsRepository } from '../drop-items/drop-items.repository'
@@ -28,6 +29,7 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
       itemForms: [],
     }) as unknown as SpendCatalogRepository,
     empty({ groups: [], symbols: [], levelCosts: [] }) as unknown as SymbolCostsRepository,
+    empty({ categories: [], contents: [] }) as unknown as ContentsRepository,
   )
 }
 
@@ -38,7 +40,7 @@ const catalog: Catalog = {
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 일곱은 각 리포지토리의 section 이다', async () => {
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 여덟은 각 리포지토리의 section 이다', async () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
@@ -58,6 +60,7 @@ describe('GameDataService', () => {
         itemForms: [],
       },
       symbolCosts: { updatedAt: null, groups: [], symbols: [], levelCosts: [] },
+      contents: { updatedAt: null, categories: [], contents: [] },
     })
   })
 

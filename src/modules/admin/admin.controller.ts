@@ -74,6 +74,13 @@ import {
   SymbolExists,
   SymbolGroupExists,
 } from '../symbol-costs/symbol-costs.repository'
+import {
+  ApiNameTaken,
+  type ContentCategory,
+  ContentExists as ContentKeyExists,
+  ContentsRepository,
+  NoContentCategory,
+} from '../contents/contents.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
@@ -127,6 +134,13 @@ import {
   spendTileUpdateBody,
   type SymbolCostsBody,
   symbolCostsBody,
+  type ContentCategoryUpdateBody,
+  contentCategoryParam,
+  contentCategoryUpdateBody,
+  type ContentCreateBody,
+  contentCreateBody,
+  type ContentUpdateBody,
+  contentUpdateBody,
   type SymbolCreateBody,
   symbolCreateBody,
   type SymbolGroupCreateBody,
@@ -148,13 +162,14 @@ import { DROP_ITEMS_HTML } from './views/drop-items'
 import { DROP_PRICES_HTML } from './views/drop-prices'
 import { SPEND_CATALOG_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
+import { CONTENTS_HTML } from './views/contents'
 import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
 import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용)도 여기다.
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용 · 컨텐츠)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
@@ -172,6 +187,7 @@ export class AdminController {
     private readonly worlds: WorldsRepository,
     private readonly spend: SpendCatalogRepository,
     private readonly symbolCosts: SymbolCostsRepository,
+    private readonly contents: ContentsRepository,
   ) {}
 
   @Get()
@@ -997,6 +1013,125 @@ export class AdminController {
     if (!(await this.bosses.setMaxPartySize(boss, difficulty, body.maxPartySize)))
       throw new NotFoundException(`모르는 보스 난이도다: ${boss}/${difficulty}`)
   }
+
+  /* ── 컨텐츠 ── */
+
+  @Get('contents')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  contentsPage(): string {
+    return CONTENTS_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  @Get('contents/rows')
+  @Header('cache-control', 'no-store')
+  contentRows() {
+    return this.contents.section()
+  }
+
+  /** 갈래의 글자 · 태그 · 한도 · 공유 차례를 갈아 끼운다. 갈래는 ENUM 이라 더하고 지우는 끝점이 없다. 모르면 404 다. */
+  @Put('contents/categories/:key')
+  @HttpCode(204)
+  async updateContentCategory(
+    @Param('key', new ZodValidationPipe(contentCategoryParam)) key: ContentCategory,
+    @Body(new ZodValidationPipe(contentCategoryUpdateBody)) body: ContentCategoryUpdateBody,
+  ): Promise<void> {
+    if (
+      !(await this.contents.updateCategory(key, {
+        name: body.name,
+        countTag: body.countTag ?? null,
+        hideCountTag: body.hideCountTag,
+        weeklyLimit: body.weeklyLimit ?? null,
+        sharedOrder: body.sharedOrder ?? null,
+      }))
+    )
+      throw new NotFoundException(`모르는 갈래다: ${key}`)
+  }
+
+  @Post('contents/categories/:key/move')
+  @HttpCode(204)
+  async moveContentCategory(
+    @Param('key', new ZodValidationPipe(contentCategoryParam)) key: ContentCategory,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.contents.moveCategory(key, body.direction)))
+      throw new NotFoundException(`모르는 갈래다: ${key}`)
+  }
+
+  /** 컨텐츠를 섹션 맨 뒤에 더한다. 모르는 갈래는 404, 같은 key 나 공백만 다른 API 이름은 409 다. */
+  @Post('contents')
+  @HttpCode(201)
+  async createContent(@Body(new ZodValidationPipe(contentCreateBody)) body: ContentCreateBody) {
+    try {
+      return await this.contents.createContent({
+        ...contentFields(body),
+        key: body.key,
+        section: body.section,
+      })
+    } catch (error) {
+      throw contentError(error, body.key)
+    }
+  }
+
+  /** 컨텐츠를 갈아 끼운다. key 와 섹션은 못 바꾼다. 모르면 404 다. */
+  @Put('contents/:key')
+  @HttpCode(204)
+  async updateContent(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(contentUpdateBody)) body: ContentUpdateBody,
+  ): Promise<void> {
+    try {
+      if (!(await this.contents.updateContent(key, contentFields(body))))
+        throw new NotFoundException(`모르는 컨텐츠다: ${key}`)
+    } catch (error) {
+      throw contentError(error, key)
+    }
+  }
+
+  @Post('contents/:key/move')
+  @HttpCode(204)
+  async moveContent(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.contents.moveContent(key, body.direction)))
+      throw new NotFoundException(`모르는 컨텐츠다: ${key}`)
+  }
+}
+
+/** 컨텐츠 본문의 빈 칸을 null 로 맞춘다. key 와 섹션은 부르는 쪽이 든다. */
+function contentFields(body: ContentUpdateBody) {
+  return {
+    apiName: body.apiName,
+    category: body.category,
+    displayName: body.displayName,
+    shortName: body.shortName,
+    backgroundMap: body.backgroundMap ?? null,
+    backgroundPortrait: body.backgroundPortrait ?? null,
+    countTag: body.countTag ?? null,
+    type: body.type,
+    maxCount: body.maxCount,
+    requiredLevel: body.requiredLevel ?? null,
+    from: body.from ?? null,
+    until: body.until ?? null,
+    shareScope: body.shareScope,
+    sharedShortName: body.sharedShortName ?? null,
+    onlyWhenScheduled: body.onlyWhenScheduled,
+    trustRegistrationFlag: body.trustRegistrationFlag,
+    cumulativeScore: body.cumulativeScore,
+    maxCountOverride: body.maxCountOverride ?? null,
+  }
+}
+
+/** 컨텐츠 쓰기의 실패를 HTTP 로 옮긴다. 모르는 갈래는 404, 같은 key 와 겹치는 API 이름은 409 다. */
+function contentError(error: unknown, key: string): unknown {
+  if (error instanceof NoContentCategory)
+    return new NotFoundException(`모르는 갈래다: ${error.message}`)
+  if (error instanceof ContentKeyExists) return new ConflictException(`이미 있는 컨텐츠다: ${key}`)
+  if (error instanceof ApiNameTaken)
+    return new ConflictException(`공백만 다른 API 이름이 이미 있다: ${error.message}`)
+  return error
 }
 
 /** 화면이 읽는 모양. 시각은 ISO 문자열이다. */

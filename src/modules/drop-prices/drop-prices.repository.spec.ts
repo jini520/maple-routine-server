@@ -1,9 +1,14 @@
 import { eq } from 'drizzle-orm'
 
-import { dropPrices, users } from '../../database/schema'
+import { dropItems, dropPrices, users, worlds } from '../../database/schema'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
-import { type DropPriceInput, DropPricesRepository } from './drop-prices.repository'
+import {
+  type DropPriceInput,
+  DropPricesRepository,
+  NoDropItem,
+  NoWorld,
+} from './drop-prices.repository'
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 
@@ -40,6 +45,19 @@ describeDb('DropPricesRepository', () => {
       .returning({ id: users.id })
     me = rows[0].id
     other = rows[1].id
+    // 가격 줄이 아이템 · 월드 표의 줄을 가리킨다. 스펙이 쓰는 key 둘과 월드 하나를 먼저 세운다.
+    await db.insert(dropItems).values([
+      { key: 'ring', name: '반지', iconFile: null, valuable: true },
+      { key: 'cape', name: '망토', iconFile: null, valuable: false },
+    ])
+    await db.insert(worlds).values({
+      key: 'scania',
+      name: '스카니아',
+      emblem: null,
+      challengers: false,
+      event: false,
+      sortOrder: 0,
+    })
   })
   afterAll(() => close())
 
@@ -52,6 +70,21 @@ describeDb('DropPricesRepository', () => {
     expect(rows[0]?.priceMeso).toBe(250)
     expect(rows[0]?.identifiedBy).toBe('login')
     expect(rows[0]?.updatedAt.getTime()).toBeGreaterThanOrEqual(rows[0]?.createdAt.getTime() ?? 0)
+  })
+
+  // 아이템 · 월드는 시세의 축이라 모르는 값을 받으면 어느 아이템의 시세인지 모르는 줄이 된다. 월드가 없는 줄은 받는다.
+  it('표에 없는 아이템 · 월드 key 는 NoDropItem · NoWorld 로 거절하고 줄을 안 만든다. 월드 null 은 받는다', async () => {
+    await expect(repo.upsert(input({ itemKey: 'nobody' }))).rejects.toThrow(
+      new NoDropItem('nobody'),
+    )
+    await expect(repo.upsert(input({ worldKey: 'nowhere' }))).rejects.toThrow(
+      new NoWorld('nowhere'),
+    )
+    expect(await db.select().from(dropPrices)).toHaveLength(0)
+
+    await repo.upsert(input({ worldKey: null }))
+    const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    expect(rows.map((r) => [r.itemKey, r.worldKey])).toEqual([['ring', null]])
   })
 
   it('남의 기록 id 로 적어도 남의 줄은 안 건드리고 내 줄이 따로 생긴다', async () => {

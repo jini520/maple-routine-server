@@ -6,7 +6,7 @@ import { BossesRepository } from '../bosses/bosses.repository'
 import { IdentityGuard } from '../identity/identity.guard'
 import { UsersRepository } from '../users/users.repository'
 import { DropPricesController } from './drop-prices.controller'
-import { DropPricesRepository } from './drop-prices.repository'
+import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
@@ -137,6 +137,28 @@ describe('DropPricesController', () => {
 
     expect(res.statusCode).toBe(400)
     expect(prices.upsert).not.toHaveBeenCalled()
+  })
+
+  // 앱은 서버 표를 받아 쓰므로 서버가 모르는 key 는 틀린 본문이다. 거절된 건은 앱이 5회 뒤 버린다.
+  it('표에 없는 아이템 · 월드 key 는 400 이다', async () => {
+    prices.upsert.mockRejectedValueOnce(new NoDropItem('nobody'))
+    const item = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, itemKey: 'nobody' },
+    })
+    expect(item.statusCode).toBe(400)
+    expect(item.json<{ message: string }>().message).toContain('nobody')
+
+    prices.upsert.mockRejectedValueOnce(new NoWorld('nowhere'))
+    const world = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, worldKey: 'nowhere' },
+    })
+    expect(world.statusCode).toBe(400)
   })
 
   it('DELETE 는 내 줄의 가격을 빼고 204 다', async () => {

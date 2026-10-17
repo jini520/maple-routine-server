@@ -1,7 +1,8 @@
 import { layout } from './layout'
 
 /**
- * 드롭 가격 보기. 읽기만 한다. 위는 아이템 × 기간의 분포, 아래는 최근 줄이다.
+ * 드롭 가격 보기. 읽기만 한다. 위는 아이템 × 기간의 분포, 아래는 최근 줄이다. 아이템 · 월드는 표의 한글 이름으로 보이고 key 는
+ * 칸에 마우스를 올리면 뜬다.
  * 노이즈를 눈으로 보는 자리라 뺀 가격도 줄에는 흐리게 남는다. 분포에는 안 들어간다.
  */
 export const DROP_PRICES_HTML = layout(
@@ -12,7 +13,7 @@ export const DROP_PRICES_HTML = layout(
 <section class="card">
   <div class="body">
     <div class="row">
-      <div class="field"><label for="item">아이템 key</label><input id="item" class="mono w-auto" type="text" placeholder="비우면 전부"></div>
+      <div class="field"><label for="item">아이템 <small>key 나 이름</small></label><input id="item" class="w-auto" type="text" placeholder="비우면 전부"></div>
       <div class="field"><label for="period">기간 key</label><input id="period" class="mono w-md" type="text" placeholder="2026-10-08 또는 2026-10"></div>
       <div class="field w-sm"><label for="limit">줄 수</label><input id="limit" type="number" min="1" max="1000" value="200"></div>
       <button id="load" class="btn" type="button">보기</button>
@@ -42,7 +43,7 @@ export const DROP_PRICES_HTML = layout(
     var summary = document.getElementById('summary'); summary.innerHTML = '';
     r.json.summary.forEach(function (s) {
       var tr = document.createElement('tr');
-      cell(tr, s.itemKey, 'mono'); cell(tr, s.periodKey, 'mono'); cell(tr, String(s.count), 'num');
+      cell(tr, s.itemName).title = s.itemKey; cell(tr, s.periodKey, 'mono'); cell(tr, String(s.count), 'num');
       cell(tr, meso(s.min), 'num'); cell(tr, meso(s.median), 'num'); cell(tr, meso(s.max), 'num');
       summary.appendChild(tr);
     });
@@ -50,8 +51,8 @@ export const DROP_PRICES_HTML = layout(
     var rows = document.getElementById('rows'); rows.innerHTML = '';
     r.json.rows.forEach(function (row) {
       var tr = document.createElement('tr'); if (row.deletedAt) tr.className = 'deleted';
-      cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemKey, 'mono'); cell(tr, row.boss || '-', 'mono'); cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
-      cell(tr, row.worldKey || '-'); cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num');
+      cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemName).title = row.itemKey; cell(tr, row.boss || '-', 'mono'); cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
+      cell(tr, row.worldName || '-').title = row.worldKey || ''; cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num');
       cell(tr, meso(row.priceMeso), 'num'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
       rows.appendChild(tr);
     });

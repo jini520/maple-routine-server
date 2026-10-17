@@ -184,12 +184,18 @@ describeDb('DropPricesRepository', () => {
       identifiedBy: 'key',
       userId: me,
       itemKey: 'ring',
+      itemName: '반지',
       worldKey: 'scania',
+      worldName: '스카니아',
     })
 
     expect(
       (await repo.recent({ itemKey: 'ring', periodKey: null }, 10)).map((r) => r.priceMeso),
     ).toEqual([10, 30])
+    // 화면이 이름을 보이므로 이름으로도 거른다
+    expect(
+      (await repo.recent({ itemKey: '망토', periodKey: null }, 10)).map((r) => r.priceMeso),
+    ).toEqual([20])
     expect(
       (await repo.recent({ itemKey: 'ring', periodKey: '2026-10' }, 10)).map((r) => r.priceMeso),
     ).toEqual([30])
@@ -211,10 +217,27 @@ describeDb('DropPricesRepository', () => {
 
     // 기간 key 는 문자열 역순이라 '2026-10-08' 이 '2026-10' 앞이다
     expect(summary).toEqual([
-      { itemKey: 'ring', periodKey: '2026-10-08', count: 3, min: 7, median: 100, max: 300 },
-      { itemKey: 'cape', periodKey: '2026-10', count: 1, min: 50, median: 50, max: 50 },
+      {
+        itemKey: 'ring',
+        itemName: '반지',
+        periodKey: '2026-10-08',
+        count: 3,
+        min: 7,
+        median: 100,
+        max: 300,
+      },
+      {
+        itemKey: 'cape',
+        itemName: '망토',
+        periodKey: '2026-10',
+        count: 1,
+        min: 50,
+        median: 50,
+        max: 50,
+      },
     ])
     expect(await repo.summary({ itemKey: 'ring', periodKey: null })).toHaveLength(1)
+    expect(await repo.summary({ itemKey: '반지', periodKey: null })).toHaveLength(1)
     expect(await repo.summary({ itemKey: 'none', periodKey: null })).toEqual([])
   })
 })

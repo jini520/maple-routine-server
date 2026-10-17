@@ -2,6 +2,11 @@ import { z } from 'zod'
 
 import { BOSS_DIFFICULTIES } from '../bosses/bosses.dto'
 import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
+import {
+  SPEND_CATEGORIES,
+  SPEND_CURRENCIES,
+  SPEND_FORMS,
+} from '../spend-catalog/spend-catalog.repository'
 
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
@@ -135,3 +140,113 @@ export const worldCreateBody = z.object({
 export type WorldCreateBody = z.infer<typeof worldCreateBody>
 export const worldUpdateBody = worldCreateBody.omit({ key: true })
 export type WorldUpdateBody = z.infer<typeof worldUpdateBody>
+
+/* ── 지출 카탈로그 ── */
+
+/** 관세율(%)과 세라자르 주화 판매가. game_rules 의 줄 둘이다. */
+export const spendRulesBody = z.object({
+  tariffPercent: z.number().int().min(0).max(100),
+  rewardCoinPriceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+})
+export type SpendRulesBody = z.infer<typeof spendRulesBody>
+
+export const spendGroupCreateBody = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(50),
+  category: z.enum(SPEND_CATEGORIES),
+  active: z.boolean().default(true),
+})
+export type SpendGroupCreateBody = z.infer<typeof spendGroupCreateBody>
+export const spendGroupUpdateBody = spendGroupCreateBody.omit({ key: true })
+export type SpendGroupUpdateBody = z.infer<typeof spendGroupUpdateBody>
+
+const spendTileBase = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(50),
+  iconFile: z.string().min(1).max(200).nullish(),
+  iconMap: z.string().min(1).max(100).nullish(),
+})
+const oneIcon = (t: { iconFile?: string | null; iconMap?: string | null }) =>
+  t.iconFile == null || t.iconMap == null
+const ICON_MESSAGE = '그림은 아이템 파일과 지역 아이콘 중 하나다'
+export const spendTileCreateBody = spendTileBase.refine(oneIcon, { message: ICON_MESSAGE })
+export type SpendTileCreateBody = z.infer<typeof spendTileCreateBody>
+export const spendTileUpdateBody = spendTileBase
+  .omit({ key: true })
+  .refine(oneIcon, { message: ICON_MESSAGE })
+export type SpendTileUpdateBody = z.infer<typeof spendTileUpdateBody>
+
+/** 항목 하나. 축 값과 형태를 함께 받아 통째로 갈아 끼운다. 모양 검사는 리포지토리가 한다. */
+const spendItemBase = z.object({
+  key: snakeKey,
+  group: snakeKey,
+  tile: snakeKey,
+  name: z.string().min(1).max(100),
+  tier: z.string().min(1).max(50).nullish(),
+  currency: z.enum(SPEND_CURRENCIES),
+  unitPrice: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullish(),
+  unit: z.string().min(1).max(10),
+  maxQuantity: z.number().int().min(1).nullish(),
+  rewardCoins: z.number().int().min(1).nullish(),
+  from: periodText,
+  until: periodText,
+  options: z
+    .array(z.object({ axis: z.string().min(1).max(20), value: z.string().min(1).max(50) }))
+    .max(5)
+    .default([]),
+  forms: z.array(z.enum(SPEND_FORMS)).max(2).default([]),
+})
+const periodOrder = (d: { from?: string | null; until?: string | null }) =>
+  d.from == null || d.until == null || d.from < d.until
+const PERIOD_MESSAGE = { message: '끝이 시작보다 뒤여야 한다', path: ['until'] }
+export const spendItemCreateBody = spendItemBase.refine(periodOrder, PERIOD_MESSAGE)
+export type SpendItemCreateBody = z.infer<typeof spendItemCreateBody>
+export const spendItemUpdateBody = spendItemBase
+  .omit({ key: true, group: true })
+  .refine(periodOrder, PERIOD_MESSAGE)
+export type SpendItemUpdateBody = z.infer<typeof spendItemUpdateBody>
+
+/* ── 심볼 비용 ── */
+
+const symbolGroupBase = z.object({
+  key: snakeKey,
+  name: z.string().min(1).max(50),
+  maxLevel: z.number().int().min(2).max(100),
+  defaultFrom: z.number().int().min(1),
+  defaultTo: z.number().int().min(2),
+})
+const rangeOk = (g: { maxLevel: number; defaultFrom: number; defaultTo: number }) =>
+  g.defaultFrom < g.defaultTo && g.defaultTo <= g.maxLevel
+const RANGE_MESSAGE = { message: '기본 범위는 시작 < 끝 ≤ 만렙이다' }
+export const symbolGroupCreateBody = symbolGroupBase.refine(rangeOk, RANGE_MESSAGE)
+export type SymbolGroupCreateBody = z.infer<typeof symbolGroupCreateBody>
+export const symbolGroupUpdateBody = symbolGroupBase
+  .omit({ key: true })
+  .refine(rangeOk, RANGE_MESSAGE)
+export type SymbolGroupUpdateBody = z.infer<typeof symbolGroupUpdateBody>
+
+export const symbolCreateBody = z.object({
+  key: snakeKey,
+  group: snakeKey,
+  name: z.string().min(1).max(50),
+  requiredLevel: z.number().int().min(1),
+  iconFile: z.string().min(1).max(200),
+})
+export type SymbolCreateBody = z.infer<typeof symbolCreateBody>
+export const symbolUpdateBody = symbolCreateBody.omit({ key: true, group: true })
+export type SymbolUpdateBody = z.infer<typeof symbolUpdateBody>
+
+/** 레벨 여럿의 새 비용. 시작은 전부 같다. 첫 줄은 비워도 된다. */
+export const symbolCostsBody = z.object({
+  from: periodText,
+  costs: z
+    .array(
+      z.object({
+        level: z.number().int().min(1),
+        costMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+      }),
+    )
+    .min(1)
+    .max(100),
+})
+export type SymbolCostsBody = z.infer<typeof symbolCostsBody>

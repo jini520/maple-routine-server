@@ -10,6 +10,8 @@ export const SECTION_KEYS = [
   'dropBoxes',
   'crystalPrices',
   'worlds',
+  'spendCatalog',
+  'symbolCosts',
 ] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 

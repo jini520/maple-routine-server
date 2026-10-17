@@ -3,6 +3,8 @@ import type { BossesRepository, Catalog } from '../bosses/bosses.repository'
 import type { CrystalPricesRepository } from '../crystal-prices/crystal-prices.repository'
 import type { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import type { DropItemsRepository } from '../drop-items/drop-items.repository'
+import type { SpendCatalogRepository } from '../spend-catalog/spend-catalog.repository'
+import type { SymbolCostsRepository } from '../symbol-costs/symbol-costs.repository'
 import type { WorldsRepository } from '../worlds/worlds.repository'
 import { GameDataService } from './game-data.service'
 
@@ -17,6 +19,15 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
     empty({ boxes: [] }) as unknown as DropBoxesRepository,
     empty({ prices: [] }) as unknown as CrystalPricesRepository,
     empty({ worlds: [] }) as unknown as WorldsRepository,
+    empty({
+      rules: { tariffPercent: null, rewardCoinPriceMeso: null },
+      groups: [],
+      tiles: [],
+      items: [],
+      itemOptions: [],
+      itemForms: [],
+    }) as unknown as SpendCatalogRepository,
+    empty({ groups: [], symbols: [], levelCosts: [] }) as unknown as SymbolCostsRepository,
   )
 }
 
@@ -27,7 +38,7 @@ const catalog: Catalog = {
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 넷은 각 리포지토리의 section 이다', async () => {
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 일곱은 각 리포지토리의 section 이다', async () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
@@ -37,6 +48,16 @@ describe('GameDataService', () => {
       dropBoxes: { updatedAt: null, boxes: [] },
       crystalPrices: { updatedAt: null, prices: [] },
       worlds: { updatedAt: null, worlds: [] },
+      spendCatalog: {
+        updatedAt: null,
+        rules: { tariffPercent: null, rewardCoinPriceMeso: null },
+        groups: [],
+        tiles: [],
+        items: [],
+        itemOptions: [],
+        itemForms: [],
+      },
+      symbolCosts: { updatedAt: null, groups: [], symbols: [], levelCosts: [] },
     })
   })
 

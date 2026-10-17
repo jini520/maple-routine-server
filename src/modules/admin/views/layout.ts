@@ -10,6 +10,8 @@ const MENU = [
   ['/admin/boss-drops', '드롭 표'],
   ['/admin/crystal-prices', '결정석 가격'],
   ['/admin/worlds', '월드'],
+  ['/admin/spend-catalog', '지출 카탈로그'],
+  ['/admin/symbol-costs', '심볼 비용'],
 ] as const
 
 /**

@@ -20,6 +20,8 @@ import { ManualCompletionModule } from './modules/manual-completion/manual-compl
 import { NoticesModule } from './modules/notices/notices.module'
 import { PushModule } from './modules/push/push.module'
 import { SettlementModule } from './modules/settlement/settlement.module'
+import { SpendCatalogModule } from './modules/spend-catalog/spend-catalog.module'
+import { SymbolCostsModule } from './modules/symbol-costs/symbol-costs.module'
 import { UsersModule } from './modules/users/users.module'
 import { WorldsModule } from './modules/worlds/worlds.module'
 
@@ -37,6 +39,8 @@ import { WorldsModule } from './modules/worlds/worlds.module'
     BossDropsModule,
     CrystalPricesModule,
     WorldsModule,
+    SpendCatalogModule,
+    SymbolCostsModule,
     GameDataModule,
     FriendsModule,
     NoticesModule,

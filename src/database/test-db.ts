@@ -19,6 +19,8 @@ export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
 export const describeDb = TEST_DATABASE_URL ? describe : describe.skip
 
 const TABLES = [
+  'contents',
+  'content_categories',
   'symbol_level_costs',
   'symbols',
   'symbol_groups',

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 
 import { BossDropsRepository, type BossDropsSection } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, type Catalog } from '../bosses/bosses.repository'
+import { ContentsRepository, type ContentsSection } from '../contents/contents.repository'
 import {
   CrystalPricesRepository,
   type CrystalPricesSection,
@@ -32,6 +33,7 @@ export interface GameDataSnapshot {
   worlds: WorldsSection
   spendCatalog: SpendCatalogSection
   symbolCosts: SymbolCostsSection
+  contents: ContentsSection
 }
 
 @Injectable()
@@ -45,6 +47,7 @@ export class GameDataService {
     private readonly worlds: WorldsRepository,
     private readonly spendCatalog: SpendCatalogRepository,
     private readonly symbolCosts: SymbolCostsRepository,
+    private readonly contents: ContentsRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -57,6 +60,7 @@ export class GameDataService {
       worlds,
       spendCatalog,
       symbolCosts,
+      contents,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -66,6 +70,7 @@ export class GameDataService {
       this.worlds.section(),
       this.spendCatalog.section(),
       this.symbolCosts.section(),
+      this.contents.section(),
     ])
     return {
       bosses,
@@ -76,6 +81,7 @@ export class GameDataService {
       worlds,
       spendCatalog,
       symbolCosts,
+      contents,
     }
   }
 }

@@ -12,6 +12,7 @@ const MENU = [
   ['/admin/worlds', '월드'],
   ['/admin/spend-catalog', '지출 카탈로그'],
   ['/admin/symbol-costs', '심볼 비용'],
+  ['/admin/contents', '컨텐츠'],
 ] as const
 
 /**

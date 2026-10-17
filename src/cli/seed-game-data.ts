@@ -5,7 +5,7 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼. 뒤의 것이 앞의 줄을 가리킨다.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠. 뒤의 것이 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
  */
@@ -20,6 +20,12 @@ import type { Db } from '../database/database.module'
 import * as schema from '../database/schema'
 import { BOSS_DIFFICULTIES, bossInput, rulesInput } from '../modules/bosses/bosses.dto'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
+import {
+  CONTENT_CATEGORIES,
+  CONTENT_SECTIONS,
+  CONTENT_TYPES,
+  SHARE_SCOPES,
+} from '../modules/contents/contents.repository'
 import { touchSection } from '../modules/game-data/sections'
 import {
   SPEND_CATEGORIES,
@@ -34,6 +40,8 @@ const {
   bossDifficulties,
   bossDropRewards,
   bosses,
+  contentCategories,
+  contents,
   dropBoxContents,
   dropBoxes,
   dropItems,
@@ -264,6 +272,51 @@ export function parseSymbolCostsSeed(value: unknown): SymbolCostsSeed {
   return symbolCostsSeed.parse(value)
 }
 
+const contentsSeed = z.object({
+  categories: z
+    .array(
+      z.object({
+        key: z.enum(CONTENT_CATEGORIES),
+        name: z.string().min(1),
+        countTag: z.string().min(1).nullable(),
+        hideCountTag: z.boolean(),
+        weeklyLimit: z.number().int().min(1).nullable(),
+        sharedOrder: z.number().int().min(0).nullable(),
+      }),
+    )
+    .min(1),
+  contents: z
+    .array(
+      z.object({
+        key,
+        section: z.enum(CONTENT_SECTIONS),
+        apiName: z.string().min(1),
+        category: z.enum(CONTENT_CATEGORIES),
+        displayName: z.string().min(1),
+        shortName: z.string().min(1),
+        backgroundMap: z.string().min(1).nullable(),
+        backgroundPortrait: z.string().min(1).nullable(),
+        countTag: z.string().min(1).nullable(),
+        type: z.enum(CONTENT_TYPES),
+        maxCount: z.number().int().min(0),
+        requiredLevel: z.number().int().min(1).nullable(),
+        from: period,
+        until: period,
+        shareScope: z.enum(SHARE_SCOPES),
+        sharedShortName: z.string().min(1).nullable(),
+        onlyWhenScheduled: z.boolean(),
+        trustRegistrationFlag: z.boolean(),
+        cumulativeScore: z.boolean(),
+        maxCountOverride: z.number().int().min(1).nullable(),
+      }),
+    )
+    .min(1),
+})
+export type ContentsSeed = z.infer<typeof contentsSeed>
+export function parseContentsSeed(value: unknown): ContentsSeed {
+  return contentsSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -273,6 +326,7 @@ export interface GameDataSeeds {
   worlds?: WorldsSeed
   spendCatalog?: SpendCatalogSeed
   symbolCosts?: SymbolCostsSeed
+  contents?: ContentsSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -294,6 +348,7 @@ export async function seedGameData(
     result.spendCatalog = await seedSpendCatalog(db, seeds.spendCatalog)
   if (seeds.symbolCosts !== undefined)
     result.symbolCosts = await seedSymbolCosts(db, seeds.symbolCosts)
+  if (seeds.contents !== undefined) result.contents = await seedContents(db, seeds.contents)
   return result
 }
 
@@ -317,7 +372,8 @@ async function isEmpty(
     | typeof spendGroups
     | typeof spendTiles
     | typeof spendItems
-    | typeof symbolGroups,
+    | typeof symbolGroups
+    | typeof contentCategories,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
   return (row?.n ?? 0) === 0
@@ -563,6 +619,33 @@ async function seedSymbolCosts(db: Db, seed: SymbolCostsSeed): Promise<SeedOutco
   return 'seeded'
 }
 
+/**
+ * 갈래 표가 비어 있을 때만 둘을 함께 채운다. 갈래 줄은 ENUM 과 일대일이라 씨앗이 여덟을 다 들어야 한다. 빠지면 그 갈래의
+ * 컨텐츠를 관리 화면에서 영영 못 더하므로 채우지 않고 던진다.
+ */
+async function seedContents(db: Db, seed: ContentsSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, contentCategories))) return 'skipped'
+  const missing = CONTENT_CATEGORIES.filter((c) => !seed.categories.some((s) => s.key === c))
+  if (missing.length > 0) throw new Error(`씨앗의 갈래가 ENUM 을 다 안 든다: ${missing.join(', ')}`)
+  await db.transaction(async (tx) => {
+    const categoryRows = await tx
+      .insert(contentCategories)
+      .values(seed.categories.map((c, sortOrder) => ({ ...c, sortOrder })))
+      .returning({ id: contentCategories.id, key: contentCategories.key })
+    const categoryIds = new Map(categoryRows.map((r) => [r.key, r.id]))
+    const counters = new Map<string, number>()
+    await tx.insert(contents).values(
+      seed.contents.map(({ category, ...c }) => {
+        const sortOrder = counters.get(c.section) ?? 0
+        counters.set(c.section, sortOrder + 1)
+        return { ...c, categoryId: must(categoryIds, category, '갈래'), sortOrder }
+      }),
+    )
+    await touchSection(tx, 'contents')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -590,6 +673,7 @@ async function main(): Promise<void> {
       worlds: parseWorldsSeed(readSeed('worlds')),
       spendCatalog: parseSpendCatalogSeed(readSeed('spend-catalog')),
       symbolCosts: parseSymbolCostsSeed(readSeed('symbol-costs')),
+      contents: parseContentsSeed(readSeed('contents')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

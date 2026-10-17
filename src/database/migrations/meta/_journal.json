@@ -57,6 +57,13 @@
       "when": 1792200473296,
       "tag": "0007_spend_symbol",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792212454613,
+      "tag": "0008_contents",
+      "breakpoints": true
     }
   ]
 }

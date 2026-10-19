@@ -52,6 +52,8 @@ export interface DropPriceAdminRow {
   ringLevel: number | null
   /** 보스 key 와 난이도. 줄이 안 가리키면 둘 다 null. */
   boss: string | null
+  /** 보스 표의 한글 이름. 화면이 key 대신 이것을 보인다. */
+  bossName: string | null
   difficulty: string | null
   recordStatus: DropRecordStatus
   createdAt: string
@@ -99,6 +101,7 @@ export class DropPricesRepository {
         worldKey: worlds.key,
         worldName: worlds.name,
         boss: bosses.key,
+        bossName: bosses.name,
         difficulty: bossDifficulties.difficulty,
       })
       .from(dropPrices)
@@ -114,24 +117,27 @@ export class DropPricesRepository {
       )
       .orderBy(desc(dropPrices.updatedAt), desc(dropPrices.id))
       .limit(limit)
-    return rows.map(({ price: r, itemKey, itemName, worldKey, worldName, boss, difficulty }) => ({
-      id: r.id,
-      userId: r.userId,
-      identifiedBy: r.identifiedBy,
-      dropRecordId: r.dropRecordId,
-      itemKey,
-      itemName,
-      priceMeso: r.priceMeso,
-      periodKey: r.periodKey,
-      worldKey,
-      worldName,
-      ringLevel: r.ringLevel,
-      boss,
-      difficulty,
-      recordStatus: r.recordStatus,
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-    }))
+    return rows.map(
+      ({ price: r, itemKey, itemName, worldKey, worldName, boss, bossName, difficulty }) => ({
+        id: r.id,
+        userId: r.userId,
+        identifiedBy: r.identifiedBy,
+        dropRecordId: r.dropRecordId,
+        itemKey,
+        itemName,
+        priceMeso: r.priceMeso,
+        periodKey: r.periodKey,
+        worldKey,
+        worldName,
+        ringLevel: r.ringLevel,
+        boss,
+        bossName,
+        difficulty,
+        recordStatus: r.recordStatus,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+      }),
+    )
   }
 
   /** 아이템 × 기간마다 개수 · 최소 · 중앙값 · 최대. 최근 기간부터, 같은 기간은 개수 많은 것부터. */

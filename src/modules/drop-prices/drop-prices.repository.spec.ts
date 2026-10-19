@@ -102,7 +102,7 @@ describeDb('DropPricesRepository', () => {
     ])
   })
 
-  it('보스 난이도 줄을 가리킬 수 있고 recent 가 보스 key 와 난이도를 함께 낸다', async () => {
+  it('보스 난이도 줄을 가리킬 수 있고 recent 가 보스 key · 한글 이름 · 난이도를 함께 낸다', async () => {
     const bosses = new BossesRepository(db)
     await bosses.createBoss({
       key: 'lucid',
@@ -122,9 +122,9 @@ describeDb('DropPricesRepository', () => {
     await repo.upsert(input({ dropRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a52', priceMeso: 5 }))
 
     const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
-    expect(rows.map((r) => [r.priceMeso, r.boss, r.difficulty])).toEqual([
-      [5, null, null],
-      [100, 'lucid', 'hard'],
+    expect(rows.map((r) => [r.priceMeso, r.boss, r.bossName, r.difficulty])).toEqual([
+      [5, null, null, null],
+      [100, 'lucid', '루시드', 'hard'],
     ])
   })
 

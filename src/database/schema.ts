@@ -1,5 +1,5 @@
 /**
- * Model. 표 서른넷과 ENUM 열일곱. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 서른넷과 ENUM 열여덟. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -210,6 +210,17 @@ export const manualCompletionBosses = pgTable(
   ],
 )
 
+/**
+ * 가격 줄의 상태. 미입력(pending) · 기록 안함(skipped)도 줄이 선다. deleted 는 기기에서 기록이 사라진 것이고 DELETE 가
+ * 적는다. 가격은 completed 만 갖는다(CHECK).
+ */
+export const dropRecordStatusEnum = pgEnum('drop_record_status', [
+  'pending',
+  'completed',
+  'skipped',
+  'deleted',
+])
+
 export const dropPrices = pgTable(
   'drop_prices',
   {
@@ -225,8 +236,9 @@ export const dropPrices = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => dropItems.id),
-    /** 판매 총액. 내 몫이 아니다. */
-    priceMeso: bigint('price_meso', { mode: 'number' }).notNull(),
+    /** 판매 총액. 내 몫이 아니다. completed 만 값이 있고 나머지 상태는 NULL 이다. 0 으로 적으면 미입력과 구분이 사라진다. */
+    priceMeso: bigint('price_meso', { mode: 'number' }),
+    recordStatus: dropRecordStatusEnum('record_status').notNull(),
     /** 주간 YYYY-MM-DD · 월간 YYYY-MM. */
     periodKey: text('period_key').notNull(),
     /** 어느 월드에서 팔았나. 앱이 월드를 모르면 NULL 이고, 모르는 key 는 받지 않는다. */
@@ -238,14 +250,16 @@ export const dropPrices = pgTable(
     }),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
-    /** 가격을 뺐다. NULL 이 있다는 뜻. */
-    deletedAt: timestamptz('deleted_at'),
   },
   (t) => [
     unique('drop_prices_user_record_unique').on(t.userId, t.dropRecordId),
     index('drop_prices_item_period_idx')
       .on(t.itemId, t.periodKey)
-      .where(sql`${t.deletedAt} IS NULL`),
+      .where(sql`${t.recordStatus} = 'completed'`),
+    check(
+      'drop_prices_price_matches_status',
+      sql`(${t.recordStatus} = 'completed') = (${t.priceMeso} IS NOT NULL)`,
+    ),
   ],
 )
 

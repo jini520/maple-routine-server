@@ -85,6 +85,13 @@
       "when": 1792224802635,
       "tag": "0011_drop_prices_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792373717794,
+      "tag": "0012_drop_prices_record_status",
+      "breakpoints": true
     }
   ]
 }

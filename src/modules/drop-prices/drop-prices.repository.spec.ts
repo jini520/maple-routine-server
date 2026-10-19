@@ -30,6 +30,7 @@ describeDb('DropPricesRepository', () => {
     worldKey: 'scania',
     ringLevel: 4,
     bossDifficultyId: null,
+    recordStatus: 'completed',
     ...over,
   })
 
@@ -68,6 +69,7 @@ describeDb('DropPricesRepository', () => {
     const rows = await db.select().from(dropPrices)
     expect(rows).toHaveLength(1)
     expect(rows[0]?.priceMeso).toBe(250)
+    expect(rows[0]?.recordStatus).toBe('completed')
     expect(rows[0]?.identifiedBy).toBe('login')
     expect(rows[0]?.updatedAt.getTime()).toBeGreaterThanOrEqual(rows[0]?.createdAt.getTime() ?? 0)
   })
@@ -126,7 +128,42 @@ describeDb('DropPricesRepository', () => {
     ])
   })
 
-  it('markDeleted 는 내 줄만 deleted_at 을 채우고 다시 적으면 비워진다', async () => {
+  // 미입력 · 기록 안함도 줄이 된다. 가격은 completed 만 갖고, 분포는 completed 만 센다.
+  it('pending · skipped 는 가격 없이 그 상태로 서고 분포에 안 든다', async () => {
+    const pendingId = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a61'
+    const skippedId = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a62'
+    await repo.upsert(input({ dropRecordId: pendingId, priceMeso: null, recordStatus: 'pending' }))
+    await repo.upsert(input({ dropRecordId: skippedId, priceMeso: null, recordStatus: 'skipped' }))
+    await repo.upsert(input({ priceMeso: 300 }))
+
+    const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    expect(rows.map((r) => [r.dropRecordId, r.recordStatus, r.priceMeso])).toEqual([
+      [RECORD, 'completed', 300],
+      [skippedId, 'skipped', null],
+      [pendingId, 'pending', null],
+    ])
+    expect(await repo.summary({ itemKey: null, periodKey: null })).toEqual([
+      expect.objectContaining({ itemKey: 'ring', count: 1, min: 300, max: 300 }),
+    ])
+
+    // 가격이 들어오면 같은 줄이 completed 로 바뀐다
+    await repo.upsert(input({ dropRecordId: pendingId, priceMeso: 500 }))
+    const [priced] = await repo.recent({ itemKey: null, periodKey: null }, 1)
+    expect([priced?.dropRecordId, priced?.recordStatus, priced?.priceMeso]).toEqual([
+      pendingId,
+      'completed',
+      500,
+    ])
+  })
+
+  // DTO 가 먼저 막지만 표도 막는다. 0 으로 적는 길이 생기면 미입력과 구분이 사라진다.
+  it('상태와 가격의 유무가 어긋나는 줄은 표의 CHECK 가 거절한다', async () => {
+    await expect(repo.upsert(input({ priceMeso: null }))).rejects.toThrow()
+    await expect(repo.upsert(input({ recordStatus: 'pending' }))).rejects.toThrow()
+    expect(await db.select().from(dropPrices)).toHaveLength(0)
+  })
+
+  it('markDeleted 는 내 줄만 deleted 로 표시하고 가격을 비운다. 다시 적으면 completed 로 돌아온다', async () => {
     await repo.upsert(input())
     await repo.upsert(input({ userId: other }))
 
@@ -134,29 +171,20 @@ describeDb('DropPricesRepository', () => {
 
     const mine = await db.select().from(dropPrices).where(eq(dropPrices.userId, me))
     const theirs = await db.select().from(dropPrices).where(eq(dropPrices.userId, other))
-    expect(mine[0]?.deletedAt).not.toBeNull()
-    expect(theirs[0]?.deletedAt).toBeNull()
+    expect([mine[0]?.recordStatus, mine[0]?.priceMeso]).toEqual(['deleted', null])
+    expect([theirs[0]?.recordStatus, theirs[0]?.priceMeso]).toEqual(['completed', 100])
 
     await repo.upsert(input())
     const revived = await db.select().from(dropPrices).where(eq(dropPrices.userId, me))
-    expect(revived[0]?.deletedAt).toBeNull()
+    expect([revived[0]?.recordStatus, revived[0]?.priceMeso]).toEqual(['completed', 100])
   })
 
-  it('markDeleted 는 없는 줄이면 조용하고 처음 뺀 시각을 안 덮는다', async () => {
+  it('markDeleted 는 없는 줄이면 조용하다', async () => {
     await expect(repo.markDeleted(me, RECORD)).resolves.toBeUndefined()
-
-    await repo.upsert(input())
-    await db
-      .update(dropPrices)
-      .set({ deletedAt: new Date('2026-01-01T00:00:00Z') })
-      .where(eq(dropPrices.userId, me))
-    await repo.markDeleted(me, RECORD)
-
-    const [row] = await db.select().from(dropPrices).where(eq(dropPrices.userId, me))
-    expect(row?.deletedAt?.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+    expect(await db.select().from(dropPrices)).toHaveLength(0)
   })
 
-  it('recent 는 필터대로 최근 것부터 내고 뺀 가격도 deleted_at 과 함께 보인다', async () => {
+  it('recent 는 필터대로 최근 것부터 내고 지운 줄도 deleted 로 보인다', async () => {
     await repo.upsert(
       input({ dropRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a51', priceMeso: 10 }),
     )
@@ -178,8 +206,8 @@ describeDb('DropPricesRepository', () => {
 
     const all = await repo.recent({ itemKey: null, periodKey: null }, 10)
     expect(all).toHaveLength(3)
-    expect(all.map((r) => r.priceMeso)).toEqual([10, 30, 20])
-    expect(all[0]?.deletedAt).not.toBeNull()
+    expect(all.map((r) => r.priceMeso)).toEqual([null, 30, 20])
+    expect(all.map((r) => r.recordStatus)).toEqual(['deleted', 'completed', 'completed'])
     expect(all[0]).toMatchObject({
       identifiedBy: 'key',
       userId: me,
@@ -191,7 +219,7 @@ describeDb('DropPricesRepository', () => {
 
     expect(
       (await repo.recent({ itemKey: 'ring', periodKey: null }, 10)).map((r) => r.priceMeso),
-    ).toEqual([10, 30])
+    ).toEqual([null, 30])
     // 화면이 이름을 보이므로 이름으로도 거른다
     expect(
       (await repo.recent({ itemKey: '망토', periodKey: null }, 10)).map((r) => r.priceMeso),
@@ -202,7 +230,7 @@ describeDb('DropPricesRepository', () => {
     expect(await repo.recent({ itemKey: null, periodKey: null }, 1)).toHaveLength(1)
   })
 
-  it('summary 는 아이템 × 기간의 개수 · 최소 · 중앙값 · 최대이고 뺀 가격은 안 센다', async () => {
+  it('summary 는 아이템 × 기간의 개수 · 최소 · 중앙값 · 최대이고 지운 줄은 안 센다', async () => {
     const ids = ['51', '52', '53', '54', '55'].map((t) => `0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a${t}`)
     await repo.upsert(input({ dropRecordId: ids[0], priceMeso: 100 }))
     await repo.upsert(input({ dropRecordId: ids[1], priceMeso: 300 }))

@@ -46,6 +46,33 @@ describe('dropPriceBody', () => {
     expect(dropPriceBody.safeParse({ ...ok, priceMeso: 2 ** 53 }).success).toBe(false)
   })
 
+  // 이 칸이 생기기 전 OTA 는 가격만 보낸다. 그 전송은 전부 가격이 있는 기록이다.
+  it('status 가 없으면 completed 다', () => {
+    expect(dropPriceBody.parse(ok).status).toBe('completed')
+  })
+
+  it('pending · skipped 는 가격이 없어야 하고 completed 는 가격이 있어야 한다', () => {
+    expect(dropPriceBody.safeParse({ ...ok, status: 'pending', priceMeso: null }).success).toBe(
+      true,
+    )
+    const skipped: Record<string, unknown> = { ...ok, status: 'skipped' }
+    delete skipped.priceMeso
+    expect(dropPriceBody.safeParse(skipped).success).toBe(true)
+
+    expect(dropPriceBody.safeParse({ ...ok, status: 'pending' }).success).toBe(false)
+    expect(dropPriceBody.safeParse({ ...ok, status: 'completed', priceMeso: null }).success).toBe(
+      false,
+    )
+    expect(dropPriceBody.safeParse({ ...ok, priceMeso: null }).success).toBe(false)
+  })
+
+  // 지우기는 DELETE 다. 본문으로 deleted 를 적으면 가격 줄을 만드는 요청이 지우기도 하게 된다.
+  it('deleted 는 본문으로 못 보낸다', () => {
+    expect(dropPriceBody.safeParse({ ...ok, status: 'deleted', priceMeso: null }).success).toBe(
+      false,
+    )
+  })
+
   it('기록 id 와 기간 키의 모양을 본다', () => {
     expect(dropPriceBody.safeParse({ ...ok, dropRecordId: 'not-a-uuid' }).success).toBe(false)
     expect(dropPriceBody.safeParse({ ...ok, periodKey: '2026-10-08T00' }).success).toBe(false)

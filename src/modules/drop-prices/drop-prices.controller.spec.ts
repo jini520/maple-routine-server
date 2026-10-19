@@ -78,7 +78,52 @@ describe('DropPricesController', () => {
       worldKey: 'scania',
       ringLevel: 4,
       bossDifficultyId: null,
+      recordStatus: 'completed',
     })
+  })
+
+  // 미입력 · 기록 안함도 줄이 된다. 가격이 없는 기록을 서버가 알아야 먹었는데 안 판 것이 보인다.
+  it('pending · skipped 는 가격 없이 그 상태로 적힌다', async () => {
+    const pending = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, priceMeso: null, status: 'pending' },
+    })
+    expect(pending.statusCode).toBe(200)
+    expect(prices.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ priceMeso: null, recordStatus: 'pending' }),
+    )
+
+    const skipped = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, priceMeso: null, status: 'skipped' },
+    })
+    expect(skipped.statusCode).toBe(200)
+    expect(prices.upsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ priceMeso: null, recordStatus: 'skipped' }),
+    )
+  })
+
+  it('상태와 가격의 유무가 어긋나면 400 이고 저장하지 않는다', async () => {
+    const pricedPending = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, status: 'pending' },
+    })
+    expect(pricedPending.statusCode).toBe(400)
+
+    const unpricedCompleted = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, priceMeso: null },
+    })
+    expect(unpricedCompleted.statusCode).toBe(400)
+    expect(prices.upsert).not.toHaveBeenCalled()
   })
 
   it('보스 · 난이도를 받으면 그 줄의 id 를 적는다', async () => {
@@ -161,7 +206,8 @@ describe('DropPricesController', () => {
     expect(world.statusCode).toBe(400)
   })
 
-  it('DELETE 는 내 줄의 가격을 빼고 204 다', async () => {
+  // 기기에서 기록이 사라진 때다. 줄은 남고 deleted 로 표시된다.
+  it('DELETE 는 내 줄을 deleted 로 표시하고 204 다', async () => {
     const res = await app.inject({
       method: 'DELETE',
       url: `/v1/drop-prices/${RECORD}`,

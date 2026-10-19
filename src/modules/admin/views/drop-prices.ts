@@ -3,12 +3,12 @@ import { layout } from './layout'
 /**
  * 드롭 가격 보기. 읽기만 한다. 위는 아이템 × 기간의 분포, 아래는 최근 줄이다. 아이템 · 월드는 표의 한글 이름으로 보이고 key 는
  * 칸에 마우스를 올리면 뜬다.
- * 노이즈를 눈으로 보는 자리라 뺀 가격도 줄에는 흐리게 남는다. 분포에는 안 들어간다.
+ * 노이즈를 눈으로 보는 자리라 completed 가 아닌 줄(pending · skipped · deleted)도 흐리게 남는다. 분포에는 안 들어간다.
  */
 export const DROP_PRICES_HTML = layout(
   '/admin/drop-prices',
   '드롭 가격',
-  `<div class="head"><div><h1>드롭 가격</h1><p>앱이 보낸 판매 총액이다. 분포는 뺀 가격을 빼고 세고, 줄 목록은 뺀 가격도 흐리게 보인다.</p></div></div>
+  `<div class="head"><div><h1>드롭 가격</h1><p>앱이 보낸 드롭 가격 기록이다. 분포는 completed 만 세고, 줄 목록은 pending · skipped · deleted 도 흐리게 보인다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <section class="card">
   <div class="body">
@@ -21,12 +21,12 @@ export const DROP_PRICES_HTML = layout(
   </div>
 </section>
 <section class="card">
-  <header><h2>분포</h2><p>아이템 × 기간. 뺀 가격은 안 센다</p></header>
+  <header><h2>분포</h2><p>아이템 × 기간. completed 만 센다</p></header>
   <div class="table"><table><thead><tr><th>아이템</th><th>기간</th><th class="num">개수</th><th class="num">최소</th><th class="num">중앙값</th><th class="num">최대</th></tr></thead><tbody id="summary"></tbody></table></div>
 </section>
 <section class="card">
   <header><h2>최근 줄</h2><p id="rows-count"></p></header>
-  <div class="table"><table><thead><tr><th>고친 때 (KST)</th><th>아이템</th><th>보스</th><th>난이도</th><th>기간</th><th>월드</th><th class="num">반지 Lv</th><th class="num">가격</th><th>신원</th><th>사람</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>고친 때 (KST)</th><th>아이템</th><th>보스</th><th>난이도</th><th>기간</th><th>월드</th><th class="num">반지 Lv</th><th class="num">가격</th><th>상태</th><th>신원</th><th>사람</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script>
   function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; }
@@ -50,13 +50,13 @@ export const DROP_PRICES_HTML = layout(
     if (r.json.summary.length === 0) emptyRow(summary, 6);
     var rows = document.getElementById('rows'); rows.innerHTML = '';
     r.json.rows.forEach(function (row) {
-      var tr = document.createElement('tr'); if (row.deletedAt) tr.className = 'deleted';
+      var tr = document.createElement('tr'); if (row.recordStatus === 'deleted') tr.className = 'deleted'; else if (row.recordStatus !== 'completed') tr.className = 'muted';
       cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemName).title = row.itemKey; cell(tr, row.boss || '-', 'mono'); cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
       cell(tr, row.worldName || '-').title = row.worldKey || ''; cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num');
-      cell(tr, meso(row.priceMeso), 'num'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
+      cell(tr, row.priceMeso === null ? '-' : meso(row.priceMeso), 'num'); cell(tr, row.recordStatus, 'mono'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
       rows.appendChild(tr);
     });
-    if (r.json.rows.length === 0) emptyRow(rows, 10);
+    if (r.json.rows.length === 0) emptyRow(rows, 11);
     document.getElementById('rows-count').textContent = r.json.rows.length + '줄';
   }
   document.getElementById('load').addEventListener('click', load);

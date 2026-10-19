@@ -15,7 +15,10 @@ import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identit
 import { type DropPriceBody, dropPriceBody, uuidLike } from './drop-prices.dto'
 import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
 
-/** 드롭 판매가 둘. 신원이 있어야 하고, 4xx 는 본문이 틀릴 때만이다. 표에 없는 아이템 · 월드 key 도 틀린 본문이다. */
+/**
+ * 드롭 가격 기록 둘. 신원이 있어야 하고, 4xx 는 본문이 틀릴 때만이다. 표에 없는 아이템 · 월드 key 도 틀린 본문이다.
+ * 가격이 없는 기록(pending · skipped)도 줄이 되고, DELETE 는 기기에서 기록이 사라진 때다.
+ */
 @Controller()
 @UseGuards(IdentityGuard)
 export class DropPricesController {
@@ -44,11 +47,12 @@ export class DropPricesController {
         identifiedBy: identity.source,
         dropRecordId: body.dropRecordId,
         itemKey: body.itemKey,
-        priceMeso: body.priceMeso,
+        priceMeso: body.priceMeso ?? null,
         periodKey: body.periodKey,
         worldKey: body.worldKey ?? null,
         ringLevel: body.ringLevel ?? null,
         bossDifficultyId: difficultyRow?.id ?? null,
+        recordStatus: body.status,
       })
     } catch (error) {
       if (error instanceof NoDropItem)
@@ -60,7 +64,7 @@ export class DropPricesController {
     return { ok: true }
   }
 
-  /** 그 기록의 가격을 뺀다. 줄은 남고 deleted_at 만 찬다. 없어도 204 다. */
+  /** 기기에서 그 기록이 사라졌다. 줄은 남고 deleted 로 표시되며 가격이 비워진다. 없어도 204 다. */
   @Delete('v1/drop-prices/:dropRecordId')
   @HttpCode(204)
   async remove(

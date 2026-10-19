@@ -151,6 +151,7 @@ export function layout(path: string, title: string, body: string): string {
   td.act { text-align: right; white-space: nowrap }
   td.empty { color: var(--text-3); text-align: center; padding: 22px 14px }
   tr.deleted td { color: var(--text-3); text-decoration: line-through }
+  tr.muted td { color: var(--text-3) }
   .mini { border: 1px solid var(--line); border-radius: var(--r-input); overflow-x: auto; background: var(--surface) }
   .mini th { padding: 8px 12px }
   .mini td { padding: 6px 12px }

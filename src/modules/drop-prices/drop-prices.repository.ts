@@ -1,25 +1,40 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, isNull, or, sql } from 'drizzle-orm'
+import { and, desc, eq, or, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { bossDifficulties, bosses, dropItems, dropPrices, worlds } from '../../database/schema'
+import {
+  bossDifficulties,
+  bosses,
+  dropItems,
+  dropPrices,
+  type dropRecordStatusEnum,
+  worlds,
+} from '../../database/schema'
 import type { IdentitySource } from '../identity/identity.guard'
 
-/** 전송값 그대로 key 를 든다. 서버가 적을 때 표에서 id 를 찾고, 모르는 key 는 NoDropItem · NoWorld 다. */
+/** 가격 줄의 상태 넷. 표의 enum 과 같다. */
+export type DropRecordStatus = (typeof dropRecordStatusEnum.enumValues)[number]
+
+/**
+ * 전송값 그대로 key 를 든다. 서버가 적을 때 표에서 id 를 찾고, 모르는 key 는 NoDropItem · NoWorld 다.
+ * deleted 는 본문으로 안 오고 markDeleted 가 적는다.
+ */
 export interface DropPriceInput {
   userId: string
   identifiedBy: IdentitySource
   dropRecordId: string
   itemKey: string
-  priceMeso: number
+  /** completed 만 값이 있다. 어긋나면 표의 CHECK 가 거절한다. */
+  priceMeso: number | null
   periodKey: string
   worldKey: string | null
   ringLevel: number | null
   /** 보스 난이도 줄. 표에 없는 쌍이면 null. */
   bossDifficultyId: string | null
+  recordStatus: Exclude<DropRecordStatus, 'deleted'>
 }
 
-/** 관리 화면이 보는 줄. 뺀 가격도 deleted_at 을 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
+/** 관리 화면이 보는 줄. completed 가 아닌 줄도 상태를 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
 export interface DropPriceAdminRow {
   id: string
   userId: string
@@ -28,7 +43,8 @@ export interface DropPriceAdminRow {
   itemKey: string
   /** 아이템 표의 한글 이름. 화면이 key 대신 이것을 보인다. */
   itemName: string
-  priceMeso: number
+  /** completed 만 값이 있다. */
+  priceMeso: number | null
   periodKey: string
   worldKey: string | null
   /** 월드 표의 한글 이름. 월드가 없는 줄은 null. */
@@ -37,12 +53,12 @@ export interface DropPriceAdminRow {
   /** 보스 key 와 난이도. 줄이 안 가리키면 둘 다 null. */
   boss: string | null
   difficulty: string | null
+  recordStatus: DropRecordStatus
   createdAt: string
   updatedAt: string
-  deletedAt: string | null
 }
 
-/** 아이템 × 기간의 분포. 뺀 가격은 안 센다. */
+/** 아이템 × 기간의 분포. completed 만 센다. */
 export interface DropPriceSummary {
   itemKey: string
   itemName: string
@@ -68,7 +84,7 @@ export class NoDropItem extends Error {}
 /** 월드 표에 없는 key 다. message 가 그 key 다. */
 export class NoWorld extends Error {}
 
-/** 시세 표본. 같은 사람의 같은 기록은 한 줄이고, 뺀 가격은 deleted_at 으로 남는다. */
+/** 시세 표본. 같은 사람의 같은 기록은 한 줄이고, 기기에서 사라진 기록은 deleted 로 남는다. */
 @Injectable()
 export class DropPricesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -112,9 +128,9 @@ export class DropPricesRepository {
       ringLevel: r.ringLevel,
       boss,
       difficulty,
+      recordStatus: r.recordStatus,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
-      deletedAt: r.deletedAt?.toISOString() ?? null,
     }))
   }
 
@@ -135,7 +151,7 @@ export class DropPricesRepository {
       .innerJoin(dropItems, eq(dropPrices.itemId, dropItems.id))
       .where(
         and(
-          isNull(dropPrices.deletedAt),
+          eq(dropPrices.recordStatus, 'completed'),
           itemMatches(filter.itemKey),
           filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
         ),
@@ -146,8 +162,8 @@ export class DropPricesRepository {
   }
 
   /**
-   * 사람과 기록 id 로 upsert 한다. 다시 적으면 값을 덮고 뺐던 가격은 되살아난다. 아이템 · 월드는 key 로 표에서 id 를
-   * 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null) 줄은 그대로 받는다.
+   * 사람과 기록 id 로 upsert 한다. 다시 적으면 값과 상태를 덮으므로 deleted 였던 줄도 되살아난다. 아이템 · 월드는 key 로
+   * 표에서 id 를 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null) 줄은 그대로 받는다.
    */
   async upsert(input: DropPriceInput): Promise<void> {
     const { userId, dropRecordId, itemKey, worldKey, ...rest } = input
@@ -171,15 +187,15 @@ export class DropPricesRepository {
       .values({ userId, dropRecordId, ...values })
       .onConflictDoUpdate({
         target: [dropPrices.userId, dropPrices.dropRecordId],
-        set: { ...values, updatedAt: sql`now()`, deletedAt: null },
+        set: { ...values, updatedAt: sql`now()` },
       })
   }
 
-  /** 내 줄의 가격을 뺀다. 처음 뺀 시각은 안 덮고, 없는 줄이면 아무 일도 없다. 뺀 것도 고친 것이라 updated_at 이 움직인다. */
+  /** 내 줄을 deleted 로 표시하고 가격을 비운다. 없는 줄이면 아무 일도 없다. 지운 것도 고친 것이라 updated_at 이 움직인다. */
   async markDeleted(userId: string, dropRecordId: string): Promise<void> {
     await this.db
       .update(dropPrices)
-      .set({ deletedAt: sql`COALESCE(${dropPrices.deletedAt}, now())`, updatedAt: sql`now()` })
+      .set({ recordStatus: 'deleted', priceMeso: null, updatedAt: sql`now()` })
       .where(and(eq(dropPrices.userId, userId), eq(dropPrices.dropRecordId, dropRecordId)))
   }
 }

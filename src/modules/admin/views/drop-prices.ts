@@ -1,8 +1,8 @@
 import { layout } from './layout'
 
 /**
- * 드롭 가격 보기. 읽기만 한다. 위는 아이템 × 기간의 분포, 아래는 최근 줄이다. 아이템 · 월드는 표의 한글 이름으로 보이고 key 는
- * 칸에 마우스를 올리면 뜬다.
+ * 드롭 가격 보기. 읽기만 한다. 위는 아이템 × 기간의 분포, 아래는 최근 줄이다. 아이템 · 보스 · 월드는 표의 한글 이름으로 보이고
+ * key 는 칸에 마우스를 올리면 뜬다.
  * 노이즈를 눈으로 보는 자리라 completed 가 아닌 줄(pending · skipped · deleted)도 흐리게 남는다. 분포에는 안 들어간다.
  */
 export const DROP_PRICES_HTML = layout(
@@ -51,7 +51,7 @@ export const DROP_PRICES_HTML = layout(
     var rows = document.getElementById('rows'); rows.innerHTML = '';
     r.json.rows.forEach(function (row) {
       var tr = document.createElement('tr'); if (row.recordStatus === 'deleted') tr.className = 'deleted'; else if (row.recordStatus !== 'completed') tr.className = 'muted';
-      cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemName).title = row.itemKey; cell(tr, row.boss || '-', 'mono'); cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
+      cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemName).title = row.itemKey; cell(tr, row.bossName || '-').title = row.boss || ''; cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
       cell(tr, row.worldName || '-').title = row.worldKey || ''; cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num');
       cell(tr, row.priceMeso === null ? '-' : meso(row.priceMeso), 'num'); cell(tr, row.recordStatus, 'mono'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
       rows.appendChild(tr);

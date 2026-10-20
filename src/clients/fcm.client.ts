@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { type App, cert, getApps, initializeApp } from 'firebase-admin/app'
-import { getMessaging } from 'firebase-admin/messaging'
+import { getMessaging, type TopicMessage } from 'firebase-admin/messaging'
 
 import type { Env } from '../config/env.schema'
 
@@ -13,6 +13,11 @@ export interface FcmMessage {
 }
 
 const APP_NAME = 'maple-routine'
+
+/** FCM 에 넘기는 메시지. APNs 소리가 빠지면 iOS 가 무음으로 띄워 애플워치가 진동하지 않는다. */
+export function toFcmPayload(message: FcmMessage): TopicMessage {
+  return { ...message, apns: { payload: { aps: { sound: 'default' } } } }
+}
 
 /** FCM 발송. firebase-admin 을 감싼 유일한 자리. FCM_KEY 는 서비스 계정 키 파일의 경로다. */
 @Injectable()
@@ -32,7 +37,7 @@ export class FcmClient {
     if (this.keyPath === undefined) {
       return Promise.reject(new Error('FCM_KEY 가 없어 보낼 수 없다'))
     }
-    return getMessaging(this.app(this.keyPath)).send(message, dryRun)
+    return getMessaging(this.app(this.keyPath)).send(toFcmPayload(message), dryRun)
   }
 
   private app(keyPath: string): App {

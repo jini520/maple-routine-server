@@ -191,6 +191,20 @@ describeDb('BossesRepository', () => {
     expect(catalog.updatedAt).not.toBe(before)
   })
 
+  it('별칭을 적으면 catalog 의 줄에 실리고 보스의 updated_at 이 움직인다. 모르는 보스는 false 다', async () => {
+    await repo.setRules(rules)
+    await repo.createBoss(meirin)
+    const before = (await repo.catalog()).updatedAt
+    await new Promise((r) => setTimeout(r, 5))
+
+    expect(await repo.setAlias('meirin', '메린')).toBe(true)
+    expect(await repo.setAlias('nobody', '누구')).toBe(false)
+
+    const catalog = await repo.catalog()
+    expect(catalog.bosses[0]).toMatchObject({ key: 'meirin', name: '시즌 보스 메이린', alias: '메린' })
+    expect(catalog.updatedAt).not.toBe(before)
+  })
+
   it('난이도 줄의 유효 기간을 적으면 catalog 의 난이도 줄에 실리고 보스의 updated_at 이 움직인다', async () => {
     await repo.setRules(rules)
     await repo.createBoss(lotus)

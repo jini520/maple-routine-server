@@ -4,8 +4,8 @@ import { layout } from './layout'
  * 보스 표. 위는 규칙 둘, 아래는 보스 표 하나다. 줄의 수정을 누르면 그 아래로 난이도 편집기가 펼쳐지고,
  * 새 보스는 같은 편집기가 표 맨 위에 열린다. 목록을 떠나지 않는다.
  *
- * 보스는 더하기만 있고 지우기는 없다. 직접 완료 줄이 참조할 수 있어서다. 이름 · 주기 · 초상화는 고치는 끝점이
- * 없다. 난이도 줄은 더하고 지우고 레벨을 갈아 끼운다. 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이
+ * 보스는 더하기만 있고 지우기는 없다. 직접 완료 줄이 참조할 수 있어서다. 이미 있는 보스에서 고치는 칸은 별칭뿐이고,
+ * 이름 · 주기 · 초상화는 고치는 끝점이 없다. 난이도 줄은 더하고 지우고 레벨을 갈아 끼운다. 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이
  * 표 전체를 거절한다. 유효 기간 둘은 편집기 아래 줄에서 적는다. 시즌 보스의 끝이 그것이다.
  */
 export const BOSSES_HTML = layout(
@@ -79,7 +79,14 @@ export const BOSSES_HTML = layout(
   function editorRow(b) {
     var tr = el('tr', undefined, 'expand'); var td = document.createElement('td'); td.colSpan = 7;
     var box = el('div', undefined, 'editor');
-    var h = el('h3', b.name + ' '); h.appendChild(span(b.key, 'mono dim')); h.appendChild(document.createTextNode(' 의 난이도')); box.appendChild(h);
+    var h = el('h3', b.name + ' '); h.appendChild(span(b.key, 'mono dim')); box.appendChild(h);
+    var alias = input('text'); alias.value = b.alias;
+    var saveAlias = button('별칭 저장', 'btn ghost sm');
+    saveAlias.addEventListener('click', async function () {
+      var res = await call('PUT', '/admin/bosses/' + b.key + '/alias', { alias: alias.value });
+      show(res.ok ? b.key + ' 의 별칭을 적었다' : fail('못 적었다', res), !res.ok); load();
+    });
+    var arow = el('div', undefined, 'row'); arow.appendChild(field('별칭', '좁은 자리의 이름', alias)); arow.appendChild(saveAlias); box.appendChild(arow);
     var tbody = el('tbody');
     b.difficulties.forEach(function (d) {
       var r = el('tr');
@@ -127,7 +134,7 @@ export const BOSSES_HTML = layout(
       show(res.ok ? b.key + ' 의 유효 기간을 적었다' : fail('못 적었다', res), !res.ok); load();
     });
     var prow = el('div', undefined, 'row'); prow.appendChild(field('시작', '비우면 처음부터', from)); prow.appendChild(field('끝', '비우면 끝없이. KST 글자. 그 날을 품은 주까지 서고 다음 주부터 안 선다', until)); prow.appendChild(savePeriod); box.appendChild(prow);
-    box.appendChild(el('p', '이름 · 주기 · 초상화는 고치는 끝점이 없어 여기서 안 바꾼다. 마지막 난이도는 못 지운다. 시즌 보스는 시즌이 끝나는 날을 끝에 적는다.', 'hint'));
+    box.appendChild(el('p', '이름 · 주기 · 초상화는 고치는 끝점이 없어 여기서 안 바꾼다. 별칭은 위에서 고친다. 마지막 난이도는 못 지운다. 시즌 보스는 시즌이 끝나는 날을 끝에 적는다.', 'hint'));
     td.appendChild(box); tr.appendChild(td);
     return tr;
   }

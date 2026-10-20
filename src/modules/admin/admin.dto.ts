@@ -79,6 +79,10 @@ export const requiredLevelBody = z
   })
 export type RequiredLevelBody = z.infer<typeof requiredLevelBody>
 
+/** 보스 별칭 하나의 본문. 앞뒤 공백은 걷는다. 빈 별칭은 앱이 표 전체를 거절한다. */
+export const aliasBody = z.object({ alias: z.string().trim().min(1).max(100) })
+export type AliasBody = z.infer<typeof aliasBody>
+
 /** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
 export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)
 

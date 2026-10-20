@@ -230,6 +230,16 @@ export class BossesRepository {
     return rows.length > 0
   }
 
+  /** 별칭을 갈아 끼운다. 보스의 updated_at 이 움직여 앱이 표를 다시 받는다. 모르는 보스면 false 다. */
+  async setAlias(key: string, alias: string): Promise<boolean> {
+    const rows = await this.db
+      .update(bosses)
+      .set({ alias, updatedAt: new Date() })
+      .where(eq(bosses.key, key))
+      .returning({ id: bosses.id })
+    return rows.length > 0
+  }
+
   /**
    * 난이도 줄의 파티 인원 상한을 적는다. null 이면 기본값으로 돌아간다. 보스의 updated_at 이 움직여 앱이 표를
    * 다시 받는다. 모르는 조합이면 false 다.

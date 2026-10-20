@@ -110,6 +110,8 @@ import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import {
+  type AliasBody,
+  aliasBody,
   type BossDropCreateBody,
   bossDropCreateBody,
   type BossDropQuery,
@@ -302,6 +304,17 @@ export class AdminController {
     @Body(new ZodValidationPipe(periodInput)) body: PeriodInput,
   ): Promise<void> {
     if (!(await this.bosses.setPeriod(key, body)))
+      throw new NotFoundException(`모르는 보스다: ${key}`)
+  }
+
+  /** 별칭을 갈아 끼운다. 이미 있는 보스에서 고칠 수 있는 칸은 이것뿐이다. 모르는 보스는 404 다. */
+  @Put('bosses/:key/alias')
+  @HttpCode(204)
+  async setBossAlias(
+    @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
+    @Body(new ZodValidationPipe(aliasBody)) body: AliasBody,
+  ): Promise<void> {
+    if (!(await this.bosses.setAlias(key, body.alias)))
       throw new NotFoundException(`모르는 보스다: ${key}`)
   }
 

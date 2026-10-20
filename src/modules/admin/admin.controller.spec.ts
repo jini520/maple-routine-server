@@ -75,6 +75,7 @@ describe('AdminController', () => {
     setMaxPartySize: jest.fn(),
     setPeriod: jest.fn(),
     setDifficultyPeriod: jest.fn(),
+    setAlias: jest.fn(),
   }
   const items = {
     section: jest.fn(),
@@ -975,6 +976,37 @@ describe('AdminController', () => {
           method: 'PUT',
           url: '/admin/bosses/meirin/period',
           payload: { from: '2026-11-05', until: '2026-07-03' },
+        })
+      ).statusCode,
+    ).toBe(400)
+  })
+
+  it('PUT /admin/bosses/:key/alias 는 앞뒤 공백을 걷어 적고 204, 모르는 보스는 404, 빈 별칭은 400 이다', async () => {
+    bosses.setAlias.mockResolvedValue(true)
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/meirin/alias',
+      payload: { alias: ' 메이린 ' },
+    })
+    expect(ok.statusCode).toBe(204)
+    expect(bosses.setAlias).toHaveBeenCalledWith('meirin', '메이린')
+
+    bosses.setAlias.mockResolvedValue(false)
+    expect(
+      (
+        await app.inject({
+          method: 'PUT',
+          url: '/admin/bosses/nobody/alias',
+          payload: { alias: '누구' },
+        })
+      ).statusCode,
+    ).toBe(404)
+    expect(
+      (
+        await app.inject({
+          method: 'PUT',
+          url: '/admin/bosses/meirin/alias',
+          payload: { alias: '  ' },
         })
       ).statusCode,
     ).toBe(400)

@@ -261,6 +261,28 @@ describe('AdminController', () => {
     }
   })
 
+  it('메뉴는 지금 보는 화면이 든 묶음만 펼치고 나머지는 접는다', async () => {
+    for (const url of PAGES) {
+      const res = await app.inject({ method: 'GET', url })
+      const nav = res.body.slice(res.body.indexOf('<nav'), res.body.indexOf('</nav>'))
+      const stack: boolean[] = []
+      let opened = 0
+      let ancestors: boolean[] | null = null
+      for (const [tag] of nav.matchAll(/<details[^>]*>|<\/details>|<a [^>]*aria-current="page"[^>]*>/g)) {
+        if (tag.startsWith('<details')) {
+          const open = /\sopen[\s>]/.test(tag)
+          stack.push(open)
+          if (open) opened++
+        } else if (tag === '</details>') stack.pop()
+        else ancestors = [...stack]
+      }
+      expect(ancestors).not.toBeNull()
+      if (url !== '/admin' && url !== '/admin/notices') expect(ancestors!.length).toBeGreaterThan(0)
+      expect(ancestors!.every(Boolean)).toBe(true)
+      expect(opened).toBe(ancestors!.length)
+    }
+  })
+
   it('PUT /admin/bosses/rules 는 규칙 둘을 적고 204 다. 0 은 400 이다', async () => {
     bosses.setRules.mockResolvedValue(undefined)
 

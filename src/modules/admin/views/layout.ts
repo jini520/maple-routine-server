@@ -1,23 +1,62 @@
-/** 왼쪽 메뉴의 차례. 경로와 이름 */
-const MENU = [
+type MenuItem = readonly [href: string, label: string] | { label: string; items: readonly MenuItem[] }
+
+/** 왼쪽 메뉴의 차례. 경로와 이름, 또는 접고 펴는 묶음 */
+const MENU: readonly MenuItem[] = [
   ['/admin', '홈'],
   ['/admin/notices', '공지'],
-  ['/admin/bosses', '보스 목록'],
-  ['/admin/manual-completion', '직접 완료'],
-  ['/admin/drop-prices', '드롭 가격'],
-  ['/admin/drop-items', '드롭 아이템'],
-  ['/admin/drop-boxes', '상자'],
-  ['/admin/boss-drops', '드롭 표'],
-  ['/admin/crystal-prices', '결정석 가격'],
-  ['/admin/worlds', '월드'],
-  ['/admin/spend-catalog', '지출 카탈로그'],
-  ['/admin/symbol-costs', '심볼 비용'],
-  ['/admin/contents', '컨텐츠'],
-  ['/admin/equipment-items', '장비'],
-  ['/admin/enhancement-costs', '강화 비용'],
-  ['/admin/mvp-grades', 'MVP 등급'],
-  ['/admin/hunting-grounds', '사냥터'],
-] as const
+  {
+    label: '게임데이터',
+    items: [
+      {
+        label: '보스',
+        items: [
+          ['/admin/bosses', '보스 목록'],
+          ['/admin/drop-items', '드롭 아이템'],
+          ['/admin/drop-boxes', '상자'],
+          ['/admin/boss-drops', '드롭 표'],
+          ['/admin/crystal-prices', '결정석 가격'],
+        ],
+      },
+      {
+        label: '가계부',
+        items: [
+          ['/admin/spend-catalog', '지출 카탈로그'],
+          ['/admin/symbol-costs', '심볼 비용'],
+          ['/admin/contents', '컨텐츠'],
+          ['/admin/enhancement-costs', '강화 비용'],
+          ['/admin/mvp-grades', 'MVP 등급'],
+        ],
+      },
+      {
+        label: '기타',
+        items: [
+          ['/admin/worlds', '월드'],
+          ['/admin/equipment-items', '장비'],
+          ['/admin/hunting-grounds', '사냥터'],
+        ],
+      },
+    ],
+  },
+  { label: '로그', items: [['/admin/drop-prices', '드롭 가격']] },
+  { label: '임시 기능', items: [['/admin/manual-completion', '보스 직접 완료']] },
+]
+
+function contains(item: MenuItem, path: string): boolean {
+  return 'items' in item ? item.items.some((child) => contains(child, path)) : item[0] === path
+}
+
+/** 지금 보는 화면이 든 묶음만 펼쳐 둔 메뉴 HTML */
+function renderMenu(items: readonly MenuItem[], path: string): string {
+  return items
+    .map((item) => {
+      if (!('items' in item)) {
+        const [href, label] = item
+        return `<a href="${href}"${href === path ? ' aria-current="page"' : ''}>${label}</a>`
+      }
+      return `<details${contains(item, path) ? ' open' : ''}><summary>${item.label}</summary><div class="group">${renderMenu(item.items, path)}</div></details>`
+    })
+    .join('\n    ')
+}
 
 /**
  * 관리 화면의 공통 껍데기. 왼쪽 메뉴와 글꼴, 부품 스타일, 페이지가 쓰는 도우미 셋(call · show · when)을 든다.
@@ -28,10 +67,7 @@ const MENU = [
  * @param path 지금 보는 화면의 경로. 메뉴의 그 항목에 aria-current 가 붙는다
  */
 export function layout(path: string, title: string, body: string): string {
-  const menu = MENU.map(
-    ([href, label]) =>
-      `<a href="${href}"${href === path ? ' aria-current="page"' : ''}>${label}</a>`,
-  ).join('\n    ')
+  const menu = renderMenu(MENU, path)
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -69,12 +105,19 @@ export function layout(path: string, title: string, body: string): string {
   .nav a:not(.brand) { color: var(--text-2); text-decoration: none; font-weight: 500; font-size: 13.5px; padding: 8px 12px; border-radius: 8px; white-space: nowrap }
   .nav a:not(.brand):hover { background: var(--surface-2); color: var(--text) }
   .nav a[aria-current="page"] { color: var(--accent-ink); background: var(--accent-tint) }
-  .nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+  .nav a:focus-visible, .nav summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+  .nav details { display: grid }
+  .nav summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 8px; color: var(--text-3); font-weight: 600; font-size: 12.5px; letter-spacing: .02em; cursor: pointer; user-select: none; white-space: nowrap }
+  .nav summary::-webkit-details-marker { display: none }
+  .nav summary::after { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin-right: 2px }
+  .nav details[open] > summary::after { transform: rotate(45deg); margin-top: -3px }
+  .nav summary:hover { background: var(--surface-2); color: var(--text) }
+  .nav .group { display: flex; flex-direction: column; gap: 2px; margin-left: 10px; padding-left: 6px; border-left: 1px solid var(--line) }
   .main { padding: 28px 24px 56px; min-width: 0 }
   .page { max-width: 1120px; display: grid; gap: 20px }
   @media (max-width: 760px) {
     .shell { grid-template-columns: 1fr }
-    .nav { position: static; min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 16px }
+    .nav { position: static; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 16px }
     .brand { width: 100%; margin: 0 0 6px }
     .main { padding: 20px 16px 48px }
   }
@@ -178,7 +221,9 @@ export function layout(path: string, title: string, body: string): string {
   .links { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px }
   .links a { display: grid; gap: 6px; padding: 18px 20px; text-decoration: none; color: inherit }
   .links a:hover { border-color: var(--line-strong); background: var(--surface-2) }
-  .links h2 { font-size: 15px; font-weight: 600; margin: 0; color: var(--accent-ink) }
+  .section { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--text); margin: 12px 0 -8px; padding-top: 16px; border-top: 1px solid var(--line) }
+  .subsection { font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--text-3); margin: 0 0 -10px }
+  .links h3 { font-size: 15px; font-weight: 600; margin: 0; color: var(--accent-ink) }
   .links p { margin: 0; color: var(--text-2); font-size: 13px }
 
   @media (prefers-reduced-motion: no-preference) { .btn, .nav a, .links a { transition: background-color .12s ease, color .12s ease } }

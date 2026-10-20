@@ -3,6 +3,8 @@ import { layout } from './layout'
 /**
  * 월드 마스터 표. 위는 새 월드 폼, 아래는 표 하나다. 줄의 수정을 누르면 그 줄이 입력으로 바뀐다.
  *
+ * 거래권은 장비를 관세 내고 서로 거래할 수 있는 월드끼리 같은 값이다. 챌린저스는 시즌마다 붙는 거래권이 달라 여기서 고친다.
+ * 비우면 시세에서 빠진다(스페셜).
  * key 는 기록 · 원장 · 서버 가격 줄이 들어 못 바꾸고, 월드는 지우지 않는다. 새 챌린저스 시즌이 열리면 여기서 월드를
  * 더한다. 챌린저스를 켜야 시즌 보스가 보이고 월드 리프를 묻는다. 시즌 보스 자체의 끝은 보스 목록의 유효 기간이다.
  */
@@ -12,7 +14,7 @@ export const WORLDS_HTML = layout(
   `<div class="head">
   <div>
     <h1>월드</h1>
-    <p>차례가 곧 앱의 월드 차례다. 새 챌린저스 시즌이 열리면 월드를 더하고 챌린저스를 켠다. 엠블럼은 앱 번들의 파일명이라 파일이 있어야 그려진다. 바꾸면 <code>worlds.updatedAt</code> 이 움직인다.</p>
+    <p>차례가 곧 앱의 월드 차례다. 새 챌린저스 시즌이 열리면 월드를 더하고 챌린저스를 켠다. 엠블럼은 앱 번들의 파일명이라 파일이 있어야 그려진다. 거래권은 장비를 서로 거래할 수 있는 월드끼리 같은 값이고, 비우면 드롭 시세에서 빠진다. 거래권은 앱에 안 간다. 바꾸면 <code>worlds.updatedAt</code> 이 움직인다.</p>
   </div>
   <div class="stats">
     <div class="stat"><b id="stat-worlds">–</b><span>월드</span></div>
@@ -27,6 +29,7 @@ export const WORLDS_HTML = layout(
     <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="challengers_5"></div>
     <div class="field"><label for="n-name">이름 <small>API world_name 표기</small></label><input id="n-name" placeholder="챌린저스5"></div>
     <div class="field"><label for="n-emblem">엠블럼 <small>src/assets/worlds/ 의 파일 basename</small></label><input id="n-emblem" class="mono" placeholder="challengers"></div>
+    <div class="field"><label for="n-price-group">거래권 <small>general · helios_eos, 비우면 시세 제외</small></label><input id="n-price-group" class="mono" value="general"></div>
     <label class="check"><input id="n-challengers" type="checkbox"> 챌린저스</label>
     <label class="check"><input id="n-event" type="checkbox"> 이벤트 월드</label>
     <button id="n-add" class="btn" type="button">월드 추가</button>
@@ -34,7 +37,7 @@ export const WORLDS_HTML = layout(
 </section>
 <section class="card">
   <header><h2>월드</h2><p id="count"></p></header>
-  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>엠블럼</th><th>챌린저스</th><th>이벤트</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>엠블럼</th><th>챌린저스</th><th>이벤트</th><th>거래권</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script>
   var state = { worlds: [], editing: null };
@@ -45,6 +48,7 @@ export const WORLDS_HTML = layout(
     if (state.editing !== w.key) {
       cell(tr, w.name); cell(tr, w.emblem || '-', 'mono');
       cell(tr, w.challengers ? span('챌린저스', 'tag accent') : span('-', 'dim')); cell(tr, w.event ? span('이벤트', 'tag') : span('-', 'dim'));
+      cell(tr, w.priceGroup === null ? span('시세 제외', 'dim') : span(w.priceGroup, w.priceGroup === 'general' ? 'mono' : 'tag mono'));
       var up = button('↑', 'btn ghost sm'); var down = button('↓', 'btn ghost sm'); var edit = button('수정', 'btn ghost sm');
       up.addEventListener('click', async function () { var r = await call('POST', '/admin/worlds/' + w.key + '/move', { direction: 'up' }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); });
       down.addEventListener('click', async function () { var r = await call('POST', '/admin/worlds/' + w.key + '/move', { direction: 'down' }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); });
@@ -54,10 +58,11 @@ export const WORLDS_HTML = layout(
     }
     var name = input('text'); name.value = w.name; var emblem = input('text', 'mono'); emblem.value = w.emblem || '';
     var challengers = input('checkbox'); challengers.checked = w.challengers; var event = input('checkbox'); event.checked = w.event;
-    cell(tr, name); cell(tr, emblem); cell(tr, challengers); cell(tr, event);
+    var priceGroup = input('text', 'mono'); priceGroup.value = w.priceGroup || '';
+    cell(tr, name); cell(tr, emblem); cell(tr, challengers); cell(tr, event); cell(tr, priceGroup);
     var save = button('저장', 'btn sm'); var close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/worlds/' + w.key, { name: name.value.trim(), emblem: orNull(emblem.value), challengers: challengers.checked, event: event.checked });
+      var r = await call('PUT', '/admin/worlds/' + w.key, { name: name.value.trim(), emblem: orNull(emblem.value), challengers: challengers.checked, event: event.checked, priceGroup: orNull(priceGroup.value) });
       show(r.ok ? w.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editing = null; load();
     });
     close.addEventListener('click', function () { state.editing = null; render(); });
@@ -68,12 +73,12 @@ export const WORLDS_HTML = layout(
   function render() {
     var rows = document.getElementById('rows'); rows.innerHTML = '';
     state.worlds.forEach(function (w, i) { rows.appendChild(worldRow(w, i)); });
-    if (state.worlds.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 7; rows.appendChild(tr); }
+    if (state.worlds.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 8; rows.appendChild(tr); }
     document.getElementById('count').textContent = state.worlds.length + '줄 · 순서가 곧 앱의 화면 순서';
   }
 
   document.getElementById('n-add').addEventListener('click', async function () {
-    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), emblem: orNull(document.getElementById('n-emblem').value), challengers: document.getElementById('n-challengers').checked, event: document.getElementById('n-event').checked };
+    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), emblem: orNull(document.getElementById('n-emblem').value), challengers: document.getElementById('n-challengers').checked, event: document.getElementById('n-event').checked, priceGroup: orNull(document.getElementById('n-price-group').value) };
     var r = await call('POST', '/admin/worlds', body);
     show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
     if (r.ok) { ['n-key', 'n-name', 'n-emblem'].forEach(function (id) { document.getElementById(id).value = ''; }); document.getElementById('n-challengers').checked = false; document.getElementById('n-event').checked = false; }

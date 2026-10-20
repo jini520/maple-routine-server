@@ -19,11 +19,18 @@ export interface DropItemsSection {
   items: DropItemView[]
 }
 
+/** 관리 화면이 보는 아이템. 월드 간 거래 불가는 시세만 쓰고 앱에 안 싣는다. */
+export interface DropItemAdminView extends DropItemView {
+  worldBound: boolean
+}
+
+/** worldBound 를 안 주면 새 아이템은 장비(false)이고, 고칠 때는 그대로 둔다. */
 export interface DropItemInput {
   key: string
   name: string
   iconFile: string | null
   valuable: boolean
+  worldBound?: boolean
 }
 
 /** 같은 key 의 아이템이 이미 있다. */
@@ -47,6 +54,21 @@ export class DropItemsRepository {
     }
   }
 
+  /** 관리 화면의 표. section 에 월드 간 거래 불가를 더한 것이다. */
+  async adminSection(): Promise<{ updatedAt: string | null; items: DropItemAdminView[] }> {
+    const rows = await this.db.select().from(dropItems).orderBy(asc(dropItems.key))
+    return {
+      updatedAt: await sectionUpdatedAt(this.db, 'dropItems'),
+      items: rows.map((r) => ({
+        key: r.key,
+        name: r.name,
+        iconFile: r.iconFile,
+        valuable: r.valuable,
+        worldBound: r.worldBound,
+      })),
+    }
+  }
+
   async create(input: DropItemInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
       let row: { id: string } | undefined
@@ -62,7 +84,7 @@ export class DropItemsRepository {
     })
   }
 
-  /** 이름 · 그림 · 고가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르는 key 면 false 다. */
+  /** 이름 · 그림 · 고가 · 월드 간 거래 불가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르는 key 면 false 다. */
   async update(key: string, input: Omit<DropItemInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx

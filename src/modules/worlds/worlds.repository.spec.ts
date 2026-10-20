@@ -67,4 +67,19 @@ describeDb('WorldsRepository', () => {
       ['scania', false],
     ])
   })
+
+  // 거래권은 관리 화면에만 있다. 앱의 게임 데이터에 실리면 번들 사본까지 바뀐다.
+  it('거래권은 adminSection 에만 보이고 안 주면 general, null 이면 시세 제외, 고칠 때 안 주면 그대로다', async () => {
+    await repo.create({ ...scania, key: 'eos', name: '에오스', priceGroup: 'helios_eos' })
+    await repo.create(scania)
+    await repo.create({ ...special, priceGroup: null })
+    await repo.update('eos', { name: '에오스', emblem: null, challengers: false, event: false })
+
+    expect((await repo.section()).worlds.every((w) => !('priceGroup' in w))).toBe(true)
+    expect((await repo.adminSection()).worlds.map((w) => [w.key, w.priceGroup])).toEqual([
+      ['eos', 'helios_eos'],
+      ['scania', 'general'],
+      ['special', null],
+    ])
+  })
 })

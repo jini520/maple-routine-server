@@ -14,6 +14,8 @@ import {
   Put,
   Query,
 } from '@nestjs/common'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import {
@@ -51,6 +53,7 @@ import {
   NoDropItem as NoDropItemForBox,
 } from '../drop-items/drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
+import { DropMarketService } from '../drop-market/drop-market.service'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
   NoSpendGroup,
@@ -124,7 +127,11 @@ import {
   dropItemCreateBody,
   type DropItemUpdateBody,
   dropItemUpdateBody,
+  type DropMarketItemQuery,
+  type DropMarketQuery,
   type DropPriceQuery,
+  dropMarketItemQuery,
+  dropMarketQuery,
   dropPriceQuery,
   type MaxPartySizeBody,
   maxPartySizeBody,
@@ -208,6 +215,8 @@ import { BOSSES_HTML } from './views/bosses'
 import { CRYSTAL_PRICES_HTML } from './views/crystal-prices'
 import { DROP_BOXES_HTML } from './views/drop-boxes'
 import { DROP_ITEMS_HTML } from './views/drop-items'
+import { DROP_MARKET_HTML } from './views/drop-market'
+import { DROP_MARKET_ITEM_HTML } from './views/drop-market-item'
 import { DROP_PRICES_HTML } from './views/drop-prices'
 import { SPEND_CATALOG_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
@@ -227,6 +236,9 @@ import { NOTICES_HTML } from './views/notices'
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
+/** 첫 요청에 읽어 둔다. 바뀌는 것은 배포뿐이다. */
+let chartScript: string | undefined
+
 @Controller('admin')
 export class AdminController {
   constructor(
@@ -234,6 +246,7 @@ export class AdminController {
     private readonly manual: ManualCompletionRepository,
     private readonly notices: OperatorNoticesService,
     private readonly prices: DropPricesRepository,
+    private readonly market: DropMarketService,
     private readonly items: DropItemsRepository,
     private readonly boxes: DropBoxesRepository,
     private readonly drops: BossDropsRepository,
@@ -470,6 +483,58 @@ export class AdminController {
     ])
     return { summary, rows }
   }
+
+  @Get('drop-market')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  dropMarketPage(): string {
+    return DROP_MARKET_HTML
+  }
+
+  /** 화면이 부른다. 장비 탭의 거래권과 소비 탭의 월드. */
+  @Get('drop-market/scopes')
+  @Header('cache-control', 'no-store')
+  dropMarketScopes() {
+    return this.market.scopes()
+  }
+
+  /** 화면이 부른다. 그 범위의 시세마다 한 줄. */
+  @Get('drop-market/rows')
+  @Header('cache-control', 'no-store')
+  dropMarketRows(@Query(new ZodValidationPipe(dropMarketQuery)) query: DropMarketQuery) {
+    return this.market.overview({ kind: query.kind, key: query.key }, new Date())
+  }
+
+  @Get('drop-market/item')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  dropMarketItemPage(): string {
+    return DROP_MARKET_ITEM_HTML
+  }
+
+  /** 화면이 부른다. 시세 하나의 일봉과 판정 달린 줄. */
+  @Get('drop-market/item/rows')
+  @Header('cache-control', 'no-store')
+  dropMarketItemRows(@Query(new ZodValidationPipe(dropMarketItemQuery)) query: DropMarketItemQuery) {
+    const market = { itemKey: query.item, ringLevel: query.ring ?? null }
+    return this.market.detail({ kind: query.kind, key: query.key }, market, new Date())
+  }
+
+  /** 시세 차트 라이브러리. CDN 에 기대지 않으려고 의존성으로 들여 직접 내보낸다. 패키지 exports 가 dist 를 막아 package.json 옆에서 찾는다. */
+  @Get('assets/lightweight-charts.js')
+  @Header('content-type', 'text/javascript; charset=utf-8')
+  @Header('cache-control', 'public, max-age=86400')
+  lightweightCharts(): string {
+    chartScript ??= readFileSync(
+      join(
+        dirname(require.resolve('lightweight-charts/package.json')),
+        'dist',
+        'lightweight-charts.standalone.production.js',
+      ),
+      'utf8',
+    )
+    return chartScript
+  }
   /* ── 월드 ── */
 
   @Get('worlds')
@@ -483,7 +548,7 @@ export class AdminController {
   @Get('worlds/rows')
   @Header('cache-control', 'no-store')
   worldRows() {
-    return this.worlds.section()
+    return this.worlds.adminSection()
   }
 
   /** 월드를 맨 뒤에 더한다. 같은 key 는 409 다. */
@@ -787,11 +852,11 @@ export class AdminController {
     return DROP_ITEMS_HTML
   }
 
-  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  /** 화면이 부른다. 앱이 받는 칸에 월드 간 거래 불가를 더했다. */
   @Get('drop-items/rows')
   @Header('cache-control', 'no-store')
   dropItemRows() {
-    return this.items.section()
+    return this.items.adminSection()
   }
 
   /** 아이템을 더한다. 같은 key 는 409 다. */
@@ -807,7 +872,7 @@ export class AdminController {
     }
   }
 
-  /** 이름 · 그림 · 고가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 404 다. */
+  /** 이름 · 그림 · 고가 · 월드 간 거래 불가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 404 다. */
   @Put('drop-items/:key')
   @HttpCode(204)
   async updateDropItem(

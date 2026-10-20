@@ -74,6 +74,28 @@ describeDb('DropPricesRepository', () => {
     expect(rows[0]?.updatedAt.getTime()).toBeGreaterThanOrEqual(rows[0]?.createdAt.getTime() ?? 0)
   })
 
+  // 기기는 그룹을 저장할 때마다 같은 값을 다시 보낸다. 그때 거래 시각이 움직이면 시세 차트의 날이 틀어진다.
+  it('priced_at 은 같은 가격이 다시 오면 그대로이고, 가격이 바뀌거나 completed 가 되면 움직이고, 아니면 비운다', async () => {
+    const past = new Date('2026-10-01T00:00:00Z')
+    const pricedAt = async () => (await db.select().from(dropPrices))[0]?.pricedAt ?? null
+
+    await repo.upsert(input())
+    await db.update(dropPrices).set({ pricedAt: past })
+    await repo.upsert(input())
+    expect(await pricedAt()).toEqual(past)
+
+    await repo.upsert(input({ priceMeso: 200 }))
+    expect((await pricedAt())?.getTime()).toBeGreaterThan(past.getTime())
+
+    await repo.upsert(input({ priceMeso: null, recordStatus: 'pending' }))
+    expect(await pricedAt()).toBeNull()
+    await repo.upsert(input({ priceMeso: 200 }))
+    expect(await pricedAt()).not.toBeNull()
+
+    await repo.markDeleted(me, RECORD)
+    expect(await pricedAt()).toBeNull()
+  })
+
   // 아이템 · 월드는 시세의 축이라 모르는 값을 받으면 어느 아이템의 시세인지 모르는 줄이 된다. 월드가 없는 줄은 받는다.
   it('표에 없는 아이템 · 월드 key 는 NoDropItem · NoWorld 로 거절하고 줄을 안 만든다. 월드 null 은 받는다', async () => {
     await expect(repo.upsert(input({ itemKey: 'nobody' }))).rejects.toThrow(

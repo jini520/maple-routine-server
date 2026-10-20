@@ -34,6 +34,7 @@ export const INDEX_HTML = layout(
 <h2 class="section">로그</h2>
 <div class="links">
   <a class="card" href="/admin/drop-prices"><h3>드롭 가격</h3><p>모인 시세 표본과 분포를 본다</p></a>
+  <a class="card" href="/admin/drop-market"><h3>드롭 시세</h3><p>월드 묶음마다 잘못 적은 값을 빼고 일봉으로 본다</p></a>
 </div>
 <h2 class="section">임시 기능</h2>
 <div class="links">

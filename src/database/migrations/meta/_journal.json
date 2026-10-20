@@ -92,6 +92,13 @@
       "when": 1792373717794,
       "tag": "0012_drop_prices_record_status",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792477277310,
+      "tag": "0013_drop_market",
+      "breakpoints": true
     }
   ]
 }

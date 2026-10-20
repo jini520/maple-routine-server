@@ -248,6 +248,11 @@ export const dropPrices = pgTable(
     bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
       onDelete: 'set null',
     }),
+    /**
+     * 가격이 처음 적히거나 바뀐 시각. 시세의 거래 시각이다. completed 만 값이 있다.
+     * 기기가 그룹을 저장할 때마다 같은 값을 다시 보내 updated_at 이 움직이므로 거래 시각으로 못 쓴다.
+     */
+    pricedAt: timestamptz('priced_at'),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
@@ -260,6 +265,13 @@ export const dropPrices = pgTable(
       'drop_prices_price_matches_status',
       sql`(${t.recordStatus} = 'completed') = (${t.priceMeso} IS NOT NULL)`,
     ),
+    check(
+      'drop_prices_priced_at_matches_status',
+      sql`(${t.recordStatus} = 'completed') = (${t.pricedAt} IS NOT NULL)`,
+    ),
+    index('drop_prices_priced_at_idx')
+      .on(t.pricedAt)
+      .where(sql`${t.recordStatus} = 'completed'`),
   ],
 )
 
@@ -283,6 +295,8 @@ export const dropItems = pgTable('drop_items', {
   iconFile: text('icon_file'),
   /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */
   valuable: boolean('valuable').notNull().default(false),
+  /** 월드끼리 거래할 수 없는 소비 아이템. 시세를 거래권이 아니라 월드 하나로 센다. 앱의 게임 데이터에는 안 싣는다. */
+  worldBound: boolean('world_bound').notNull().default(false),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
@@ -378,6 +392,11 @@ export const worlds = pgTable('worlds', {
   challengers: boolean('challengers').notNull().default(false),
   /** 재화에 가치가 없어 강화 지출에서 빼는 월드. */
   event: boolean('event').notNull().default(false),
+  /**
+   * 장비를 관세 내고 서로 거래할 수 있는 월드끼리 같은 값인 거래권. 장비 시세를 이 단위로 센다.
+   * 챌린저스는 시즌마다 붙는 거래권이 달라 운영자가 고친다. NULL 이면 시세에서 빠진다. 앱의 게임 데이터에는 안 싣는다.
+   */
+  priceGroup: text('price_group').default('general'),
   /** 배열 순서가 곧 화면 순서다. */
   sortOrder: integer('sort_order').notNull(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),

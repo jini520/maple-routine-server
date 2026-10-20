@@ -170,6 +170,7 @@ export class DropPricesRepository {
   /**
    * 사람과 기록 id 로 upsert 한다. 다시 적으면 값과 상태를 덮으므로 deleted 였던 줄도 되살아난다. 아이템 · 월드는 key 로
    * 표에서 id 를 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null) 줄은 그대로 받는다.
+   * priced_at 은 completed 가 되거나 가격이 바뀔 때만 지금으로 움직인다.
    */
   async upsert(input: DropPriceInput): Promise<void> {
     const { userId, dropRecordId, itemKey, worldKey, ...rest } = input
@@ -188,12 +189,20 @@ export class DropPricesRepository {
       worldId = world.id
     }
     const values = { ...rest, itemId: item.id, worldId }
+    const completed = input.recordStatus === 'completed'
     await this.db
       .insert(dropPrices)
-      .values({ userId, dropRecordId, ...values })
+      .values({ userId, dropRecordId, ...values, pricedAt: completed ? sql`now()` : null })
       .onConflictDoUpdate({
         target: [dropPrices.userId, dropPrices.dropRecordId],
-        set: { ...values, updatedAt: sql`now()` },
+        set: {
+          ...values,
+          // 기기가 같은 값을 다시 보내도 거래 시각은 그대로다. 움직이면 시세 차트의 날이 틀어진다.
+          pricedAt: completed
+            ? sql`CASE WHEN ${dropPrices.recordStatus} = 'completed' AND ${dropPrices.priceMeso} = ${input.priceMeso} THEN ${dropPrices.pricedAt} ELSE now() END`
+            : null,
+          updatedAt: sql`now()`,
+        },
       })
   }
 
@@ -201,7 +210,7 @@ export class DropPricesRepository {
   async markDeleted(userId: string, dropRecordId: string): Promise<void> {
     await this.db
       .update(dropPrices)
-      .set({ recordStatus: 'deleted', priceMeso: null, updatedAt: sql`now()` })
+      .set({ recordStatus: 'deleted', priceMeso: null, pricedAt: null, updatedAt: sql`now()` })
       .where(and(eq(dropPrices.userId, userId), eq(dropPrices.dropRecordId, dropRecordId)))
   }
 }

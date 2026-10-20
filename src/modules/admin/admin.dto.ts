@@ -81,6 +81,20 @@ export type RequiredLevelBody = z.infer<typeof requiredLevelBody>
 
 /** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
 export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)
+
+/** 드롭 시세의 범위. 장비는 거래권(worlds.price_group), 소비는 월드 key 다. */
+export const dropMarketQuery = z.object({
+  kind: z.enum(['equipment', 'consumable']).default('equipment'),
+  key: snakeKey.max(50).default('general'),
+})
+export type DropMarketQuery = z.infer<typeof dropMarketQuery>
+/** 시세 하나. ring 이 없으면 반지가 아닌 아이템이다. */
+export const dropMarketItemQuery = dropMarketQuery.extend({
+  item: z.string().min(1).max(200),
+  ring: z.coerce.number().int().min(0).max(10).optional(),
+})
+export type DropMarketItemQuery = z.infer<typeof dropMarketItemQuery>
+
 /** KST 기간 글자. 없으면 null 이다. */
 const periodText = z.string().regex(PERIOD_TEXT).nullish()
 const levelRange = <T extends { levelMin?: number | null; levelMax?: number | null }>(b: T) =>
@@ -93,9 +107,13 @@ export const dropItemCreateBody = z.object({
   name: z.string().min(1).max(100),
   iconFile: z.string().min(1).max(200).nullish(),
   valuable: z.boolean().default(false),
+  worldBound: z.boolean().default(false),
 })
 export type DropItemCreateBody = z.infer<typeof dropItemCreateBody>
-export const dropItemUpdateBody = dropItemCreateBody.omit({ key: true })
+// 고칠 때 기본값을 두면 이 칸을 안 보낸 요청이 소비 아이템을 장비로 되돌린다.
+export const dropItemUpdateBody = dropItemCreateBody
+  .omit({ key: true })
+  .extend({ worldBound: z.boolean().optional() })
 export type DropItemUpdateBody = z.infer<typeof dropItemUpdateBody>
 
 export const dropBoxCreateBody = z
@@ -148,9 +166,14 @@ export const worldCreateBody = z.object({
   emblem: z.string().min(1).max(100).nullish(),
   challengers: z.boolean().default(false),
   event: z.boolean().default(false),
+  /** null 이면 시세에서 빠진다. */
+  priceGroup: snakeKey.max(50).nullable().default('general'),
 })
 export type WorldCreateBody = z.infer<typeof worldCreateBody>
-export const worldUpdateBody = worldCreateBody.omit({ key: true })
+// 고칠 때 기본값을 두면 거래권을 안 보낸 요청이 핼리오스 · 에오스를 general 로 되돌린다.
+export const worldUpdateBody = worldCreateBody
+  .omit({ key: true })
+  .extend({ priceGroup: snakeKey.max(50).nullable().optional() })
 export type WorldUpdateBody = z.infer<typeof worldUpdateBody>
 
 /* ── 지출 카탈로그 ── */

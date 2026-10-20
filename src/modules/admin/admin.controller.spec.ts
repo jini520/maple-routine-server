@@ -49,6 +49,7 @@ import {
   ManualCompletionRepository,
 } from '../manual-completion/manual-completion.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
+import { DropMarketService } from '../drop-market/drop-market.service'
 import { AdminController } from './admin.controller'
 
 const ROW = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
@@ -75,7 +76,12 @@ describe('AdminController', () => {
     setPeriod: jest.fn(),
     setDifficultyPeriod: jest.fn(),
   }
-  const items = { section: jest.fn(), create: jest.fn(), update: jest.fn() }
+  const items = {
+    section: jest.fn(),
+    adminSection: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+  }
   const boxes = {
     section: jest.fn(),
     create: jest.fn(),
@@ -106,8 +112,14 @@ describe('AdminController', () => {
     cancelSchedule: jest.fn(),
   }
   const prices = { summary: jest.fn(), recent: jest.fn() }
+  const market = { scopes: jest.fn(), overview: jest.fn(), detail: jest.fn() }
 
-  const worldsRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
+  const worldsRepo = {
+    adminSection: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    move: jest.fn(),
+  }
   const spendRepo = {
     section: jest.fn(),
     setRules: jest.fn(),
@@ -169,6 +181,7 @@ describe('AdminController', () => {
         { provide: ManualCompletionRepository, useValue: manual },
         { provide: OperatorNoticesService, useValue: notices },
         { provide: DropPricesRepository, useValue: prices },
+        { provide: DropMarketService, useValue: market },
         { provide: DropItemsRepository, useValue: items },
         { provide: DropBoxesRepository, useValue: boxes },
         { provide: BossDropsRepository, useValue: drops },
@@ -217,6 +230,7 @@ describe('AdminController', () => {
     '/admin/manual-completion',
     '/admin/notices',
     '/admin/drop-prices',
+    '/admin/drop-market',
     '/admin/drop-items',
     '/admin/drop-boxes',
     '/admin/boss-drops',
@@ -619,14 +633,68 @@ describe('AdminController', () => {
     })
   })
 
+  describe('드롭 시세', () => {
+    it('범위를 안 주면 장비 general 이고, ring 이 없으면 반지가 아닌 시세로 읽는다', async () => {
+      market.overview.mockResolvedValue([])
+      market.detail.mockResolvedValue({ itemName: null, candles: [], rows: [] })
+
+      expect((await app.inject({ method: 'GET', url: '/admin/drop-market/rows' })).statusCode).toBe(200)
+      expect(market.overview).toHaveBeenCalledWith(
+        { kind: 'equipment', key: 'general' },
+        expect.any(Date),
+      )
+
+      await app.inject({
+        method: 'GET',
+        url: '/admin/drop-market/item/rows?kind=consumable&key=scania&item=life_whetstone',
+      })
+      expect(market.detail).toHaveBeenLastCalledWith(
+        { kind: 'consumable', key: 'scania' },
+        { itemKey: 'life_whetstone', ringLevel: null },
+        expect.any(Date),
+      )
+      await app.inject({ method: 'GET', url: '/admin/drop-market/item/rows?item=ring&ring=4' })
+      expect(market.detail).toHaveBeenLastCalledWith(
+        { kind: 'equipment', key: 'general' },
+        { itemKey: 'ring', ringLevel: 4 },
+        expect.any(Date),
+      )
+
+      const noItem = await app.inject({ method: 'GET', url: '/admin/drop-market/item/rows' })
+      expect(noItem.statusCode).toBe(400)
+      const badKind = await app.inject({ method: 'GET', url: '/admin/drop-market/rows?kind=etc' })
+      expect(badKind.statusCode).toBe(400)
+    })
+
+    // 아이템 화면은 메뉴에 없다. 목록의 하위 화면이라 메뉴는 드롭 시세에 머문다.
+    it('아이템 화면은 HTML 이고 메뉴는 드롭 시세를 가리킨다', async () => {
+      const res = await app.inject({ method: 'GET', url: '/admin/drop-market/item?item=ring' })
+
+      expect(res.headers['content-type']).toContain('text/html')
+      expect(res.body.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
+        '<a href="/admin/drop-market" aria-current="page">',
+      ])
+    })
+
+    it('차트 라이브러리를 서버가 직접 내보낸다', async () => {
+      const res = await app.inject({ method: 'GET', url: '/admin/assets/lightweight-charts.js' })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toContain('javascript')
+      expect(res.body).toContain('LightweightCharts')
+    })
+  })
+
   describe('게임 데이터 표 넷', () => {
     it('GET rows 넷은 리포지토리의 칸을 그대로 내고, 상자는 이름을 붙인다', async () => {
-      items.section.mockResolvedValue({
+      const itemSection = {
         updatedAt: null,
         items: [
           { key: 'restraint_ring', name: '리스트레인트 링', iconFile: null, valuable: false },
         ],
-      })
+      }
+      items.section.mockResolvedValue(itemSection)
+      items.adminSection.mockResolvedValue(itemSection)
       boxes.section.mockResolvedValue({
         updatedAt: null,
         boxes: [
@@ -683,6 +751,7 @@ describe('AdminController', () => {
         name: '몽환의 벨트',
         iconFile: null,
         valuable: false,
+        worldBound: false,
       })
 
       items.create.mockRejectedValue(new DropItemExists('dreamy_belt'))
@@ -1206,7 +1275,7 @@ describe('AdminController', () => {
 
   describe('월드', () => {
     it('rows 는 칸 그대로이고, POST 는 201 · 같은 key 409, PUT 은 204 · 모르면 404, move 는 204 다', async () => {
-      worldsRepo.section.mockResolvedValue({ updatedAt: null, worlds: [] })
+      worldsRepo.adminSection.mockResolvedValue({ updatedAt: null, worlds: [] })
       expect((await app.inject({ method: 'GET', url: '/admin/worlds/rows' })).json()).toEqual({
         updatedAt: null,
         worlds: [],
@@ -1230,6 +1299,7 @@ describe('AdminController', () => {
         emblem: 'challengers',
         challengers: true,
         event: false,
+        priceGroup: 'general',
       })
       worldsRepo.create.mockRejectedValue(new WorldExists('challengers_5'))
       expect(

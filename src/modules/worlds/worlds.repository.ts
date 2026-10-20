@@ -20,7 +20,13 @@ export interface WorldsSection {
   worlds: WorldView[]
 }
 
-export type WorldInput = WorldView
+/** 관리 화면이 보는 월드. 거래권은 앱에 안 싣고 여기에만 있다. NULL 이면 시세에서 빠진다. */
+export interface WorldAdminView extends WorldView {
+  priceGroup: string | null
+}
+
+/** 거래권을 안 주면 새 월드는 general 이고, 고칠 때는 그대로 둔다. */
+export type WorldInput = WorldView & { priceGroup?: string | null }
 
 export class WorldExists extends Error {}
 
@@ -39,6 +45,22 @@ export class WorldsRepository {
         emblem: r.emblem,
         challengers: r.challengers,
         event: r.event,
+      })),
+    }
+  }
+
+  /** 관리 화면의 표. section 에 거래권을 더한 것이다. */
+  async adminSection(): Promise<{ updatedAt: string | null; worlds: WorldAdminView[] }> {
+    const rows = await this.db.select().from(worlds).orderBy(asc(worlds.sortOrder), asc(worlds.key))
+    return {
+      updatedAt: await sectionUpdatedAt(this.db, 'worlds'),
+      worlds: rows.map((r) => ({
+        key: r.key,
+        name: r.name,
+        emblem: r.emblem,
+        challengers: r.challengers,
+        event: r.event,
+        priceGroup: r.priceGroup,
       })),
     }
   }
@@ -65,7 +87,7 @@ export class WorldsRepository {
     })
   }
 
-  /** 이름 · 엠블럼 · 챌린저스 · 이벤트를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 false 다. */
+  /** 이름 · 엠블럼 · 챌린저스 · 이벤트 · 거래권을 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 false 다. */
   async update(key: string, input: Omit<WorldInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx

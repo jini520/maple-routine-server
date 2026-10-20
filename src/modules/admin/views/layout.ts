@@ -37,7 +37,13 @@ const MENU: readonly MenuItem[] = [
       },
     ],
   },
-  { label: '로그', items: [['/admin/drop-prices', '드롭 가격']] },
+  {
+    label: '로그',
+    items: [
+      ['/admin/drop-prices', '드롭 가격'],
+      ['/admin/drop-market', '드롭 시세'],
+    ],
+  },
   { label: '임시 기능', items: [['/admin/manual-completion', '보스 직접 완료']] },
 ]
 

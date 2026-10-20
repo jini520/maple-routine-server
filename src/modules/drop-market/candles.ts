@@ -1,8 +1,10 @@
 import { type Judged, kstDay, kstDayNumber } from './fence'
 
-/** 하루의 봉. excluded 를 뺀 줄로 만든다. */
+const DAY_MS = 86_400_000
+
+/** 봉 하나. excluded 를 뺀 줄로 만든다. */
 export interface Candle {
-  /** KST YYYY-MM-DD. */
+  /** 기간의 첫날. KST YYYY-MM-DD. 주봉은 그 주의 목요일이다. */
   day: string
   open: number
   high: number
@@ -29,11 +31,11 @@ function byPricedAt(a: Judged, b: Judged): number {
   return a.pricedAt.getTime() - b.pricedAt.getTime()
 }
 
-/** 날마다 봉 하나. 거래가 없는 날은 봉이 없다. 앞날 종가로 채우면 없던 거래가 있는 것처럼 보인다. */
-export function dailyCandles(rows: Judged[]): Candle[] {
+/** 거래가 없는 기간은 봉이 없다. 앞 봉의 종가로 채우면 없던 거래가 있는 것처럼 보인다. */
+function candlesBy(rows: Judged[], periodStart: (pricedAt: Date) => string): Candle[] {
   const candles: Candle[] = []
   for (const row of rows.filter((r) => r.verdict !== 'excluded').sort(byPricedAt)) {
-    const day = kstDay(row.pricedAt)
+    const day = periodStart(row.pricedAt)
     const last = candles.at(-1)
     if (last?.day === day) {
       last.high = Math.max(last.high, row.priceMeso)
@@ -46,6 +48,18 @@ export function dailyCandles(rows: Judged[]): Candle[] {
     }
   }
   return candles
+}
+
+export function dailyCandles(rows: Judged[]): Candle[] {
+  return candlesBy(rows, kstDay)
+}
+
+/** 메이플 주간 초기화가 목요일 0시(KST)다. 날 번호 0 인 1970-01-01 이 목요일이라 7 로 나누면 목요일에서 끊긴다. */
+export function weeklyCandles(rows: Judged[]): Candle[] {
+  return candlesBy(rows, (pricedAt) => {
+    const thursday = Math.floor(kstDayNumber(pricedAt) / 7) * 7
+    return new Date(thursday * DAY_MS).toISOString().slice(0, 10)
+  })
 }
 
 /** 시세 하나를 한 줄로 줄인다. */

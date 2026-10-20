@@ -1,4 +1,4 @@
-import { dailyCandles, summarize } from './candles'
+import { dailyCandles, summarize, weeklyCandles } from './candles'
 import type { Judged } from './fence'
 
 function at(day: string, time = '12:00'): Date {
@@ -36,6 +36,24 @@ describe('dailyCandles', () => {
     ]
 
     expect(dailyCandles(rows).map((c) => c.day)).toEqual(['2026-10-15', '2026-10-16', '2026-10-18'])
+  })
+})
+
+describe('weeklyCandles', () => {
+  // 2026-10-14 는 수요일, 10-15 는 목요일이다. 메이플 주간 초기화가 목요일 0시다.
+  it('목요일 0시(KST)로 주가 갈리고 날이 바뀌어도 시가 · 종가는 거래 시각 차례다', () => {
+    const rows = [
+      judged('wed', 90, at('2026-10-14', '23:59')),
+      judged('thu-close', 130, at('2026-10-20', '09:00')),
+      judged('thu-open', 100, at('2026-10-15', '00:01')),
+      judged('typo', 9_999, at('2026-10-17'), 'excluded'),
+      judged('sat', 80, at('2026-10-17')),
+    ]
+
+    expect(weeklyCandles(rows)).toEqual([
+      { day: '2026-10-08', open: 90, high: 90, low: 90, close: 90, count: 1 },
+      { day: '2026-10-15', open: 100, high: 130, low: 80, close: 130, count: 3 },
+    ])
   })
 })
 

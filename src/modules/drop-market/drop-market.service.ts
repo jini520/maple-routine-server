@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 
-import { type Candle, dailyCandles, type MarketSummary, summarize } from './candles'
+import { type Candle, dailyCandles, type MarketSummary, summarize, weeklyCandles } from './candles'
 import {
   DropMarketRepository,
   type MarketKey,
@@ -14,10 +14,11 @@ export interface MarketOverviewRow extends MarketKey, MarketSummary {
   itemName: string
 }
 
-/** 아이템 화면. 봉과 줄은 최근 90일이다. */
+/** 아이템 화면. 봉과 줄은 최근 90일이다. 주봉의 첫 봉은 90일 경계에서 잘린 주일 수 있다. */
 export interface MarketDetail {
   itemName: string | null
   candles: Candle[]
+  weeklyCandles: Candle[]
   rows: (Judged & Pick<MarketRow, 'worldKey' | 'worldName'>)[]
 }
 
@@ -65,6 +66,11 @@ export class DropMarketService {
     const judged = judge(rows)
       .map((j, i) => ({ ...j, worldKey: rows[i].worldKey, worldName: rows[i].worldName }))
       .filter((j) => kstDayNumber(j.pricedAt) >= firstDay)
-    return { itemName: rows[0]?.itemName ?? null, candles: dailyCandles(judged), rows: judged }
+    return {
+      itemName: rows[0]?.itemName ?? null,
+      candles: dailyCandles(judged),
+      weeklyCandles: weeklyCandles(judged),
+      rows: judged,
+    }
   }
 }

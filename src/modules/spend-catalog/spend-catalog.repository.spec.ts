@@ -1,6 +1,8 @@
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { BossesRepository } from '../bosses/bosses.repository'
+import { CashbookCategoriesRepository } from '../cashbook-categories/cashbook-categories.repository'
 import {
+  NoSpendCategory,
   NoSpendGroup,
   NoSpendTile,
   SpendCatalogRepository,
@@ -32,14 +34,22 @@ describeDb('SpendCatalogRepository', () => {
     items: [],
     itemOptions: [],
     itemForms: [],
+    forms: [],
   }
   const epic = {
     key: 'epic_dungeon_bonus_reward',
     name: '에픽던전 추가 리워드',
-    category: 'content' as const,
+    category: 'content',
+    cardTitle: '에픽던전',
     active: true,
   }
-  const scroll = { key: 'scroll', name: '주문서', category: 'scroll' as const, active: true }
+  const scroll = {
+    key: 'scroll',
+    name: '주문서',
+    category: 'scroll',
+    cardTitle: '주문서',
+    active: true,
+  }
   const highMountain = {
     key: 'high_mountain',
     name: '하이마운틴',
@@ -57,6 +67,7 @@ describeDb('SpendCatalogRepository', () => {
     group: 'epic_dungeon_bonus_reward',
     tile: 'high_mountain',
     name: '하이마운틴 1단계',
+    shortName: null,
     tier: '1단계',
     currency: 'point',
     unitPrice: 7500,
@@ -70,7 +81,36 @@ describeDb('SpendCatalogRepository', () => {
     ...over,
   })
 
+  async function seedCategories(): Promise<void> {
+    const categories = new CashbookCategoriesRepository(db)
+    const base = { iconFile: 'x.webp', description: '', unit: null }
+    await categories.createCategory({
+      ...base,
+      entryType: 'spend',
+      key: 'content',
+      name: '컨텐츠',
+      cardTitle: '컨텐츠',
+    })
+    await categories.createCategory({
+      ...base,
+      entryType: 'spend',
+      key: 'scroll',
+      name: '주문서',
+      cardTitle: '주문서',
+    })
+    await categories.createCategory({
+      ...base,
+      entryType: 'income',
+      key: 'hunting',
+      name: '사냥',
+      cardTitle: '사냥',
+    })
+    await repo.createForm({ key: 'exp', name: '경험치' })
+    await repo.createForm({ key: 'sol_erda', name: '솔 에르다' })
+  }
+
   async function seedTwoGroups(): Promise<void> {
+    await seedCategories()
     await repo.createGroup(epic)
     await repo.createGroup(scroll)
     await repo.createTile(highMountain)
@@ -211,11 +251,21 @@ describeDb('SpendCatalogRepository', () => {
     expect(await repo.moveItem('high_mountain_2', 'up')).toBe(true)
     expect(await repo.moveItem('nobody', 'up')).toBe(false)
     expect(
-      await repo.updateGroup('scroll', { name: '주문서', category: 'scroll', active: false }),
+      await repo.updateGroup('scroll', {
+        name: '주문서',
+        category: 'scroll',
+        cardTitle: '주문서',
+        active: false,
+      }),
     ).toBe(true)
-    expect(await repo.updateGroup('nobody', { name: 'x', category: 'scroll', active: true })).toBe(
-      false,
-    )
+    expect(
+      await repo.updateGroup('nobody', {
+        name: 'x',
+        category: 'scroll',
+        cardTitle: 'x',
+        active: true,
+      }),
+    ).toBe(false)
     expect(await repo.moveGroup('scroll', 'up')).toBe(true)
     expect(
       await repo.updateTile('magical_scroll', {
@@ -241,5 +291,27 @@ describeDb('SpendCatalogRepository', () => {
       { item: 'high_mountain_2', form: 'exp' },
     ])
     expect(section.tiles.find((t) => t.key === 'magical_scroll')?.name).toBe('매지컬')
+  })
+
+  it('묶음은 지출 갈래만 가리키고, 카드 제목 · 줄인 이름 · 형태 이름을 낸다', async () => {
+    await seedTwoGroups()
+    await expect(
+      repo.createGroup({ ...epic, key: 'hunt', category: 'hunting' }),
+    ).rejects.toBeInstanceOf(NoSpendCategory)
+    await expect(
+      repo.updateGroup('scroll', { ...scroll, category: 'nobody' }),
+    ).rejects.toBeInstanceOf(NoSpendCategory)
+    await repo.createItem(item({ name: '블루베리 농장 입장권', shortName: '블루베리 농장' }))
+    expect(await repo.updateForm('exp', '경험치 보상')).toBe(true)
+
+    const section = await repo.section()
+    expect(section.groups[0]).toEqual(epic)
+    expect(section.items.map((i) => [i.name, i.shortName])).toEqual([
+      ['블루베리 농장 입장권', '블루베리 농장'],
+    ])
+    expect(section.forms).toEqual([
+      { key: 'exp', name: '경험치 보상' },
+      { key: 'sol_erda', name: '솔 에르다' },
+    ])
   })
 })

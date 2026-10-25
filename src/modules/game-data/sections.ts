@@ -11,6 +11,7 @@ export const SECTION_KEYS = [
   'crystalPrices',
   'worlds',
   'spendCatalog',
+  'cashbookCategories',
   'symbolCosts',
   'contents',
   'equipmentItems',

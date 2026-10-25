@@ -99,6 +99,13 @@
       "when": 1792477277310,
       "tag": "0013_drop_market",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792905514507,
+      "tag": "0014_cashbook_categories",
+      "breakpoints": true
     }
   ]
 }

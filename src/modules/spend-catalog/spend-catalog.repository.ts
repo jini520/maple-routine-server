@@ -4,7 +4,9 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import {
+  cashbookCategories,
   gameRules,
+  spendForms,
   spendGroups,
   spendItemForms,
   spendItemOptions,
@@ -13,11 +15,9 @@ import {
 } from '../../database/schema'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
-/** 앱 SPEND_CATEGORIES · SPEND_FORMS 그대로. 이름은 앱이 든다. */
-export const SPEND_CATEGORIES = ['content', 'event_bm', 'buff', 'scroll'] as const
-export type SpendCategory = (typeof SPEND_CATEGORIES)[number]
 export const SPEND_CURRENCIES = ['point', 'meso'] as const
 export type SpendCurrency = (typeof SPEND_CURRENCIES)[number]
+/** 앱 코드가 이 값으로 갈린다. 이름은 spend_forms 표가 든다. */
 export const SPEND_FORMS = ['exp', 'sol_erda'] as const
 export type SpendForm = (typeof SPEND_FORMS)[number]
 
@@ -28,10 +28,12 @@ export const SPEND_RULE_KEYS = {
 } as const
 export type SpendRuleField = keyof typeof SPEND_RULE_KEYS
 
+/** category 는 지출 갈래의 key 다. 옛 앱(1.0.12)도 이 칸을 key 글자로 읽는다. */
 export interface SpendGroupView {
   key: string
   name: string
-  category: SpendCategory
+  category: string
+  cardTitle: string
   active: boolean
 }
 
@@ -47,6 +49,7 @@ export interface SpendItemView {
   group: string
   tile: string
   name: string
+  shortName: string | null
   tier: string | null
   currency: SpendCurrency
   unitPrice: number | null
@@ -68,6 +71,11 @@ export interface SpendItemFormView {
   form: SpendForm
 }
 
+export interface SpendFormView {
+  key: SpendForm
+  name: string
+}
+
 /** GET /v1/game-data 의 spendCatalog 칸. 줄 표 그대로 납작하다. 묶는 것은 앱이다. */
 export interface SpendCatalogSection {
   updatedAt: string | null
@@ -77,6 +85,7 @@ export interface SpendCatalogSection {
   items: SpendItemView[]
   itemOptions: SpendItemOptionView[]
   itemForms: SpendItemFormView[]
+  forms: SpendFormView[]
 }
 
 export type SpendRulesInput = Record<SpendRuleField, number>
@@ -92,6 +101,8 @@ export class SpendGroupExists extends Error {}
 export class SpendTileExists extends Error {}
 export class SpendItemExists extends Error {}
 export class NoSpendGroup extends Error {}
+/** 모르는 갈래이거나 수입 갈래다. 묶음은 지출 갈래만 가리킨다. */
+export class NoSpendCategory extends Error {}
 export class NoSpendTile extends Error {}
 /** 항목의 모양이 앱의 시트가 가를 수 없는 모양이다. message 가 이유다. */
 export class SpendItemShape extends Error {}
@@ -124,8 +135,18 @@ export class SpendCatalogRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<SpendCatalogSection> {
-    const [groups, tiles, items, options, forms, rules, updatedAt] = await Promise.all([
-      this.db.select().from(spendGroups).orderBy(asc(spendGroups.sortOrder), asc(spendGroups.key)),
+    const [groups, tiles, items, options, itemForms, forms, rules, updatedAt] = await Promise.all([
+      this.db
+        .select({
+          key: spendGroups.key,
+          name: spendGroups.name,
+          category: cashbookCategories.key,
+          cardTitle: spendGroups.cardTitle,
+          active: spendGroups.active,
+        })
+        .from(spendGroups)
+        .innerJoin(cashbookCategories, eq(spendGroups.categoryId, cashbookCategories.id))
+        .orderBy(asc(spendGroups.sortOrder), asc(spendGroups.key)),
       this.db.select().from(spendTiles).orderBy(asc(spendTiles.key)),
       this.itemRows(this.db),
       this.db
@@ -138,10 +159,15 @@ export class SpendCatalogRepository {
         .innerJoin(spendItems, eq(spendItemOptions.itemId, spendItems.id))
         .orderBy(asc(spendItems.key), asc(spendItemOptions.axis)),
       this.db
-        .select({ item: spendItems.key, form: spendItemForms.form })
+        .select({ item: spendItems.key, form: spendForms.key })
         .from(spendItemForms)
         .innerJoin(spendItems, eq(spendItemForms.itemId, spendItems.id))
-        .orderBy(asc(spendItems.key), asc(spendItemForms.form)),
+        .innerJoin(spendForms, eq(spendItemForms.formId, spendForms.id))
+        .orderBy(asc(spendItems.key), asc(spendForms.sortOrder)),
+      this.db
+        .select({ key: spendForms.key, name: spendForms.name })
+        .from(spendForms)
+        .orderBy(asc(spendForms.sortOrder)),
       this.db
         .select()
         .from(gameRules)
@@ -156,12 +182,7 @@ export class SpendCatalogRepository {
         tariffPercent: ruleOf('tariffPercent'),
         rewardCoinPriceMeso: ruleOf('rewardCoinPriceMeso'),
       },
-      groups: groups.map((g) => ({
-        key: g.key,
-        name: g.name,
-        category: g.category,
-        active: g.active,
-      })),
+      groups,
       tiles: tiles.map((t) => ({
         key: t.key,
         name: t.name,
@@ -170,7 +191,8 @@ export class SpendCatalogRepository {
       })),
       items,
       itemOptions: options,
-      itemForms: forms,
+      itemForms,
+      forms,
     }
   }
 
@@ -191,9 +213,11 @@ export class SpendCatalogRepository {
     })
   }
 
-  /** 묶음을 맨 뒤에 더한다. 같은 key 는 SpendGroupExists 다. */
+  /** 묶음을 맨 뒤에 더한다. 같은 key 는 SpendGroupExists, 지출 갈래가 아니면 NoSpendCategory 다. */
   async createGroup(input: SpendGroupInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
+      const categoryId = await this.categoryId(tx, input.category)
+      if (categoryId === null) throw new NoSpendCategory(input.category)
       const [last] = await tx
         .select({ max: sql<number | null>`max(${spendGroups.sortOrder})` })
         .from(spendGroups)
@@ -201,7 +225,14 @@ export class SpendCatalogRepository {
       try {
         ;[row] = await tx
           .insert(spendGroups)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            key: input.key,
+            name: input.name,
+            categoryId,
+            cardTitle: input.cardTitle,
+            active: input.active,
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: spendGroups.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new SpendGroupExists(input.key)
@@ -213,14 +244,51 @@ export class SpendCatalogRepository {
     })
   }
 
-  /** 이름 · 갈래 · 열림을 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 false 다. */
+  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 false 다. */
   async updateGroup(key: string, input: Omit<SpendGroupInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
+      const categoryId = await this.categoryId(tx, input.category)
+      if (categoryId === null) throw new NoSpendCategory(input.category)
       const rows = await tx
         .update(spendGroups)
-        .set({ name: input.name, category: input.category, active: input.active })
+        .set({
+          name: input.name,
+          categoryId,
+          cardTitle: input.cardTitle,
+          active: input.active,
+        })
         .where(eq(spendGroups.key, key))
         .returning({ id: spendGroups.id })
+      if (rows.length === 0) return false
+      await touchSection(tx, 'spendCatalog')
+      return true
+    })
+  }
+
+  /** 씨앗이 쓴다. 형태는 앱 코드가 key 로 갈려 관리 화면에는 더하기가 없다. */
+  async createForm(input: SpendFormView): Promise<{ id: string }> {
+    return this.db.transaction(async (tx) => {
+      const [last] = await tx
+        .select({ max: sql<number | null>`max(${spendForms.sortOrder})` })
+        .from(spendForms)
+      const [row] = await tx
+        .insert(spendForms)
+        .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+        .returning({ id: spendForms.id })
+      if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
+      await touchSection(tx, 'spendCatalog')
+      return row
+    })
+  }
+
+  /** 형태의 이름을 바꾼다. 카드에도 이 이름이 선다. 모르면 false 다. */
+  async updateForm(key: SpendForm, name: string): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(spendForms)
+        .set({ name })
+        .where(eq(spendForms.key, key))
+        .returning({ id: spendForms.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'spendCatalog')
       return true
@@ -292,6 +360,7 @@ export class SpendCatalogRepository {
             groupId,
             tileId,
             name: input.name,
+            shortName: input.shortName,
             tier: input.tier,
             currency: input.currency,
             unitPrice: input.unitPrice,
@@ -330,6 +399,7 @@ export class SpendCatalogRepository {
         .set({
           tileId,
           name: input.name,
+          shortName: input.shortName,
           tier: input.tier,
           currency: input.currency,
           unitPrice: input.unitPrice,
@@ -372,6 +442,7 @@ export class SpendCatalogRepository {
         group: spendGroups.key,
         tile: spendTiles.key,
         name: spendItems.name,
+        shortName: spendItems.shortName,
         tier: spendItems.tier,
         currency: spendItems.currency,
         unitPrice: spendItems.unitPrice,
@@ -391,6 +462,15 @@ export class SpendCatalogRepository {
         asc(spendItems.key),
       )
     return rows
+  }
+
+  /** 지출 갈래만 찾는다. 수입 갈래의 key 는 null 이다. */
+  private async categoryId(db: DbOrTx, key: string): Promise<string | null> {
+    const [row] = await db
+      .select({ id: cashbookCategories.id })
+      .from(cashbookCategories)
+      .where(and(eq(cashbookCategories.entryType, 'spend'), eq(cashbookCategories.key, key)))
+    return row?.id ?? null
   }
 
   private async groupId(db: DbOrTx, key: string): Promise<string | null> {
@@ -417,8 +497,18 @@ export class SpendCatalogRepository {
   ): Promise<void> {
     if (options.length > 0)
       await db.insert(spendItemOptions).values(options.map((o) => ({ itemId, ...o })))
-    if (forms.length > 0)
-      await db.insert(spendItemForms).values(forms.map((form) => ({ itemId, form })))
+    if (forms.length === 0) return
+    const rows = await db
+      .select({ id: spendForms.id, key: spendForms.key })
+      .from(spendForms)
+      .where(inArray(spendForms.key, forms))
+    await db.insert(spendItemForms).values(
+      forms.map((form) => {
+        const formId = rows.find((r) => r.key === form)?.id
+        if (formId === undefined) throw new SpendItemShape(`모르는 형태다: ${form}`)
+        return { itemId, formId }
+      }),
+    )
   }
 
   /**

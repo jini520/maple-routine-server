@@ -14,11 +14,8 @@ import {
 } from '../enhancement-costs/enhancement-costs.repository'
 import { FORCE_TYPES } from '../hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
-import {
-  SPEND_CATEGORIES,
-  SPEND_CURRENCIES,
-  SPEND_FORMS,
-} from '../spend-catalog/spend-catalog.repository'
+import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories.repository'
+import { SPEND_CURRENCIES, SPEND_FORMS } from '../spend-catalog/spend-catalog.repository'
 
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
@@ -192,7 +189,9 @@ export type SpendRulesBody = z.infer<typeof spendRulesBody>
 export const spendGroupCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
-  category: z.enum(SPEND_CATEGORIES),
+  /** 지출 갈래의 key. 수입 갈래는 리포지토리가 막는다. */
+  category: snakeKey,
+  cardTitle: z.string().min(1).max(50),
   active: z.boolean().default(true),
 })
 export type SpendGroupCreateBody = z.infer<typeof spendGroupCreateBody>
@@ -221,6 +220,7 @@ const spendItemBase = z.object({
   group: snakeKey,
   tile: snakeKey,
   name: z.string().min(1).max(100),
+  shortName: z.string().min(1).max(50).nullish(),
   tier: z.string().min(1).max(50).nullish(),
   currency: z.enum(SPEND_CURRENCIES),
   unitPrice: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullish(),
@@ -244,6 +244,35 @@ export const spendItemUpdateBody = spendItemBase
   .omit({ key: true, group: true })
   .refine(periodOrder, PERIOD_MESSAGE)
 export type SpendItemUpdateBody = z.infer<typeof spendItemUpdateBody>
+
+export const spendFormKey = z.enum(SPEND_FORMS)
+export const spendFormUpdateBody = z.object({ name: z.string().min(1).max(20) })
+export type SpendFormUpdateBody = z.infer<typeof spendFormUpdateBody>
+
+/* ── 가계부 갈래 ── */
+
+export const cashbookEntryType = z.enum(CASHBOOK_ENTRY_TYPES)
+export const cashbookCategoryCreateBody = z.object({
+  entryType: cashbookEntryType,
+  key: snakeKey,
+  name: z.string().min(1).max(30),
+  cardTitle: z.string().min(1).max(30),
+  iconFile: z.string().min(1).max(200),
+  description: z.string().max(50).default(''),
+  unit: z.string().min(1).max(10).nullish(),
+})
+export type CashbookCategoryCreateBody = z.infer<typeof cashbookCategoryCreateBody>
+export const cashbookCategoryUpdateBody = cashbookCategoryCreateBody.omit({
+  entryType: true,
+  key: true,
+})
+export type CashbookCategoryUpdateBody = z.infer<typeof cashbookCategoryUpdateBody>
+export const cashbookItemKindUpdateBody = z.object({
+  name: z.string().min(1).max(20),
+  unit: z.string().min(1).max(10).nullish(),
+  hasTariff: z.boolean(),
+})
+export type CashbookItemKindUpdateBody = z.infer<typeof cashbookItemKindUpdateBody>
 
 /* ── 심볼 비용 ── */
 

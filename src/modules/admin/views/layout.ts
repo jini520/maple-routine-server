@@ -1,4 +1,5 @@
-type MenuItem = readonly [href: string, label: string] | { label: string; items: readonly MenuItem[] }
+type MenuItem =
+  readonly [href: string, label: string] | { label: string; items: readonly MenuItem[] }
 
 /** 왼쪽 메뉴의 차례. 경로와 이름, 또는 접고 펴는 묶음 */
 const MENU: readonly MenuItem[] = [
@@ -20,6 +21,7 @@ const MENU: readonly MenuItem[] = [
       {
         label: '가계부',
         items: [
+          ['/admin/cashbook-categories', '가계부 갈래'],
           ['/admin/spend-catalog', '지출 카탈로그'],
           ['/admin/symbol-costs', '심볼 비용'],
           ['/admin/contents', '컨텐츠'],

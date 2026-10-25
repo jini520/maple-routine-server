@@ -1,5 +1,5 @@
 /**
- * Model. 표 서른넷과 ENUM 열여덟. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 서른일곱과 ENUM 열여덟. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -402,18 +402,68 @@ export const worlds = pgTable('worlds', {
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
-/** 지출 카탈로그의 갈래. 앱 SPEND_CATEGORIES 그대로이고 이름은 앱이 든다. 묶음마다 하나라 묶음 칸이다. */
-export const spendCategoryEnum = pgEnum('spend_category', ['content', 'event_bm', 'buff', 'scroll'])
+/** 가계부 기록이 수입인지 지출인지. */
+export const cashbookEntryTypeEnum = pgEnum('cashbook_entry_type', ['income', 'spend'])
+
+/**
+ * 가계부의 갈래. 기록이 (entry_type, key) 로 가리켜 지우지 않는다. key 는 관리 화면에서 더하므로 ENUM 이 아니다.
+ * 앱이 입력 폼을 모르는 key 는 갈래 목록에 이름만 서고 못 고른다.
+ */
+export const cashbookCategories = pgTable(
+  'cashbook_categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entryType: cashbookEntryTypeEnum('entry_type').notNull(),
+    key: text('key').notNull(),
+    name: text('name').notNull(),
+    /** 묶음이 없는 갈래의 하루 목록 카드 첫 줄. 묶음이 있는 갈래는 묶음의 card_title 을 쓴다. */
+    cardTitle: text('card_title').notNull(),
+    /** 앱 자산 src/assets/items/ 의 파일명. */
+    iconFile: text('icon_file').notNull(),
+    /** 갈래 카드에만 서는 한 줄. */
+    description: text('description').notNull(),
+    /** 묶음이 없는 갈래의 수량 단위(사냥의 소재 등). NULL 은 수량이 없거나 항목 · 종류가 단위를 든다. */
+    unit: text('unit'),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [unique('cashbook_categories_entry_type_key_unique').on(t.entryType, t.key)],
+)
+
+/** 아이템 구매 · 판매의 종류. 게임 인벤토리 탭 이름이다. 수량과 관세가 이 값으로 갈린다. */
+export const cashbookItemKinds = pgTable('cashbook_item_kinds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  /** 수량 단위. NULL 이면 수량이 없다(장비). */
+  unit: text('unit'),
+  /** 월드 간 거래가 되는 종류만 구매 관세가 붙는다. */
+  hasTariff: boolean('has_tariff').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+})
+
 export const spendCurrencyEnum = pgEnum('spend_currency', ['point', 'meso'])
-/** 에픽던전 추가 리워드가 값을 받는 형태. 앱 SPEND_FORMS 그대로이고 이름은 앱이 든다. */
+/** 에픽던전 추가 리워드가 값을 받는 형태. 앱 코드가 이 값으로 갈려 ENUM 이다. 이름은 spend_forms 가 든다. */
 export const spendFormEnum = pgEnum('spend_form', ['exp', 'sol_erda'])
+
+/** 형태의 이름. 카드에도 이 이름이 선다. */
+export const spendForms = pgTable('spend_forms', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: spendFormEnum('key').notNull().unique(),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+})
 
 /** 지출 목록의 제목 한 줄. active 가 열기 · 닫기 스위치다. 날짜로 판정하지 않는다. */
 export const spendGroups = pgTable('spend_groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
-  category: spendCategoryEnum('category').notNull(),
+  /** 지출 갈래만 가리킨다. 리포지토리가 entry_type 을 본다. */
+  categoryId: uuid('category_id')
+    .notNull()
+    .references(() => cashbookCategories.id),
+  /** 하루 목록 카드 첫 줄. */
+  cardTitle: text('card_title').notNull(),
   /** 닫힌 묶음은 앱에서 흐리게 서고 못 고른다. 과거 기록은 그대로다. */
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull(),
@@ -446,7 +496,10 @@ export const spendItems = pgTable(
     tileId: uuid('tile_id')
       .notNull()
       .references(() => spendTiles.id),
+    /** 원본 이름. 하루 목록 카드에도 이 이름이 선다. */
     name: text('name').notNull(),
+    /** 좁은 자리용으로 줄인 이름. NULL 이면 name 을 쓴다. */
+    shortName: text('short_name'),
     /** 타일 안의 단계. 축 값(spend_item_options)을 든 항목은 NULL 이다. */
     tier: text('tier'),
     currency: spendCurrencyEnum('currency').notNull(),
@@ -491,9 +544,11 @@ export const spendItemForms = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => spendItems.id, { onDelete: 'cascade' }),
-    form: spendFormEnum('form').notNull(),
+    formId: uuid('form_id')
+      .notNull()
+      .references(() => spendForms.id),
   },
-  (t) => [unique('spend_item_forms_item_form_unique').on(t.itemId, t.form)],
+  (t) => [unique('spend_item_forms_item_form_unique').on(t.itemId, t.formId)],
 )
 
 /** 심볼 묶음. 아케인 · 어센틱 · 그랜드 어센틱. 만렙과 고르면 서는 기본 범위를 든다. */

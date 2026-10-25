@@ -1,0 +1,123 @@
+{
+  "categories": [
+    {
+      "entryType": "spend",
+      "key": "content",
+      "name": "컨텐츠",
+      "cardTitle": "컨텐츠",
+      "iconFile": "monster_park_ticket.webp",
+      "description": "몬파·에픽던전·퀵패스",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
+      "key": "event_bm",
+      "name": "이벤트·BM",
+      "cardTitle": "이벤트·BM",
+      "iconFile": "vip_sauna_ticket.webp",
+      "description": "메포샵·보약 버프 등",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
+      "key": "buff",
+      "name": "버프",
+      "cardTitle": "버프",
+      "iconFile": "seiram_elixir.webp",
+      "description": "메소 구입 버프 아이템",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
+      "key": "scroll",
+      "name": "주문서",
+      "cardTitle": "주문서",
+      "iconFile": "amazing_positive_chaos_scroll.webp",
+      "description": "장비·악세·펫장비",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
+      "key": "symbol",
+      "name": "심볼 강화",
+      "cardTitle": "심볼강화",
+      "iconFile": "authentic_symbol_selection_coupon.webp",
+      "description": "심볼 강화 비용",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
+      "key": "item_purchase",
+      "name": "아이템 구매",
+      "cardTitle": "아이템 구매",
+      "iconFile": "dark_boss_pendant.png",
+      "description": "구매 아이템 지출",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
+      "key": "etc",
+      "name": "기타",
+      "cardTitle": "기타",
+      "iconFile": "meso.webp",
+      "description": "각종 패스 등 기타 지출",
+      "unit": "개"
+    },
+    {
+      "entryType": "income",
+      "key": "hunting",
+      "name": "사냥",
+      "cardTitle": "사냥",
+      "iconFile": "wealth_acquisition_potion_small.webp",
+      "description": "메소 · 조각 수익 기록",
+      "unit": "소재"
+    },
+    {
+      "entryType": "income",
+      "key": "sol_erda_fragment",
+      "name": "솔 에르다 조각",
+      "cardTitle": "사냥",
+      "iconFile": "sol_erda_fragment.webp",
+      "description": "사냥 수익 조각 정산",
+      "unit": "개"
+    },
+    {
+      "entryType": "income",
+      "key": "item_sale",
+      "name": "아이템 판매",
+      "cardTitle": "아이템 판매",
+      "iconFile": "dark_boss_pendant.png",
+      "description": "판매 아이템 수익",
+      "unit": null
+    },
+    {
+      "entryType": "income",
+      "key": "etc",
+      "name": "기타",
+      "cardTitle": "기타",
+      "iconFile": "meso.webp",
+      "description": "이벤트 등 기타 수익",
+      "unit": "개"
+    }
+  ],
+  "itemKinds": [
+    {
+      "key": "equipment",
+      "name": "장비",
+      "unit": null,
+      "hasTariff": true
+    },
+    {
+      "key": "consumable",
+      "name": "소비",
+      "unit": "개",
+      "hasTariff": false
+    },
+    {
+      "key": "etc",
+      "name": "기타",
+      "unit": "개",
+      "hasTariff": false
+    }
+  ]
+}

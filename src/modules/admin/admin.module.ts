@@ -14,6 +14,7 @@ import { ManualCompletionModule } from '../manual-completion/manual-completion.m
 import { MvpGradesModule } from '../mvp-grades/mvp-grades.module'
 import { NoticesModule } from '../notices/notices.module'
 import { SpendCatalogModule } from '../spend-catalog/spend-catalog.module'
+import { CashbookCategoriesModule } from '../cashbook-categories/cashbook-categories.module'
 import { SymbolCostsModule } from '../symbol-costs/symbol-costs.module'
 import { WorldsModule } from '../worlds/worlds.module'
 import { AdminController } from './admin.controller'
@@ -31,6 +32,7 @@ import { AdminController } from './admin.controller'
     CrystalPricesModule,
     WorldsModule,
     SpendCatalogModule,
+    CashbookCategoriesModule,
     SymbolCostsModule,
     ContentsModule,
     EquipmentItemsModule,

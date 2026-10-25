@@ -3,7 +3,7 @@ import { layout } from './layout'
 export const INDEX_HTML = layout(
   '/admin',
   '홈',
-  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 열여섯. 인증은 앞단 nginx 가 한다.</p></div></div>
+  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 열일곱. 인증은 앞단 nginx 가 한다.</p></div></div>
 <h2 class="section">공지</h2>
 <div class="links">
   <a class="card" href="/admin/notices"><h3>공지</h3><p>운영자 공지를 쓰고 고치고 알림을 보낸다</p></a>
@@ -19,6 +19,7 @@ export const INDEX_HTML = layout(
 </div>
 <h3 class="subsection">가계부</h3>
 <div class="links">
+  <a class="card" href="/admin/cashbook-categories"><h3>가계부 갈래</h3><p>수입 · 지출 갈래와 아이템 종류. 이름 · 카드 제목 · 단위를 고치고 새 갈래를 더한다</p></a>
   <a class="card" href="/admin/spend-catalog"><h3>지출 카탈로그</h3><p>가계부 지출 목록. 묶음을 열고 닫고 항목 · 가격 · 타일을 고친다</p></a>
   <a class="card" href="/admin/symbol-costs"><h3>심볼 비용</h3><p>심볼 강화 비용. 패치마다 레벨별 새 비용 줄을 연다</p></a>
   <a class="card" href="/admin/contents"><h3>컨텐츠</h3><p>일간 · 주간 컨텐츠 표와 갈래. 공유 범위 · 위젯 글자 · 기간을 고친다</p></a>

@@ -35,9 +35,9 @@ import {
 } from '../modules/enhancement-costs/enhancement-costs.repository'
 import { FORCE_TYPES } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../modules/mvp-grades/mvp-grades.repository'
-import { touchSection } from '../modules/game-data/sections'
+import { type DbOrTx, touchSection } from '../modules/game-data/sections'
+import { CASHBOOK_ENTRY_TYPES } from '../modules/cashbook-categories/cashbook-categories.repository'
 import {
-  SPEND_CATEGORIES,
   SPEND_CURRENCIES,
   SPEND_FORMS,
   SPEND_RULE_KEYS,
@@ -49,6 +49,8 @@ const {
   bossDifficulties,
   bossDropRewards,
   bosses,
+  cashbookCategories,
+  cashbookItemKinds,
   contentCategories,
   contents,
   dropBoxContents,
@@ -62,6 +64,7 @@ const {
   mvpGrades,
   potentialResetCosts,
   soulPotentialResetCosts,
+  spendForms,
   spendGroups,
   spendItemForms,
   spendItemOptions,
@@ -198,6 +201,36 @@ export function parseWorldsSeed(value: unknown): WorldsSeed {
   return worldsSeed.parse(value)
 }
 
+const cashbookCategoriesSeed = z.object({
+  categories: z
+    .array(
+      z.object({
+        entryType: z.enum(CASHBOOK_ENTRY_TYPES),
+        key,
+        name: z.string().min(1),
+        cardTitle: z.string().min(1),
+        iconFile: z.string().min(1),
+        description: z.string(),
+        unit: z.string().min(1).nullable(),
+      }),
+    )
+    .min(1),
+  itemKinds: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        unit: z.string().min(1).nullable(),
+        hasTariff: z.boolean(),
+      }),
+    )
+    .min(1),
+})
+export type CashbookCategoriesSeed = z.infer<typeof cashbookCategoriesSeed>
+export function parseCashbookCategoriesSeed(value: unknown): CashbookCategoriesSeed {
+  return cashbookCategoriesSeed.parse(value)
+}
+
 const spendCatalogSeed = z.object({
   rules: z.object({
     tariffPercent: z.number().int().min(0).max(100),
@@ -208,7 +241,8 @@ const spendCatalogSeed = z.object({
       z.object({
         key,
         name: z.string().min(1),
-        category: z.enum(SPEND_CATEGORIES),
+        category: key,
+        cardTitle: z.string().min(1),
         active: z.boolean(),
       }),
     )
@@ -230,6 +264,7 @@ const spendCatalogSeed = z.object({
         group: key,
         tile: key,
         name: z.string().min(1),
+        shortName: z.string().min(1).nullable(),
         tier: z.string().min(1).nullable(),
         currency: z.enum(SPEND_CURRENCIES),
         unitPrice: z.number().int().min(0).nullable(),
@@ -243,6 +278,7 @@ const spendCatalogSeed = z.object({
     .min(1),
   itemOptions: z.array(z.object({ item: key, axis: z.string().min(1), value: z.string().min(1) })),
   itemForms: z.array(z.object({ item: key, form: z.enum(SPEND_FORMS) })),
+  forms: z.array(z.object({ key: z.enum(SPEND_FORMS), name: z.string().min(1) })).min(1),
 })
 export type SpendCatalogSeed = z.infer<typeof spendCatalogSeed>
 export function parseSpendCatalogSeed(value: unknown): SpendCatalogSeed {
@@ -430,6 +466,7 @@ export interface GameDataSeeds {
   dropBoxes?: DropBoxesSeed
   crystalPrices?: CrystalPricesSeed
   worlds?: WorldsSeed
+  cashbookCategories?: CashbookCategoriesSeed
   spendCatalog?: SpendCatalogSeed
   symbolCosts?: SymbolCostsSeed
   contents?: ContentsSeed
@@ -454,6 +491,8 @@ export async function seedGameData(
   if (seeds.crystalPrices !== undefined)
     result.crystalPrices = await seedCrystalPrices(db, seeds.crystalPrices)
   if (seeds.worlds !== undefined) result.worlds = await seedWorlds(db, seeds.worlds)
+  if (seeds.cashbookCategories !== undefined)
+    result.cashbookCategories = await seedCashbookCategories(db, seeds.cashbookCategories)
   if (seeds.spendCatalog !== undefined)
     result.spendCatalog = await seedSpendCatalog(db, seeds.spendCatalog)
   if (seeds.symbolCosts !== undefined)
@@ -479,13 +518,16 @@ async function seedWorlds(db: Db, seed: WorldsSeed): Promise<SeedOutcome> {
 }
 
 async function isEmpty(
-  db: Db,
+  db: DbOrTx,
   table:
     | typeof dropItems
     | typeof bossDropRewards
     | typeof dropBoxes
     | typeof bossCrystalPrices
     | typeof worlds
+    | typeof cashbookCategories
+    | typeof cashbookItemKinds
+    | typeof spendForms
     | typeof spendGroups
     | typeof spendTiles
     | typeof spendItems
@@ -623,6 +665,33 @@ async function seedCrystalPrices(db: Db, seed: CrystalPricesSeed): Promise<SeedO
   return 'seeded'
 }
 
+/** 갈래와 아이템 종류는 표마다 비어 있을 때만 채운다. 지출 목록의 묶음이 갈래를 가리켜 먼저 돈다. */
+async function seedCashbookCategories(db: Db, seed: CashbookCategoriesSeed): Promise<SeedOutcome> {
+  const [noCategories, noKinds] = await Promise.all([
+    isEmpty(db, cashbookCategories),
+    isEmpty(db, cashbookItemKinds),
+  ])
+  if (!noCategories && !noKinds) return 'skipped'
+  await db.transaction(async (tx) => {
+    if (noCategories) {
+      const counters = new Map<string, number>()
+      await tx.insert(cashbookCategories).values(
+        seed.categories.map((c) => {
+          const sortOrder = counters.get(c.entryType) ?? 0
+          counters.set(c.entryType, sortOrder + 1)
+          return { ...c, sortOrder }
+        }),
+      )
+    }
+    if (noKinds)
+      await tx
+        .insert(cashbookItemKinds)
+        .values(seed.itemKinds.map((k, sortOrder) => ({ ...k, sortOrder })))
+    await touchSection(tx, 'cashbookCategories')
+  })
+  return 'seeded'
+}
+
 /**
  * 규칙 둘은 없을 때만 넣고 늘 본다. 표 셋(묶음 · 타일 · 항목)은 전부 비어 있을 때만 채운다. 하나라도 줄이 있으면
  * 운영자가 손댄 것이라 건너뛴다.
@@ -643,9 +712,27 @@ async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOut
   ])
   if (!empties.every(Boolean)) return 'skipped'
   await db.transaction(async (tx) => {
+    if (await isEmpty(tx, spendForms))
+      await tx.insert(spendForms).values(seed.forms.map((f, sortOrder) => ({ ...f, sortOrder })))
+    const formRows = await tx.select({ id: spendForms.id, key: spendForms.key }).from(spendForms)
+    const formIds = new Map<string, string>(formRows.map((r) => [r.key, r.id]))
+    const categoryRows = await tx
+      .select({ id: cashbookCategories.id, key: cashbookCategories.key })
+      .from(cashbookCategories)
+      .where(eq(cashbookCategories.entryType, 'spend'))
+    const categoryIds = new Map(categoryRows.map((r) => [r.key, r.id]))
     const groupRows = await tx
       .insert(spendGroups)
-      .values(seed.groups.map((g, sortOrder) => ({ ...g, sortOrder })))
+      .values(
+        seed.groups.map((g, sortOrder) => ({
+          key: g.key,
+          name: g.name,
+          categoryId: must(categoryIds, g.category, '지출 갈래 줄'),
+          cardTitle: g.cardTitle,
+          active: g.active,
+          sortOrder,
+        })),
+      )
       .returning({ id: spendGroups.id, key: spendGroups.key })
     const tileRows = await tx
       .insert(spendTiles)
@@ -666,6 +753,7 @@ async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOut
             groupId,
             tileId: must(tileIds, i.tile, '타일'),
             name: i.name,
+            shortName: i.shortName,
             tier: i.tier,
             currency: i.currency,
             unitPrice: i.unitPrice,
@@ -689,11 +777,12 @@ async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOut
         })),
       )
     if (seed.itemForms.length > 0)
-      await tx
-        .insert(spendItemForms)
-        .values(
-          seed.itemForms.map((f) => ({ itemId: must(itemIds, f.item, '항목'), form: f.form })),
-        )
+      await tx.insert(spendItemForms).values(
+        seed.itemForms.map((f) => ({
+          itemId: must(itemIds, f.item, '항목'),
+          formId: must(formIds, f.form, '형태 줄'),
+        })),
+      )
     await touchSection(tx, 'spendCatalog')
   })
   return 'seeded'
@@ -893,6 +982,7 @@ async function main(): Promise<void> {
       dropBoxes: parseDropBoxesSeed(readSeed('drop-boxes')),
       crystalPrices: parseCrystalPricesSeed(readSeed('crystal-prices')),
       worlds: parseWorldsSeed(readSeed('worlds')),
+      cashbookCategories: parseCashbookCategoriesSeed(readSeed('cashbook-categories')),
       spendCatalog: parseSpendCatalogSeed(readSeed('spend-catalog')),
       symbolCosts: parseSymbolCostsSeed(readSeed('symbol-costs')),
       contents: parseContentsSeed(readSeed('contents')),

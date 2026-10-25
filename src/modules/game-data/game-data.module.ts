@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 
 import { BossDropsModule } from '../boss-drops/boss-drops.module'
 import { BossesModule } from '../bosses/bosses.module'
+import { CashbookCategoriesModule } from '../cashbook-categories/cashbook-categories.module'
 import { ContentsModule } from '../contents/contents.module'
 import { CrystalPricesModule } from '../crystal-prices/crystal-prices.module'
 import { DropItemsModule } from '../drop-items/drop-items.module'
@@ -30,6 +31,7 @@ import { GameDataService } from './game-data.service'
     EnhancementCostsModule,
     MvpGradesModule,
     HuntingGroundsModule,
+    CashbookCategoriesModule,
   ],
   controllers: [GameDataController],
   providers: [GameDataService],

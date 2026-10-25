@@ -30,6 +30,11 @@ import {
 } from '../bosses/bosses.dto'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
 import {
+  CashbookCategoriesRepository,
+  CashbookCategoryExists,
+  type CashbookEntryType,
+} from '../cashbook-categories/cashbook-categories.repository'
+import {
   AlreadyOpen,
   ManualCompletionRepository,
 } from '../manual-completion/manual-completion.repository'
@@ -56,9 +61,11 @@ import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.re
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
+  NoSpendCategory,
   NoSpendGroup,
   NoSpendTile,
   SpendCatalogRepository,
+  type SpendForm,
   SpendGroupExists,
   SpendItemExists,
   SpendItemShape,
@@ -149,6 +156,16 @@ import {
   requiredLevelBody,
   rowId,
   snakeKey,
+  type CashbookCategoryCreateBody,
+  cashbookCategoryCreateBody,
+  type CashbookCategoryUpdateBody,
+  cashbookCategoryUpdateBody,
+  cashbookEntryType,
+  type CashbookItemKindUpdateBody,
+  cashbookItemKindUpdateBody,
+  spendFormKey,
+  type SpendFormUpdateBody,
+  spendFormUpdateBody,
   type SpendGroupCreateBody,
   spendGroupCreateBody,
   type SpendGroupUpdateBody,
@@ -214,6 +231,7 @@ import {
 } from './admin.dto'
 import { BOSS_DROPS_HTML } from './views/boss-drops'
 import { BOSSES_HTML } from './views/bosses'
+import { CASHBOOK_CATEGORIES_HTML } from './views/cashbook-categories'
 import { CRYSTAL_PRICES_HTML } from './views/crystal-prices'
 import { DROP_BOXES_HTML } from './views/drop-boxes'
 import { DROP_ITEMS_HTML } from './views/drop-items'
@@ -233,7 +251,7 @@ import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
  * 강화 비용 · MVP 등급 · 사냥터)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
@@ -261,6 +279,7 @@ export class AdminController {
     private readonly enhancement: EnhancementCostsRepository,
     private readonly mvp: MvpGradesRepository,
     private readonly hunting: HuntingGroundsRepository,
+    private readonly cashbook: CashbookCategoriesRepository,
   ) {}
 
   @Get()
@@ -528,7 +547,9 @@ export class AdminController {
   /** 화면이 부른다. 시세 하나의 일봉과 판정 달린 줄. */
   @Get('drop-market/item/rows')
   @Header('cache-control', 'no-store')
-  dropMarketItemRows(@Query(new ZodValidationPipe(dropMarketItemQuery)) query: DropMarketItemQuery) {
+  dropMarketItemRows(
+    @Query(new ZodValidationPipe(dropMarketItemQuery)) query: DropMarketItemQuery,
+  ) {
     const market = { itemKey: query.item, ringLevel: query.ring ?? null }
     return this.market.detail({ kind: query.kind, key: query.key }, market, new Date())
   }
@@ -622,7 +643,7 @@ export class AdminController {
     await this.spend.setRules(body)
   }
 
-  /** 묶음을 맨 뒤에 더한다. 같은 key 는 409 다. */
+  /** 묶음을 맨 뒤에 더한다. 같은 key 는 409, 지출 갈래가 아니면 404 다. */
   @Post('spend-catalog/groups')
   @HttpCode(201)
   async createSpendGroup(
@@ -633,19 +654,38 @@ export class AdminController {
     } catch (error) {
       if (error instanceof SpendGroupExists)
         throw new ConflictException(`이미 있는 묶음이다: ${body.key}`)
+      if (error instanceof NoSpendCategory)
+        throw new NotFoundException(`모르는 지출 갈래다: ${body.category}`)
       throw error
     }
   }
 
-  /** 이름 · 갈래 · 열림을 갈아 끼운다. 닫기가 곧 active 끄기다. 모르면 404 다. */
+  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. 닫기가 곧 active 끄기다. 모르는 묶음 · 갈래는 404 다. */
   @Put('spend-catalog/groups/:key')
   @HttpCode(204)
   async updateSpendGroup(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(spendGroupUpdateBody)) body: SpendGroupUpdateBody,
   ): Promise<void> {
-    if (!(await this.spend.updateGroup(key, body)))
-      throw new NotFoundException(`모르는 묶음이다: ${key}`)
+    try {
+      if (!(await this.spend.updateGroup(key, body)))
+        throw new NotFoundException(`모르는 묶음이다: ${key}`)
+    } catch (error) {
+      if (error instanceof NoSpendCategory)
+        throw new NotFoundException(`모르는 지출 갈래다: ${body.category}`)
+      throw error
+    }
+  }
+
+  /** 에픽던전 형태의 이름을 바꾼다. 형태는 앱 코드가 key 로 갈려 더하기가 없다. */
+  @Put('spend-catalog/forms/:key')
+  @HttpCode(204)
+  async updateSpendForm(
+    @Param('key', new ZodValidationPipe(spendFormKey)) key: SpendForm,
+    @Body(new ZodValidationPipe(spendFormUpdateBody)) body: SpendFormUpdateBody,
+  ): Promise<void> {
+    if (!(await this.spend.updateForm(key, body.name)))
+      throw new NotFoundException(`모르는 형태다: ${key}`)
   }
 
   @Post('spend-catalog/groups/:key/move')
@@ -734,6 +774,76 @@ export class AdminController {
   ): Promise<void> {
     if (!(await this.spend.moveItem(key, body.direction)))
       throw new NotFoundException(`모르는 항목이다: ${key}`)
+  }
+
+  /* ── 가계부 갈래 ── */
+
+  @Get('cashbook-categories')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  cashbookCategoriesPage(): string {
+    return CASHBOOK_CATEGORIES_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  @Get('cashbook-categories/rows')
+  @Header('cache-control', 'no-store')
+  cashbookCategoryRows() {
+    return this.cashbook.section()
+  }
+
+  /** 갈래를 그 쪽 맨 뒤에 더한다. 같은 (entryType, key) 는 409 다. 앱은 폼을 모르는 갈래를 못 고르게 막는다. */
+  @Post('cashbook-categories')
+  @HttpCode(201)
+  async createCashbookCategory(
+    @Body(new ZodValidationPipe(cashbookCategoryCreateBody)) body: CashbookCategoryCreateBody,
+  ) {
+    try {
+      return await this.cashbook.createCategory({ ...body, unit: body.unit ?? null })
+    } catch (error) {
+      if (error instanceof CashbookCategoryExists)
+        throw new ConflictException(`이미 있는 갈래다: ${body.entryType}.${body.key}`)
+      throw error
+    }
+  }
+
+  @Put('cashbook-categories/:entryType/:key')
+  @HttpCode(204)
+  async updateCashbookCategory(
+    @Param('entryType', new ZodValidationPipe(cashbookEntryType)) entryType: CashbookEntryType,
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(cashbookCategoryUpdateBody)) body: CashbookCategoryUpdateBody,
+  ): Promise<void> {
+    if (!(await this.cashbook.updateCategory(entryType, key, { ...body, unit: body.unit ?? null })))
+      throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
+  }
+
+  @Post('cashbook-categories/:entryType/:key/move')
+  @HttpCode(204)
+  async moveCashbookCategory(
+    @Param('entryType', new ZodValidationPipe(cashbookEntryType)) entryType: CashbookEntryType,
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.cashbook.moveCategory(entryType, key, body.direction)))
+      throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
+  }
+
+  /** 아이템 종류의 이름 · 단위 · 관세 여부를 바꾼다. 종류는 앱 코드가 key 로 갈려 더하기가 없다. */
+  @Put('cashbook-item-kinds/:key')
+  @HttpCode(204)
+  async updateCashbookItemKind(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(cashbookItemKindUpdateBody)) body: CashbookItemKindUpdateBody,
+  ): Promise<void> {
+    if (
+      !(await this.cashbook.updateItemKind(key, {
+        name: body.name,
+        unit: body.unit ?? null,
+        hasTariff: body.hasTariff,
+      }))
+    )
+      throw new NotFoundException(`모르는 아이템 종류다: ${key}`)
   }
 
   /* ── 심볼 비용 ── */
@@ -1575,6 +1685,7 @@ function spendItemFields(body: SpendItemUpdateBody) {
   return {
     tile: body.tile,
     name: body.name,
+    shortName: body.shortName ?? null,
     tier: body.tier ?? null,
     currency: body.currency,
     unitPrice: body.unitPrice ?? null,

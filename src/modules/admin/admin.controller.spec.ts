@@ -3,10 +3,15 @@ import { Test } from '@nestjs/testing'
 
 import { BossDropsRepository } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
+import {
+  CashbookCategoriesRepository,
+  CashbookCategoryExists,
+} from '../cashbook-categories/cashbook-categories.repository'
 import { CrystalPricesRepository, NotBoundary } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
 import {
+  NoSpendCategory,
   NoSpendTile,
   SpendCatalogRepository,
   SpendGroupExists,
@@ -132,6 +137,14 @@ describe('AdminController', () => {
     createItem: jest.fn(),
     updateItem: jest.fn(),
     moveItem: jest.fn(),
+    updateForm: jest.fn(),
+  }
+  const cashbookRepo = {
+    section: jest.fn(),
+    createCategory: jest.fn(),
+    updateCategory: jest.fn(),
+    moveCategory: jest.fn(),
+    updateItemKind: jest.fn(),
   }
   const symbolRepo = {
     adminRows: jest.fn(),
@@ -195,6 +208,7 @@ describe('AdminController', () => {
         { provide: EnhancementCostsRepository, useValue: enhancementRepo },
         { provide: MvpGradesRepository, useValue: mvpRepo },
         { provide: HuntingGroundsRepository, useValue: huntingRepo },
+        { provide: CashbookCategoriesRepository, useValue: cashbookRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -220,6 +234,7 @@ describe('AdminController', () => {
       ...Object.values(enhancementRepo),
       ...Object.values(mvpRepo),
       ...Object.values(huntingRepo),
+      ...Object.values(cashbookRepo),
     ]) {
       mock.mockReset()
     }
@@ -237,6 +252,7 @@ describe('AdminController', () => {
     '/admin/boss-drops',
     '/admin/crystal-prices',
     '/admin/worlds',
+    '/admin/cashbook-categories',
     '/admin/spend-catalog',
     '/admin/symbol-costs',
     '/admin/contents',
@@ -283,7 +299,9 @@ describe('AdminController', () => {
       const stack: boolean[] = []
       let opened = 0
       let ancestors: boolean[] | null = null
-      for (const [tag] of nav.matchAll(/<details[^>]*>|<\/details>|<a [^>]*aria-current="page"[^>]*>/g)) {
+      for (const [tag] of nav.matchAll(
+        /<details[^>]*>|<\/details>|<a [^>]*aria-current="page"[^>]*>/g,
+      )) {
         if (tag.startsWith('<details')) {
           const open = /\sopen[\s>]/.test(tag)
           stack.push(open)
@@ -639,7 +657,9 @@ describe('AdminController', () => {
       market.overview.mockResolvedValue([])
       market.detail.mockResolvedValue({ itemName: null, candles: [], rows: [] })
 
-      expect((await app.inject({ method: 'GET', url: '/admin/drop-market/rows' })).statusCode).toBe(200)
+      expect((await app.inject({ method: 'GET', url: '/admin/drop-market/rows' })).statusCode).toBe(
+        200,
+      )
       expect(market.overview).toHaveBeenCalledWith(
         { kind: 'equipment', key: 'general' },
         expect.any(Date),
@@ -1103,13 +1123,14 @@ describe('AdminController', () => {
       const created = await app.inject({
         method: 'POST',
         url: '/admin/spend-catalog/groups',
-        payload: { key: 'event', name: '이벤트', category: 'event_bm' },
+        payload: { key: 'event', name: '이벤트', category: 'event_bm', cardTitle: '이벤트' },
       })
       expect(created.statusCode).toBe(201)
       expect(spendRepo.createGroup).toHaveBeenCalledWith({
         key: 'event',
         name: '이벤트',
         category: 'event_bm',
+        cardTitle: '이벤트',
         active: true,
       })
       spendRepo.createGroup.mockRejectedValue(new SpendGroupExists('event'))
@@ -1118,17 +1139,27 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/spend-catalog/groups',
-            payload: { key: 'event', name: '이벤트', category: 'event_bm' },
+            payload: { key: 'event', name: '이벤트', category: 'event_bm', cardTitle: '이벤트' },
           })
         ).statusCode,
       ).toBe(409)
+      spendRepo.createGroup.mockRejectedValue(new NoSpendCategory('hunting'))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/spend-catalog/groups',
+            payload: { key: 'hunt', name: '사냥', category: 'hunting', cardTitle: '사냥' },
+          })
+        ).statusCode,
+      ).toBe(404)
       spendRepo.updateGroup.mockResolvedValue(false)
       expect(
         (
           await app.inject({
             method: 'PUT',
             url: '/admin/spend-catalog/groups/nobody',
-            payload: { name: 'x', category: 'buff', active: false },
+            payload: { name: 'x', category: 'buff', cardTitle: 'x', active: false },
           })
         ).statusCode,
       ).toBe(404)
@@ -1155,6 +1186,7 @@ describe('AdminController', () => {
         group: 'boss_buff',
         tile: 'boss_killer_potion',
         name: '보스 킬러 비약',
+        shortName: null,
         tier: null,
         currency: 'meso',
         unitPrice: null,
@@ -1206,6 +1238,114 @@ describe('AdminController', () => {
               from: '2026-10-22',
               until: '2026-10-01',
             },
+          })
+        ).statusCode,
+      ).toBe(400)
+    })
+  })
+
+  describe('가계부 갈래', () => {
+    const hexa = {
+      entryType: 'spend',
+      key: 'hexa_skill',
+      name: '헥사 스킬 강화',
+      cardTitle: '헥사강화',
+      iconFile: 'sol_erda_fragment.webp',
+    }
+
+    it('갈래를 더하면 빈 설명 · 단위를 채워 넘기고, 같은 쪽의 같은 key 는 409 다', async () => {
+      cashbookRepo.createCategory.mockResolvedValue({ id: ROW })
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/cashbook-categories',
+        payload: hexa,
+      })
+      expect(created.statusCode).toBe(201)
+      expect(cashbookRepo.createCategory).toHaveBeenCalledWith({
+        ...hexa,
+        description: '',
+        unit: null,
+      })
+      cashbookRepo.createCategory.mockRejectedValue(new CashbookCategoryExists('spend.hexa_skill'))
+      expect(
+        (await app.inject({ method: 'POST', url: '/admin/cashbook-categories', payload: hexa }))
+          .statusCode,
+      ).toBe(409)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/cashbook-categories',
+            payload: { ...hexa, entryType: 'transfer' },
+          })
+        ).statusCode,
+      ).toBe(400)
+    })
+
+    it('갈래 고치기 · 옮기기는 수입 · 지출과 key 로 찾고, 모르면 404 다', async () => {
+      cashbookRepo.updateCategory.mockResolvedValue(true)
+      const body = {
+        name: '사냥',
+        cardTitle: '사냥',
+        iconFile: 'wealth.webp',
+        description: '',
+        unit: '소재',
+      }
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/cashbook-categories/income/hunting',
+            payload: body,
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(cashbookRepo.updateCategory).toHaveBeenCalledWith('income', 'hunting', body)
+      cashbookRepo.moveCategory.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/cashbook-categories/spend/nobody/move',
+            payload: { direction: 'up' },
+          })
+        ).statusCode,
+      ).toBe(404)
+    })
+
+    it('아이템 종류는 단위를 비우면 수량 없음으로 넘기고, 형태는 이름만 바꾼다', async () => {
+      cashbookRepo.updateItemKind.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/cashbook-item-kinds/equipment',
+            payload: { name: '장비', hasTariff: true },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(cashbookRepo.updateItemKind).toHaveBeenCalledWith('equipment', {
+        name: '장비',
+        unit: null,
+        hasTariff: true,
+      })
+      spendRepo.updateForm.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/forms/exp',
+            payload: { name: '경험치' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(spendRepo.updateForm).toHaveBeenCalledWith('exp', '경험치')
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/spend-catalog/forms/meso',
+            payload: { name: '메소' },
           })
         ).statusCode,
       ).toBe(400)

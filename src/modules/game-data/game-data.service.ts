@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common'
 
 import { BossDropsRepository, type BossDropsSection } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, type Catalog } from '../bosses/bosses.repository'
+import {
+  CashbookCategoriesRepository,
+  type CashbookCategoriesSection,
+} from '../cashbook-categories/cashbook-categories.repository'
 import { ContentsRepository, type ContentsSection } from '../contents/contents.repository'
 import {
   CrystalPricesRepository,
@@ -45,6 +49,7 @@ export interface GameDataSnapshot {
   crystalPrices: CrystalPricesSection
   worlds: WorldsSection
   spendCatalog: SpendCatalogSection
+  cashbookCategories: CashbookCategoriesSection
   symbolCosts: SymbolCostsSection
   contents: ContentsSection
   equipmentItems: EquipmentItemsSection
@@ -69,6 +74,7 @@ export class GameDataService {
     private readonly enhancementCosts: EnhancementCostsRepository,
     private readonly mvpGrades: MvpGradesRepository,
     private readonly huntingGrounds: HuntingGroundsRepository,
+    private readonly cashbookCategories: CashbookCategoriesRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -86,6 +92,7 @@ export class GameDataService {
       enhancementCosts,
       mvpGrades,
       huntingGrounds,
+      cashbookCategories,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -100,6 +107,7 @@ export class GameDataService {
       this.enhancementCosts.section(),
       this.mvpGrades.section(),
       this.huntingGrounds.section(),
+      this.cashbookCategories.section(),
     ])
     return {
       bosses,
@@ -109,6 +117,7 @@ export class GameDataService {
       crystalPrices,
       worlds,
       spendCatalog,
+      cashbookCategories,
       symbolCosts,
       contents,
       equipmentItems,

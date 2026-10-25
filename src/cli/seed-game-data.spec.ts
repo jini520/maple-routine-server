@@ -1,5 +1,6 @@
 import { describeDb, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
+import { CashbookCategoriesRepository } from '../modules/cashbook-categories/cashbook-categories.repository'
 import { ContentsRepository } from '../modules/contents/contents.repository'
 import { EnhancementCostsRepository } from '../modules/enhancement-costs/enhancement-costs.repository'
 import { EquipmentItemsRepository } from '../modules/equipment-items/equipment-items.repository'
@@ -10,6 +11,7 @@ import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repo
 import {
   parseBossDropsSeed,
   parseBossesSeed,
+  parseCashbookCategoriesSeed,
   parseContentsSeed,
   parseCrystalPricesSeed,
   parseDropBoxesSeed,
@@ -128,6 +130,42 @@ const worldsSeed = {
   ],
 }
 
+const cashbookCategoriesSeed = {
+  categories: [
+    {
+      entryType: 'spend',
+      key: 'content',
+      name: '컨텐츠',
+      cardTitle: '컨텐츠',
+      iconFile: 'monster_park_ticket.webp',
+      description: '몬파·에픽던전·퀵패스',
+      unit: null,
+    },
+    {
+      entryType: 'income',
+      key: 'hunting',
+      name: '사냥',
+      cardTitle: '사냥',
+      iconFile: 'wealth_acquisition_potion_small.webp',
+      description: '메소 · 조각 수익 기록',
+      unit: '소재',
+    },
+    {
+      entryType: 'spend',
+      key: 'event_bm',
+      name: '이벤트·BM',
+      cardTitle: '이벤트·BM',
+      iconFile: 'vip_sauna_ticket.webp',
+      description: '메포샵·보약 버프 등',
+      unit: null,
+    },
+  ],
+  itemKinds: [
+    { key: 'equipment', name: '장비', unit: null, hasTariff: true },
+    { key: 'consumable', name: '소비', unit: '개', hasTariff: false },
+  ],
+}
+
 const spendCatalogSeed = {
   rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
   groups: [
@@ -135,9 +173,16 @@ const spendCatalogSeed = {
       key: 'epic_dungeon_bonus_reward',
       name: '에픽던전 추가 리워드',
       category: 'content',
+      cardTitle: '에픽던전',
       active: true,
     },
-    { key: 'maple_point_shop', name: '메이플 포인트 샵', category: 'event_bm', active: false },
+    {
+      key: 'maple_point_shop',
+      name: '메이플 포인트 샵',
+      category: 'event_bm',
+      cardTitle: '메이플 포인트 샵',
+      active: false,
+    },
   ],
   tiles: [
     { key: 'high_mountain', name: '하이마운틴', iconFile: null, iconMap: 'highMountain' },
@@ -149,6 +194,7 @@ const spendCatalogSeed = {
       group: 'epic_dungeon_bonus_reward',
       tile: 'high_mountain',
       name: '하이마운틴 1단계',
+      shortName: null,
       tier: '1단계',
       currency: 'point',
       unitPrice: 7500,
@@ -163,6 +209,7 @@ const spendCatalogSeed = {
       group: 'maple_point_shop',
       tile: 'mihoroid',
       name: '미호로이드',
+      shortName: null,
       tier: null,
       currency: 'point',
       unitPrice: 40000,
@@ -177,6 +224,10 @@ const spendCatalogSeed = {
   itemForms: [
     { item: 'high_mountain_1', form: 'exp' },
     { item: 'high_mountain_1', form: 'sol_erda' },
+  ],
+  forms: [
+    { key: 'exp', name: '경험치' },
+    { key: 'sol_erda', name: '솔 에르다' },
   ],
 }
 const symbolCostsSeed = {
@@ -360,6 +411,7 @@ describe('씨앗 넷의 모양', () => {
     expect(parseCrystalPricesSeed(crystalPricesSeed)).toEqual(crystalPricesSeed)
     expect(parseWorldsSeed(worldsSeed)).toEqual(worldsSeed)
     expect(parseSpendCatalogSeed(spendCatalogSeed)).toEqual(spendCatalogSeed)
+    expect(parseCashbookCategoriesSeed(cashbookCategoriesSeed)).toEqual(cashbookCategoriesSeed)
     expect(parseSymbolCostsSeed(symbolCostsSeed)).toEqual(symbolCostsSeed)
     expect(parseContentsSeed(contentsSeed)).toEqual(contentsSeed)
     expect(parseEquipmentItemsSeed(equipmentItemsSeed)).toEqual(equipmentItemsSeed)
@@ -369,7 +421,7 @@ describe('씨앗 넷의 모양', () => {
     expect(() =>
       parseSpendCatalogSeed({
         ...spendCatalogSeed,
-        groups: [{ ...spendCatalogSeed.groups[0], category: 'misc' }],
+        groups: [{ ...spendCatalogSeed.groups[0], cardTitle: '' }],
       }),
     ).toThrow()
     expect(() =>
@@ -479,7 +531,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('열셋을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열넷을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -487,6 +539,7 @@ describeDb('seedGameData', () => {
       dropBoxes: parseDropBoxesSeed(dropBoxesSeed),
       crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
       worlds: parseWorldsSeed(worldsSeed),
+      cashbookCategories: parseCashbookCategoriesSeed(cashbookCategoriesSeed),
       spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
       symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
       contents: parseContentsSeed(contentsSeed),
@@ -502,6 +555,7 @@ describeDb('seedGameData', () => {
       dropBoxes: 'seeded',
       crystalPrices: 'seeded',
       worlds: 'seeded',
+      cashbookCategories: 'seeded',
       spendCatalog: 'seeded',
       symbolCosts: 'seeded',
       contents: 'seeded',
@@ -519,6 +573,17 @@ describeDb('seedGameData', () => {
     ])
     expect(spend.items.map((i) => i.key)).toEqual(['high_mountain_1', 'mihoroid'])
     expect(spend.itemForms).toHaveLength(2)
+    expect(spend.groups.map((g) => [g.category, g.cardTitle])).toEqual([
+      ['content', '에픽던전'],
+      ['event_bm', '메이플 포인트 샵'],
+    ])
+    const categories = await new CashbookCategoriesRepository(db).section()
+    expect(categories.categories.map((c) => `${c.entryType}.${c.key}`)).toEqual([
+      'income.hunting',
+      'spend.content',
+      'spend.event_bm',
+    ])
+    expect(categories.itemKinds.map((k) => k.key)).toEqual(['equipment', 'consumable'])
     const symbol = await new SymbolCostsRepository(db).section()
     expect(symbol.levelCosts.map((c) => c.costMeso)).toEqual([100, 200])
     const content = await new ContentsRepository(db).section()
@@ -549,6 +614,7 @@ describeDb('seedGameData', () => {
     const again = await seedGameData(db, {
       dropItems: parseDropItemsSeed(dropItemsSeed),
       crystalPrices: parseCrystalPricesSeed(crystalPricesSeed),
+      cashbookCategories: parseCashbookCategoriesSeed(cashbookCategoriesSeed),
       spendCatalog: parseSpendCatalogSeed(spendCatalogSeed),
       symbolCosts: parseSymbolCostsSeed(symbolCostsSeed),
       contents: parseContentsSeed(contentsSeed),
@@ -559,6 +625,7 @@ describeDb('seedGameData', () => {
     expect(again).toEqual({
       dropItems: 'skipped',
       crystalPrices: 'skipped',
+      cashbookCategories: 'skipped',
       spendCatalog: 'skipped',
       symbolCosts: 'skipped',
       contents: 'skipped',
@@ -624,6 +691,21 @@ describeDb('seedGameData', () => {
       categories: [],
       contents: [],
     })
+  })
+
+  it('지출 목록 씨앗이 지출 갈래가 아닌 key 를 가리키면 던지고 아무것도 안 넣는다', async () => {
+    await seedGameData(db, {
+      cashbookCategories: parseCashbookCategoriesSeed(cashbookCategoriesSeed),
+    })
+    const seed = parseSpendCatalogSeed({
+      ...spendCatalogSeed,
+      groups: [{ ...spendCatalogSeed.groups[0], category: 'hunting' }],
+      items: [spendCatalogSeed.items[0]],
+    })
+    await expect(seedGameData(db, { spendCatalog: seed })).rejects.toThrow(
+      '씨앗이 가리키는 지출 갈래 줄이 표에 없다: hunting',
+    )
+    expect((await new SpendCatalogRepository(db).section()).groups).toEqual([])
   })
 
   it('씨앗이 표에 없는 조합이나 아이템을 가리키면 던지고 아무것도 안 넣는다', async () => {

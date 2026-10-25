@@ -84,6 +84,8 @@ UPDATE "spend_items" SET "short_name" = "name", "name" = CASE "key"
 	WHEN 'pet_equipment_return_scroll' THEN '펫장비 리턴 스크롤'
 	END
 	WHERE "key" IN ('blueberry_farm', 'mechaberry_farm', 'vip_sauna', 'pet_equipment_innocent_scroll', 'pet_equipment_return_scroll');--> statement-breakpoint
+-- 카드 이름표에서 개로 확정한 항목의 단위. 시트의 수량 칸 라벨도 함께 바뀐다(사용자 지정 2026-10-25).
+UPDATE "spend_items" SET "unit" = '개' WHERE "key" IN ('seiram_elixir', 'alleria_elixir', 'collector_elixir', 'honor_elixir', 'blueberry_farm', 'mechaberry_farm', 'sol_erda', 'vip_buff_exp', 'vip_buff_stat');--> statement-breakpoint
 UPDATE "game_data_sections" SET "updated_at" = now() WHERE "key" = 'spendCatalog';
 --> statement-breakpoint
 INSERT INTO "game_data_sections" ("key", "updated_at") VALUES ('cashbookCategories', now()) ON CONFLICT ("key") DO UPDATE SET "updated_at" = now();

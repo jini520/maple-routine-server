@@ -40,11 +40,11 @@ INSERT INTO "cashbook_categories" ("entry_type", "key", "name", "card_title", "i
 	('spend', 'scroll', '주문서', '주문서', 'amazing_positive_chaos_scroll.webp', '장비·악세·펫장비', NULL, 3),
 	('spend', 'symbol', '심볼 강화', '심볼강화', 'authentic_symbol_selection_coupon.webp', '심볼 강화 비용', NULL, 4),
 	('spend', 'item_purchase', '아이템 구매', '아이템 구매', 'dark_boss_pendant.png', '구매 아이템 지출', NULL, 5),
-	('spend', 'etc', '기타', '기타', 'meso.webp', '각종 패스 등 기타 지출', NULL, 6),
+	('spend', 'etc', '기타', '기타', 'meso.webp', '각종 패스 등 기타 지출', '개', 6),
 	('income', 'hunting', '사냥', '사냥', 'wealth_acquisition_potion_small.webp', '메소 · 조각 수익 기록', '소재', 0),
 	('income', 'sol_erda_fragment', '솔 에르다 조각', '사냥', 'sol_erda_fragment.webp', '사냥 수익 조각 정산', '개', 1),
 	('income', 'item_sale', '아이템 판매', '아이템 판매', 'dark_boss_pendant.png', '판매 아이템 수익', NULL, 2),
-	('income', 'etc', '기타', '기타', 'meso.webp', '이벤트 등 기타 수익', NULL, 3);--> statement-breakpoint
+	('income', 'etc', '기타', '기타', 'meso.webp', '이벤트 등 기타 수익', '개', 3);--> statement-breakpoint
 INSERT INTO "cashbook_item_kinds" ("key", "name", "unit", "has_tariff", "sort_order") VALUES
 	('equipment', '장비', NULL, true, 0),
 	('consumable', '소비', '개', false, 1),

@@ -61,7 +61,7 @@
       "cardTitle": "기타",
       "iconFile": "meso.webp",
       "description": "각종 패스 등 기타 지출",
-      "unit": null
+      "unit": "개"
     },
     {
       "entryType": "income",
@@ -97,7 +97,7 @@
       "cardTitle": "기타",
       "iconFile": "meso.webp",
       "description": "이벤트 등 기타 수익",
-      "unit": null
+      "unit": "개"
     }
   ],
   "itemKinds": [

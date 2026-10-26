@@ -13,6 +13,8 @@ export interface AssetFileView {
   file: string
   sha256: string
   size: number
+  width: number
+  height: number
 }
 
 /** GET /v1/game-data 의 assets 칸. 앱은 sha256 이 바뀐 그림만 다시 받는다. */
@@ -34,20 +36,26 @@ export class AssetsRepository {
         file: storedFileName(r.sha256, parseAssetPath(r.path)?.ext ?? 'png'),
         sha256: r.sha256,
         size: r.size,
+        width: r.width,
+        height: r.height,
       })),
     }
   }
 
   /** 경로 하나의 내용을 적는다. 같은 해시면 아무것도 안 바꾼다. 앱이 바뀌지 않은 그림을 다시 받지 않게 하기 위해서다. */
-  async put(path: string, sha256: string, size: number): Promise<'created' | 'updated' | 'same'> {
+  async put(
+    path: string,
+    sha256: string,
+    dims: { size: number; width: number; height: number },
+  ): Promise<'created' | 'updated' | 'same'> {
     return this.db.transaction(async (tx) => {
       const [current] = await tx.select().from(assets).where(eq(assets.path, path))
       if (current?.sha256 === sha256) return 'same'
-      if (current === undefined) await tx.insert(assets).values({ path, sha256, size })
+      if (current === undefined) await tx.insert(assets).values({ path, sha256, ...dims })
       else
         await tx
           .update(assets)
-          .set({ sha256, size, updatedAt: new Date() })
+          .set({ sha256, ...dims, updatedAt: new Date() })
           .where(eq(assets.id, current.id))
       await touchSection(tx, 'assets')
       return current === undefined ? 'created' : 'updated'

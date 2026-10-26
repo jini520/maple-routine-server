@@ -89,4 +89,45 @@ export function sniffImage(bytes: Buffer): AssetExt | null {
   return null
 }
 
+/**
+ * 파일 머리에서 읽은 가로 · 세로 픽셀. 앱이 크롭과 연출 배치를 그림의 원래 크기로 계산하는데, 내려받은 파일은
+ * 그 자리에서 크기를 알 수 없어서 목록에 함께 싣는다. 머리를 못 읽으면 null 이다.
+ */
+export function imageSize(bytes: Buffer): { width: number; height: number } | null {
+  const kind = sniffImage(bytes)
+  if (kind === 'png') {
+    if (bytes.length < 24) return null
+    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }
+  }
+  if (kind === 'webp') return webpSize(bytes)
+  if (kind === 'jpg') return jpegSize(bytes)
+  return null
+}
+
+function webpSize(b: Buffer): { width: number; height: number } | null {
+  const chunk = b.subarray(12, 16).toString('ascii')
+  if (chunk === 'VP8X' && b.length >= 30)
+    return { width: 1 + b.readUIntLE(24, 3), height: 1 + b.readUIntLE(27, 3) }
+  if (chunk === 'VP8 ' && b.length >= 30)
+    return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff }
+  if (chunk === 'VP8L' && b.length >= 25) {
+    const bits = b.readUInt32LE(21)
+    return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >> 14) & 0x3fff) }
+  }
+  return null
+}
+
+/** SOF 표지까지 표지 길이를 따라 건너뛴다. DHT(C4) · JPG(C8) · DAC(CC) 는 SOF 가 아니다. */
+function jpegSize(b: Buffer): { width: number; height: number } | null {
+  let i = 2
+  while (i + 9 < b.length) {
+    if (b[i] !== 0xff) return null
+    const marker = b[i + 1] ?? 0
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc)
+      return { width: b.readUInt16BE(i + 7), height: b.readUInt16BE(i + 5) }
+    i += 2 + b.readUInt16BE(i + 2)
+  }
+  return null
+}
+
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])

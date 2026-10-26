@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
@@ -9,7 +11,7 @@ import { AssetsRepository } from '../assets/assets.repository'
 import { ImageCropsRepository } from '../assets/image-crops.repository'
 import { AdminAssetsController } from './admin-assets.controller'
 
-const WEBP = Buffer.concat([Buffer.from('RIFF\0\0\0\0WEBPVP8 ', 'ascii'), Buffer.alloc(16, 1)])
+const WEBP = readFileSync(join(__dirname, '../assets/__fixtures__/vp8.webp'))
 const PNG = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
   Buffer.alloc(8),
@@ -73,7 +75,11 @@ describe('AdminAssetsController', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({ path: 'bosses/bellona.webp', sha256: sha, result: 'created' })
     expect(store.write).toHaveBeenCalledWith(`${sha}.webp`, WEBP)
-    expect(assets.put).toHaveBeenCalledWith('bosses/bellona.webp', sha, WEBP.length)
+    expect(assets.put).toHaveBeenCalledWith('bosses/bellona.webp', sha, {
+      size: WEBP.length,
+      width: 1000,
+      height: 405,
+    })
     expect(order).toEqual(['write', 'put'])
   })
 

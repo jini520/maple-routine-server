@@ -31,6 +31,8 @@ export interface DropPriceInput {
   ringLevel: number | null
   /** 보스 난이도 줄. 표에 없는 쌍이면 null. */
   bossDifficultyId: string | null
+  /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 이고 옛 OTA 는 안 보내 null. */
+  periodRecordId: string | null
   recordStatus: Exclude<DropRecordStatus, 'deleted'>
 }
 

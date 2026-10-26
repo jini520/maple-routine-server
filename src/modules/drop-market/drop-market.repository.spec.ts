@@ -46,7 +46,7 @@ describeDb('DropMarketRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    ;[{ id: me }] = await db.insert(users).values({ nexonUid: 'me' }).returning({ id: users.id })
+    ;[{ id: me }] = await db.insert(users).values({}).returning({ id: users.id })
     const items = await db
       .insert(dropItems)
       .values([

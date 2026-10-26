@@ -1,5 +1,5 @@
 /**
- * Model. 표 서른일곱과 ENUM 열여덟. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 마흔하나와 ENUM 스물. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -48,19 +48,44 @@ export const bossCycleEnum = pgEnum('boss_cycle', ['weekly', 'event_weekly', 'mo
 /** 드롭 표의 갈래. 앱 DROP_CATEGORIES 그대로이고 선언 순서가 화면 순서다. */
 export const dropCategoryEnum = pgEnum('drop_category', ['fixed', 'equipment', 'consumable'])
 
-export const users = pgTable(
-  'users',
+/** 사람. 자격(넥슨 로그인 · API 키)은 nexon_accounts 가 들고, 한 사람이 넥슨 계정을 여럿 가질 수 있다. */
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+  /** 탈퇴. 사용자 요청으로 줄을 지우지 않는다. */
+  deletedAt: timestamptz('deleted_at'),
+})
+
+/**
+ * 넥슨 계정 하나. 넥슨 로그인이면 uid, API 키면 키 해시를 든다. 다계정이면 한 사람 밑에 여러 줄이다.
+ *
+ * account_record_id 는 기기가 만든 계정 id 다. 사람 안에서만 유일하고, 앱이 x-nexon-account-id 헤더로 알려 준다.
+ */
+export const nexonAccounts = pgTable(
+  'nexon_accounts',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    identitySource: identitySourceEnum('identity_source').notNull(),
     /** 넥슨 uid. 플랫폼을 가로질러 같다. */
     nexonUid: text('nexon_uid').unique(),
     /** 앱이 보낸 해시를 서버가 한 번 더 해시한 것. */
     apiKeyHash: bytea('api_key_hash').unique(),
+    accountRecordId: uuid('account_record_id'),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
-    /** 탈퇴. 사용자 요청으로 줄을 지우지 않는다. */
-    deletedAt: timestamptz('deleted_at'),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
-  (t) => [check('users_identity', sql`${t.nexonUid} IS NOT NULL OR ${t.apiKeyHash} IS NOT NULL`)],
+  (t) => [
+    index('nexon_accounts_user_id_idx').on(t.userId),
+    unique('nexon_accounts_user_record_unique').on(t.userId, t.accountRecordId),
+    check(
+      'nexon_accounts_credential_matches_source',
+      sql`(${t.identitySource} = 'login' AND ${t.nexonUid} IS NOT NULL AND ${t.apiKeyHash} IS NULL)
+        OR (${t.identitySource} = 'key' AND ${t.apiKeyHash} IS NOT NULL AND ${t.nexonUid} IS NULL)`,
+    ),
+  ],
 )
 
 export const nexonSessions = pgTable(
@@ -248,6 +273,8 @@ export const dropPrices = pgTable(
     bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
       onDelete: 'set null',
     }),
+    /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 이고 사람 안에서만 뜻이 있다. 이 칸이 생기기 전 줄은 NULL. */
+    periodRecordId: uuid('period_record_id'),
     /**
      * 가격이 처음 적히거나 바뀐 시각. 시세의 거래 시각이다. completed 만 값이 있다.
      * 기기가 그룹을 저장할 때마다 같은 값을 다시 보내 updated_at 이 움직이므로 거래 시각으로 못 쓴다.
@@ -864,4 +891,122 @@ export const huntingGroundLevels = pgTable(
     unique('hunting_ground_levels_ground_level_unique').on(t.groundId, t.level),
     check('hunting_ground_levels_level_positive', sql`${t.level} >= 1`),
   ],
+)
+
+/** 분배 방식. 비율 1:3 과 균등 3인은 두 수가 같아 이 칸 없이는 못 가른다. */
+export const splitModeEnum = pgEnum('split_mode', ['even', 'ratio'])
+/** 처치를 누가 적었나. auto 는 동기화, manual 은 사용자가 직접 적은 완료다. */
+export const clearSourceEnum = pgEnum('clear_source', ['auto', 'manual'])
+
+/**
+ * 보스 처치 기간 하나의 최종값. 기기의 boss_party_periods 중 처치한 행이고, 기기가 기준이라 서버는 사본이다.
+ *
+ * 처치를 취소하거나 기록이 사라지면 줄을 남기고 deleted_at 을 적는다.
+ */
+export const bossClears = pgTable(
+  'boss_clears',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    identifiedBy: identitySourceEnum('identified_by').notNull(),
+    /** 기기의 기간 행 id. 사람 안에서만 유일하다. */
+    periodRecordId: uuid('period_record_id').notNull(),
+    ocid: text('ocid').notNull(),
+    /** 표에 없는 보스 · 난이도면 NULL. */
+    bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
+      onDelete: 'set null',
+    }),
+    cycle: bossCycleEnum('cycle').notNull(),
+    /** 주간 YYYY-MM-DD · 월간 YYYY-MM. */
+    periodKey: text('period_key').notNull(),
+    /** 앱이 월드를 모르면 NULL 이고, 모르는 key 는 받지 않는다. */
+    worldId: uuid('world_id').references(() => worlds.id),
+    priceMeso: bigint('price_meso', { mode: 'number' }).notNull(),
+    /** 받은 몫. 분배와 수수료를 뗀 값이다. */
+    payoutMeso: bigint('payout_meso', { mode: 'number' }).notNull(),
+    splitMode: splitModeEnum('split_mode').notNull(),
+    partySize: integer('party_size').notNull(),
+    myShare: integer('my_share'),
+    sharesTotal: integer('shares_total'),
+    splitFeePercent: integer('split_fee_percent'),
+    /** 처치 날짜(KST YYYY-MM-DD). 모르면 NULL. */
+    defeatedDate: text('defeated_date'),
+    source: clearSourceEnum('source').notNull(),
+    deletedAt: timestamptz('deleted_at'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('boss_clears_user_record_unique').on(t.userId, t.periodRecordId),
+    index('boss_clears_difficulty_period_idx').on(t.bossDifficultyId, t.periodKey),
+    check(
+      'boss_clears_ratio_shares',
+      sql`(${t.splitMode} = 'ratio') = (${t.myShare} IS NOT NULL AND ${t.sharesTotal} IS NOT NULL)`,
+    ),
+  ],
+)
+
+/**
+ * 가계부 기록 한 건의 최종값. 기기의 cashbook_entries 사본이다. 금액은 품목 줄에 있다.
+ *
+ * key 는 글자 그대로다. 갈래마다 다른 표를 가리켜 외래키로 바꾸면 표에 없는 key 의 기록을 거절하게 된다.
+ */
+export const serverCashbookEntries = pgTable(
+  'cashbook_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    identifiedBy: identitySourceEnum('identified_by').notNull(),
+    /** 기기의 기록 id. 사람 안에서만 유일하다. */
+    entryRecordId: uuid('entry_record_id').notNull(),
+    /** NULL 은 계정 단위 기록이다. */
+    ocid: text('ocid'),
+    /** 캐릭터 없는 기록이 속한 넥슨 계정. 캐릭터가 있는 기록은 ocid 로 찾아 NULL 이다. */
+    nexonAccountId: uuid('nexon_account_id').references(() => nexonAccounts.id, {
+      onDelete: 'set null',
+    }),
+    entryType: cashbookEntryTypeEnum('entry_type').notNull(),
+    categoryKey: text('category_key').notNull(),
+    /** 돈이 오간 날(KST YYYY-MM-DD). */
+    entryDate: text('entry_date').notNull(),
+    deletedAt: timestamptz('deleted_at'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('cashbook_entries_user_record_unique').on(t.userId, t.entryRecordId),
+    index('cashbook_entries_category_date_idx').on(t.entryType, t.categoryKey, t.entryDate),
+  ],
+)
+
+/** 가계부 기록의 품목. 기록을 다시 받으면 통째로 갈아 끼운다. */
+export const serverCashbookEntryItems = pgTable(
+  'cashbook_entry_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entryId: uuid('entry_id')
+      .notNull()
+      .references(() => serverCashbookEntries.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull(),
+    itemKey: text('item_key'),
+    /** 사용자가 직접 친 품목 이름. key 가 있으면 NULL 이다. */
+    itemName: text('item_name'),
+    formKey: text('form_key'),
+    itemKindKey: text('item_kind_key'),
+    quantity: integer('quantity'),
+    fromLevel: integer('from_level'),
+    toLevel: integer('to_level'),
+    amountMeso: bigint('amount_meso', { mode: 'number' }),
+    tariffMeso: bigint('tariff_meso', { mode: 'number' }),
+    saleFeePercent: integer('sale_fee_percent'),
+    saleFeeMeso: bigint('sale_fee_meso', { mode: 'number' }),
+    amountPoint: bigint('amount_point', { mode: 'number' }),
+    pointPer100mMeso: integer('point_per_100m_meso'),
+    amountCash: bigint('amount_cash', { mode: 'number' }),
+  },
+  (t) => [unique('cashbook_entry_items_entry_order_unique').on(t.entryId, t.sortOrder)],
 )

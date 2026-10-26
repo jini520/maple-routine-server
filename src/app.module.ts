@@ -12,6 +12,8 @@ import { BossDropsModule } from './modules/boss-drops/boss-drops.module'
 import { BossesModule } from './modules/bosses/bosses.module'
 import { CrystalPricesModule } from './modules/crystal-prices/crystal-prices.module'
 import { DropItemsModule } from './modules/drop-items/drop-items.module'
+import { BossClearsModule } from './modules/boss-clears/boss-clears.module'
+import { CashbookEntriesModule } from './modules/cashbook-entries/cashbook-entries.module'
 import { DropPricesModule } from './modules/drop-prices/drop-prices.module'
 import { FriendsModule } from './modules/friends/friends.module'
 import { GameDataModule } from './modules/game-data/game-data.module'
@@ -48,6 +50,8 @@ import { WorldsModule } from './modules/worlds/worlds.module'
     SettlementModule,
     ManualCompletionModule,
     DropPricesModule,
+    BossClearsModule,
+    CashbookEntriesModule,
     UsersModule,
     IdentityModule,
     AdminModule,

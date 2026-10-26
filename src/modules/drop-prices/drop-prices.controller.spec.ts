@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
+import type { BatchResult } from '../../common/batch'
 import { SessionsRepository } from '../auth/sessions.repository'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { IdentityGuard } from '../identity/identity.guard'
@@ -21,7 +22,11 @@ const body = {
 describe('DropPricesController', () => {
   let app: NestFastifyApplication
   const sessions = { findByHash: jest.fn() }
-  const users = { upsertByApiKeyHash: jest.fn() }
+  const users = {
+    upsertByApiKeyHash: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
+    recordAccountId: jest.fn(),
+  }
   const prices = { upsert: jest.fn(), markDeleted: jest.fn() }
   const bosses = { findDifficulty: jest.fn() }
   const bearer = { authorization: 'Bearer S' }
@@ -78,6 +83,7 @@ describe('DropPricesController', () => {
       worldKey: 'scania',
       ringLevel: 4,
       bossDifficultyId: null,
+      periodRecordId: null,
       recordStatus: 'completed',
     })
   })
@@ -157,7 +163,11 @@ describe('DropPricesController', () => {
   })
 
   it('키 사용자는 key 로 적힌다', async () => {
-    users.upsertByApiKeyHash.mockResolvedValue({ id: 'u2' })
+    users.upsertByApiKeyHash.mockResolvedValue({
+      id: 'u2',
+      nexonAccountId: 'a2',
+      accountRecordId: null,
+    })
 
     const res = await app.inject({
       method: 'POST',
@@ -227,5 +237,34 @@ describe('DropPricesController', () => {
 
     expect(res.statusCode).toBe(400)
     expect(prices.markDeleted).not.toHaveBeenCalled()
+  })
+
+  // 과거 드롭 묶음이다. 표에 없는 아이템 한 건이 나머지를 막으면 그 사용자의 과거 올리기가 멈춘다.
+  it('묶음은 건마다 결과를 돌려주고, 표에 없는 아이템은 그 건만 실패다', async () => {
+    const other = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
+    prices.upsert.mockImplementation(async (input: { dropRecordId: string }) => {
+      if (input.dropRecordId === other) throw new NoDropItem('nothing')
+    })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices/batch',
+      headers: bearer,
+      payload: {
+        items: [
+          { ...body, periodRecordId: other },
+          { ...body, dropRecordId: other },
+        ],
+      },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json<{ results: BatchResult[] }>().results).toEqual([
+      { recordId: RECORD, ok: true },
+      { recordId: other, ok: false, reason: '모르는 아이템 key 다: nothing' },
+    ])
+    expect(prices.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ dropRecordId: RECORD, periodRecordId: other }),
+    )
   })
 })

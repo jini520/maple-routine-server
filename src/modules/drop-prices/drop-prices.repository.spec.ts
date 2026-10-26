@@ -30,6 +30,7 @@ describeDb('DropPricesRepository', () => {
     worldKey: 'scania',
     ringLevel: 4,
     bossDifficultyId: null,
+    periodRecordId: null,
     recordStatus: 'completed',
     ...over,
   })
@@ -40,10 +41,7 @@ describeDb('DropPricesRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    const rows = await db
-      .insert(users)
-      .values([{ nexonUid: 'me' }, { nexonUid: 'other' }])
-      .returning({ id: users.id })
+    const rows = await db.insert(users).values([{}, {}]).returning({ id: users.id })
     me = rows[0].id
     other = rows[1].id
     // 가격 줄이 아이템 · 월드 표의 줄을 가리킨다. 스펙이 쓰는 key 둘과 월드 하나를 먼저 세운다.
@@ -61,6 +59,15 @@ describeDb('DropPricesRepository', () => {
     })
   })
   afterAll(() => close())
+
+  // 어느 처치에서 나온 드롭인지 잇는 칸이다. 드롭은 처치하지 않은 기간에도 있어 외래키가 아니라 기기 id 다.
+  it('처치 기간 id 를 적고 다시 보내면 덮는다', async () => {
+    await repo.upsert(input({ periodRecordId: '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b' }))
+
+    expect((await db.select().from(dropPrices))[0]?.periodRecordId).toBe(
+      '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b',
+    )
+  })
 
   it('처음은 줄을 만들고 같은 기록을 다시 적으면 값만 덮는다', async () => {
     await repo.upsert(input())

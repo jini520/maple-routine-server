@@ -120,6 +120,13 @@
       "when": 1792999600244,
       "tag": "0016_enhancement_totals",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793005928448,
+      "tag": "0017_enhancement_anomalies",
+      "breakpoints": true
     }
   ]
 }

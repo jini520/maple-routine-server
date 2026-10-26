@@ -1061,3 +1061,57 @@ export const enhancementTotals = pgTable(
     index('enhancement_totals_category_date_idx').on(t.enhancementCategory, t.historyDate),
   ],
 )
+
+/** 강화 내역의 API 종류. 앱이 받은 엔드포인트 넷이다. */
+export const enhancementTypeEnum = pgEnum('enhancement_type', [
+  'cube',
+  'starforce',
+  'potential',
+  'soul_potential',
+])
+
+/** 강화 합계에서 빠지거나 판정하지 못한 이유. */
+export const enhancementAnomalyTypeEnum = pgEnum('enhancement_anomaly_type', [
+  'event_world_unknown',
+  'no_level',
+  'no_grade',
+  'no_star',
+  'no_type',
+  'no_cost',
+])
+
+/**
+ * 앱이 강화 합계에서 빼거나 이벤트 월드를 판정하지 못한 줄의 수. 운영자가 예상하지 못한 상황의 양과 모양을 보는 표이고 통계에
+ * 쓰지 않는다. 앱은 응답 원본을 저장하지 않아 이 값이 원인을 볼 유일한 단서다. 캐릭터 이름은 받지 않는다.
+ */
+export const enhancementAnomalies = pgTable(
+  'enhancement_anomalies',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    identifiedBy: identitySourceEnum('identified_by').notNull(),
+    /** 강화한 날(KST YYYY-MM-DD). */
+    historyDate: text('history_date').notNull(),
+    enhancementType: enhancementTypeEnum('enhancement_type').notNull(),
+    anomalyType: enhancementAnomalyTypeEnum('anomaly_type').notNull(),
+    itemKey: text('item_key'),
+    /** 응답의 장비 이름. 판정하지 못한 줄은 장비와 무관해 빈 글자다. */
+    itemName: text('item_name').notNull(),
+    rowCount: integer('row_count').notNull(),
+    /** 캐릭터 목록 요청의 실패 이유. 판정하지 못한 줄만 있다. */
+    detail: text('detail'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('enhancement_anomalies_user_key_unique').on(
+      t.userId,
+      t.historyDate,
+      t.enhancementType,
+      t.anomalyType,
+      t.itemName,
+    ),
+  ],
+)

@@ -16,7 +16,7 @@ import {
 import { z } from 'zod'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
-import { parseAssetPath, sniffImage, storedFileName } from '../assets/asset-paths'
+import { imageSize, parseAssetPath, sniffImage, storedFileName } from '../assets/asset-paths'
 import { AssetStore } from '../assets/asset-store'
 import { AssetsRepository } from '../assets/assets.repository'
 import {
@@ -72,10 +72,12 @@ export class AdminAssetsController {
       throw new BadRequestException(
         `내용이 ${sniffed ?? '그림이 아니다'}인데 경로는 .${parsed.ext} 다`,
       )
+    const dims = imageSize(body)
+    if (dims === null) throw new BadRequestException('그림 머리에서 가로 · 세로를 읽지 못했다')
     const path = `${parsed.dir}/${parsed.name}.${parsed.ext}`
     const sha256 = createHash('sha256').update(body).digest('hex')
     await this.store.write(storedFileName(sha256, parsed.ext), body)
-    const result = await this.assets.put(path, sha256, body.length)
+    const result = await this.assets.put(path, sha256, { size: body.length, ...dims })
     return { path, sha256, result }
   }
 

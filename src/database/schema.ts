@@ -323,6 +323,9 @@ export const assets = pgTable('assets', {
   /** 소문자 hex 64글자. */
   sha256: text('sha256').notNull(),
   size: integer('size').notNull(),
+  /** 픽셀. 앱이 크롭 · 연출 배치를 원래 크기로 계산한다. 내려받은 파일은 그 자리에서 크기를 모른다. */
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 

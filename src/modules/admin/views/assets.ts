@@ -95,7 +95,7 @@ export const ASSETS_HTML = layout(
     shown.forEach(function (f) {
       var tr = el('tr');
       var img = el('img', undefined, 'thumb'); img.src = urlOf(f); img.alt = ''; img.loading = 'lazy';
-      cell(tr, img); cell(tr, f.path, 'mono'); cell(tr, kb(f.size), 'num'); cell(tr, f.sha256.slice(0, 10), 'mono dim');
+      cell(tr, img); cell(tr, f.path, 'mono'); cell(tr, kb(f.size) + ' · ' + f.width + '×' + f.height, 'num'); cell(tr, f.sha256.slice(0, 10), 'mono dim');
       var pick = filePicker(function (file) { upload(f.path, file); });
       var replace = button('바꾸기', 'btn ghost sm');
       replace.addEventListener('click', function () { pick.click(); });

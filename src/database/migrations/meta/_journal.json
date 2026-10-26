@@ -134,6 +134,13 @@
       "when": 1793021940290,
       "tag": "0018_game_data_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793025176266,
+      "tag": "0019_asset_dimensions",
+      "breakpoints": true
     }
   ]
 }

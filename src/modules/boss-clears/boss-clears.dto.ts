@@ -22,7 +22,8 @@ export const bossClearBody = z
     payoutMeso: meso,
     splitMode: z.enum(['even', 'ratio']),
     partySize: z.number().int().min(1).max(100),
-    myShare: z.number().int().min(1).nullish(),
+    /** 내 몫. 0 은 몫 없이 함께 잡은 것이라 받는다. 비율 합은 1 이상이다. */
+    myShare: z.number().int().min(0).nullish(),
     sharesTotal: z.number().int().min(1).nullish(),
     splitFeePercent: z.number().int().min(0).max(100).nullish(),
     defeatedDate: z

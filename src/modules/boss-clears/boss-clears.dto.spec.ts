@@ -33,6 +33,22 @@ describe('bossClearBody', () => {
     ).toBe(true)
   })
 
+  // 내 몫 0 은 앱에서 적을 수 있는 정상 기록이다(받은 몫 0). 거절하면 그 기록이 5 회 뒤 버려진다.
+  it('비율 분배의 내 몫 0 을 받는다', () => {
+    expect(
+      bossClearBody.safeParse({
+        ...ok,
+        splitMode: 'ratio',
+        myShare: 0,
+        sharesTotal: 3,
+        payoutMeso: 0,
+      }).success,
+    ).toBe(true)
+    expect(
+      bossClearBody.safeParse({ ...ok, splitMode: 'ratio', myShare: 1, sharesTotal: 0 }).success,
+    ).toBe(false)
+  })
+
   // 비율 1:3 과 균등 3인은 두 수가 같아 분배 방식과 비율 칸이 함께 맞아야 한다. 어긋나면 받은 몫을 다시 셀 수 없다.
   it('분배 방식과 비율 칸이 어긋나면 거절한다', () => {
     expect(bossClearBody.safeParse({ ...ok, splitMode: 'ratio' }).success).toBe(false)

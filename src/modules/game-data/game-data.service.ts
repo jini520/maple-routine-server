@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
 
+import { AssetsRepository, type AssetsSection } from '../assets/assets.repository'
+import { ImageCropsRepository, type ImageCropsSection } from '../assets/image-crops.repository'
 import { BossDropsRepository, type BossDropsSection } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, type Catalog } from '../bosses/bosses.repository'
 import {
@@ -56,6 +58,8 @@ export interface GameDataSnapshot {
   enhancementCosts: EnhancementCostsSection
   mvpGrades: MvpGradesSection
   huntingGrounds: HuntingGroundsSection
+  assets: AssetsSection
+  imageCrops: ImageCropsSection
 }
 
 @Injectable()
@@ -75,6 +79,8 @@ export class GameDataService {
     private readonly mvpGrades: MvpGradesRepository,
     private readonly huntingGrounds: HuntingGroundsRepository,
     private readonly cashbookCategories: CashbookCategoriesRepository,
+    private readonly assets: AssetsRepository,
+    private readonly imageCrops: ImageCropsRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -93,6 +99,8 @@ export class GameDataService {
       mvpGrades,
       huntingGrounds,
       cashbookCategories,
+      assets,
+      imageCrops,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -108,6 +116,8 @@ export class GameDataService {
       this.mvpGrades.section(),
       this.huntingGrounds.section(),
       this.cashbookCategories.section(),
+      this.assets.section(),
+      this.imageCrops.section(),
     ])
     return {
       bosses,
@@ -124,6 +134,8 @@ export class GameDataService {
       enhancementCosts,
       mvpGrades,
       huntingGrounds,
+      assets,
+      imageCrops,
     }
   }
 }

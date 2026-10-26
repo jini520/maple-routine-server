@@ -16,6 +16,8 @@ services:
     volumes:
       # FCM 키는 이미지에 안 굽는다. 읽기 전용으로 걸어만 준다.
       - /home/ubuntu/.config/maple-routine-server/fcm-key.json:/run/secrets/fcm-key.json:ro
+      # 그림 파일. 같은 박스의 nginx 가 호스트 쪽 디렉터리를 /assets/ 로 바로 낸다. 컨테이너 사용자 node(uid 1000)가 쓴다.
+      - /srv/maple-routine-assets:/data/assets
     # 요청마다 한 줄이 찍히므로 도커 기본값(무제한)으로 두면 디스크가 언젠가 찬다.
     logging:
       driver: json-file

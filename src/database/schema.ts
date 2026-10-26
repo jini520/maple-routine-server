@@ -1,5 +1,5 @@
 /**
- * Model. 표 마흔하나와 ENUM 스물. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 마흔다섯과 ENUM 스물넷. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -312,6 +312,44 @@ export const gameDataSections = pgTable('game_data_sections', {
   key: text('key').notNull().unique(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
+
+/**
+ * 앱이 받는 그림 한 장. path 는 앱 `src/assets/` 기준 경로이고 게임 데이터 표의 그림 칸이 이 경로를 가리킨다.
+ * 파일은 디스크에 내용 해시 이름(`<sha256>.<ext>`)으로 있다. 그림을 바꾸면 이 줄의 해시만 바뀐다.
+ */
+export const assets = pgTable('assets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  path: text('path').notNull().unique(),
+  /** 소문자 hex 64글자. */
+  sha256: text('sha256').notNull(),
+  size: integer('size').notNull(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})
+
+/** 앱의 크롭 표 넷과 일대일. 값이 같은 그림이라도 놓이는 곳마다 잘 보이는 자리가 달라 표가 갈린다. */
+export const imageCropKindEnum = pgEnum('image_crop_kind', [
+  'boss_portrait',
+  'boss_portrait_icon',
+  'boss_portrait_modal',
+  'daily_quest_region',
+])
+
+/** 그림을 자르는 크기와 위치. 값은 CSS background-size · background-position 문법이고 운영자가 눈으로 맞춘다. */
+export const imageCrops = pgTable(
+  'image_crops',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: imageCropKindEnum('kind').notNull(),
+    /** 보스는 portrait_slug, 지역은 background_map 의 값. */
+    slug: text('slug').notNull(),
+    /** `<퍼센트>% auto` */
+    size: text('size').notNull(),
+    /** `<퍼센트>% <퍼센트>%` */
+    position: text('position').notNull(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [unique('image_crops_kind_slug_unique').on(t.kind, t.slug)],
+)
 
 /** 드롭 아이템 마스터 표. 기록과 drop_prices.item_key 가 key 를 든다. */
 export const dropItems = pgTable('drop_items', {

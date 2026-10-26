@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 
+import { AssetsModule } from '../assets/assets.module'
 import { BossDropsModule } from '../boss-drops/boss-drops.module'
 import { BossesModule } from '../bosses/bosses.module'
 import { CashbookCategoriesModule } from '../cashbook-categories/cashbook-categories.module'
@@ -32,6 +33,7 @@ import { GameDataService } from './game-data.service'
     MvpGradesModule,
     HuntingGroundsModule,
     CashbookCategoriesModule,
+    AssetsModule,
   ],
   controllers: [GameDataController],
   providers: [GameDataService],

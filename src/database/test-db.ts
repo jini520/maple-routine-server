@@ -46,6 +46,8 @@ const TABLES = [
   'boss_drop_rewards',
   'drop_items',
   'game_data_sections',
+  'assets',
+  'image_crops',
   'worlds',
   'cashbook_entry_items',
   'cashbook_entries',

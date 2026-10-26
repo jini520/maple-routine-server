@@ -1,7 +1,7 @@
 import { layout } from './layout'
 
 /**
- * 그림 · 크롭 화면. 위는 앱이 받는 그림 목록, 아래는 보스 초상 · 지역 지도의 크롭이다.
+ * 그림 · 크롭 화면. 위는 앱이 받는 그림을 카테고리 트리로 나눈 목록, 아래는 보스 초상 · 지역 지도의 크롭이다.
  *
  * 그림은 nginx 가 `/assets/<해시>.<확장자>` 로 내므로 미리보기도 그 주소를 쓴다. 크롭 값이 CSS background 문법이라
  * 미리보기는 같은 값을 background-size · background-position 에 그대로 넣는다.
@@ -22,18 +22,30 @@ export const ASSETS_HTML = layout(
 </div>
 <div id="message" class="msg" role="status" hidden></div>
 <section class="card">
-  <header><h2>새 그림</h2><p>png · webp · jpg, 1MB 까지. 경로의 확장자와 파일 내용이 같아야 한다</p></header>
-  <div class="body"><div class="inline" id="new-form"></div></div>
-</section>
-<section class="card">
-  <header><h2>그림 목록</h2><div class="grow"></div><div class="inline" id="filter"></div></header>
-  <div class="table"><table><thead><tr><th>그림</th><th>경로</th><th class="num">크기</th><th>해시</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  <header><h2>그림</h2><p>왼쪽에서 카테고리를 고른다. 새 그림은 하위 카테고리까지 골라야 올릴 수 있다. png · webp · jpg, 1MB 까지이고 경로의 확장자와 파일 내용이 같아야 한다</p></header>
+  <div class="assets-split">
+    <nav class="tree" id="tree" aria-label="그림 카테고리"></nav>
+    <div class="assets-main">
+      <div class="inline upload" id="new-form"></div>
+      <div class="table"><table><thead><tr><th>그림</th><th>경로</th><th class="num">크기</th><th>해시</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    </div>
+  </div>
 </section>
 <section class="card">
   <header><h2>크롭</h2><p>크기는 <code>120% auto</code>, 위치는 <code>50% 40%</code> 모양이다. 줄이 없으면 앱은 cover · 가운데로 그린다. 미리보기 틀의 비율은 앱 자리와 비슷하게 맞춘 것이다</p><div class="grow"></div><div class="inline" id="crop-kind"></div></header>
   <div class="table"><table><thead><tr><th>미리보기</th><th>slug</th><th>크기</th><th>위치</th><th></th></tr></thead><tbody id="crop-rows"></tbody></table></div>
 </section>
 <style>
+  .assets-split { display: grid; grid-template-columns: 200px minmax(0, 1fr); border-top: 1px solid var(--line); margin-top: 14px }
+  @media (max-width: 760px) { .assets-split { grid-template-columns: 1fr } }
+  .tree { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-right: 1px solid var(--line); background: var(--surface-2) }
+  .tree button { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: 500 13px/1.3 var(--font); text-align: left; cursor: pointer }
+  .tree button:hover { background: var(--surface); color: var(--text) }
+  .tree button[aria-current="true"] { background: var(--accent-tint); color: var(--accent-ink) }
+  .tree button.child { padding-left: 24px; font-weight: 400 }
+  .tree button span { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums }
+  .assets-main { min-width: 0 }
+  .upload { padding: 14px 16px; border-bottom: 1px solid var(--line) }
   .thumb { width: 48px; height: 48px; object-fit: contain; background: var(--surface-2); border-radius: 6px; display: block }
   .crop { background-color: var(--surface-2); background-repeat: no-repeat; border-radius: 8px; flex: none }
   .crop.boss_portrait { width: 180px; height: 90px }
@@ -48,12 +60,39 @@ export const ASSETS_HTML = layout(
     ['boss_portrait_modal', '파티 분배 모달 띠', 'bosses/'],
     ['daily_quest_region', '컨텐츠 카드 지도', 'maps/'],
   ];
-  var state = { files: [], crops: [], dir: '', cropKind: 'boss_portrait' };
+  /**
+   * 카테고리 트리. 잎이 앱 경로의 디렉터리 하나다. 부모를 고르면 자식 디렉터리 전부를 보인다.
+   * 디렉터리 목록은 서버 asset-paths.ts 의 ASSET_DIRS 와 같다.
+   */
+  var TREE = [
+    { label: '보스 초상', dir: 'bosses' },
+    { label: '아이템', children: [{ label: '일반', dir: 'items' }, { label: '반지', dir: 'items/rings' }] },
+    { label: '지도', children: [{ label: '배경', dir: 'maps' }, { label: '아이콘', dir: 'maps/icons' }] },
+    { label: '월드 엠블럼', dir: 'worlds' },
+    { label: 'MVP 명패', dir: 'mvp' },
+    { label: '포스', dir: 'force' },
+    { label: '캐릭터', dir: 'characters' },
+    { label: '고가 드롭 연출', children: [
+      { label: '화면', dir: 'drop-effect/screen' }, { label: '시작', dir: 'drop-effect/pre' },
+      { label: '반복', dir: 'drop-effect/loop' }, { label: '끝', dir: 'drop-effect/end' },
+    ] },
+  ];
+  var state = { files: [], crops: [], node: TREE[0], cropKind: 'boss_portrait' };
 
   function kb(n) { return (n / 1024).toFixed(1) + 'KB'; }
   function urlOf(f) { return '/assets/' + f.file; }
   function dirOf(path) { return path.slice(0, path.lastIndexOf('/')); }
   function slugOf(path) { var name = path.slice(path.lastIndexOf('/') + 1); return name.slice(0, name.lastIndexOf('.')); }
+  function dirsOf(node) { return node.children ? node.children.map(function (c) { return c.dir; }) : [node.dir]; }
+  function countOf(node) { var dirs = dirsOf(node); return state.files.filter(function (f) { return dirs.indexOf(dirOf(f.path)) !== -1; }).length; }
+  // 연출 프레임은 숫자 이름이라 글자 차례면 10 이 2 앞에 선다. 앱이 숫자 차례로 재생하므로 같은 차례로 보인다.
+  function byPath(a, b) {
+    var da = dirOf(a.path), db = dirOf(b.path);
+    if (da !== db) return da < db ? -1 : 1;
+    var na = Number(slugOf(a.path)), nb = Number(slugOf(b.path));
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.path < b.path ? -1 : 1;
+  }
 
   async function upload(path, file) {
     if (!file) { show('파일을 고른다', true); return; }
@@ -71,27 +110,36 @@ export const ASSETS_HTML = layout(
     return f;
   }
 
+  function renderTree() {
+    var box = document.getElementById('tree'); box.innerHTML = '';
+    function item(node, isChild) {
+      var b = button('', isChild ? 'child' : '');
+      b.appendChild(document.createTextNode(node.label));
+      b.appendChild(span(String(countOf(node))));
+      b.setAttribute('aria-current', state.node === node ? 'true' : 'false');
+      b.addEventListener('click', function () { state.node = node; renderTree(); renderNewForm(); renderRows(); });
+      box.appendChild(b);
+    }
+    TREE.forEach(function (node) { item(node, false); (node.children || []).forEach(function (c) { item(c, true); }); });
+  }
+
   function renderNewForm() {
     var box = document.getElementById('new-form'); box.innerHTML = '';
-    var path = input('text', 'mono'); path.placeholder = 'bosses/newBoss.webp'; path.size = 36;
+    if (state.node.children) { box.appendChild(span('하위 카테고리를 고르면 새 그림을 올릴 수 있다', 'dim')); return; }
+    var dir = state.node.dir;
+    var name = input('text', 'mono'); name.placeholder = dir.indexOf('drop-effect') === 0 ? '24.webp' : 'newName.webp'; name.size = 24;
     var file = input('file'); file.accept = 'image/png,image/webp,image/jpeg';
     var go = button('올리기', 'btn');
-    go.addEventListener('click', function () { upload(path.value.trim(), file.files && file.files[0]); });
-    box.appendChild(field('경로', '디렉터리/이름.확장자', path));
+    go.addEventListener('click', function () { upload(dir + '/' + name.value.trim(), file.files && file.files[0]); });
+    box.appendChild(field('파일 이름', dir + '/ 아래', name));
     box.appendChild(field('파일', '', file));
     box.appendChild(go);
   }
 
-  function renderFilter() {
-    var dirs = Array.from(new Set(state.files.map(function (f) { return dirOf(f.path); }))).sort();
-    var s = select([['', '전체']].concat(dirs.map(function (d) { return [d, d]; })), state.dir);
-    s.addEventListener('change', function () { state.dir = s.value; renderRows(); });
-    var box = document.getElementById('filter'); box.innerHTML = ''; box.appendChild(s);
-  }
-
   function renderRows() {
     var rows = document.getElementById('rows'); rows.innerHTML = '';
-    var shown = state.files.filter(function (f) { return state.dir === '' || dirOf(f.path) === state.dir; });
+    var dirs = dirsOf(state.node);
+    var shown = state.files.filter(function (f) { return dirs.indexOf(dirOf(f.path)) !== -1; }).sort(byPath);
     shown.forEach(function (f) {
       var tr = el('tr');
       var img = el('img', undefined, 'thumb'); img.src = urlOf(f); img.alt = ''; img.loading = 'lazy';
@@ -102,7 +150,7 @@ export const ASSETS_HTML = layout(
       cell(tr, inline(replace, pick), 'act');
       rows.appendChild(tr);
     });
-    if (shown.length === 0) { var tr = el('tr'); var td = cell(tr, '없다. 시드 스크립트가 안 돌았다', 'empty'); td.colSpan = 5; rows.appendChild(tr); }
+    if (shown.length === 0) { var tr = el('tr'); var td = cell(tr, '이 카테고리에 그림이 없다', 'empty'); td.colSpan = 5; rows.appendChild(tr); }
   }
 
   function renderCropKind() {
@@ -147,8 +195,8 @@ export const ASSETS_HTML = layout(
     document.getElementById('stat-files').textContent = state.files.length;
     document.getElementById('stat-size').textContent = kb(state.files.reduce(function (n, f) { return n + f.size; }, 0));
     document.getElementById('stat-updated').textContent = r.json.assets.updatedAt ? when(r.json.assets.updatedAt) : '없음';
-    renderFilter(); renderRows(); renderCrops();
+    renderTree(); renderNewForm(); renderRows(); renderCrops();
   }
-  renderNewForm(); renderCropKind(); load();
+  renderCropKind(); load();
 </script>`,
 )

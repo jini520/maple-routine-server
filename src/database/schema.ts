@@ -1010,3 +1010,54 @@ export const serverCashbookEntryItems = pgTable(
   },
   (t) => [unique('cashbook_entry_items_entry_order_unique').on(t.entryId, t.sortOrder)],
 )
+
+/** 강화 분류. 앱 화면이 가르는 다섯이고, 잠재를 본 잠재와 에디셔널로 나눈다. */
+export const enhancementCategoryEnum = pgEnum('enhancement_category', [
+  'cube_reset',
+  'starforce',
+  'potential',
+  'additional_potential',
+  'soul_potential',
+])
+
+/**
+ * 강화 지출 합계 한 줄. 기기의 enhancement_totals 중 이벤트 월드가 아닌 줄의 사본이다.
+ *
+ * 비용은 MVP 할인 전이다. 할인은 사람마다 등급이 달라 통계에 섞이면 안 된다. 넥슨 응답이 캐릭터를 이름으로만 줘서
+ * ocid 가 아니라 캐릭터 이름을 든다.
+ */
+export const enhancementTotals = pgTable(
+  'enhancement_totals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    identifiedBy: identitySourceEnum('identified_by').notNull(),
+    /** 기기의 합계 id. 사람 안에서만 유일하다. */
+    totalRecordId: uuid('total_record_id').notNull(),
+    /** 강화 내역을 받은 넥슨 계정. 그 사람의 계정 줄에서 못 찾으면 NULL 이다. */
+    nexonAccountId: uuid('nexon_account_id').references(() => nexonAccounts.id, {
+      onDelete: 'set null',
+    }),
+    characterName: text('character_name').notNull(),
+    /** 강화한 날(KST YYYY-MM-DD). */
+    historyDate: text('history_date').notNull(),
+    enhancementCategory: enhancementCategoryEnum('enhancement_category').notNull(),
+    /** 앱 장비 표의 key. 표에 없는 장비면 NULL 이고 이름만 있다. */
+    itemKey: text('item_key'),
+    itemName: text('item_name').notNull(),
+    attempts: integer('attempts').notNull(),
+    /** MVP 할인을 받는 시도 비용 합계. */
+    attemptCostMeso: bigint('attempt_cost_meso', { mode: 'number' }).notNull(),
+    /** 할인을 받지 않는 파괴 방지 추가 비용 합계. */
+    destroyDefenceCostMeso: bigint('destroy_defence_cost_meso', { mode: 'number' }).notNull(),
+    deletedAt: timestamptz('deleted_at'),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('enhancement_totals_user_record_unique').on(t.userId, t.totalRecordId),
+    index('enhancement_totals_category_date_idx').on(t.enhancementCategory, t.historyDate),
+  ],
+)

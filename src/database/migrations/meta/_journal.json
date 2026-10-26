@@ -113,6 +113,13 @@
       "when": 1792991731980,
       "tag": "0015_server_sync_records",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792999600244,
+      "tag": "0016_enhancement_totals",
+      "breakpoints": true
     }
   ]
 }

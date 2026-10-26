@@ -55,6 +55,7 @@ import {
 } from '../manual-completion/manual-completion.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import { DropMarketService } from '../drop-market/drop-market.service'
+import { AssetsRepository } from '../assets/assets.repository'
 import { AdminController } from './admin.controller'
 
 const ROW = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
@@ -187,6 +188,8 @@ describe('AdminController', () => {
     moveGround: jest.fn(),
   }
 
+  const assetsRepo = { missing: jest.fn() }
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AdminController],
@@ -209,6 +212,7 @@ describe('AdminController', () => {
         { provide: MvpGradesRepository, useValue: mvpRepo },
         { provide: HuntingGroundsRepository, useValue: huntingRepo },
         { provide: CashbookCategoriesRepository, useValue: cashbookRepo },
+        { provide: AssetsRepository, useValue: assetsRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -238,6 +242,7 @@ describe('AdminController', () => {
     ]) {
       mock.mockReset()
     }
+    assetsRepo.missing.mockReset().mockResolvedValue([])
   })
 
   const PAGES = [
@@ -794,6 +799,19 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(400)
+    })
+
+    it('그림 칸이 그림 표에 없는 그림을 가리키면 400 이고 쓰지 않는다', async () => {
+      assetsRepo.missing.mockResolvedValue(['nobody.png'])
+      const res = await app.inject({
+        method: 'POST',
+        url: '/admin/drop-items',
+        payload: { key: 'dreamy_belt', name: '몽환의 벨트', iconFile: 'nobody.png' },
+      })
+      expect(res.statusCode).toBe(400)
+      expect(res.json<{ message: string }>().message).toContain('nobody.png')
+      expect(assetsRepo.missing).toHaveBeenCalledWith([{ ref: 'itemIcon', value: 'nobody.png' }])
+      expect(items.create).not.toHaveBeenCalled()
     })
 
     it('PUT /admin/drop-items/:key 는 204, 모르면 404 다', async () => {

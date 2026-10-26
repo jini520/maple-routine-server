@@ -18,6 +18,8 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
+import type { AssetRef } from '../assets/asset-paths'
+import { AssetsRepository } from '../assets/assets.repository'
 import {
   type BossInput,
   bossInput,
@@ -280,7 +282,28 @@ export class AdminController {
     private readonly mvp: MvpGradesRepository,
     private readonly hunting: HuntingGroundsRepository,
     private readonly cashbook: CashbookCategoriesRepository,
+    private readonly assets: AssetsRepository,
   ) {}
+
+  /**
+   * 그림 칸이 가리키는 그림이 그림 표에 있어야 쓴다. 앱은 번들 없이 서버 그림만 그리므로, 없는 그림을 가리키면
+   * 앱이 에러 없이 그림만 빈 채로 그린다. 그래서 쓰기 전에 막는다. 빈 칸은 보지 않는다.
+   */
+  private async requireAssets(
+    refs: readonly [AssetRef, string | null | undefined][],
+  ): Promise<void> {
+    const present = refs.flatMap(([ref, value]) => (value == null ? [] : [{ ref, value }]))
+    const missing = await this.assets.missing(present)
+    if (missing.length > 0)
+      throw new BadRequestException(`그림 표에 없는 그림이다: ${missing.join(', ')}`)
+  }
+
+  private requireContentAssets(body: ContentUpdateBody): Promise<void> {
+    return this.requireAssets([
+      ['mapBackground', body.backgroundMap],
+      ['bossPortrait', body.backgroundPortrait],
+    ])
+  }
 
   @Get()
   @Header('content-type', 'text/html; charset=utf-8')
@@ -307,6 +330,7 @@ export class AdminController {
   @Post('bosses')
   @HttpCode(201)
   async createBoss(@Body(new ZodValidationPipe(bossInput)) body: BossInput) {
+    await this.requireAssets([['bossPortrait', body.portraitSlug]])
     try {
       return await this.bosses.createBoss(body)
     } catch (error) {
@@ -589,6 +613,7 @@ export class AdminController {
   @Post('worlds')
   @HttpCode(201)
   async createWorld(@Body(new ZodValidationPipe(worldCreateBody)) body: WorldCreateBody) {
+    await this.requireAssets([['worldEmblem', body.emblem]])
     try {
       return await this.worlds.create({ ...body, emblem: body.emblem ?? null })
     } catch (error) {
@@ -604,6 +629,7 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(worldUpdateBody)) body: WorldUpdateBody,
   ): Promise<void> {
+    await this.requireAssets([['worldEmblem', body.emblem]])
     if (!(await this.worlds.update(key, { ...body, emblem: body.emblem ?? null })))
       throw new NotFoundException(`모르는 월드다: ${key}`)
   }
@@ -704,6 +730,10 @@ export class AdminController {
   async createSpendTile(
     @Body(new ZodValidationPipe(spendTileCreateBody)) body: SpendTileCreateBody,
   ) {
+    await this.requireAssets([
+      ['itemIcon', body.iconFile],
+      ['mapIcon', body.iconMap],
+    ])
     try {
       return await this.spend.createTile({
         key: body.key,
@@ -724,6 +754,10 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(spendTileUpdateBody)) body: SpendTileUpdateBody,
   ): Promise<void> {
+    await this.requireAssets([
+      ['itemIcon', body.iconFile],
+      ['mapIcon', body.iconMap],
+    ])
     if (
       !(await this.spend.updateTile(key, {
         name: body.name,
@@ -798,6 +832,7 @@ export class AdminController {
   async createCashbookCategory(
     @Body(new ZodValidationPipe(cashbookCategoryCreateBody)) body: CashbookCategoryCreateBody,
   ) {
+    await this.requireAssets([['itemIcon', body.iconFile]])
     try {
       return await this.cashbook.createCategory({ ...body, unit: body.unit ?? null })
     } catch (error) {
@@ -814,6 +849,7 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(cashbookCategoryUpdateBody)) body: CashbookCategoryUpdateBody,
   ): Promise<void> {
+    await this.requireAssets([['itemIcon', body.iconFile]])
     if (!(await this.cashbook.updateCategory(entryType, key, { ...body, unit: body.unit ?? null })))
       throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
   }
@@ -897,6 +933,7 @@ export class AdminController {
   @Post('symbol-costs/symbols')
   @HttpCode(201)
   async createSymbol(@Body(new ZodValidationPipe(symbolCreateBody)) body: SymbolCreateBody) {
+    await this.requireAssets([['itemIcon', body.iconFile]])
     try {
       return await this.symbolCosts.createSymbol(body)
     } catch (error) {
@@ -914,6 +951,7 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(symbolUpdateBody)) body: SymbolUpdateBody,
   ): Promise<void> {
+    await this.requireAssets([['itemIcon', body.iconFile]])
     if (!(await this.symbolCosts.updateSymbol(key, body)))
       throw new NotFoundException(`모르는 심볼이다: ${key}`)
   }
@@ -986,6 +1024,7 @@ export class AdminController {
   @Post('drop-items')
   @HttpCode(201)
   async createDropItem(@Body(new ZodValidationPipe(dropItemCreateBody)) body: DropItemCreateBody) {
+    await this.requireAssets([['itemIcon', body.iconFile]])
     try {
       return await this.items.create({ ...body, iconFile: body.iconFile ?? null })
     } catch (error) {
@@ -1002,6 +1041,7 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(dropItemUpdateBody)) body: DropItemUpdateBody,
   ): Promise<void> {
+    await this.requireAssets([['itemIcon', body.iconFile]])
     if (!(await this.items.update(key, { ...body, iconFile: body.iconFile ?? null })))
       throw new NotFoundException(`모르는 아이템이다: ${key}`)
   }
@@ -1309,6 +1349,7 @@ export class AdminController {
   @Post('contents')
   @HttpCode(201)
   async createContent(@Body(new ZodValidationPipe(contentCreateBody)) body: ContentCreateBody) {
+    await this.requireContentAssets(body)
     try {
       return await this.contents.createContent({
         ...contentFields(body),
@@ -1327,6 +1368,7 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(contentUpdateBody)) body: ContentUpdateBody,
   ): Promise<void> {
+    await this.requireContentAssets(body)
     try {
       if (!(await this.contents.updateContent(key, contentFields(body))))
         throw new NotFoundException(`모르는 컨텐츠다: ${key}`)

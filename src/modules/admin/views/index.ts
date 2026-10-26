@@ -3,7 +3,7 @@ import { layout } from './layout'
 export const INDEX_HTML = layout(
   '/admin',
   '홈',
-  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 열일곱. 인증은 앞단 nginx 가 한다.</p></div></div>
+  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 열여덟. 인증은 앞단 nginx 가 한다.</p></div></div>
 <h2 class="section">공지</h2>
 <div class="links">
   <a class="card" href="/admin/notices"><h3>공지</h3><p>운영자 공지를 쓰고 고치고 알림을 보낸다</p></a>
@@ -31,6 +31,7 @@ export const INDEX_HTML = layout(
   <a class="card" href="/admin/worlds"><h3>월드</h3><p>새 챌린저스 시즌 월드를 더하고 챌린저스 · 이벤트를 켠다</p></a>
   <a class="card" href="/admin/equipment-items"><h3>장비</h3><p>강화 비용을 매길 장비 표. 이름 · 착용 레벨을 고치고 새 장비를 더한다</p></a>
   <a class="card" href="/admin/hunting-grounds"><h3>사냥터</h3><p>사냥 계산기의 지역 · 사냥터 · 몬스터 레벨</p></a>
+  <a class="card" href="/admin/assets"><h3>그림</h3><p>앱이 받는 그림을 올리고 바꾸며, 보스 초상 · 지역 지도의 크롭을 고친다</p></a>
 </div>
 <h2 class="section">로그</h2>
 <div class="links">

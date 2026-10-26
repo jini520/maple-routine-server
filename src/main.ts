@@ -4,6 +4,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Logger } from 'nestjs-pino'
 
 import { AppModule } from './app.module'
+import { registerImageBody } from './common/image-body'
 import type { Env } from './config/env.schema'
 
 /** 요청 본문 상한. 드롭 가격 묶음과 프렌즈 작업 목록이 가장 크고 그래도 수십 KB 다. */
@@ -16,6 +17,7 @@ async function bootstrap(): Promise<void> {
     { bufferLogs: true },
   )
   app.useLogger(app.get(Logger))
+  registerImageBody(app)
   // SIGTERM 에 모듈의 onModuleDestroy 가 돈다. DB 풀이 거기서 닫힌다.
   app.enableShutdownHooks()
 

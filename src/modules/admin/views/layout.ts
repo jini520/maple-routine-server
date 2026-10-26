@@ -35,6 +35,7 @@ const MENU: readonly MenuItem[] = [
           ['/admin/worlds', '월드'],
           ['/admin/equipment-items', '장비'],
           ['/admin/hunting-grounds', '사냥터'],
+          ['/admin/assets', '그림'],
         ],
       },
     ],

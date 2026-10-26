@@ -127,6 +127,13 @@
       "when": 1793005928448,
       "tag": "0017_enhancement_anomalies",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793021940290,
+      "tag": "0018_game_data_assets",
+      "breakpoints": true
     }
   ]
 }

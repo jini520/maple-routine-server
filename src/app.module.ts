@@ -14,6 +14,7 @@ import { CrystalPricesModule } from './modules/crystal-prices/crystal-prices.mod
 import { DropItemsModule } from './modules/drop-items/drop-items.module'
 import { BossClearsModule } from './modules/boss-clears/boss-clears.module'
 import { CashbookEntriesModule } from './modules/cashbook-entries/cashbook-entries.module'
+import { EnhancementTotalsModule } from './modules/enhancement-totals/enhancement-totals.module'
 import { DropPricesModule } from './modules/drop-prices/drop-prices.module'
 import { FriendsModule } from './modules/friends/friends.module'
 import { GameDataModule } from './modules/game-data/game-data.module'
@@ -52,6 +53,7 @@ import { WorldsModule } from './modules/worlds/worlds.module'
     DropPricesModule,
     BossClearsModule,
     CashbookEntriesModule,
+    EnhancementTotalsModule,
     UsersModule,
     IdentityModule,
     AdminModule,

@@ -27,6 +27,8 @@ export const dropPriceBody = z
     difficulty: z.string().min(1).max(50).nullish(),
     /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 다. 이 칸이 생기기 전 OTA 는 안 보내므로 없어도 받는다. */
     periodRecordId: uuidLike.nullish(),
+    /** 거래 시각. 기기가 판매가를 적은 시각이다. 이 칸이 생기기 전 앱은 안 보내 받은 시각으로 적는다. */
+    pricedAt: z.iso.datetime({ offset: true }).nullish(),
     /** 기록의 상태. 이 칸이 생기기 전 OTA 는 가격 있는 기록만 보내므로 없으면 completed 다. */
     status: dropRecordStatusBody.default('completed'),
   })

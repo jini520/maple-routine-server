@@ -85,6 +85,7 @@ describe('DropPricesController', () => {
       bossDifficultyId: null,
       periodRecordId: null,
       recordStatus: 'completed',
+      pricedAt: null,
     })
   })
 

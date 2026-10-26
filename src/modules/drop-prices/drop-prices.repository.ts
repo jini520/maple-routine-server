@@ -34,6 +34,8 @@ export interface DropPriceInput {
   /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 이고 옛 OTA 는 안 보내 null. */
   periodRecordId: string | null
   recordStatus: Exclude<DropRecordStatus, 'deleted'>
+  /** 기기가 보낸 거래 시각. 이 칸을 안 보내는 옛 앱은 null 이고 그때는 받은 시각으로 적는다. */
+  pricedAt: Date | null
 }
 
 /** 관리 화면이 보는 줄. completed 가 아닌 줄도 상태를 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
@@ -172,10 +174,11 @@ export class DropPricesRepository {
   /**
    * 사람과 기록 id 로 upsert 한다. 다시 적으면 값과 상태를 덮으므로 deleted 였던 줄도 되살아난다. 아이템 · 월드는 key 로
    * 표에서 id 를 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null) 줄은 그대로 받는다.
-   * priced_at 은 completed 가 되거나 가격이 바뀔 때만 지금으로 움직인다.
+   * priced_at 은 기기가 보낸 거래 시각이고, 미래면 지금으로 자른다. 거래 시각이 없는 옛 앱의 줄은 completed 가 되거나
+   * 가격이 바뀔 때만 지금으로 움직인다. 옛 앱은 저장하는 그 자리에서 보내 받은 시각이 곧 거래 시각이다.
    */
   async upsert(input: DropPriceInput): Promise<void> {
-    const { userId, dropRecordId, itemKey, worldKey, ...rest } = input
+    const { userId, dropRecordId, itemKey, worldKey, pricedAt: sentPricedAt, ...rest } = input
     const [item] = await this.db
       .select({ id: dropItems.id })
       .from(dropItems)
@@ -192,17 +195,26 @@ export class DropPricesRepository {
     }
     const values = { ...rest, itemId: item.id, worldId }
     const completed = input.recordStatus === 'completed'
+    const sent =
+      sentPricedAt === null ? null : sql`LEAST(${sentPricedAt.toISOString()}::timestamptz, now())`
     await this.db
       .insert(dropPrices)
-      .values({ userId, dropRecordId, ...values, pricedAt: completed ? sql`now()` : null })
+      .values({
+        userId,
+        dropRecordId,
+        ...values,
+        pricedAt: completed ? (sent ?? sql`now()`) : null,
+      })
       .onConflictDoUpdate({
         target: [dropPrices.userId, dropPrices.dropRecordId],
         set: {
           ...values,
-          // 기기가 같은 값을 다시 보내도 거래 시각은 그대로다. 움직이면 시세 차트의 날이 틀어진다.
-          pricedAt: completed
-            ? sql`CASE WHEN ${dropPrices.recordStatus} = 'completed' AND ${dropPrices.priceMeso} = ${input.priceMeso} THEN ${dropPrices.pricedAt} ELSE now() END`
-            : null,
+          // 거래 시각이 없는 옛 앱이 같은 값을 다시 보내도 그대로다. 움직이면 시세 차트의 날이 틀어진다.
+          pricedAt: !completed
+            ? null
+            : sent !== null
+              ? sent
+              : sql`CASE WHEN ${dropPrices.recordStatus} = 'completed' AND ${dropPrices.priceMeso} = ${input.priceMeso} THEN ${dropPrices.pricedAt} ELSE now() END`,
           updatedAt: sql`now()`,
         },
       })

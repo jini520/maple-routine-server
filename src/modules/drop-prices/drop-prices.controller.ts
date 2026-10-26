@@ -104,6 +104,7 @@ export class DropPricesController {
       bossDifficultyId: difficultyRow?.id ?? null,
       periodRecordId: body.periodRecordId ?? null,
       recordStatus: body.status,
+      pricedAt: body.pricedAt == null ? null : new Date(body.pricedAt),
     })
   }
 }

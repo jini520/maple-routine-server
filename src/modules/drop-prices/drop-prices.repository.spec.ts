@@ -32,6 +32,7 @@ describeDb('DropPricesRepository', () => {
     bossDifficultyId: null,
     periodRecordId: null,
     recordStatus: 'completed',
+    pricedAt: null,
     ...over,
   })
 
@@ -101,6 +102,29 @@ describeDb('DropPricesRepository', () => {
 
     await repo.markDeleted(me, RECORD)
     expect(await pricedAt()).toBeNull()
+  })
+
+  // 과거 올리기는 몇 달 전에 판 기록을 오늘 보낸다. 받은 시각을 적으면 그 기록이 전부 오늘 거래가 된다.
+  it('기기가 보낸 거래 시각은 그대로 적고, 같은 가격이 다시 와도 그 값으로 덮는다', async () => {
+    const pricedAt = async () => (await db.select().from(dropPrices))[0]?.pricedAt ?? null
+    const sold = new Date('2026-08-10T09:18:34.156Z')
+
+    await repo.upsert(input())
+    await repo.upsert(input({ pricedAt: sold }))
+    expect(await pricedAt()).toEqual(sold)
+
+    await repo.upsert(input({ pricedAt: null, recordStatus: 'pending', priceMeso: null }))
+    expect(await pricedAt()).toBeNull()
+  })
+
+  // 기기 시계가 앞서 있으면 미래 거래가 생겨 최근 거래가가 그 값에 묶인다.
+  it('미래의 거래 시각은 받은 시각으로 자른다', async () => {
+    const before = Date.now()
+    await repo.upsert(input({ pricedAt: new Date('2099-01-01T00:00:00Z') }))
+
+    const stored = (await db.select().from(dropPrices))[0]?.pricedAt?.getTime() ?? 0
+    expect(stored).toBeGreaterThanOrEqual(before - 1000)
+    expect(stored).toBeLessThanOrEqual(Date.now() + 1000)
   })
 
   // 아이템 · 월드는 시세의 축이라 모르는 값을 받으면 어느 아이템의 시세인지 모르는 줄이 된다. 월드가 없는 줄은 받는다.

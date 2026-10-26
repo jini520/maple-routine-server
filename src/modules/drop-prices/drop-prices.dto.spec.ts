@@ -37,6 +37,15 @@ describe('dropPriceBody', () => {
     expect(parsed.ringLevel ?? null).toBeNull()
   })
 
+  // 이 칸이 생기기 전 OTA 는 안 보낸다. 거절하면 그 앱의 드롭이 5 회 뒤 버려진다.
+  it('처치 기간 id 는 없어도 받고, 있으면 uuid 모양이어야 한다', () => {
+    expect(
+      dropPriceBody.safeParse({ ...ok, periodRecordId: '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b' })
+        .success,
+    ).toBe(true)
+    expect(dropPriceBody.safeParse({ ...ok, periodRecordId: 'x' }).success).toBe(false)
+  })
+
   it('가격은 1 이상의 안전한 정수다', () => {
     expect(dropPriceBody.safeParse({ ...ok, priceMeso: 0 }).success).toBe(false)
     expect(dropPriceBody.safeParse({ ...ok, priceMeso: 1.5 }).success).toBe(false)

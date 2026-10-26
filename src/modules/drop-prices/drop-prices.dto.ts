@@ -25,6 +25,8 @@ export const dropPriceBody = z
     /** 어느 보스 · 난이도에서 얻었나. 이 칸 둘이 생기기 전 OTA 는 안 보내므로 없어도 받는다. */
     boss: z.string().min(1).max(100).nullish(),
     difficulty: z.string().min(1).max(50).nullish(),
+    /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 다. 이 칸이 생기기 전 OTA 는 안 보내므로 없어도 받는다. */
+    periodRecordId: uuidLike.nullish(),
     /** 기록의 상태. 이 칸이 생기기 전 OTA 는 가격 있는 기록만 보내므로 없으면 completed 다. */
     status: dropRecordStatusBody.default('completed'),
   })

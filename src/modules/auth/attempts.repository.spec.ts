@@ -17,10 +17,7 @@ describeDb('AttemptsRepository', () => {
   // 한 스펙 안에서 세션을 둘 만들 때 uid 가 겹치지 않게 번호를 붙인다.
   async function sessionRow(): Promise<string> {
     seq += 1
-    const [user] = await db
-      .insert(users)
-      .values({ nexonUid: `u${seq}` })
-      .returning({ id: users.id })
+    const [user] = await db.insert(users).values({}).returning({ id: users.id })
     const [session] = await db
       .insert(nexonSessions)
       .values({

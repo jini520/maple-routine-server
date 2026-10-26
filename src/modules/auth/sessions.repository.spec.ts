@@ -32,7 +32,7 @@ describeDb('SessionsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    const [user] = await db.insert(users).values({ nexonUid: 'u' }).returning({ id: users.id })
+    const [user] = await db.insert(users).values({}).returning({ id: users.id })
     userId = user.id
   })
   afterAll(() => close())
@@ -92,7 +92,7 @@ describeDb('SessionsRepository', () => {
   it('deleteByUserId 는 그 사람의 세션을 전부 지우고 남의 것은 둔다', async () => {
     await repo.create(input('ios'))
     await repo.create({ ...input('android'), platform: 'android' })
-    const [other] = await db.insert(users).values({ nexonUid: 'o' }).returning({ id: users.id })
+    const [other] = await db.insert(users).values({}).returning({ id: users.id })
     await repo.create({ ...input('other'), userId: other.id })
 
     await repo.deleteByUserId(userId)

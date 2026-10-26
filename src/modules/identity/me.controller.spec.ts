@@ -9,7 +9,12 @@ import { MeController } from './me.controller'
 describe('MeController', () => {
   let app: NestFastifyApplication
   const sessions = { findByHash: jest.fn(), deleteByUserId: jest.fn() }
-  const users = { upsertByApiKeyHash: jest.fn(), markDeleted: jest.fn() }
+  const users = {
+    upsertByApiKeyHash: jest.fn(),
+    markDeleted: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
+    recordAccountId: jest.fn(),
+  }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -55,7 +60,11 @@ describe('MeController', () => {
   })
 
   it('키 사용자는 해시로 찾은 사람에게 탈퇴를 적는다', async () => {
-    users.upsertByApiKeyHash.mockResolvedValue({ id: 'u2' })
+    users.upsertByApiKeyHash.mockResolvedValue({
+      id: 'u2',
+      nexonAccountId: 'a2',
+      accountRecordId: null,
+    })
 
     const res = await app.inject({
       method: 'DELETE',

@@ -18,11 +18,16 @@ export type IdentitySource = 'login' | 'key'
 export interface IdentityContext {
   userId: string
   source: IdentitySource
+  /** 이 신원의 넥슨 계정(nexon_accounts.id). 로그인 계정 줄이 없는 옛 사람이면 NULL. */
+  nexonAccountId: string | null
 }
 
 export type IdentityRequest = FastifyRequest & { identity?: IdentityContext }
 
 export const API_KEY_HASH_HEADER = 'x-api-key-hash'
+/** 앱이 만든 메인 넥슨 계정 id. 이 신원의 계정 줄에 적는다. */
+export const NEXON_ACCOUNT_HEADER = 'x-nexon-account-id'
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** 앱이 만든 SHA-256 의 소문자 16진. 키 원문이 실려 오면 길이가 안 맞아 여기서 걸린다. */
 const API_KEY_HASH = /^[0-9a-f]{64}$/
 
@@ -45,14 +50,33 @@ export class IdentityGuard implements CanActivate {
     if (bearer !== null) {
       const row = await this.sessions.findByHash(sha256(bearer))
       if (row === null) throw new UnauthorizedException()
-      request.identity = { userId: row.userId, source: 'login' }
+      const account = await this.users.findLoginAccount(row.userId)
+      request.identity = {
+        userId: row.userId,
+        source: 'login',
+        nexonAccountId: account?.nexonAccountId ?? null,
+      }
+      await this.recordAccountId(request, account)
       return true
     }
     const header = request.headers[API_KEY_HASH_HEADER]
     if (typeof header !== 'string' || !API_KEY_HASH.test(header)) throw new UnauthorizedException()
-    const { id } = await this.users.upsertByApiKeyHash(sha256(header))
-    request.identity = { userId: id, source: 'key' }
+    const found = await this.users.upsertByApiKeyHash(sha256(header))
+    request.identity = { userId: found.id, source: 'key', nexonAccountId: found.nexonAccountId }
+    await this.recordAccountId(request, found)
     return true
+  }
+
+  /** 헤더의 기기 계정 id 가 적힌 값과 다를 때만 적는다. 없거나 모양이 틀리면 신원만 세운다. */
+  private async recordAccountId(
+    request: IdentityRequest,
+    account: { nexonAccountId: string; accountRecordId: string | null } | null,
+  ): Promise<void> {
+    const header = request.headers[NEXON_ACCOUNT_HEADER]
+    if (account === null || typeof header !== 'string' || !UUID.test(header)) return
+    const recordId = header.toLowerCase()
+    if (account.accountRecordId === recordId) return
+    await this.users.recordAccountId(account.nexonAccountId, recordId)
   }
 }
 

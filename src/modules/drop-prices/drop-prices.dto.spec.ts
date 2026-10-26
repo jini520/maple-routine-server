@@ -46,6 +46,14 @@ describe('dropPriceBody', () => {
     expect(dropPriceBody.safeParse({ ...ok, periodRecordId: 'x' }).success).toBe(false)
   })
 
+  // 지금 스토어 앱은 이 칸을 안 보낸다. 거절하면 그 앱의 드롭이 5 회 뒤 버려진다.
+  it('거래 시각은 없어도 받고, 있으면 ISO 시각이어야 한다', () => {
+    expect(dropPriceBody.safeParse({ ...ok, pricedAt: '2026-08-10T09:18:34.156Z' }).success).toBe(
+      true,
+    )
+    expect(dropPriceBody.safeParse({ ...ok, pricedAt: '2026-08-10' }).success).toBe(false)
+  })
+
   it('가격은 1 이상의 안전한 정수다', () => {
     expect(dropPriceBody.safeParse({ ...ok, priceMeso: 0 }).success).toBe(false)
     expect(dropPriceBody.safeParse({ ...ok, priceMeso: 1.5 }).success).toBe(false)

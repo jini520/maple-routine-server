@@ -90,6 +90,19 @@ describe('summarize', () => {
     })
   })
 
+  // now 는 화요일이라 이번 주는 2026-10-15(목) 0시부터다.
+  it('금주 거래 수는 목요일 0시(KST)부터 세고 excluded 는 안 센다', () => {
+    const rows = [
+      judged('last-week', 100, at('2026-10-14', '23:59')),
+      judged('thu', 100, at('2026-10-15', '00:01')),
+      judged('sat', 100, at('2026-10-17')),
+      judged('sat-typo', 5, at('2026-10-17'), 'excluded'),
+      judged('today', 100, at('2026-10-20', '09:00')),
+    ]
+
+    expect(summarize(rows, now).weekCount).toBe(3)
+  })
+
   it('앞선 봉이 없으면 전일 대비를 비운다', () => {
     const summary = summarize([judged('a', 100, at('2026-10-20', '09:00'))], now)
 

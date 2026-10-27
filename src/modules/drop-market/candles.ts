@@ -21,6 +21,8 @@ export interface MarketSummary {
   todayLow: number | null
   todayHigh: number | null
   todayCount: number
+  /** 이번 주(목요일 0시 KST부터) excluded 가 아닌 줄 수. */
+  weekCount: number
   /** 최근 거래가 - 그 거래일 앞의 마지막 종가. 앞선 봉이 없으면 null. */
   change: number | null
   /** 최근 30일 동안 excluded 로 판정된 줄 수. */
@@ -55,11 +57,13 @@ export function dailyCandles(rows: Judged[]): Candle[] {
 }
 
 /** 메이플 주간 초기화가 목요일 0시(KST)다. 날 번호 0 인 1970-01-01 이 목요일이라 7 로 나누면 목요일에서 끊긴다. */
+function weekStart(at: Date): string {
+  const thursday = Math.floor(kstDayNumber(at) / 7) * 7
+  return new Date(thursday * DAY_MS).toISOString().slice(0, 10)
+}
+
 export function weeklyCandles(rows: Judged[]): Candle[] {
-  return candlesBy(rows, (pricedAt) => {
-    const thursday = Math.floor(kstDayNumber(pricedAt) / 7) * 7
-    return new Date(thursday * DAY_MS).toISOString().slice(0, 10)
-  })
+  return candlesBy(rows, weekStart)
 }
 
 /** 시세 하나를 한 줄로 줄인다. */
@@ -69,6 +73,7 @@ export function summarize(rows: Judged[], now: Date): MarketSummary {
   const todayCandle = candles.at(-1)?.day === today ? candles.at(-1) : undefined
   const last = rows.filter((r) => r.verdict !== 'excluded').sort(byPricedAt).at(-1)
   const previous = candles.at(-2)
+  const thisWeek = weeklyCandles(rows).at(-1)
   const nowDay = kstDayNumber(now)
   return {
     lastPrice: last?.priceMeso ?? null,
@@ -76,6 +81,7 @@ export function summarize(rows: Judged[], now: Date): MarketSummary {
     todayLow: todayCandle?.low ?? null,
     todayHigh: todayCandle?.high ?? null,
     todayCount: todayCandle?.count ?? 0,
+    weekCount: thisWeek?.day === weekStart(now) ? thisWeek.count : 0,
     change: last !== undefined && previous !== undefined ? last.priceMeso - previous.close : null,
     excludedCount: rows.filter(
       (r) => r.verdict === 'excluded' && kstDayNumber(r.pricedAt) > nowDay - 30,

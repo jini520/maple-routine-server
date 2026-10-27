@@ -2381,7 +2381,7 @@
       "difficulty": "normal",
       "category": "fixed",
       "item": "sol_erda_energy",
-      "amount": "350",
+      "amount": "380",
       "from": null,
       "until": null
     },
@@ -3083,7 +3083,7 @@
       "difficulty": "normal",
       "category": "fixed",
       "item": "sol_erda_energy",
-      "amount": "500",
+      "amount": "450",
       "from": null,
       "until": null
     },
@@ -3146,7 +3146,7 @@
       "difficulty": "hard",
       "category": "fixed",
       "item": "sol_erda_energy",
-      "amount": "700",
+      "amount": "750",
       "from": null,
       "until": null
     },

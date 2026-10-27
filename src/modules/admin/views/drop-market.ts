@@ -8,7 +8,7 @@ import { layout } from './layout'
 export const DROP_MARKET_HTML = layout(
   '/admin/drop-market',
   '드롭 시세',
-  `<div class="head"><div><h1>드롭 시세</h1><p>장비는 거래권마다, 소비 아이템은 월드마다 센 시세다. 잘못 적은 값은 IQR 울타리로 빼고 센다. 금일은 KST 0시부터다. 거래권은 <a href="/admin/worlds">월드</a>, 소비 여부는 <a href="/admin/drop-items">드롭 아이템</a> 화면에서 바꾼다.</p></div></div>
+  `<div class="head"><div><h1>드롭 시세</h1><p>장비는 거래권마다, 소비 아이템은 월드마다 센 시세다. 잘못 적은 값은 IQR 울타리로 빼고 센다. 금일은 KST 0시부터, 금주는 목요일 0시부터다. 거래권은 <a href="/admin/worlds">월드</a>, 소비 여부는 <a href="/admin/drop-items">드롭 아이템</a> 화면에서 바꾼다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <section class="card">
   <header><div id="kinds" class="actions"></div><p id="scope-worlds"></p></header>
@@ -16,7 +16,7 @@ export const DROP_MARKET_HTML = layout(
 </section>
 <section class="card">
   <header><h2>시세</h2><p id="count"></p></header>
-  <div class="table"><table><thead><tr><th>아이템</th><th class="num">반지 Lv</th><th class="num">최근 거래가</th><th class="num">금일 최저가</th><th class="num">금일 최고가</th><th class="num">전일 대비</th><th class="num">금일 거래</th><th class="num">제외 (30일)</th><th>최근 거래 (KST)</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>아이템</th><th class="num">반지 Lv</th><th class="num">최근 거래가</th><th class="num">금일 최저가</th><th class="num">금일 최고가</th><th class="num">전일 대비</th><th class="num">금일 거래</th><th class="num">금주 거래</th><th class="num">제외 (30일)</th><th>최근 거래 (KST)</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script>
   // 억 단위 두 자리. 시세는 대부분 억이 넘어 전부 쓰면 자릿수를 세야 읽힌다. 정확한 값은 칸에 마우스를 올리면 뜬다.
@@ -66,7 +66,7 @@ export const DROP_MARKET_HTML = layout(
       // 변동은 1억 아래가 흔해 eok 처럼 메소로 떨어지면 줄마다 단위가 달라진다. 늘 억으로 쓴다.
       var change = cell(tr, m.change === null ? '-' : (m.change > 0 ? '+' : m.change < 0 ? '-' : '') + (Math.abs(m.change) / 1e8).toFixed(2) + '억', 'num');
       if (m.change !== null) { change.style.color = m.change > 0 ? 'var(--danger-ink)' : m.change < 0 ? 'var(--accent-ink)' : ''; change.title = meso(m.change) + ' 메소'; }
-      cell(tr, String(m.todayCount), 'num'); cell(tr, String(m.excludedCount), m.excludedCount > 0 ? 'num' : 'num dim');
+      cell(tr, String(m.todayCount), 'num'); cell(tr, String(m.weekCount), 'num'); cell(tr, String(m.excludedCount), m.excludedCount > 0 ? 'num' : 'num dim');
       cell(tr, when(m.lastPricedAt).slice(0, 16), 'mono');
       tr.addEventListener('click', function () {
         var q = new URLSearchParams({ kind: state.kind, key: state.key, item: m.itemKey });
@@ -75,7 +75,7 @@ export const DROP_MARKET_HTML = layout(
       });
       rows.appendChild(tr);
     });
-    if (r.json.length === 0) { var tr = el('tr'); var td = cell(tr, '최근 30일 거래가 없다', 'empty'); td.colSpan = 9; rows.appendChild(tr); }
+    if (r.json.length === 0) { var tr = el('tr'); var td = cell(tr, '최근 30일 거래가 없다', 'empty'); td.colSpan = 10; rows.appendChild(tr); }
     document.getElementById('count').textContent = r.json.length + '개 · 줄을 누르면 일봉 차트';
   }
 

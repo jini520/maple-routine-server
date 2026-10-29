@@ -22,6 +22,7 @@ const MENU: readonly MenuItem[] = [
         label: '가계부',
         items: [
           ['/admin/cashbook-categories', '가계부 갈래'],
+          ['/admin/hunt-loot', '사냥 전리품'],
           ['/admin/spend-catalog', '지출 카탈로그'],
           ['/admin/symbol-costs', '심볼 비용'],
           ['/admin/contents', '컨텐츠'],

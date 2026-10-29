@@ -10,6 +10,7 @@ import type { DropItemsRepository } from '../drop-items/drop-items.repository'
 import type { EnhancementCostsRepository } from '../enhancement-costs/enhancement-costs.repository'
 import type { EquipmentItemsRepository } from '../equipment-items/equipment-items.repository'
 import type { HuntingGroundsRepository } from '../hunting-grounds/hunting-grounds.repository'
+import type { HuntLootRepository } from '../hunt-loot/hunt-loot.repository'
 import type { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import type { SpendCatalogRepository } from '../spend-catalog/spend-catalog.repository'
 import type { SymbolCostsRepository } from '../symbol-costs/symbol-costs.repository'
@@ -51,6 +52,7 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
     }) as unknown as EnhancementCostsRepository,
     empty({ grades: [] }) as unknown as MvpGradesRepository,
     empty({ regions: [], grounds: [], groundLevels: [] }) as unknown as HuntingGroundsRepository,
+    empty({ items: [] }) as unknown as HuntLootRepository,
     empty({ categories: [], itemKinds: [] }) as unknown as CashbookCategoriesRepository,
     empty({ files: [] }) as unknown as AssetsRepository,
     empty({ crops: [] }) as unknown as ImageCropsRepository,
@@ -64,7 +66,7 @@ const catalog: Catalog = {
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열다섯은 각 리포지토리의 section 이다', async () => {
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열여섯은 각 리포지토리의 section 이다', async () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
@@ -101,6 +103,7 @@ describe('GameDataService', () => {
       },
       mvpGrades: { updatedAt: null, grades: [] },
       huntingGrounds: { updatedAt: null, regions: [], grounds: [], groundLevels: [] },
+      huntLoot: { updatedAt: null, items: [] },
       assets: { updatedAt: null, files: [] },
       imageCrops: { updatedAt: null, crops: [] },
     })

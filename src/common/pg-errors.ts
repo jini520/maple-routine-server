@@ -16,3 +16,8 @@ export function isUniqueViolation(error: unknown): boolean {
 export function isForeignKeyViolation(error: unknown): boolean {
   return hasCode(error, '23503')
 }
+
+/** check_violation. 표의 CHECK 제약을 어겼다. */
+export function isCheckViolation(error: unknown): boolean {
+  return hasCode(error, '23514')
+}

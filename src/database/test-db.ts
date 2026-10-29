@@ -39,6 +39,7 @@ const TABLES = [
   'spend_tiles',
   'spend_groups',
   'cashbook_categories',
+  'hunt_loot_items',
   'cashbook_item_kinds',
   'boss_crystal_prices',
   'drop_box_contents',

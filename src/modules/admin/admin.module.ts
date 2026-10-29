@@ -11,6 +11,7 @@ import { DropPricesModule } from '../drop-prices/drop-prices.module'
 import { EnhancementCostsModule } from '../enhancement-costs/enhancement-costs.module'
 import { EquipmentItemsModule } from '../equipment-items/equipment-items.module'
 import { HuntingGroundsModule } from '../hunting-grounds/hunting-grounds.module'
+import { HuntLootModule } from '../hunt-loot/hunt-loot.module'
 import { ManualCompletionModule } from '../manual-completion/manual-completion.module'
 import { MvpGradesModule } from '../mvp-grades/mvp-grades.module'
 import { NoticesModule } from '../notices/notices.module'
@@ -21,7 +22,7 @@ import { WorldsModule } from '../worlds/worlds.module'
 import { AdminAssetsController } from './admin-assets.controller'
 import { AdminController } from './admin.controller'
 
-/** 운영자 화면 열아홉. 공지 · 보스 · 직접 완료 · 드롭 가격 보기 · 드롭 시세 둘 · 드롭 아이템 · 상자 · 드롭 표 · 결정석 가격 · 월드 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 · 강화 비용 · MVP 등급 · 사냥터 · 그림. nginx basic auth 뒤. */
+/** 운영자 화면 스물. 공지 · 보스 · 직접 완료 · 드롭 가격 보기 · 드롭 시세 둘 · 드롭 아이템 · 상자 · 드롭 표 · 결정석 가격 · 월드 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 · 강화 비용 · MVP 등급 · 사냥터 · 그림. nginx basic auth 뒤. */
 @Module({
   imports: [
     BossesModule,
@@ -35,6 +36,7 @@ import { AdminController } from './admin.controller'
     WorldsModule,
     SpendCatalogModule,
     CashbookCategoriesModule,
+    HuntLootModule,
     SymbolCostsModule,
     ContentsModule,
     EquipmentItemsModule,

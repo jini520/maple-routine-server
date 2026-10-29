@@ -509,6 +509,34 @@ export const cashbookItemKinds = pgTable('cashbook_item_kinds', {
   sortOrder: integer('sort_order').notNull(),
 })
 
+/** 사냥 전리품의 분류. 앱 코드가 이 값으로 판매 폼을 갈라 ENUM 이다. */
+export const huntLootKindEnum = pgEnum('hunt_loot_kind', ['fragment', 'consumable', 'event'])
+
+/** 가계부 사냥 전리품 판매의 아이템. 기록이 key 를 들어 지우지 않고, 이벤트가 끝나면 until 로 닫는다. */
+export const huntLootItems = pgTable(
+  'hunt_loot_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    kind: huntLootKindEnum('kind').notNull(),
+    name: text('name').notNull(),
+    /** 앱 자산 src/assets/items/ 의 파일명. */
+    iconFile: text('icon_file').notNull(),
+    /** NPC 에 파는 소비 아이템의 개당 가격. 앱이 단가를 채우고 수수료를 안 뗀다. */
+    npcPriceMeso: integer('npc_price_meso'),
+    /** KST 글자 그대로. 앱이 적는 날짜로 판정한다. */
+    from: text('from'),
+    until: text('until'),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    check(
+      'hunt_loot_items_npc_price',
+      sql`(${t.kind} = 'consumable') = (${t.npcPriceMeso} IS NOT NULL) AND (${t.npcPriceMeso} IS NULL OR ${t.npcPriceMeso} > 0)`,
+    ),
+  ],
+)
+
 export const spendCurrencyEnum = pgEnum('spend_currency', ['point', 'meso'])
 /** 에픽던전 추가 리워드가 값을 받는 형태. 앱 코드가 이 값으로 갈려 ENUM 이다. 이름은 spend_forms 가 든다. */
 export const spendFormEnum = pgEnum('spend_form', ['exp', 'sol_erda'])

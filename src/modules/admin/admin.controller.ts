@@ -115,6 +115,11 @@ import {
   RegionExists,
 } from '../hunting-grounds/hunting-grounds.repository'
 import { type MvpGrade, MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
+import {
+  HuntLootExists,
+  HuntLootPriceShape,
+  HuntLootRepository,
+} from '../hunt-loot/hunt-loot.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
@@ -165,6 +170,10 @@ import {
   cashbookEntryType,
   type CashbookItemKindUpdateBody,
   cashbookItemKindUpdateBody,
+  type HuntLootCreateBody,
+  huntLootCreateBody,
+  type HuntLootUpdateBody,
+  huntLootUpdateBody,
   spendFormKey,
   type SpendFormUpdateBody,
   spendFormUpdateBody,
@@ -246,6 +255,7 @@ import { CONTENTS_HTML } from './views/contents'
 import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
 import { EQUIPMENT_ITEMS_HTML } from './views/equipment-items'
 import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
+import { HUNT_LOOT_HTML } from './views/hunt-loot'
 import { MVP_GRADES_HTML } from './views/mvp-grades'
 import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
@@ -253,7 +263,7 @@ import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
  * 강화 비용 · MVP 등급 · 사냥터)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
@@ -282,6 +292,7 @@ export class AdminController {
     private readonly mvp: MvpGradesRepository,
     private readonly hunting: HuntingGroundsRepository,
     private readonly cashbook: CashbookCategoriesRepository,
+    private readonly huntLoot: HuntLootRepository,
     private readonly assets: AssetsRepository,
   ) {}
 
@@ -880,6 +891,74 @@ export class AdminController {
       }))
     )
       throw new NotFoundException(`모르는 아이템 종류다: ${key}`)
+  }
+
+  /* ── 사냥 전리품 ── */
+
+  @Get('hunt-loot')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  huntLootPage(): string {
+    return HUNT_LOOT_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  @Get('hunt-loot/rows')
+  @Header('cache-control', 'no-store')
+  huntLootRows() {
+    return this.huntLoot.section()
+  }
+
+  /** 맨 뒤에 더한다. 같은 key 는 409 다. */
+  @Post('hunt-loot')
+  @HttpCode(201)
+  async createHuntLoot(@Body(new ZodValidationPipe(huntLootCreateBody)) body: HuntLootCreateBody) {
+    await this.requireAssets([['itemIcon', body.iconFile]])
+    try {
+      return await this.huntLoot.create({
+        ...body,
+        npcPriceMeso: body.npcPriceMeso ?? null,
+        from: body.from ?? null,
+        until: body.until ?? null,
+      })
+    } catch (error) {
+      if (error instanceof HuntLootExists)
+        throw new ConflictException(`이미 있는 전리품이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  @Put('hunt-loot/:key')
+  @HttpCode(204)
+  async updateHuntLoot(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(huntLootUpdateBody)) body: HuntLootUpdateBody,
+  ): Promise<void> {
+    await this.requireAssets([['itemIcon', body.iconFile]])
+    let found: boolean
+    try {
+      found = await this.huntLoot.update(key, {
+        ...body,
+        npcPriceMeso: body.npcPriceMeso ?? null,
+        from: body.from ?? null,
+        until: body.until ?? null,
+      })
+    } catch (error) {
+      if (error instanceof HuntLootPriceShape)
+        throw new BadRequestException('NPC 가격은 소비에만 있고 소비에는 반드시 있다')
+      throw error
+    }
+    if (!found) throw new NotFoundException(`모르는 전리품이다: ${key}`)
+  }
+
+  @Post('hunt-loot/:key/move')
+  @HttpCode(204)
+  async moveHuntLoot(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.huntLoot.move(key, body.direction)))
+      throw new NotFoundException(`모르는 전리품이다: ${key}`)
   }
 
   /* ── 심볼 비용 ── */

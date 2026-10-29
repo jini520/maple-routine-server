@@ -1676,8 +1676,9 @@ export class AdminController {
   async createHuntingRegion(
     @Body(new ZodValidationPipe(huntingRegionCreateBody)) body: HuntingRegionCreateBody,
   ) {
+    await this.requireAssets([['mapIcon', body.iconMap]])
     try {
-      return await this.hunting.createRegion(body)
+      return await this.hunting.createRegion({ ...body, iconMap: body.iconMap ?? null })
     } catch (error) {
       if (error instanceof RegionExists)
         throw new ConflictException(`이미 있는 지역이다: ${body.key}`)
@@ -1685,14 +1686,15 @@ export class AdminController {
     }
   }
 
-  /** 이름 · 힘 종류를 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 404 다. */
+  /** 이름 · 힘 종류 · 아이콘을 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 404 다. */
   @Put('hunting-grounds/regions/:key')
   @HttpCode(204)
   async updateHuntingRegion(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(huntingRegionUpdateBody)) body: HuntingRegionUpdateBody,
   ): Promise<void> {
-    if (!(await this.hunting.updateRegion(key, body)))
+    await this.requireAssets([['mapIcon', body.iconMap]])
+    if (!(await this.hunting.updateRegion(key, { ...body, iconMap: body.iconMap ?? null })))
       throw new NotFoundException(`모르는 지역이다: ${key}`)
   }
 

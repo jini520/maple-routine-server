@@ -2131,6 +2131,38 @@ describe('AdminController', () => {
       levels: [200],
     }
 
+    it('지역 아이콘은 그림 표에 있어야 적고, 없으면 400 이다', async () => {
+      huntingRepo.createRegion.mockResolvedValue({ id: ROW })
+      huntingRepo.updateRegion.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/regions/cernium',
+            payload: { name: '세르니움', forceType: 'authentic', iconMap: 'cernium' },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(assetsRepo.missing).toHaveBeenCalledWith([{ ref: 'mapIcon', value: 'cernium' }])
+      expect(huntingRepo.updateRegion).toHaveBeenCalledWith('cernium', {
+        name: '세르니움',
+        forceType: 'authentic',
+        iconMap: 'cernium',
+      })
+
+      assetsRepo.missing.mockResolvedValue(['maps/icons/nobody'])
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/regions',
+            payload: { key: 'limen', name: '리멘', forceType: 'arcane', iconMap: 'nobody' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(huntingRepo.createRegion).not.toHaveBeenCalled()
+    })
+
     it('지역 POST 201 · 같은 key 409, PUT 204 · 모르면 404, move 204 다', async () => {
       huntingRepo.section.mockResolvedValue({
         updatedAt: null,
@@ -2156,6 +2188,7 @@ describe('AdminController', () => {
         key: 'road_of_vanishing',
         name: '소멸의 여로',
         forceType: 'arcane',
+        iconMap: null,
       })
       huntingRepo.createRegion.mockRejectedValue(new RegionExists('road_of_vanishing'))
       expect(

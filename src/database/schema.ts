@@ -917,6 +917,8 @@ export const huntingRegions = pgTable('hunting_regions', {
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
   forceType: forceTypeEnum('force_type').notNull(),
+  /** 앱 자산 src/assets/maps/icons/ 의 slug. 가계부 사냥 시트의 지역 드롭다운에 선다. 비면 이름만 선다. */
+  iconMap: text('icon_map'),
   /** 파일의 차례. 앱은 역순으로 세운다. */
   sortOrder: integer('sort_order').notNull(),
 })

@@ -465,6 +465,7 @@ export const huntingRegionCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
   forceType: z.enum(FORCE_TYPES),
+  iconMap: z.string().min(1).max(100).nullish(),
 })
 export type HuntingRegionCreateBody = z.infer<typeof huntingRegionCreateBody>
 export const huntingRegionUpdateBody = huntingRegionCreateBody.omit({ key: true })

@@ -3,107 +3,128 @@
     {
       "key": "road_of_vanishing",
       "name": "소멸의 여로",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "roadOfVanishing"
     },
     {
       "key": "reverse_city",
       "name": "리버스 시티",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "reverseCity"
     },
     {
       "key": "chew_chew",
       "name": "츄츄 아일랜드",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "chewChew"
     },
     {
       "key": "yum_yum",
       "name": "얌얌 아일랜드",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "yumYum"
     },
     {
       "key": "lacheln",
       "name": "레헬른",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "lacheln"
     },
     {
       "key": "arcana",
       "name": "아르카나",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "arcana"
     },
     {
       "key": "morass",
       "name": "모라스",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "morass"
     },
     {
       "key": "esfera",
       "name": "에스페라",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "esfera"
     },
     {
       "key": "sellas",
       "name": "셀라스",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "sellas"
     },
     {
       "key": "moon_bridge",
       "name": "문브릿지",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "moonBridge"
     },
     {
       "key": "labyrinth_of_suffering",
       "name": "고통의 미궁",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "theLabyrinthOfSuffering"
     },
     {
       "key": "limen",
       "name": "리멘",
-      "forceType": "arcane"
+      "forceType": "arcane",
+      "iconMap": "limen"
     },
     {
       "key": "cernium",
       "name": "세르니움",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "cernium"
     },
     {
       "key": "burning_cernium",
       "name": "불타는 세르니움",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "burningCernium"
     },
     {
       "key": "arcs",
       "name": "호텔 아르크스",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "Arcs"
     },
     {
       "key": "odium",
       "name": "오디움",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "odium"
     },
     {
       "key": "dowonkyung",
       "name": "도원경",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "dowonkyung"
     },
     {
       "key": "arteria",
       "name": "아르테리아",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "arteria"
     },
     {
       "key": "carcion",
       "name": "카르시온",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "carcion"
     },
     {
       "key": "tallahart",
       "name": "탈라하트",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "tallahart"
     },
     {
       "key": "geardrak",
       "name": "기어드락",
-      "forceType": "authentic"
+      "forceType": "authentic",
+      "iconMap": "geardrak"
     }
   ],
   "grounds": [

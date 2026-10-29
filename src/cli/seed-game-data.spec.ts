@@ -402,8 +402,8 @@ const huntLootSeed = {
 
 const huntingGroundsSeed = {
   regions: [
-    { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
-    { key: 'cernium', name: '세르니움', forceType: 'authentic' },
+    { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane', iconMap: 'roadOfVanishing' },
+    { key: 'cernium', name: '세르니움', forceType: 'authentic', iconMap: null },
   ],
   grounds: [
     {

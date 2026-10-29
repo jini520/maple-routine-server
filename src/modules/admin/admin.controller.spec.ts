@@ -47,6 +47,11 @@ import {
   RegionExists,
 } from '../hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
+import {
+  HuntLootExists,
+  HuntLootPriceShape,
+  HuntLootRepository,
+} from '../hunt-loot/hunt-loot.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -188,6 +193,8 @@ describe('AdminController', () => {
     moveGround: jest.fn(),
   }
 
+  const huntLootRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
+
   const assetsRepo = { missing: jest.fn() }
 
   beforeAll(async () => {
@@ -212,6 +219,7 @@ describe('AdminController', () => {
         { provide: MvpGradesRepository, useValue: mvpRepo },
         { provide: HuntingGroundsRepository, useValue: huntingRepo },
         { provide: CashbookCategoriesRepository, useValue: cashbookRepo },
+        { provide: HuntLootRepository, useValue: huntLootRepo },
         { provide: AssetsRepository, useValue: assetsRepo },
       ],
     }).compile()
@@ -239,6 +247,7 @@ describe('AdminController', () => {
       ...Object.values(mvpRepo),
       ...Object.values(huntingRepo),
       ...Object.values(cashbookRepo),
+      ...Object.values(huntLootRepo),
     ]) {
       mock.mockReset()
     }
@@ -258,6 +267,7 @@ describe('AdminController', () => {
     '/admin/crystal-prices',
     '/admin/worlds',
     '/admin/cashbook-categories',
+    '/admin/hunt-loot',
     '/admin/spend-catalog',
     '/admin/symbol-costs',
     '/admin/contents',
@@ -1367,6 +1377,74 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(400)
+    })
+  })
+
+  describe('사냥 전리품', () => {
+    const milk = {
+      key: 'reindeer_milk',
+      kind: 'consumable',
+      name: '순록의 우유',
+      iconFile: 'reindeer_milk.png',
+      npcPriceMeso: 2750,
+    }
+    const magnifier = {
+      key: 'suspicious_magnifier',
+      kind: 'event',
+      name: '수상한 돋보기',
+      iconFile: 'suspicious_magnifier.webp',
+      from: '2026-10-22',
+      until: '2026-11-19',
+    }
+    const post = (payload: object) =>
+      app.inject({ method: 'POST', url: '/admin/hunt-loot', payload })
+
+    it('더하면 빈 가격 · 기간을 null 로 채워 넘기고, 같은 key 는 409 다', async () => {
+      huntLootRepo.create.mockResolvedValue({ id: ROW })
+      expect((await post(milk)).statusCode).toBe(201)
+      expect(huntLootRepo.create).toHaveBeenCalledWith({ ...milk, from: null, until: null })
+      expect((await post(magnifier)).statusCode).toBe(201)
+      expect(huntLootRepo.create).toHaveBeenLastCalledWith({ ...magnifier, npcPriceMeso: null })
+      huntLootRepo.create.mockRejectedValue(new HuntLootExists('reindeer_milk'))
+      expect((await post(milk)).statusCode).toBe(409)
+    })
+
+    it('NPC 가격이 분류와 안 맞거나 기간이 거꾸로이거나 그림이 그림 표에 없으면 400 이고 리포지토리를 안 부른다', async () => {
+      expect((await post({ ...milk, npcPriceMeso: null })).statusCode).toBe(400)
+      expect((await post({ ...magnifier, npcPriceMeso: 100 })).statusCode).toBe(400)
+      expect(
+        (await post({ ...magnifier, from: '2026-11-19', until: '2026-10-22' })).statusCode,
+      ).toBe(400)
+      assetsRepo.missing.mockResolvedValue(['reindeer_milk.png'])
+      expect((await post(milk)).statusCode).toBe(400)
+      expect(huntLootRepo.create).not.toHaveBeenCalled()
+    })
+
+    it('고치기 · 옮기기는 key 로 찾고 모르면 404, 가격이 분류와 안 맞으면 400 이다', async () => {
+      const body = { name: '순록의 우유', iconFile: 'reindeer_milk.png', npcPriceMeso: 3000 }
+      const put = () =>
+        app.inject({ method: 'PUT', url: '/admin/hunt-loot/reindeer_milk', payload: body })
+      huntLootRepo.update.mockResolvedValue(true)
+      expect((await put()).statusCode).toBe(204)
+      expect(huntLootRepo.update).toHaveBeenCalledWith('reindeer_milk', {
+        ...body,
+        from: null,
+        until: null,
+      })
+      huntLootRepo.update.mockResolvedValue(false)
+      expect((await put()).statusCode).toBe(404)
+      huntLootRepo.update.mockRejectedValue(new HuntLootPriceShape('reindeer_milk'))
+      expect((await put()).statusCode).toBe(400)
+      huntLootRepo.move.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunt-loot/nobody/move',
+            payload: { direction: 'up' },
+          })
+        ).statusCode,
+      ).toBe(404)
     })
   })
 

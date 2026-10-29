@@ -27,6 +27,7 @@ import {
   HuntingGroundsRepository,
   type HuntingGroundsSection,
 } from '../hunting-grounds/hunting-grounds.repository'
+import { HuntLootRepository, type HuntLootSection } from '../hunt-loot/hunt-loot.repository'
 import { MvpGradesRepository, type MvpGradesSection } from '../mvp-grades/mvp-grades.repository'
 import {
   SpendCatalogRepository,
@@ -58,6 +59,7 @@ export interface GameDataSnapshot {
   enhancementCosts: EnhancementCostsSection
   mvpGrades: MvpGradesSection
   huntingGrounds: HuntingGroundsSection
+  huntLoot: HuntLootSection
   assets: AssetsSection
   imageCrops: ImageCropsSection
 }
@@ -78,6 +80,7 @@ export class GameDataService {
     private readonly enhancementCosts: EnhancementCostsRepository,
     private readonly mvpGrades: MvpGradesRepository,
     private readonly huntingGrounds: HuntingGroundsRepository,
+    private readonly huntLoot: HuntLootRepository,
     private readonly cashbookCategories: CashbookCategoriesRepository,
     private readonly assets: AssetsRepository,
     private readonly imageCrops: ImageCropsRepository,
@@ -98,6 +101,7 @@ export class GameDataService {
       enhancementCosts,
       mvpGrades,
       huntingGrounds,
+      huntLoot,
       cashbookCategories,
       assets,
       imageCrops,
@@ -115,6 +119,7 @@ export class GameDataService {
       this.enhancementCosts.section(),
       this.mvpGrades.section(),
       this.huntingGrounds.section(),
+      this.huntLoot.section(),
       this.cashbookCategories.section(),
       this.assets.section(),
       this.imageCrops.section(),
@@ -134,6 +139,7 @@ export class GameDataService {
       enhancementCosts,
       mvpGrades,
       huntingGrounds,
+      huntLoot,
       assets,
       imageCrops,
     }

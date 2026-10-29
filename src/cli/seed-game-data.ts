@@ -5,7 +5,7 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터 → 사냥 전리품.
  * 뒤의 것이 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
@@ -35,6 +35,7 @@ import {
 } from '../modules/enhancement-costs/enhancement-costs.repository'
 import { FORCE_TYPES } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../modules/mvp-grades/mvp-grades.repository'
+import { HUNT_LOOT_KINDS } from '../modules/hunt-loot/hunt-loot.repository'
 import { type DbOrTx, touchSection } from '../modules/game-data/sections'
 import { CASHBOOK_ENTRY_TYPES } from '../modules/cashbook-categories/cashbook-categories.repository'
 import {
@@ -61,6 +62,7 @@ const {
   huntingGroundLevels,
   huntingGrounds,
   huntingRegions,
+  huntLootItems,
   mvpGrades,
   potentialResetCosts,
   soulPotentialResetCosts,
@@ -459,6 +461,30 @@ export function parseHuntingGroundsSeed(value: unknown): HuntingGroundsSeed {
   return huntingGroundsSeed.parse(value)
 }
 
+const huntLootSeed = z.object({
+  items: z
+    .array(
+      z
+        .object({
+          key,
+          kind: z.enum(HUNT_LOOT_KINDS),
+          name: z.string().min(1),
+          iconFile: z.string().min(1),
+          npcPriceMeso: z.number().int().min(1).nullable(),
+          from: period,
+          until: period,
+        })
+        .refine((i) => (i.kind === 'consumable') === (i.npcPriceMeso !== null), {
+          message: 'NPC 가격은 소비에만 있고 소비에는 반드시 있다',
+        }),
+    )
+    .min(1),
+})
+export type HuntLootSeed = z.infer<typeof huntLootSeed>
+export function parseHuntLootSeed(value: unknown): HuntLootSeed {
+  return huntLootSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -474,6 +500,7 @@ export interface GameDataSeeds {
   enhancementCosts?: EnhancementCostsSeed
   mvpGrades?: MvpGradesSeed
   huntingGrounds?: HuntingGroundsSeed
+  huntLoot?: HuntLootSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -505,6 +532,7 @@ export async function seedGameData(
   if (seeds.mvpGrades !== undefined) result.mvpGrades = await seedMvpGrades(db, seeds.mvpGrades)
   if (seeds.huntingGrounds !== undefined)
     result.huntingGrounds = await seedHuntingGrounds(db, seeds.huntingGrounds)
+  if (seeds.huntLoot !== undefined) result.huntLoot = await seedHuntLoot(db, seeds.huntLoot)
   return result
 }
 
@@ -538,6 +566,7 @@ async function isEmpty(
     | typeof soulPotentialResetCosts
     | typeof starforceSteps
     | typeof mvpGrades
+    | typeof huntLootItems
     | typeof huntingRegions,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
@@ -957,6 +986,15 @@ async function seedHuntingGrounds(db: Db, seed: HuntingGroundsSeed): Promise<See
   return 'seeded'
 }
 
+async function seedHuntLoot(db: Db, seed: HuntLootSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, huntLootItems))) return 'skipped'
+  await db.transaction(async (tx) => {
+    await tx.insert(huntLootItems).values(seed.items.map((i, sortOrder) => ({ ...i, sortOrder })))
+    await touchSection(tx, 'huntLoot')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -990,6 +1028,7 @@ async function main(): Promise<void> {
       enhancementCosts: parseEnhancementCostsSeed(readSeed('enhancement-costs')),
       mvpGrades: parseMvpGradesSeed(readSeed('mvp-grades')),
       huntingGrounds: parseHuntingGroundsSeed(readSeed('hunting-grounds')),
+      huntLoot: parseHuntLootSeed(readSeed('hunt-loot')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

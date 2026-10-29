@@ -1,0 +1,49 @@
+{
+  "items": [
+    {
+      "key": "sol_erda_fragment",
+      "kind": "fragment",
+      "name": "솔 에르다 조각",
+      "iconFile": "sol_erda_fragment.webp",
+      "npcPriceMeso": null,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "reindeer_milk",
+      "kind": "consumable",
+      "name": "순록의 우유",
+      "iconFile": "reindeer_milk.webp",
+      "npcPriceMeso": 2750,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "sunset_dew",
+      "kind": "consumable",
+      "name": "황혼의 이슬",
+      "iconFile": "sunset_dew.webp",
+      "npcPriceMeso": 5100,
+      "from": null,
+      "until": null
+    },
+    {
+      "key": "suspicious_magnifier",
+      "kind": "event",
+      "name": "수상한 돋보기",
+      "iconFile": "suspicious_magnifier.webp",
+      "npcPriceMeso": null,
+      "from": "2026-10-22",
+      "until": "2026-11-19"
+    },
+    {
+      "key": "detective_yeti_suspicious_magnifier",
+      "kind": "event",
+      "name": "탐정예티의 수상한 돋보기",
+      "iconFile": "detective_yeti_suspicious_magnifier.webp",
+      "npcPriceMeso": null,
+      "from": "2026-10-22",
+      "until": "2026-11-19"
+    }
+  ]
+}

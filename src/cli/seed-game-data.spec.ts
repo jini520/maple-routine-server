@@ -6,6 +6,7 @@ import { EnhancementCostsRepository } from '../modules/enhancement-costs/enhance
 import { EquipmentItemsRepository } from '../modules/equipment-items/equipment-items.repository'
 import { HuntingGroundsRepository } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../modules/mvp-grades/mvp-grades.repository'
+import { HuntLootRepository } from '../modules/hunt-loot/hunt-loot.repository'
 import { SpendCatalogRepository } from '../modules/spend-catalog/spend-catalog.repository'
 import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repository'
 import {
@@ -20,6 +21,7 @@ import {
   parseEquipmentItemsSeed,
   parseHuntingGroundsSeed,
   parseMvpGradesSeed,
+  parseHuntLootSeed,
   parseSpendCatalogSeed,
   parseSymbolCostsSeed,
   parseWorldsSeed,
@@ -375,6 +377,29 @@ const mvpGradesSeed = {
   ],
 }
 
+const huntLootSeed = {
+  items: [
+    {
+      key: 'sol_erda_fragment',
+      kind: 'fragment',
+      name: '솔 에르다 조각',
+      iconFile: 'sol_erda_fragment.webp',
+      npcPriceMeso: null,
+      from: null,
+      until: null,
+    },
+    {
+      key: 'reindeer_milk',
+      kind: 'consumable',
+      name: '순록의 우유',
+      iconFile: 'reindeer_milk.png',
+      npcPriceMeso: 2750,
+      from: null,
+      until: null,
+    },
+  ],
+}
+
 const huntingGroundsSeed = {
   regions: [
     { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
@@ -450,6 +475,9 @@ describe('씨앗 넷의 모양', () => {
     ).toThrow()
     expect(() =>
       parseMvpGradesSeed({ grades: [{ ...mvpGradesSeed.grades[0], auctionFeePercent: 101 }] }),
+    ).toThrow()
+    expect(() =>
+      parseHuntLootSeed({ items: [{ ...huntLootSeed.items[1], npcPriceMeso: null }] }),
     ).toThrow()
     expect(() =>
       parseHuntingGroundsSeed({
@@ -531,7 +559,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('열넷을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열다섯을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -547,6 +575,7 @@ describeDb('seedGameData', () => {
       enhancementCosts: parseEnhancementCostsSeed(enhancementCostsSeed),
       mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
       huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
+      huntLoot: parseHuntLootSeed(huntLootSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -563,6 +592,7 @@ describeDb('seedGameData', () => {
       enhancementCosts: 'seeded',
       mvpGrades: 'seeded',
       huntingGrounds: 'seeded',
+      huntLoot: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -604,6 +634,7 @@ describeDb('seedGameData', () => {
     expect(hunting.regions).toEqual(huntingGroundsSeed.regions)
     expect(hunting.grounds).toEqual(huntingGroundsSeed.grounds)
     expect(hunting.groundLevels).toEqual(huntingGroundsSeed.groundLevels)
+    expect((await new HuntLootRepository(db).section()).items).toEqual(huntLootSeed.items)
 
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules.defaultMaxPartySize).toBe(6)
@@ -621,6 +652,7 @@ describeDb('seedGameData', () => {
       enhancementCosts: parseEnhancementCostsSeed(enhancementCostsSeed),
       mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
       huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
+      huntLoot: parseHuntLootSeed(huntLootSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
@@ -632,6 +664,7 @@ describeDb('seedGameData', () => {
       enhancementCosts: 'skipped',
       mvpGrades: 'skipped',
       huntingGrounds: 'skipped',
+      huntLoot: 'skipped',
     })
   })
 

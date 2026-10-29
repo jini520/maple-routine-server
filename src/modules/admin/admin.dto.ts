@@ -15,6 +15,7 @@ import {
 import { FORCE_TYPES } from '../hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
 import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories.repository'
+import { HUNT_LOOT_KINDS } from '../hunt-loot/hunt-loot.repository'
 import { SPEND_CURRENCIES, SPEND_FORMS } from '../spend-catalog/spend-catalog.repository'
 
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
@@ -273,6 +274,33 @@ export const cashbookItemKindUpdateBody = z.object({
   hasTariff: z.boolean(),
 })
 export type CashbookItemKindUpdateBody = z.infer<typeof cashbookItemKindUpdateBody>
+
+/* ── 사냥 전리품 ── */
+
+const huntLootBase = z.object({
+  key: snakeKey,
+  kind: z.enum(HUNT_LOOT_KINDS),
+  name: z.string().min(1).max(30),
+  iconFile: z.string().min(1).max(200),
+  npcPriceMeso: z.number().int().min(1).max(2_000_000_000).nullish(),
+  from: periodText,
+  until: periodText,
+})
+/** NPC 가격은 소비에만 있고 소비에는 반드시 있다. 앱이 이 값으로 단가를 채운다. */
+const npcPriceShape = (b: { kind: string; npcPriceMeso?: number | null }) =>
+  (b.kind === 'consumable') === (b.npcPriceMeso != null)
+export const huntLootCreateBody = huntLootBase
+  .refine(periodOrder, PERIOD_MESSAGE)
+  .refine(npcPriceShape, {
+    message: 'NPC 가격은 소비에만 있고 소비에는 반드시 있다',
+    path: ['npcPriceMeso'],
+  })
+export type HuntLootCreateBody = z.infer<typeof huntLootCreateBody>
+/** 분류는 기록의 폼을 정해 못 바꾼다. 가격과 분류가 맞는지는 표의 CHECK 가 본다. */
+export const huntLootUpdateBody = huntLootBase
+  .omit({ key: true, kind: true })
+  .refine(periodOrder, PERIOD_MESSAGE)
+export type HuntLootUpdateBody = z.infer<typeof huntLootUpdateBody>
 
 /* ── 심볼 비용 ── */
 

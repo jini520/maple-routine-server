@@ -441,7 +441,14 @@ export function parseMvpGradesSeed(value: unknown): MvpGradesSeed {
 
 const huntingGroundsSeed = z.object({
   regions: z
-    .array(z.object({ key, name: z.string().min(1), forceType: z.enum(FORCE_TYPES) }))
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        forceType: z.enum(FORCE_TYPES),
+        iconMap: z.string().min(1).nullable(),
+      }),
+    )
     .min(1),
   grounds: z
     .array(

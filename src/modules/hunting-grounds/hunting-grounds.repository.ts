@@ -14,6 +14,8 @@ export interface HuntingRegionView {
   key: string
   name: string
   forceType: ForceType
+  /** 지역 아이콘 slug(maps/icons). 없으면 null 이다. */
+  iconMap: string | null
 }
 
 export interface HuntingGroundView {
@@ -63,6 +65,7 @@ export class HuntingGroundsRepository {
           key: huntingRegions.key,
           name: huntingRegions.name,
           forceType: huntingRegions.forceType,
+          iconMap: huntingRegions.iconMap,
         })
         .from(huntingRegions)
         .orderBy(asc(huntingRegions.sortOrder), asc(huntingRegions.key)),
@@ -121,12 +124,12 @@ export class HuntingGroundsRepository {
     })
   }
 
-  /** 이름 · 힘 종류를 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 false 다. */
+  /** 이름 · 힘 종류 · 아이콘을 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 false 다. */
   async updateRegion(key: string, input: Omit<HuntingRegionInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(huntingRegions)
-        .set({ name: input.name, forceType: input.forceType })
+        .set({ name: input.name, forceType: input.forceType, iconMap: input.iconMap })
         .where(eq(huntingRegions.key, key))
         .returning({ id: huntingRegions.id })
       if (rows.length === 0) return false

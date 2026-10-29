@@ -148,6 +148,13 @@
       "when": 1793259907488,
       "tag": "0020_hunt_loot_items",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793276991610,
+      "tag": "0021_hunting_region_icon",
+      "breakpoints": true
     }
   ]
 }

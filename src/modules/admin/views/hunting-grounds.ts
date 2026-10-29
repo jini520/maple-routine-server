@@ -27,12 +27,13 @@ export const HUNTING_GROUNDS_HTML = layout(
     <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="geardrak"></div>
     <div class="field"><label for="n-name">이름</label><input id="n-name" placeholder="기어드락"></div>
     <div class="field w-md"><label for="n-force">힘 종류</label><select id="n-force"></select></div>
+    <div class="field"><label for="n-map">지역 아이콘 (maps/icons)</label><input id="n-map" class="mono" placeholder="geardrak"></div>
     <button id="n-add" class="btn" type="button">지역 추가</button>
   </div></div>
 </section>
 <section class="card">
   <header><h2>지역</h2><p id="count"></p></header>
-  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>힘</th><th class="num">사냥터</th><th></th></tr></thead><tbody id="regions"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>힘</th><th>지역 아이콘</th><th class="num">사냥터</th><th></th></tr></thead><tbody id="regions"></tbody></table></div>
 </section>
 <script>
   var FORCES = [['arcane', '아케인'], ['authentic', '어센틱']];
@@ -48,7 +49,7 @@ export const HUNTING_GROUNDS_HTML = layout(
     var tr = el('tr', undefined, isOpen || editing ? 'open' : '');
     cell(tr, i + 1, 'n'); cell(tr, r.key, 'mono');
     if (!editing) {
-      cell(tr, r.name); cell(tr, span(nameOf(FORCES, r.forceType), 'tag')); cell(tr, groundsOf(r.key).length, 'num');
+      cell(tr, r.name); cell(tr, span(nameOf(FORCES, r.forceType), 'tag')); cell(tr, r.iconMap || '-', 'mono'); cell(tr, groundsOf(r.key).length, 'num');
       var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), edit = button('수정', 'btn ghost sm'), toggle = button(isOpen ? '접기' : '사냥터', 'btn ghost sm');
       up.addEventListener('click', async function () { var x = await call('POST', '/admin/hunting-grounds/regions/' + r.key + '/move', { direction: 'up' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
       down.addEventListener('click', async function () { var x = await call('POST', '/admin/hunting-grounds/regions/' + r.key + '/move', { direction: 'down' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
@@ -56,11 +57,11 @@ export const HUNTING_GROUNDS_HTML = layout(
       toggle.addEventListener('click', function () { state.open = isOpen ? null : r.key; state.editingGround = null; render(); });
       cell(tr, inline(up, down, edit, toggle), 'act'); return tr;
     }
-    var name = input('text'); name.value = r.name; var force = select(FORCES, r.forceType);
-    cell(tr, name); cell(tr, force); cell(tr, groundsOf(r.key).length, 'num');
+    var name = input('text'); name.value = r.name; var force = select(FORCES, r.forceType); var iconMap = input('text', 'mono'); iconMap.value = r.iconMap || '';
+    cell(tr, name); cell(tr, force); cell(tr, iconMap); cell(tr, groundsOf(r.key).length, 'num');
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var x = await call('PUT', '/admin/hunting-grounds/regions/' + r.key, { name: name.value.trim(), forceType: force.value });
+      var x = await call('PUT', '/admin/hunting-grounds/regions/' + r.key, { name: name.value.trim(), forceType: force.value, iconMap: orNull(iconMap.value) });
       show(x.ok ? r.key + ' 를 적었다' : fail('못 적었다', x), !x.ok); if (x.ok) state.editingRegion = null; load();
     });
     close.addEventListener('click', function () { state.editingRegion = null; render(); });
@@ -68,7 +69,7 @@ export const HUNTING_GROUNDS_HTML = layout(
   }
 
   function groundsRow(r) {
-    var tr = el('tr', undefined, 'expand'); var td = document.createElement('td'); td.colSpan = 6;
+    var tr = el('tr', undefined, 'expand'); var td = document.createElement('td'); td.colSpan = 7;
     var box = el('div', undefined, 'editor'); box.appendChild(el('h3', r.name + ' 의 사냥터. 차례는 레벨 차이 · 마릿수가 동률일 때의 차례다'));
     var tbody = el('tbody');
     groundsOf(r.key).forEach(function (g, i) {
@@ -123,16 +124,16 @@ export const HUNTING_GROUNDS_HTML = layout(
   function render() {
     var regions = document.getElementById('regions'); regions.innerHTML = '';
     state.data.regions.forEach(function (r, i) { regions.appendChild(regionRow(r, i)); if (state.open === r.key) regions.appendChild(groundsRow(r)); });
-    if (state.data.regions.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 6; regions.appendChild(tr); }
+    if (state.data.regions.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 7; regions.appendChild(tr); }
     document.getElementById('count').textContent = state.data.regions.length + '지역 · ' + state.data.grounds.length + '사냥터. 차례가 곧 파일의 차례이고 앱은 역순이다';
   }
 
   FORCES.forEach(function (f) { var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; document.getElementById('n-force').appendChild(o); });
   document.getElementById('n-add').addEventListener('click', async function () {
-    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), forceType: document.getElementById('n-force').value };
+    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), forceType: document.getElementById('n-force').value, iconMap: orNull(document.getElementById('n-map').value) };
     var x = await call('POST', '/admin/hunting-grounds/regions', body);
     show(x.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', x), !x.ok);
-    if (x.ok) { document.getElementById('n-key').value = ''; document.getElementById('n-name').value = ''; }
+    if (x.ok) { document.getElementById('n-key').value = ''; document.getElementById('n-name').value = ''; document.getElementById('n-map').value = ''; }
     load();
   });
 

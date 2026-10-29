@@ -21,8 +21,13 @@ describeDb('HuntingGroundsRepository', () => {
   beforeEach(() => truncate())
   afterAll(() => close())
 
-  const vanishing = { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' as const }
-  const cernium = { key: 'cernium', name: '세르니움', forceType: 'authentic' as const }
+  const vanishing = {
+    key: 'road_of_vanishing',
+    name: '소멸의 여로',
+    forceType: 'arcane' as const,
+    iconMap: 'roadOfVanishing',
+  }
+  const cernium = { key: 'cernium', name: '세르니움', forceType: 'authentic' as const, iconMap: null }
   const joy = {
     key: 'road_of_vanishing_weathered_land_of_joy',
     region: 'road_of_vanishing',
@@ -94,10 +99,12 @@ describeDb('HuntingGroundsRepository', () => {
     await repo.createGround(joy)
     await repo.createGround(joyAndAnger)
 
-    expect(await repo.updateRegion('cernium', { name: '세르니움', forceType: 'authentic' })).toBe(
-      true,
-    )
-    expect(await repo.updateRegion('limen', { name: '리멘', forceType: 'arcane' })).toBe(false)
+    expect(
+      await repo.updateRegion('cernium', { name: '세르니움', forceType: 'authentic', iconMap: 'cernium' }),
+    ).toBe(true)
+    expect(
+      await repo.updateRegion('limen', { name: '리멘', forceType: 'arcane', iconMap: null }),
+    ).toBe(false)
     expect(await repo.moveRegion('cernium', 'up')).toBe(true)
     expect(await repo.moveRegion('cernium', 'up')).toBe(true)
     expect(await repo.moveRegion('limen', 'up')).toBe(false)

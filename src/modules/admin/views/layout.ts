@@ -25,6 +25,7 @@ const MENU: readonly MenuItem[] = [
           ['/admin/hunt-loot', '사냥 전리품'],
           ['/admin/spend-catalog', '지출 카탈로그'],
           ['/admin/symbol-costs', '심볼 비용'],
+          ['/admin/hexa-matrix', '헥사 매트릭스'],
           ['/admin/contents', '컨텐츠'],
           ['/admin/enhancement-costs', '강화 비용'],
           ['/admin/mvp-grades', 'MVP 등급'],

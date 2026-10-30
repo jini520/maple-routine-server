@@ -114,6 +114,17 @@ import {
   NoRegion,
   RegionExists,
 } from '../hunting-grounds/hunting-grounds.repository'
+import {
+  CostLevelsMismatch,
+  DefaultKindTaken,
+  HexaKindExists,
+  HexaMatrixRepository,
+  HexaStatExists,
+  JobCoreExists,
+  LevelsAboveMax as HexaLevelsAboveMax,
+  NameKindExists,
+  NoHexaKind,
+} from '../hexa-matrix/hexa-matrix.repository'
 import { type MvpGrade, MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import {
   HuntLootExists,
@@ -170,6 +181,22 @@ import {
   cashbookEntryType,
   type CashbookItemKindUpdateBody,
   cashbookItemKindUpdateBody,
+  type HexaCostsBody,
+  hexaCostsBody,
+  type HexaJobCoreCreateBody,
+  hexaJobCoreCreateBody,
+  type HexaJobCoreUpdateBody,
+  hexaJobCoreUpdateBody,
+  type HexaKindCreateBody,
+  hexaKindCreateBody,
+  type HexaKindUpdateBody,
+  hexaKindUpdateBody,
+  type HexaNameKindBody,
+  hexaNameKindBody,
+  type HexaStatCreateBody,
+  hexaStatCreateBody,
+  type HexaStatUpdateBody,
+  hexaStatUpdateBody,
   type HuntLootCreateBody,
   huntLootCreateBody,
   type HuntLootUpdateBody,
@@ -254,6 +281,7 @@ import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
 import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
 import { EQUIPMENT_ITEMS_HTML } from './views/equipment-items'
+import { HEXA_MATRIX_HTML } from './views/hexa-matrix'
 import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
 import { HUNT_LOOT_HTML } from './views/hunt-loot'
 import { MVP_GRADES_HTML } from './views/mvp-grades'
@@ -263,7 +291,7 @@ import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 컨텐츠 · 장비 ·
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 장비 ·
  * 강화 비용 · MVP 등급 · 사냥터)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
@@ -293,6 +321,7 @@ export class AdminController {
     private readonly hunting: HuntingGroundsRepository,
     private readonly cashbook: CashbookCategoriesRepository,
     private readonly huntLoot: HuntLootRepository,
+    private readonly hexa: HexaMatrixRepository,
     private readonly assets: AssetsRepository,
   ) {}
 
@@ -1081,6 +1110,176 @@ export class AdminController {
         throw new ConflictException('그 레벨의 유일한 줄이다. 거두면 빈 레벨이 생긴다')
       throw error
     }
+  }
+
+  /* ── 헥사 매트릭스 ── */
+
+  @Get('hexa-matrix')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  hexaMatrixPage(): string {
+    return HEXA_MATRIX_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸에 이름 표 · 직업별 코어의 id 를 더한 것이다. */
+  @Get('hexa-matrix/rows')
+  @Header('cache-control', 'no-store')
+  hexaMatrixRows() {
+    return this.hexa.adminRows()
+  }
+
+  /** 종류를 맨 뒤에 더한다. 비용은 따로 한 번에 넣는다. 같은 key · 같은 API 타입의 기본 종류가 있으면 409 다. */
+  @Post('hexa-matrix/kinds')
+  @HttpCode(201)
+  async createHexaKind(@Body(new ZodValidationPipe(hexaKindCreateBody)) body: HexaKindCreateBody) {
+    await this.requireAssets([['itemIcon', body.iconFile]])
+    try {
+      return await this.hexa.createKind(body)
+    } catch (error) {
+      if (error instanceof HexaKindExists)
+        throw new ConflictException(`이미 있는 종류다: ${body.key}`)
+      if (error instanceof DefaultKindTaken)
+        throw new ConflictException(`이 API 타입에는 기본 종류가 이미 있다: ${error.message}`)
+      throw error
+    }
+  }
+
+  /** key 를 빼고 갈아 끼운다. 모르면 404, 기본 종류가 겹치거나 만렙 위에 비용 줄이 있으면 409 다. */
+  @Put('hexa-matrix/kinds/:key')
+  @HttpCode(204)
+  async updateHexaKind(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(hexaKindUpdateBody)) body: HexaKindUpdateBody,
+  ): Promise<void> {
+    await this.requireAssets([['itemIcon', body.iconFile]])
+    let found: boolean
+    try {
+      found = await this.hexa.updateKind(key, body)
+    } catch (error) {
+      if (error instanceof DefaultKindTaken)
+        throw new ConflictException(`이 API 타입에는 기본 종류가 이미 있다: ${error.message}`)
+      if (error instanceof HexaLevelsAboveMax)
+        throw new ConflictException(`만렙 위에 비용 줄이 있다. 레벨 ${error.message} 까지 있다`)
+      throw error
+    }
+    if (!found) throw new NotFoundException(`모르는 종류다: ${key}`)
+  }
+
+  /** 비용 줄 전부를 갈아 끼운다. 모르는 종류는 404, 레벨이 0 부터 만렙 - 1 까지 꼭 한 번씩이 아니면 400 이다. */
+  @Put('hexa-matrix/kinds/:key/costs')
+  @HttpCode(204)
+  async replaceHexaCosts(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(hexaCostsBody)) body: HexaCostsBody,
+  ): Promise<void> {
+    try {
+      await this.hexa.replaceCosts(key, body.costs)
+    } catch (error) {
+      if (error instanceof NoHexaKind) throw new NotFoundException(`모르는 종류다: ${key}`)
+      if (error instanceof CostLevelsMismatch)
+        throw new BadRequestException(
+          `${error.message}. 레벨 0 부터 만렙 - 1 까지 한 번씩 있어야 한다`,
+        )
+      throw error
+    }
+  }
+
+  /** 기본 종류가 아닌 코어의 이름을 적는다. 모르는 종류는 400, 같은 이름은 409 다. */
+  @Post('hexa-matrix/names')
+  @HttpCode(201)
+  async addHexaNameKind(@Body(new ZodValidationPipe(hexaNameKindBody)) body: HexaNameKindBody) {
+    try {
+      return await this.hexa.addNameKind(body)
+    } catch (error) {
+      if (error instanceof NoHexaKind) throw new BadRequestException(`모르는 종류다: ${body.kind}`)
+      if (error instanceof NameKindExists)
+        throw new ConflictException(`이미 있는 이름이다: ${body.name}`)
+      throw error
+    }
+  }
+
+  @Delete('hexa-matrix/names/:id')
+  @HttpCode(204)
+  async removeHexaNameKind(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    if (!(await this.hexa.removeNameKind(id))) throw new NotFoundException()
+  }
+
+  /** 직업 안 맨 뒤에 더한다. 같은 직업에 같은 이름이 있으면 409 다. */
+  @Post('hexa-matrix/job-cores')
+  @HttpCode(201)
+  async createHexaJobCore(
+    @Body(new ZodValidationPipe(hexaJobCoreCreateBody)) body: HexaJobCoreCreateBody,
+  ) {
+    await this.requireAssets([['skillIcon', body.iconFile]])
+    try {
+      return await this.hexa.createJobCore(body)
+    } catch (error) {
+      if (error instanceof JobCoreExists)
+        throw new ConflictException(`${body.job} 에 이미 있는 코어다: ${body.name}`)
+      throw error
+    }
+  }
+
+  @Put('hexa-matrix/job-cores/:id')
+  @HttpCode(204)
+  async updateHexaJobCore(
+    @Param('id', new ZodValidationPipe(rowId)) id: string,
+    @Body(new ZodValidationPipe(hexaJobCoreUpdateBody)) body: HexaJobCoreUpdateBody,
+  ): Promise<void> {
+    await this.requireAssets([['skillIcon', body.iconFile]])
+    let found: boolean
+    try {
+      found = await this.hexa.updateJobCore(id, body)
+    } catch (error) {
+      if (error instanceof JobCoreExists)
+        throw new ConflictException(`그 직업에 이미 있는 코어다: ${body.name}`)
+      throw error
+    }
+    if (!found) throw new NotFoundException()
+  }
+
+  @Delete('hexa-matrix/job-cores/:id')
+  @HttpCode(204)
+  async removeHexaJobCore(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    if (!(await this.hexa.removeJobCore(id))) throw new NotFoundException()
+  }
+
+  @Post('hexa-matrix/job-cores/:id/move')
+  @HttpCode(204)
+  async moveHexaJobCore(
+    @Param('id', new ZodValidationPipe(rowId)) id: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.hexa.moveJobCore(id, body.direction))) throw new NotFoundException()
+  }
+
+  /** 스탯을 맨 뒤에 더한다. 같은 key 는 409 다. */
+  @Post('hexa-matrix/stats')
+  @HttpCode(201)
+  async createHexaStat(@Body(new ZodValidationPipe(hexaStatCreateBody)) body: HexaStatCreateBody) {
+    try {
+      return await this.hexa.createStat({
+        ...body,
+        activationFragments: body.activationFragments ?? null,
+      })
+    } catch (error) {
+      if (error instanceof HexaStatExists)
+        throw new ConflictException(`이미 있는 스탯이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  @Put('hexa-matrix/stats/:key')
+  @HttpCode(204)
+  async updateHexaStat(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(hexaStatUpdateBody)) body: HexaStatUpdateBody,
+  ): Promise<void> {
+    const found = await this.hexa.updateStat(key, {
+      ...body,
+      activationFragments: body.activationFragments ?? null,
+    })
+    if (!found) throw new NotFoundException(`모르는 스탯이다: ${key}`)
   }
 
   /* ── 드롭 아이템 ── */

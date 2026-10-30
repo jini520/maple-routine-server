@@ -71,6 +71,7 @@ export const ASSETS_HTML = layout(
     { label: '월드 엠블럼', dir: 'worlds' },
     { label: 'MVP 명패', dir: 'mvp' },
     { label: '포스', dir: 'force' },
+    { label: '스킬', dir: 'skills' },
     { label: '캐릭터', dir: 'characters' },
     { label: '고가 드롭 연출', children: [
       { label: '화면', dir: 'drop-effect/screen' }, { label: '시작', dir: 'drop-effect/pre' },

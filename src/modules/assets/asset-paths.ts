@@ -15,6 +15,7 @@ export const ASSET_DIRS = {
   maps: ['webp', 'jpg', 'png'],
   'maps/icons': ['png', 'webp'],
   force: ['png', 'webp'],
+  skills: ['png', 'webp'],
   'drop-effect/screen': ['jpg', 'webp'],
   'drop-effect/pre': ['jpg', 'webp'],
   'drop-effect/loop': ['jpg', 'webp'],
@@ -64,6 +65,7 @@ export const ASSET_REFS = {
   worldEmblem: { dirs: ['worlds'], key: 'slug' },
   mapBackground: { dirs: ['maps'], key: 'slug' },
   mapIcon: { dirs: ['maps/icons'], key: 'slug' },
+  skillIcon: { dirs: ['skills'], key: 'fileName' },
 } as const satisfies Record<string, { dirs: readonly AssetDir[]; key: 'slug' | 'fileName' }>
 
 export type AssetRef = keyof typeof ASSET_REFS

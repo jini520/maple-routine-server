@@ -18,6 +18,8 @@ services:
       - /home/ubuntu/.config/maple-routine-server/fcm-key.json:/run/secrets/fcm-key.json:ro
       # 그림 파일. 같은 박스의 nginx 가 호스트 쪽 디렉터리를 /assets/ 로 바로 낸다. 컨테이너 사용자 node(uid 1000)가 쓴다.
       - /srv/maple-routine-assets:/data/assets
+      # OTA 매니페스트와 번들. 발행 스크립트가 호스트 쪽에 올리고 서버는 매니페스트만 읽는다. nginx 가 files/ 를 /ota/files/ 로 낸다.
+      - /srv/maple-routine-ota:/data/ota:ro
     # 요청마다 한 줄이 찍히므로 도커 기본값(무제한)으로 두면 디스크가 언젠가 찬다.
     logging:
       driver: json-file

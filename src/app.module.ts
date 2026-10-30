@@ -19,6 +19,7 @@ import { EnhancementTotalsModule } from './modules/enhancement-totals/enhancemen
 import { DropPricesModule } from './modules/drop-prices/drop-prices.module'
 import { FriendsModule } from './modules/friends/friends.module'
 import { GameDataModule } from './modules/game-data/game-data.module'
+import { OtaModule } from './modules/ota/ota.module'
 import { IdentityModule } from './modules/identity/identity.module'
 import { ManualCompletionModule } from './modules/manual-completion/manual-completion.module'
 import { NoticesModule } from './modules/notices/notices.module'
@@ -46,6 +47,7 @@ import { WorldsModule } from './modules/worlds/worlds.module'
     SpendCatalogModule,
     SymbolCostsModule,
     GameDataModule,
+    OtaModule,
     FriendsModule,
     NoticesModule,
     PushModule,

@@ -12,6 +12,8 @@ export const envSchema = z.object({
   PUBLIC_BASE_URL: z.string().url().default('https://mapleroutine.store'),
   /** 그림 파일을 두는 디렉터리. 같은 박스의 nginx 가 `/assets/` 로 낸다. 컨테이너에서는 볼륨을 건 경로다. */
   ASSETS_DIR: z.string().min(1).default('/data/assets'),
+  /** OTA 매니페스트 · 번들 · 에셋을 두는 디렉터리. 발행 스크립트가 올리고 서버는 매니페스트만 읽는다. nginx 가 `files/` 를 `/ota/files/` 로 낸다. */
+  OTA_DIR: z.string().min(1).default('/data/ota'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
   FCM_KEY: z.string().optional(),

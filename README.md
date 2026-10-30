@@ -49,6 +49,7 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   ~/.config/maple-routine-server/db.env   DATABASE_URL 하나. psql 을 도커로 띄울 때 쓴다
   /etc/nginx/sites-available/mapleroutine /v1 · /admin · /app 을 127.0.0.1:4000 으로 넘기고, /assets/ 는 아래 디렉터리를 바로 낸다
   /srv/maple-routine-assets/              그림 파일(<sha256>.<확장자>). compose 가 /data/assets 로 건다. 주인은 uid 1000(컨테이너의 node)
+  /srv/maple-routine-ota/                 OTA 매니페스트 · latest · releases.json 과 files/(번들 · 에셋). compose 가 /data/ota 로 읽기 전용으로 건다. 주인은 ubuntu
 ```
 
 ```
@@ -84,6 +85,23 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
   디렉터리는 `sudo install -d -o 1000 -g 1000 -m 755 /srv/maple-routine-assets` 로 만든다. 홈 디렉터리 아래에 두면 nginx(www-data)가 못 읽는다. 호스트의 ubuntu(uid 1001)가 주인이면 컨테이너가
   못 쓴다(2026-10-15 FCM 키 사고와 같은 원인). 밤 백업에 이 디렉터리를 DB 덤프와 함께 넣는다.
+- **OTA 는 앱 저장소의 `node scripts/publish-rn-ota.mjs` 가 올린다**(앱 저장소 `ADR-011` 결정 1 · 13). 스크립트가 맥에서 rsync 로
+  `/srv/maple-routine-ota/` 에 쓰고, 서버는 `GET /v1/ota/manifest` · `GET /v1/ota/latest` 로 매니페스트만 읽어 준다. 번들과 에셋은
+  nginx 가 `files/` 를 바로 낸다. 번들은 옆에 둔 `.gz` 를 `gzip_static` 이 그대로 내준다. 최근 세 번의 발행이 쓰지 않는 파일은
+  스크립트가 지운다. nginx 는 이렇게 둔다.
+
+  ```
+  location /ota/files/ {
+      alias /srv/maple-routine-ota/files/;
+      gzip_static on;
+      gzip_vary on;
+      add_header Cache-Control "public, max-age=31536000, immutable";
+      try_files $uri =404;
+  }
+  ```
+
+  디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-ota /srv/maple-routine-ota/files` 로 만든다. 서버는 읽기만
+  하므로 주인이 ubuntu 여도 된다. `/v1/` 의 속도 제한은 매니페스트에만 걸리고 `/ota/files/` 에는 안 걸린다.
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.
 - **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 이미 있는 보스의 별칭, 난이도 줄 더하기 · 레벨 · 지우기다. 보스와 마지막

@@ -5,7 +5,7 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터 → 사냥 전리품.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터 → 사냥 전리품 → 헥사 매트릭스.
  * 뒤의 것이 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
@@ -36,6 +36,7 @@ import {
 import { FORCE_TYPES } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../modules/mvp-grades/mvp-grades.repository'
 import { HUNT_LOOT_KINDS } from '../modules/hunt-loot/hunt-loot.repository'
+import { costLevelsProblem } from '../modules/hexa-matrix/hexa-matrix.repository'
 import { type DbOrTx, touchSection } from '../modules/game-data/sections'
 import { CASHBOOK_ENTRY_TYPES } from '../modules/cashbook-categories/cashbook-categories.repository'
 import {
@@ -59,6 +60,11 @@ const {
   dropItems,
   equipmentItems,
   gameRules,
+  hexaCoreKinds,
+  hexaCoreLevelCosts,
+  hexaCoreNameKinds,
+  hexaJobCores,
+  hexaStats,
   huntingGroundLevels,
   huntingGrounds,
   huntingRegions,
@@ -492,6 +498,50 @@ export function parseHuntLootSeed(value: unknown): HuntLootSeed {
   return huntLootSeed.parse(value)
 }
 
+const hexaMatrixSeed = z.object({
+  kinds: z
+    .array(
+      z.object({
+        key,
+        name: z.string().min(1),
+        apiType: z.string().min(1),
+        isDefault: z.boolean(),
+        maxLevel: z.number().int().min(1).default(30),
+        iconFile: z.string().min(1),
+      }),
+    )
+    .min(1),
+  levelCosts: z.array(
+    z.object({
+      kind: key,
+      level: z.number().int().min(0),
+      fragments: z.number().int().min(0),
+      solErda: z.number().int().min(0),
+    }),
+  ),
+  nameKinds: z.array(z.object({ name: z.string().trim().min(1), kind: key })),
+  jobCores: z.array(
+    z.object({
+      job: z.string().min(1),
+      name: z.string().trim().min(1),
+      apiType: z.string().min(1),
+      iconFile: z.string().min(1),
+    }),
+  ),
+  stats: z.array(
+    z.object({
+      key,
+      name: z.string().min(1),
+      activationFragments: z.number().int().min(0).nullable(),
+    }),
+  ),
+})
+export type HexaMatrixSeed = z.infer<typeof hexaMatrixSeed>
+/** 만렙을 안 적은 종류는 30 이다. */
+export function parseHexaMatrixSeed(value: unknown): HexaMatrixSeed {
+  return hexaMatrixSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -508,6 +558,7 @@ export interface GameDataSeeds {
   mvpGrades?: MvpGradesSeed
   huntingGrounds?: HuntingGroundsSeed
   huntLoot?: HuntLootSeed
+  hexaMatrix?: HexaMatrixSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -540,6 +591,7 @@ export async function seedGameData(
   if (seeds.huntingGrounds !== undefined)
     result.huntingGrounds = await seedHuntingGrounds(db, seeds.huntingGrounds)
   if (seeds.huntLoot !== undefined) result.huntLoot = await seedHuntLoot(db, seeds.huntLoot)
+  if (seeds.hexaMatrix !== undefined) result.hexaMatrix = await seedHexaMatrix(db, seeds.hexaMatrix)
   return result
 }
 
@@ -574,6 +626,7 @@ async function isEmpty(
     | typeof starforceSteps
     | typeof mvpGrades
     | typeof huntLootItems
+    | typeof hexaCoreKinds
     | typeof huntingRegions,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
@@ -1002,6 +1055,53 @@ async function seedHuntLoot(db: Db, seed: HuntLootSeed): Promise<SeedOutcome> {
   return 'seeded'
 }
 
+/**
+ * 종류 표가 비어 있을 때만 다섯을 채운다. 직업별 코어 · 스탯은 종류를 안 가리키지만 한 칸의 표라 같이 건너뛴다.
+ * 비용은 관리 화면과 같은 규칙으로 종류마다 0 부터 만렙 - 1 까지 꼭 한 번씩이어야 한다.
+ */
+async function seedHexaMatrix(db: Db, seed: HexaMatrixSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, hexaCoreKinds))) return 'skipped'
+  for (const kind of seed.kinds) {
+    const levels = seed.levelCosts.filter((c) => c.kind === kind.key).map((c) => c.level)
+    const problem = costLevelsProblem(kind.maxLevel, levels)
+    if (problem !== null) throw new Error(`헥사 코어 비용이 어긋난다: ${kind.key} ${problem}`)
+  }
+  await db.transaction(async (tx) => {
+    const kindRows = await tx
+      .insert(hexaCoreKinds)
+      .values(seed.kinds.map((k, sortOrder) => ({ ...k, sortOrder })))
+      .returning({ id: hexaCoreKinds.id, key: hexaCoreKinds.key })
+    const kindIds = new Map(kindRows.map((r) => [r.key, r.id]))
+    const kindId = (kind: string) => must(kindIds, kind, '헥사 코어 종류 줄')
+    if (seed.levelCosts.length > 0)
+      await tx.insert(hexaCoreLevelCosts).values(
+        seed.levelCosts.map((c) => ({
+          kindId: kindId(c.kind),
+          level: c.level,
+          fragments: c.fragments,
+          solErda: c.solErda,
+        })),
+      )
+    if (seed.nameKinds.length > 0)
+      await tx
+        .insert(hexaCoreNameKinds)
+        .values(seed.nameKinds.map((n) => ({ name: n.name, kindId: kindId(n.kind) })))
+    const counters = new Map<string, number>()
+    if (seed.jobCores.length > 0)
+      await tx.insert(hexaJobCores).values(
+        seed.jobCores.map((c) => {
+          const sortOrder = counters.get(c.job) ?? 0
+          counters.set(c.job, sortOrder + 1)
+          return { ...c, sortOrder }
+        }),
+      )
+    if (seed.stats.length > 0)
+      await tx.insert(hexaStats).values(seed.stats.map((st, sortOrder) => ({ ...st, sortOrder })))
+    await touchSection(tx, 'hexaMatrix')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -1036,6 +1136,7 @@ async function main(): Promise<void> {
       mvpGrades: parseMvpGradesSeed(readSeed('mvp-grades')),
       huntingGrounds: parseHuntingGroundsSeed(readSeed('hunting-grounds')),
       huntLoot: parseHuntLootSeed(readSeed('hunt-loot')),
+      hexaMatrix: parseHexaMatrixSeed(readSeed('hexa-matrix')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

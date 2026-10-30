@@ -1,5 +1,5 @@
 /**
- * Model. 표 마흔다섯과 ENUM 스물넷. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 쉰하나와 ENUM 스물다섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -699,6 +699,97 @@ export const symbolLevelCosts = pgTable(
   (t) => [
     unique('symbol_level_costs_row_unique').on(t.symbolId, t.level, t.from).nullsNotDistinct(),
     check('symbol_level_costs_level_positive', sql`${t.level} >= 1`),
+  ],
+)
+
+/** 헥사 코어 종류. 레벨별 비용을 들고, 이름 표에 없는 코어는 API 타입의 기본 종류로 본다. */
+export const hexaCoreKinds = pgTable(
+  'hexa_core_kinds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    /** 넥슨 hexamatrix 응답의 hexa_core_type 글자. '스킬 코어'. */
+    apiType: text('api_type').notNull(),
+    isDefault: boolean('is_default').notNull().default(false),
+    maxLevel: integer('max_level').notNull().default(30),
+    /** 앱 자산 src/assets/items/ 의 파일명. */
+    iconFile: text('icon_file').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    // 기본 종류가 둘이면 이름 표에 없는 코어의 종류가 하나로 안 정해진다.
+    uniqueIndex('hexa_core_kinds_default_unique')
+      .on(t.apiType)
+      .where(sql`${t.isDefault}`),
+    check('hexa_core_kinds_max_level_positive', sql`${t.maxLevel} >= 1`),
+  ],
+)
+
+/** 헥사 코어 한 레벨의 강화 비용. 기간 줄 없이 종류 · 레벨마다 한 줄이다. */
+export const hexaCoreLevelCosts = pgTable(
+  'hexa_core_level_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kindId: uuid('kind_id')
+      .notNull()
+      .references(() => hexaCoreKinds.id, { onDelete: 'cascade' }),
+    /** 강화 전 레벨. Lv.level → level+1 의 값이다. 0 부터 max_level - 1 까지. */
+    level: integer('level').notNull(),
+    fragments: integer('fragments').notNull(),
+    solErda: integer('sol_erda').notNull(),
+  },
+  (t) => [
+    unique('hexa_core_level_costs_kind_level_unique').on(t.kindId, t.level),
+    check('hexa_core_level_costs_level_nonnegative', sql`${t.level} >= 0`),
+    check(
+      'hexa_core_level_costs_amounts_nonnegative',
+      sql`${t.fragments} >= 0 AND ${t.solErda} >= 0`,
+    ),
+  ],
+)
+
+/** 기본 종류가 아닌 코어의 이름 → 종류. 이름은 앞뒤 공백을 걷어 둔다. 넥슨 응답이 공백을 붙여 올 때가 있다. */
+export const hexaCoreNameKinds = pgTable('hexa_core_name_kinds', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  kindId: uuid('kind_id')
+    .notNull()
+    .references(() => hexaCoreKinds.id),
+})
+
+/** 직업마다 가진 헥사 코어 전부. 활성화 전 코어는 넥슨 응답에 없어 이 표로 고르는 목록을 세운다. */
+export const hexaJobCores = pgTable(
+  'hexa_job_cores',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** 넥슨 character_class 글자. '아크메이지(불,독)'. */
+    job: text('job').notNull(),
+    name: text('name').notNull(),
+    apiType: text('api_type').notNull(),
+    /** 앱 자산 src/assets/skills/ 의 파일명. */
+    iconFile: text('icon_file').notNull(),
+    /** 직업 안의 차례. hexamatrix 응답의 차례다. */
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [unique('hexa_job_cores_job_name_unique').on(t.job, t.name)],
+)
+
+/** 헥사 스탯. 활성화 비용을 모르는 스탯은 NULL 이고 앱이 활성화 체크를 막는다. */
+export const hexaStats = pgTable(
+  'hexa_stats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    activationFragments: integer('activation_fragments'),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [
+    check(
+      'hexa_stats_activation_nonnegative',
+      sql`${t.activationFragments} IS NULL OR ${t.activationFragments} >= 0`,
+    ),
   ],
 )
 

@@ -1,0 +1,5381 @@
+{
+ "kinds": [
+  {
+   "key": "skill",
+   "name": "스킬 코어",
+   "apiType": "스킬 코어",
+   "isDefault": true,
+   "iconFile": "hexa_core_skill.webp"
+  },
+  {
+   "key": "skill_3rd",
+   "name": "3rd 스킬 코어",
+   "apiType": "스킬 코어",
+   "isDefault": false,
+   "iconFile": "hexa_core_skill.webp"
+  },
+  {
+   "key": "mastery",
+   "name": "마스터리 코어",
+   "apiType": "마스터리 코어",
+   "isDefault": true,
+   "iconFile": "hexa_core_mastery.webp"
+  },
+  {
+   "key": "enhance",
+   "name": "강화 코어",
+   "apiType": "강화 코어",
+   "isDefault": true,
+   "iconFile": "hexa_core_enhance.webp"
+  },
+  {
+   "key": "common",
+   "name": "공용 코어",
+   "apiType": "공용 코어",
+   "isDefault": false,
+   "iconFile": "hexa_core_common.webp"
+  },
+  {
+   "key": "job_common",
+   "name": "직업 공용 코어",
+   "apiType": "공용 코어",
+   "isDefault": true,
+   "iconFile": "hexa_core_common.webp"
+  }
+ ],
+ "levelCosts": [
+  {
+   "kind": "skill",
+   "level": 0,
+   "fragments": 100,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 0,
+   "fragments": 140,
+   "solErda": 7
+  },
+  {
+   "kind": "mastery",
+   "level": 0,
+   "fragments": 50,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 0,
+   "fragments": 75,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 0,
+   "fragments": 125,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 0,
+   "fragments": 90,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 1,
+   "fragments": 30,
+   "solErda": 1
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 1,
+   "fragments": 21,
+   "solErda": 1
+  },
+  {
+   "kind": "mastery",
+   "level": 1,
+   "fragments": 15,
+   "solErda": 1
+  },
+  {
+   "kind": "enhance",
+   "level": 1,
+   "fragments": 23,
+   "solErda": 1
+  },
+  {
+   "kind": "common",
+   "level": 1,
+   "fragments": 38,
+   "solErda": 2
+  },
+  {
+   "kind": "job_common",
+   "level": 1,
+   "fragments": 25,
+   "solErda": 1
+  },
+  {
+   "kind": "skill",
+   "level": 2,
+   "fragments": 35,
+   "solErda": 1
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 2,
+   "fragments": 26,
+   "solErda": 1
+  },
+  {
+   "kind": "mastery",
+   "level": 2,
+   "fragments": 18,
+   "solErda": 1
+  },
+  {
+   "kind": "enhance",
+   "level": 2,
+   "fragments": 27,
+   "solErda": 1
+  },
+  {
+   "kind": "common",
+   "level": 2,
+   "fragments": 44,
+   "solErda": 2
+  },
+  {
+   "kind": "job_common",
+   "level": 2,
+   "fragments": 30,
+   "solErda": 1
+  },
+  {
+   "kind": "skill",
+   "level": 3,
+   "fragments": 40,
+   "solErda": 1
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 3,
+   "fragments": 30,
+   "solErda": 1
+  },
+  {
+   "kind": "mastery",
+   "level": 3,
+   "fragments": 20,
+   "solErda": 1
+  },
+  {
+   "kind": "enhance",
+   "level": 3,
+   "fragments": 30,
+   "solErda": 1
+  },
+  {
+   "kind": "common",
+   "level": 3,
+   "fragments": 50,
+   "solErda": 2
+  },
+  {
+   "kind": "job_common",
+   "level": 3,
+   "fragments": 35,
+   "solErda": 1
+  },
+  {
+   "kind": "skill",
+   "level": 4,
+   "fragments": 45,
+   "solErda": 2
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 4,
+   "fragments": 34,
+   "solErda": 1
+  },
+  {
+   "kind": "mastery",
+   "level": 4,
+   "fragments": 23,
+   "solErda": 1
+  },
+  {
+   "kind": "enhance",
+   "level": 4,
+   "fragments": 34,
+   "solErda": 2
+  },
+  {
+   "kind": "common",
+   "level": 4,
+   "fragments": 57,
+   "solErda": 3
+  },
+  {
+   "kind": "job_common",
+   "level": 4,
+   "fragments": 40,
+   "solErda": 2
+  },
+  {
+   "kind": "skill",
+   "level": 5,
+   "fragments": 50,
+   "solErda": 2
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 5,
+   "fragments": 38,
+   "solErda": 2
+  },
+  {
+   "kind": "mastery",
+   "level": 5,
+   "fragments": 25,
+   "solErda": 1
+  },
+  {
+   "kind": "enhance",
+   "level": 5,
+   "fragments": 38,
+   "solErda": 2
+  },
+  {
+   "kind": "common",
+   "level": 5,
+   "fragments": 63,
+   "solErda": 3
+  },
+  {
+   "kind": "job_common",
+   "level": 5,
+   "fragments": 45,
+   "solErda": 2
+  },
+  {
+   "kind": "skill",
+   "level": 6,
+   "fragments": 55,
+   "solErda": 2
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 6,
+   "fragments": 43,
+   "solErda": 2
+  },
+  {
+   "kind": "mastery",
+   "level": 6,
+   "fragments": 28,
+   "solErda": 1
+  },
+  {
+   "kind": "enhance",
+   "level": 6,
+   "fragments": 42,
+   "solErda": 2
+  },
+  {
+   "kind": "common",
+   "level": 6,
+   "fragments": 69,
+   "solErda": 3
+  },
+  {
+   "kind": "job_common",
+   "level": 6,
+   "fragments": 50,
+   "solErda": 2
+  },
+  {
+   "kind": "skill",
+   "level": 7,
+   "fragments": 60,
+   "solErda": 3
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 7,
+   "fragments": 47,
+   "solErda": 2
+  },
+  {
+   "kind": "mastery",
+   "level": 7,
+   "fragments": 30,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 7,
+   "fragments": 45,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 7,
+   "fragments": 75,
+   "solErda": 5
+  },
+  {
+   "kind": "job_common",
+   "level": 7,
+   "fragments": 55,
+   "solErda": 3
+  },
+  {
+   "kind": "skill",
+   "level": 8,
+   "fragments": 65,
+   "solErda": 3
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 8,
+   "fragments": 51,
+   "solErda": 2
+  },
+  {
+   "kind": "mastery",
+   "level": 8,
+   "fragments": 33,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 8,
+   "fragments": 49,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 8,
+   "fragments": 82,
+   "solErda": 5
+  },
+  {
+   "kind": "job_common",
+   "level": 8,
+   "fragments": 60,
+   "solErda": 3
+  },
+  {
+   "kind": "skill",
+   "level": 9,
+   "fragments": 200,
+   "solErda": 10
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 9,
+   "fragments": 142,
+   "solErda": 8
+  },
+  {
+   "kind": "mastery",
+   "level": 9,
+   "fragments": 100,
+   "solErda": 5
+  },
+  {
+   "kind": "enhance",
+   "level": 9,
+   "fragments": 150,
+   "solErda": 8
+  },
+  {
+   "kind": "common",
+   "level": 9,
+   "fragments": 300,
+   "solErda": 14
+  },
+  {
+   "kind": "job_common",
+   "level": 9,
+   "fragments": 180,
+   "solErda": 9
+  },
+  {
+   "kind": "skill",
+   "level": 10,
+   "fragments": 80,
+   "solErda": 3
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 10,
+   "fragments": 62,
+   "solErda": 2
+  },
+  {
+   "kind": "mastery",
+   "level": 10,
+   "fragments": 40,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 10,
+   "fragments": 60,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 10,
+   "fragments": 110,
+   "solErda": 5
+  },
+  {
+   "kind": "job_common",
+   "level": 10,
+   "fragments": 73,
+   "solErda": 3
+  },
+  {
+   "kind": "skill",
+   "level": 11,
+   "fragments": 90,
+   "solErda": 3
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 11,
+   "fragments": 69,
+   "solErda": 2
+  },
+  {
+   "kind": "mastery",
+   "level": 11,
+   "fragments": 45,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 11,
+   "fragments": 68,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 11,
+   "fragments": 124,
+   "solErda": 5
+  },
+  {
+   "kind": "job_common",
+   "level": 11,
+   "fragments": 81,
+   "solErda": 3
+  },
+  {
+   "kind": "skill",
+   "level": 12,
+   "fragments": 100,
+   "solErda": 4
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 12,
+   "fragments": 77,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 12,
+   "fragments": 50,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 12,
+   "fragments": 75,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 12,
+   "fragments": 138,
+   "solErda": 6
+  },
+  {
+   "kind": "job_common",
+   "level": 12,
+   "fragments": 90,
+   "solErda": 3
+  },
+  {
+   "kind": "skill",
+   "level": 13,
+   "fragments": 110,
+   "solErda": 4
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 13,
+   "fragments": 83,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 13,
+   "fragments": 55,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 13,
+   "fragments": 83,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 13,
+   "fragments": 152,
+   "solErda": 6
+  },
+  {
+   "kind": "job_common",
+   "level": 13,
+   "fragments": 98,
+   "solErda": 3
+  },
+  {
+   "kind": "skill",
+   "level": 14,
+   "fragments": 120,
+   "solErda": 4
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 14,
+   "fragments": 91,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 14,
+   "fragments": 60,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 14,
+   "fragments": 90,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 14,
+   "fragments": 165,
+   "solErda": 6
+  },
+  {
+   "kind": "job_common",
+   "level": 14,
+   "fragments": 107,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 15,
+   "fragments": 130,
+   "solErda": 4
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 15,
+   "fragments": 98,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 15,
+   "fragments": 65,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 15,
+   "fragments": 98,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 15,
+   "fragments": 179,
+   "solErda": 6
+  },
+  {
+   "kind": "job_common",
+   "level": 15,
+   "fragments": 115,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 16,
+   "fragments": 140,
+   "solErda": 4
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 16,
+   "fragments": 105,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 16,
+   "fragments": 70,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 16,
+   "fragments": 105,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 16,
+   "fragments": 193,
+   "solErda": 6
+  },
+  {
+   "kind": "job_common",
+   "level": 16,
+   "fragments": 124,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 17,
+   "fragments": 150,
+   "solErda": 4
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 17,
+   "fragments": 112,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 17,
+   "fragments": 75,
+   "solErda": 2
+  },
+  {
+   "kind": "enhance",
+   "level": 17,
+   "fragments": 113,
+   "solErda": 3
+  },
+  {
+   "kind": "common",
+   "level": 17,
+   "fragments": 207,
+   "solErda": 6
+  },
+  {
+   "kind": "job_common",
+   "level": 17,
+   "fragments": 132,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 18,
+   "fragments": 160,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 18,
+   "fragments": 120,
+   "solErda": 3
+  },
+  {
+   "kind": "mastery",
+   "level": 18,
+   "fragments": 80,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 18,
+   "fragments": 120,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 18,
+   "fragments": 220,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 18,
+   "fragments": 141,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 19,
+   "fragments": 350,
+   "solErda": 15
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 19,
+   "fragments": 252,
+   "solErda": 12
+  },
+  {
+   "kind": "mastery",
+   "level": 19,
+   "fragments": 175,
+   "solErda": 8
+  },
+  {
+   "kind": "enhance",
+   "level": 19,
+   "fragments": 263,
+   "solErda": 12
+  },
+  {
+   "kind": "common",
+   "level": 19,
+   "fragments": 525,
+   "solErda": 17
+  },
+  {
+   "kind": "job_common",
+   "level": 19,
+   "fragments": 315,
+   "solErda": 14
+  },
+  {
+   "kind": "skill",
+   "level": 20,
+   "fragments": 170,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 20,
+   "fragments": 128,
+   "solErda": 4
+  },
+  {
+   "kind": "mastery",
+   "level": 20,
+   "fragments": 85,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 20,
+   "fragments": 128,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 20,
+   "fragments": 234,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 20,
+   "fragments": 151,
+   "solErda": 4
+  },
+  {
+   "kind": "skill",
+   "level": 21,
+   "fragments": 180,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 21,
+   "fragments": 136,
+   "solErda": 4
+  },
+  {
+   "kind": "mastery",
+   "level": 21,
+   "fragments": 90,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 21,
+   "fragments": 135,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 21,
+   "fragments": 248,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 21,
+   "fragments": 160,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 22,
+   "fragments": 190,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 22,
+   "fragments": 145,
+   "solErda": 4
+  },
+  {
+   "kind": "mastery",
+   "level": 22,
+   "fragments": 95,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 22,
+   "fragments": 143,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 22,
+   "fragments": 262,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 22,
+   "fragments": 170,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 23,
+   "fragments": 200,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 23,
+   "fragments": 152,
+   "solErda": 4
+  },
+  {
+   "kind": "mastery",
+   "level": 23,
+   "fragments": 100,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 23,
+   "fragments": 150,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 23,
+   "fragments": 275,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 23,
+   "fragments": 179,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 24,
+   "fragments": 210,
+   "solErda": 5
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 24,
+   "fragments": 161,
+   "solErda": 4
+  },
+  {
+   "kind": "mastery",
+   "level": 24,
+   "fragments": 105,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 24,
+   "fragments": 158,
+   "solErda": 4
+  },
+  {
+   "kind": "common",
+   "level": 24,
+   "fragments": 289,
+   "solErda": 7
+  },
+  {
+   "kind": "job_common",
+   "level": 24,
+   "fragments": 189,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 25,
+   "fragments": 220,
+   "solErda": 6
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 25,
+   "fragments": 168,
+   "solErda": 4
+  },
+  {
+   "kind": "mastery",
+   "level": 25,
+   "fragments": 110,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 25,
+   "fragments": 165,
+   "solErda": 5
+  },
+  {
+   "kind": "common",
+   "level": 25,
+   "fragments": 303,
+   "solErda": 9
+  },
+  {
+   "kind": "job_common",
+   "level": 25,
+   "fragments": 198,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 26,
+   "fragments": 230,
+   "solErda": 6
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 26,
+   "fragments": 177,
+   "solErda": 5
+  },
+  {
+   "kind": "mastery",
+   "level": 26,
+   "fragments": 115,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 26,
+   "fragments": 173,
+   "solErda": 5
+  },
+  {
+   "kind": "common",
+   "level": 26,
+   "fragments": 317,
+   "solErda": 9
+  },
+  {
+   "kind": "job_common",
+   "level": 26,
+   "fragments": 208,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 27,
+   "fragments": 240,
+   "solErda": 6
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 27,
+   "fragments": 184,
+   "solErda": 5
+  },
+  {
+   "kind": "mastery",
+   "level": 27,
+   "fragments": 120,
+   "solErda": 3
+  },
+  {
+   "kind": "enhance",
+   "level": 27,
+   "fragments": 180,
+   "solErda": 5
+  },
+  {
+   "kind": "common",
+   "level": 27,
+   "fragments": 330,
+   "solErda": 9
+  },
+  {
+   "kind": "job_common",
+   "level": 27,
+   "fragments": 217,
+   "solErda": 5
+  },
+  {
+   "kind": "skill",
+   "level": 28,
+   "fragments": 250,
+   "solErda": 7
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 28,
+   "fragments": 193,
+   "solErda": 5
+  },
+  {
+   "kind": "mastery",
+   "level": 28,
+   "fragments": 125,
+   "solErda": 4
+  },
+  {
+   "kind": "enhance",
+   "level": 28,
+   "fragments": 188,
+   "solErda": 6
+  },
+  {
+   "kind": "common",
+   "level": 28,
+   "fragments": 344,
+   "solErda": 10
+  },
+  {
+   "kind": "job_common",
+   "level": 28,
+   "fragments": 227,
+   "solErda": 6
+  },
+  {
+   "kind": "skill",
+   "level": 29,
+   "fragments": 500,
+   "solErda": 20
+  },
+  {
+   "kind": "skill_3rd",
+   "level": 29,
+   "fragments": 357,
+   "solErda": 14
+  },
+  {
+   "kind": "mastery",
+   "level": 29,
+   "fragments": 250,
+   "solErda": 10
+  },
+  {
+   "kind": "enhance",
+   "level": 29,
+   "fragments": 375,
+   "solErda": 15
+  },
+  {
+   "kind": "common",
+   "level": 29,
+   "fragments": 750,
+   "solErda": 20
+  },
+  {
+   "kind": "job_common",
+   "level": 29,
+   "fragments": 450,
+   "solErda": 18
+  }
+ ],
+ "nameKinds": [
+  {
+   "name": "솔 야누스",
+   "kind": "common"
+  },
+  {
+   "name": "솔 헤카테",
+   "kind": "common"
+  },
+  {
+   "name": "레이지 익스플로젼",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "디바인 컨버전스",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "다크니스 오브 그레이스",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "엔젤스 플레지",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "인페르날 웨이브",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "서브제로 퍼미네이션",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "아이 오브 아퀼라",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "리썰 퍼니셔",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "마테리얼 버스트",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "쉐도우 리츄얼",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "무아지경",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "암영난참",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "넵투누스 어드밴트",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "에어리얼 봄바드먼트",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "메가 캐논 봄바드",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "셀레스티얼 클리브",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "이그니스 레퀴엠",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "실프스 브레스",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "싱귤래러티 스로우",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "해황폭쇄",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "레디언스 오브 발러",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "래쓰 오브 세이튼",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "래비드 카니지",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "모티스 엣지",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "레조넌스 : 와일드 피어스",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "버스터 스테이션",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "오버히트 펀치",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "레일 건 캐노네이드",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "마하 언리시드",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "드래곤 소어/버티컬 피니셔",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "베리안 서지",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "플레슈 르투르",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "앱솔루트 스페이스",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "연우격풍",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "드라코닉 익스팅션",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "체인아츠:토렌트",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "팝핑 하트",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "[발현] 스트라이크 임팩트/[처형] 팬텀 레퀴엠",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "에테르 뤼페",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "글로리 윙:스플렌더",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "원초의 격류",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "헥스 : 듄 버스트",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "한아름 아우른 숨결",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "선기 : 파천황",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "창룡파천검 : 만참",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "보이드 오리진",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "타임 어소리티",
+   "kind": "skill_3rd"
+  },
+  {
+   "name": "그래비티 오브젝트",
+   "kind": "skill_3rd"
+  }
+ ],
+ "jobCores": [
+  {
+   "job": "히어로",
+   "name": "스피릿 칼리버",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDKDPEMA.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "사일런트 클리브",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDKDPEMC.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "레이지 익스플로젼",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDKDPEMD.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "레이징 블로우 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDKDPBMA.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "레이지 업라이징 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDKDPBMC.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "오라 블레이드 VI/퓨리어스 엣지",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDKDPBMD.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "인사이징 VI/파이널 어택 VI/발할라 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDKDPBMI.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "소드 오브 버닝 소울",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMA.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "콤보 인스팅트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMB.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "콤보 데스폴트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMC.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "소드 일루전",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMD.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "히어로",
+   "name": "블리츠 실드 VI/블리츠 버스트",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBNF.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "세이크리드 바스티온",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDJDPEMA.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "도미누스 오브리온",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDJDPEME.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "디바인 컨버전스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDJDPEMG.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "블래스트 VI/디바인 저지먼트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDJDPBMA.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "디바인 차지 VI/디바인 스티그마 VI/폴링 저스티스",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDJDPBMD.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "생츄어리 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDJDPBMH.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "파이널 어택 VI/라이징 저스티스",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDJDOBMI.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "홀리 유니티",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBME.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "블래스드 해머",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMF.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "그랜드 크로스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMG.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "마이티 묠니르",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMH.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "팔라딘",
+   "name": "블리츠 실드 VI/블리츠 버스트",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBNH.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "데드 스페이스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDIDPEMA.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "다크 헬리덤",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDIDPEMC.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "다크니스 오브 그레이스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPDIDPEME.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "궁니르 디센트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDIDPBMA.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "다크 임페일 VI/다크 신서시스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDIDPBMB.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "파이널 어택 VI/비홀더스 리벤지 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDIDOBMH.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "비홀더 쇼크 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPDIDPBMI.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "다크 스피어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMI.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "비홀더 임팩트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBMJ.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "피어스 사이클론",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNA.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "다크니스 오라",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNB.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "다크나이트",
+   "name": "블리츠 실드 VI/블리츠 버스트",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBNJ.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "홀리 어드밴트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAIDPEMA.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "커맨드 오브 헤븐",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAIDPEMH.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "엔젤스 플레지",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAIDPEMJ.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "엔젤레이 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAIDPBMA.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "빅뱅 VI/트라이엄프 페더 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAIDPBMC.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "엔젤릭 터치 VI/파운틴 포 엔젤 VI/바하뮤트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAIDPBMH.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "제네시스 VI/헤븐즈 도어 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAIDPBMJ.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "프레이",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOA.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "엔젤 오브 제미니",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOB.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "피스메이커",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOC.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "디바인 퍼니시먼트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOD.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "비숍",
+   "name": "아르카나 오버라이드 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBOD.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "인페르날 베놈",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAKDPEMA.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "토렌셜 플레임",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAKDPEME.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "인페르날 웨이브",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAKDPEMG.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "플레임 스윕 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAKDPBMA.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "플레임 헤이즈 VI/미스트 이럽션 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAKDPBMD.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "이그나이트 VI/이프리트 VI/파이어 오라 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAKDPBMH.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "포이즌 리젼 VI/메테오 VI/메기도 플레임 VI/포이즌 플레어 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAKDPBNE.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "도트 퍼니셔",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNC.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "포이즌 노바",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBND.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "퓨리 오브 이프리트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNE.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "포이즌 체인",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNF.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "아크메이지(불,독)",
+   "name": "아르카나 오버라이드 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBOB.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "프로즌 라이트닝",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAJDPEMA.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "파라볼릭 볼트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAJDPEMF.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "서브제로 퍼미네이션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPAJDPEMH.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "체인 라이트닝 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAJDPBMA.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "프로즌 오브 VI/블리자드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAJDPBMC.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "라이트닝 스피어 VI/크라이오 쇼크",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAJDPBMF.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "썬더 스피어 VI/엘퀴네스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPAJDPBMI.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "프로스트 아크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNG.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "썬더 브레이크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNH.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "스피릿 오브 스노우",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNI.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "주피터 썬더",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBNJ.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "아크메이지(썬,콜)",
+   "name": "아르카나 오버라이드 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBOC.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "어센던트 셰이드",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBKDPEMA.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "포인트 제로",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBKDPEMD.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "아이 오브 아퀼라",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBKDPEMF.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "폭풍의 시 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBKDPBMA.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "애로우 플래터 VI/언카운터블 애로우 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBKDPBME.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "퀴버 카트리지 VI/피닉스 VI/엑스트라 퀴버 카트리지",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBKDPBMF.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "플레시 미라주 VI/윈드 오브 프레이 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBKDPBND.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "애로우 레인",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOE.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "잔영의 시",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOF.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "퀴버 풀버스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOG.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "실루엣 미라주",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOH.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "보우마스터",
+   "name": "이볼브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBOE.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "파이널 에임",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBJDPEMA.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "페이탈 트리거",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBJDPEMC.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "리썰 퍼니셔",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBJDPEME.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "스나이핑 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBJDPBMA.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "피어싱 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBJDPBMF.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "프리져 VI/볼트 스위프트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBJDPBNC.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "파이널 어택 VI/롱 레인지 트루샷 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBJDOBNE.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "트루 스나이핑",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOI.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "스플릿 애로우",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBOJ.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "차지드 애로우",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPA.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "리피팅 크로스보우 카트리지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPB.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "신궁",
+   "name": "이볼브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBOG.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "포세이큰 렐릭",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBIDPEMA.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "렐릭 페네트레이션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBIDPEMF.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "마테리얼 버스트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPBIDPEMG.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "카디널 블래스트 VI/에디셔널 블래스트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBIDPBMA.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "카디널 디스차지 VI/에디셔널 디스차지 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBIDPBME.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "카디널 트랜지션 VI/엣지 오브 레조넌스 VI/에인션트 아스트라 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBIDPBMI.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "레이븐 VI/콤보 어썰트 VI/렐릭 마테리얼라이즈",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPBIDPBOE.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "얼티밋 블래스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPC.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "에인션트 템페스트/프라이멀 템페스트 강화",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPD.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "옵시디언 배리어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPE.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "렐릭 언바운드",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPF.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "패스파인더",
+   "name": "이볼브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBOI.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "생사여탈",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGKDPEMA.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "크루셜 어썰트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGKDPEMD.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "쉐도우 리츄얼",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGKDPEMF.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "쿼드러플 스로우 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGKDPBMA.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "마크 오브 어쌔신 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGKDPBMD.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "다크 플레어 VI/쇼다운 챌린지 VI/다크니스 슈리켄",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGKDPBMH.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "써든레이드 VI/포 시즌 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGKDPBMI.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "스프레드 스로우",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPG.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "풍마수리검",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPH.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "다크로드의 비전서",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPI.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "스로우 블래스팅",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBPJ.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "나이트로드",
+   "name": "얼티밋 다크 사이트 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPA.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "일도양단",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGJDPEMA.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "어센틱 다크니스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGJDPEMD.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "무아지경",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGJDPEMH.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "암살 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGJDPBMA.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "메소 익스플로젼 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGJDPBMG.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "다크 플레어 VI/크루얼 스탭 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGJDPBNC.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "써든 레이드 VI/베일 오브 섀도우 VI/커버트 쉐도우",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGJDPBNF.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "쉐도우 어썰트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIA.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "절개",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIB.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "소닉 블로우",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIC.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "멸귀참영진",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBID.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "섀도어",
+   "name": "얼티밋 다크 사이트 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPC.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "카르마 블레이드",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGIBPEMA.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "야마즈 디크리",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGIBPEME.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "암영난참",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPGIBOEMH.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "팬텀 블로우 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGIBPBMA.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "아수라 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGIBPBMB.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "히든 블레이드 VI/생자필멸",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGIBPBMC.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "블레이드 퓨리 VI/써든레이드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPGIBPBMD.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "블레이드 스톰",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIE.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "카르마 퓨리",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIF.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "블레이드 토네이도",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIG.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "헌티드 엣지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIH.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "듀얼블레이더",
+   "name": "얼티밋 다크 사이트 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPE.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "리버레이트 넵투누스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHKDPEMA.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "헤이메이커",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHKDPEMH.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "넵투누스 어드밴트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHKDPEMJ.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "피스트 인레이지 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHKDPBMA.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "씨 서펜트 VI/씨 서펜트 인레이지VI/씨 서펜트 버스트VI/전함 노틸러스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHKDOBME.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "서펜트 스톤 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHKDPBNB.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "훅 봄버 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHKDPBNF.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "라이트닝 폼",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBII.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "서펜트 스크류",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBIJ.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "퓨리어스 차지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJA.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "하울링 피스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJB.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "바이퍼",
+   "name": "파이렛 플래그 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPG.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "드레드노트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHJDPEMA.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "파이어크래커",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHJDPEMD.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "에어리얼 봄바드먼트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHJDPEMF.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "래피드 파이어 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHJDPBMA.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "배틀쉽 봄버 VI/봄바드 템페스트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHJDPBMC.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "헤드 샷 VI/퍼실레이드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHJDPBMF.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "시즈 봄버 VI/서먼 크루 VI/전함 노틸러스 VI/스트레인지 봄 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHJDPBNF.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "불릿 파티",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJC.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "데드아이",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJD.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "노틸러스 어썰트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJE.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "데스 트리거",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJF.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "캡틴",
+   "name": "파이렛 플래그 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPH.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "슈퍼 캐논 익스플로젼",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHIDPEMA.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "배럴 오브 몽키스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHIDPEMC.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "메가 캐논 봄바드",
+   "apiType": "스킬 코어",
+   "iconFile": "KFPHIDPEME.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "캐논 버스터 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHIDPBMA.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "캐논 바주카 VI/미니 캐논볼 VI/마그네틱 앵커 VI/전함 노틸러스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHIDPBMB.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "롤링 캐논 레인보우 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHIDPBNE.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "몽키 퓨리어스 VI/서포트 몽키 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFPHIDPBNC.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "빅 휴즈 기간틱 캐논볼",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJG.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "ICBM",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJH.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "스페셜 몽키 에스코트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJI.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "풀 메이커",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBJJ.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "캐논마스터",
+   "name": "파이렛 플래그 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPI.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "아스트랄 블리츠",
+   "apiType": "스킬 코어",
+   "iconFile": "KFODKDPEMA.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "토탈리티",
+   "apiType": "스킬 코어",
+   "iconFile": "KFODKDPEMD.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "셀레스티얼 클리브",
+   "apiType": "스킬 코어",
+   "iconFile": "KFODKDPEMF.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "솔라 슬래시 VI/루나 디바이드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFODKDPDMA.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "코스믹 샤워 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFODKDPBMC.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "코스믹 버스트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFODKDPBME.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "솔루나 슬래시 VI/솔루나 파워 II",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFODKDPBMF.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "코스모스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKA.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "엘리시온",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKB.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "소울 이클립스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKC.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "플레어 슬래시",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKD.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "소울마스터",
+   "name": "시그너스 팔랑크스 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBIA.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "이터니티",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOAKDPEMA.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "플레임 콘체르토",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOAKDPEMD.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "이그니스 레퀴엠",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOAKDPEMF.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "오비탈 플레임 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOAKDPBMA.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "블레이징 익스팅션 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOAKDPBMH.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "오비탈 익스플로젼 VI/피닉스 드라이브 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOAKDOBNF.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "인페르노라이즈 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOAKDPBNH.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "블레이징 오비탈 플레임",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKE.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "플레임 디스차지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKF.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "인피니티 플레임 서클",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKG.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "샐리맨더 미스칩",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKH.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "플레임위자드",
+   "name": "시그너스 팔랑크스 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBIB.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "미스트랄 스프링",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOBKDPEMA.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "엘리멘트 템페스트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOBKDPEMG.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "실프스 브레스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOBKDPEMI.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "천공의 노래 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOBKDPBMA.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "트라이플링 윔 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOBKDPBMB.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "페어리 턴 VI/스톰 브링어 VI/몬순 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOBKDPBME.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "스톰 윔 VI/아네모이",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOBKDPBMG.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "하울링 게일",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKI.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "아이들 윔",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBKJ.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "윈드 월",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLA.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "볼텍스 스피어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLB.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "윈드브레이커",
+   "name": "시그너스 팔랑크스 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBIC.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "사일런스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOGKDPEMA.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "스티지언 커맨드",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOGKDPEMD.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "싱귤래러티 스로우",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOGKDPEMF.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "퀸터플 스로우 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOGKDPBMA.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "쉐도우 배트 VI/래버너스 배트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOGKDPBME.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "다크니스 오멘 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOGKDPBNH.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "도미니언 VI/어비셜 다크니스",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOGKDPBNI.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "쉐도우 스피어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLC.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "쉐도우 서번트 익스텐드/쉐도우 쉬프트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLD.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "쉐도우 바이트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLE.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "래피드 스로우",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLF.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "나이트워커",
+   "name": "시그너스 팔랑크스 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBID.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "뇌명벽해파",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOHKDPEMA.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "질도섬멸",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOHKDPEMC.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "해황폭쇄",
+   "apiType": "스킬 코어",
+   "iconFile": "KFOHKDPEME.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "섬멸 VI/낙뢰",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOHKDPBMA.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "벽력 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOHKDPBMD.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "태풍 VI/해신강림 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOHKDPBMG.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "해파 VI/해신강체",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFOHKDOBMI.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "신뇌합일",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLG.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "교아탄",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLH.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "뇌신창격",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLI.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "창뇌연격",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBLJ.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "스트라이커",
+   "name": "시그너스 팔랑크스 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBIE.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "듀란달",
+   "apiType": "스킬 코어",
+   "iconFile": "KFKDKDPEMA.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "나이트 임모탈스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFKDKDPEMD.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "레디언스 오브 발러",
+   "apiType": "스킬 코어",
+   "iconFile": "KFKDKDPEMF.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "샤이닝 크로스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFKDKDPBMA.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "로얄 가드 VI/인스톨 실드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFKDKDPBMC.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "데들리 차지 VI/파이널 어택 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFKDKDPBND.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "오펜시브 디펜스 VI/소울 마제스티 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFKDKDPBNG.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "로 아이아스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPC.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "클라우 솔라스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPD.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "소드 오브 소울 라이트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPE.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "라이트 오브 커리지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPF.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "미하일",
+   "name": "시그너스 팔랑크스 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBPJ.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "나이트메어",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMDKDPEMA.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "아메시스틴 인트루젼",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMDKDPEME.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "래쓰 오브 세이튼",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMDKDPEMF.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "데몬 임팩트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDKDPBMA.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "데몬 슬래시 VI/데몬 익스플로젼 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDKDPBMC.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "데빌 크라이 VI/메타모포시스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDKDPBNC.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "서버러스 VI/데모닉 디센트",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDKDPBND.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "데몬 어웨이크닝",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAME.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "요르문간드",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMF.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "오르트로스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMG.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "데몬 베인",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMH.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "데몬슬레이어",
+   "name": "콜 마스테마 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKI.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "레퀴엠",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMDJDPEMA.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "레이지본 데어데빌",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMDJDPEMD.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "래비드 카니지",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMDJDPEMG.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "실드 체이싱 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDJDPBMA.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "익시드 : 엑스큐션 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDJDPBMC.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "익시드 : 문라이트 슬래시 VI/오버맥시마이징 익시드",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDJDPBMH.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "사우전드 소드 VI/인핸스드 익시드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMDJDPBNC.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "데몬 프렌지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMI.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "블러드 피스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMJ.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "디멘션 소드",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANA.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "레버넌트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANB.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "데몬어벤져",
+   "name": "콜 마스테마 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBLA.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "크림슨 팩텀",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMAKDPEMA.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "글루미 오라",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMAKDPEMC.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "모티스 엣지",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMAKDPEME.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "데스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMAKDPBMA.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "피니쉬 블로우 VI/배틀킹 바 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMAKDPBMB.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "다크 라이트닝 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMAKDPBMF.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "다크 제네시스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMAKDPBMI.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "유니온 오라",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANC.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "블랙 매직 알터",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAND.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "그림 리퍼",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANE.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "어비셜 라이트닝",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANF.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "배틀메이지",
+   "name": "레지스탕스 라인 인팬트리 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKE.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "링크드 임팩트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMBKDPEMA.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "기어 스톰",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMBKDPEME.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "레조넌스 : 와일드 피어스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMBKDPEMC.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "와일드 발칸 : 에이펙스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMBKDPBMA.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "어시스트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMBKDOBMD.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "커맨드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMBKDPBMH.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "어나더 바이트 VI/파이널 어택 VI/트랩 시더 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMBKDOBNB.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "커맨드 : 프레데터스 아이",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANG.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "오버바이트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANH.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "프라이멀 블룸",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANI.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "와일드 발칸 : 오버 드라이브",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKANJ.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "와일드헌터",
+   "name": "레지스탕스 라인 인팬트리 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKF.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "그라운드 제로",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMHKDPEMA.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "메탈아머 : 익스터미네이션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMHKDPEME.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "버스터 스테이션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMHKDPEMF.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "매시브 파이어 : SPLASH-F VI/IRON-B VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMHKDPBMA.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "호밍 미사일 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMHKDOBMD.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "디스토션 필드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMHKDPBME.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "로봇 런처 : RM7 VI/마그네틱 필드 VI/로봇 팩토리 : RM1 VI/로봇 트랜지션 : CB-P1",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMHKDPBMG.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "멀티플 옵션 : M-FL",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOA.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "마이크로 미사일 컨테이너",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOB.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "메탈아머 전탄발사",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOC.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "메카 캐리어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOD.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "메카닉",
+   "name": "레지스탕스 라인 인팬트리 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKH.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "파이널 디스트로이어",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMFKDPEMA.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "뱅가드 임팩트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMFKDPEMC.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "오버히트 펀치",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMFKDPEME.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "매그넘 펀치 VI/더블 팡 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMFKDPBMA.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "릴리즈 파일 벙커 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMFKDPBMC.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "리볼빙 캐논 마스터리 VI/해머 스매시 VI/쇼크 웨이브 펀치 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMFKDPBMI.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "리볼빙 캐논 VI/허리케인 믹서 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMFKDPBNC.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "벙커 버스터",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOI.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "발칸 펀치",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOJ.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "버닝 브레이커",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPA.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "애프터이미지 쇼크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPB.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "블래스터",
+   "name": "레지스탕스 라인 인팬트리 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKD.webp"
+  },
+  {
+   "job": "제논",
+   "name": "아티피셜 에볼루션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMEKDPEMA.webp"
+  },
+  {
+   "job": "제논",
+   "name": "네오테릭 트라이스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMEKDPEME.webp"
+  },
+  {
+   "job": "제논",
+   "name": "레일 건 캐노네이드",
+   "apiType": "스킬 코어",
+   "iconFile": "KFMEKDPEMH.webp"
+  },
+  {
+   "job": "제논",
+   "name": "퍼지롭 매스커레이드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMEKDPBMA.webp"
+  },
+  {
+   "job": "제논",
+   "name": "트라이앵글 포메이션 VI/홀로그램 그래피티 : 역장 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMEKDPBMH.webp"
+  },
+  {
+   "job": "제논",
+   "name": "로켓 시스템 VI/멜트다운 익스플로젼 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMEKDPBMJ.webp"
+  },
+  {
+   "job": "제논",
+   "name": "블레이드 댄싱 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFMEKDPBNE.webp"
+  },
+  {
+   "job": "제논",
+   "name": "메가 스매셔",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOE.webp"
+  },
+  {
+   "job": "제논",
+   "name": "오버로드 모드",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOF.webp"
+  },
+  {
+   "job": "제논",
+   "name": "홀로그램 그래피티 : 융합",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOG.webp"
+  },
+  {
+   "job": "제논",
+   "name": "포톤 레이",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAOH.webp"
+  },
+  {
+   "job": "제논",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "제논",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "제논",
+   "name": "레지스탕스 라인 인팬트리 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKG.webp"
+  },
+  {
+   "job": "아란",
+   "name": "엔드 게임",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNDKDPEMA.webp"
+  },
+  {
+   "job": "아란",
+   "name": "프로스트 블러스터",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNDKDPEMD.webp"
+  },
+  {
+   "job": "아란",
+   "name": "마하 언리시드",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNDKDPEMF.webp"
+  },
+  {
+   "job": "아란",
+   "name": "비욘더 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNDKDPBMA.webp"
+  },
+  {
+   "job": "아란",
+   "name": "부스트 엔드-헌터즈 타겟팅 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNDKDPBME.webp"
+  },
+  {
+   "job": "아란",
+   "name": "하이퍼 부스트 엔드-라스트 스탠드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNDKDPBMJ.webp"
+  },
+  {
+   "job": "아란",
+   "name": "프로즌 그라운드 VI/아드레날린 맥시멈 VI/파이널 어택 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNDKDPBND.webp"
+  },
+  {
+   "job": "아란",
+   "name": "부스트 엔드-아드레날린 서지",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEA.webp"
+  },
+  {
+   "job": "아란",
+   "name": "브랜디쉬 마하",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEB.webp"
+  },
+  {
+   "job": "아란",
+   "name": "파이널 비욘더-백호",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEC.webp"
+  },
+  {
+   "job": "아란",
+   "name": "블리자드 템페스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBED.webp"
+  },
+  {
+   "job": "아란",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "아란",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "아란",
+   "name": "프리드의 가호 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBIF.webp"
+  },
+  {
+   "job": "에반",
+   "name": "조디악 버스트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNAJHPEMA.webp"
+  },
+  {
+   "job": "에반",
+   "name": "유니온 드라이브",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNAJHPEMC.webp"
+  },
+  {
+   "job": "에반",
+   "name": "드래곤 소어/버티컬 피니셔",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNAJHPEMF.webp"
+  },
+  {
+   "job": "에반",
+   "name": "서클 오브 마나 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNAJHPBMA.webp"
+  },
+  {
+   "job": "에반",
+   "name": "드래곤 스위프트 VI/서클 오브 썬더 VI/스위프트 오브 썬더 VI/스위프트 오브 윈드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNAJHPBMD.webp"
+  },
+  {
+   "job": "에반",
+   "name": "드래곤 다이브 VI/다이브 오브 썬더 VI/서클 오브 어스 VI/다이브 오브 어스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNAJHPBMH.webp"
+  },
+  {
+   "job": "에반",
+   "name": "서클 오브 윈드 VI/드래곤 스파킹 VI/마법 잔해 VI/드래곤 브레스 VI/브레스 오브 어스 VI/브레스 오브 윈드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNAJHPBNA.webp"
+  },
+  {
+   "job": "에반",
+   "name": "엘리멘탈 블래스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEE.webp"
+  },
+  {
+   "job": "에반",
+   "name": "드래곤 브레이크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEF.webp"
+  },
+  {
+   "job": "에반",
+   "name": "조디악 레이",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEG.webp"
+  },
+  {
+   "job": "에반",
+   "name": "스파이럴 오브 마나",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEH.webp"
+  },
+  {
+   "job": "에반",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "에반",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "에반",
+   "name": "프리드의 가호 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBII.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "언페이딩 글로리",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNBKDPEMA.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "엘리멘탈 스피릿",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNBKDPEMF.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "베리안 서지",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNBKDPEMG.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "이슈타르의 링 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNBKDPBMA.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "리프 토네이도VI/레전드리 스피어 VI/래쓰 오브 엔릴VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNBKDPBMH.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "유니콘 스파이크 VI/거스트 다이브 VI/스트라이크 듀얼샷 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNBKDPBNB.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "엘리멘탈 나이트 VI/파이널 어택 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNBKDPBND.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "엘리멘탈 고스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEI.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "실피디아",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBEJ.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "이르칼라의 숨결",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFA.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "로얄 나이츠",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFB.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "메르세데스",
+   "name": "프리드의 가호 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBJE.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "디파잉 페이트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNGKDPEMA.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "문리트 세레나데",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNGKDPEMD.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "플레슈 르투르",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNGKDPEMF.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "템페스트 오브 카드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNGKDPBMA.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "얼티밋 드라이브 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNGKDPBMB.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "느와르 카르트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNGKDOBME.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "로즈 카르트 피날레 VI/라모르 카르트",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNGKDPBMG.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "조커",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFC.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "블랙잭",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFD.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "마크 오브 팬텀",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFE.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "리프트 브레이크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFF.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "팬텀",
+   "name": "프리드의 가호 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBJH.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "하모닉 패러독스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNFKDPEMA.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "러스트러스 오브",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNFKDPEMC.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "앱솔루트 스페이스",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNFKDPEME.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "앱솔루트 킬 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNFKDPBMA.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "라이트 리플렉션 VI/엔드리스 다크니스",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNFKDPBMB.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "아포칼립스 VI/이터널 라이트니스",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNFKDPBME.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "트와일라잇 노바 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNFKDPBMH.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "진리의 문",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMA.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "퍼니싱 리소네이터",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMB.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "빛과 어둠의 세례",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMC.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "리버레이션 오브",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAMD.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "루미너스",
+   "name": "프리드의 가호 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBJB.webp"
+  },
+  {
+   "job": "은월",
+   "name": "호신강림",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNHKDPEMA.webp"
+  },
+  {
+   "job": "은월",
+   "name": "영월",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNHKDPEMD.webp"
+  },
+  {
+   "job": "은월",
+   "name": "연우격풍",
+   "apiType": "스킬 코어",
+   "iconFile": "KFNHKDPEMI.webp"
+  },
+  {
+   "job": "은월",
+   "name": "귀참 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNHKDPBMA.webp"
+  },
+  {
+   "job": "은월",
+   "name": "여우령 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNHKDPBMB.webp"
+  },
+  {
+   "job": "은월",
+   "name": "폭류권 VI/사혼 각인 VI/천귀야참",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNHKDPBMD.webp"
+  },
+  {
+   "job": "은월",
+   "name": "소혼 장막 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFNHKDPBMH.webp"
+  },
+  {
+   "job": "은월",
+   "name": "환혼요호진",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFG.webp"
+  },
+  {
+   "job": "은월",
+   "name": "귀문진",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFH.webp"
+  },
+  {
+   "job": "은월",
+   "name": "진 귀참",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFI.webp"
+  },
+  {
+   "job": "은월",
+   "name": "파쇄 연권",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKBFJ.webp"
+  },
+  {
+   "job": "은월",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "은월",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "은월",
+   "name": "프리드의 가호 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBKA.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "마이트 오브 노바",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJDKDPEMA.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "파이로 인스팅트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJDKDPEMC.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "드라코닉 익스팅션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJDKDPEMD.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "기가 슬래셔 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJDKDPBMA.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "소드 스트라이크 VI/윌 오브 소드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJDKDPBMC.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "인퍼널 브레스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJDKDPBMJ.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "윙비트 VI/페트리파이드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJDKDOBNI.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "가디언 오브 노바",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPG.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "윌 오브 소드 : 스트라이크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPH.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "드라코 슬래셔",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPI.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "드래곤 블레이즈",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAPJ.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "카이저",
+   "name": "판테온 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBLC.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "체인아츠:매서커",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJGKDPEMA.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "브루탈 래비지",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJGKDPEMD.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "체인아츠:토렌트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJGKDPEMF.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "체인아츠:스트로크 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJGKDPBMA.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "웨폰 버라이어티 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJGKDPBME.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "서먼 커팅 시미터 VI/서먼 스크래칭 클로 VI/서먼 스로잉 윙대거 VI/서먼 비팅 니들배트 VI/체인아츠:크러시 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJGKDPBPA.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "서먼 슈팅 샷건 VI/서먼 슬래싱 나이프 VI/서먼 릴리싱 봄 VI/서먼 스트라이킹 브릭 VI/체인아츠:테이크다운 VI/프로페셔널 에이전트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJGKDPBOC.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "체인아츠:퓨리",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIE.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "A.D 오드넌스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIF.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "체인아츠:메일스트롬",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIG.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "웨폰 버라이어티 피날레",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIH.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "카데나",
+   "name": "판테온 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBLG.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "그랜드 피날레",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJHKDPEMA.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "제뉴인 앙코르",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJHKDPEME.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "팝핑 하트",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJHKDPEMG.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "트리니티 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJHKDPBMA.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "소울 시커 VI/소울 시커 엑스퍼트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJHKDPBMB.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "슈퍼 노바 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJHKDPBMF.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "프라이멀 로어 VI/다카포 페투치아",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJHKDPBMG.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "에너지 버스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAII.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "스포트라이트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIJ.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "마스코트 패밀리어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJA.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "트리니티 퓨전",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJB.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "엔젤릭버스터",
+   "name": "판테온 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBLI.webp"
+  },
+  {
+   "job": "카인",
+   "name": "어나일레이션",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJBKDPEMA.webp"
+  },
+  {
+   "job": "카인",
+   "name": "맬리셔스 플리커",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJBKDPEMG.webp"
+  },
+  {
+   "job": "카인",
+   "name": "[발현] 스트라이크 임팩트/[처형] 팬텀 레퀴엠",
+   "apiType": "스킬 코어",
+   "iconFile": "KFJBKDPEMJ.webp"
+  },
+  {
+   "job": "카인",
+   "name": "폴링 더스트 VI/포이즌 니들 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJBKDPBMA.webp"
+  },
+  {
+   "job": "카인",
+   "name": "스트라이크 애로우 VI/스캐터링 샷 VI/테어링 나이프 VI/체인 시클 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJBKDPBMH.webp"
+  },
+  {
+   "job": "카인",
+   "name": "드래곤 팡 VI/샤프트 브레이크 VI/팬텀 블레이드 VI/리메인 인센스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJBKDPBND.webp"
+  },
+  {
+   "job": "카인",
+   "name": "데스 블레싱 VI/체이싱 샷 VI/스니키 스나이핑 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KFJBKDPBNF.webp"
+  },
+  {
+   "job": "카인",
+   "name": "드래곤 버스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIA.webp"
+  },
+  {
+   "job": "카인",
+   "name": "페이탈 블리츠",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIB.webp"
+  },
+  {
+   "job": "카인",
+   "name": "타나토스 디센트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAIC.webp"
+  },
+  {
+   "job": "카인",
+   "name": "그립 오브 애거니",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAID.webp"
+  },
+  {
+   "job": "카인",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "카인",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "카인",
+   "name": "판테온 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBLE.webp"
+  },
+  {
+   "job": "아델",
+   "name": "마에스트로",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKDKDPEMA.webp"
+  },
+  {
+   "job": "아델",
+   "name": "아인하이트",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKDKDPEMC.webp"
+  },
+  {
+   "job": "아델",
+   "name": "에테르 뤼페",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKDKDPEMD.webp"
+  },
+  {
+   "job": "아델",
+   "name": "디바이드 VI/샤드 VI/원더 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKDKDPBMA.webp"
+  },
+  {
+   "job": "아델",
+   "name": "오더 VI/트레드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKDKDPBME.webp"
+  },
+  {
+   "job": "아델",
+   "name": "임페일 VI/레조넌스 VI/게더링 VI/블로섬 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKDKDPBNA.webp"
+  },
+  {
+   "job": "아델",
+   "name": "크리에이션 VI/테리토리 VI/마커 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKDKDOBMG.webp"
+  },
+  {
+   "job": "아델",
+   "name": "루인",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKA.webp"
+  },
+  {
+   "job": "아델",
+   "name": "인피니트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKB.webp"
+  },
+  {
+   "job": "아델",
+   "name": "리스토어",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKC.webp"
+  },
+  {
+   "job": "아델",
+   "name": "스톰",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKD.webp"
+  },
+  {
+   "job": "아델",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "아델",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "아델",
+   "name": "매직 서킷 풀드라이브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPAMH.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "언리미티드 크리스탈",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKAKDPEMA.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "엑시디움",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKAKDPEMI.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "글로리 윙:스플렌더",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKAKDOENA.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "크래프트:자벨린 VI/글로리 윙:자벨린 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKAKDPBMA.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "리액션:도미네이션 VI/리액션:디스트럭션 VI/글로리 윙:모탈 윙비트 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKAKDPBMI.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "리요 VI/마키나 VI/데우스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKAKDPBNA.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "롱기누스 VI/커스 마크 완성 VI/롱기누스 존 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKAKDPBNE.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "크리스탈 이그니션",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKE.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "그람홀더",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKF.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "소울 오브 크리스탈",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKG.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "크리스탈 게이트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKH.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "일리움",
+   "name": "매직 서킷 풀드라이브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPANA.webp"
+  },
+  {
+   "job": "아크",
+   "name": "가장 오래된 심연",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKHKDPEMA.webp"
+  },
+  {
+   "job": "아크",
+   "name": "절대 심연의 속삭임",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKHKDPEMC.webp"
+  },
+  {
+   "job": "아크",
+   "name": "원초의 격류",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKHKDOEMF.webp"
+  },
+  {
+   "job": "아크",
+   "name": "플레인 차지드라이브 VI/스칼렛 차지드라이브 VI/거스트 차지드라이브 VI/어비스 차지드라이브 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKHKDPBMA.webp"
+  },
+  {
+   "job": "아크",
+   "name": "지워지지 않는 상처 VI/채워지지 않는 굶주림 VI/걷잡을 수 없는 혼돈 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKHKDPBOB.webp"
+  },
+  {
+   "job": "아크",
+   "name": "돌아오는 증오 VI/황홀한 구속 VI/끝없는 고통 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKHKDPBPE.webp"
+  },
+  {
+   "job": "아크",
+   "name": "잊혀지지 않는 악몽 VI/잊혀지지 않는 흉몽 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKHKDPBPF.webp"
+  },
+  {
+   "job": "아크",
+   "name": "근원의 기억",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALC.webp"
+  },
+  {
+   "job": "아크",
+   "name": "인피니티 스펠",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALD.webp"
+  },
+  {
+   "job": "아크",
+   "name": "새어 나오는 악몽/새어 나오는 흉몽",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALE.webp"
+  },
+  {
+   "job": "아크",
+   "name": "영원히 굶주리는 짐승",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALF.webp"
+  },
+  {
+   "job": "아크",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "아크",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "아크",
+   "name": "매직 서킷 풀드라이브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPANG.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "헥스 : 샌드스톰",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKGKDPEMA.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "보이드 어웨이크",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKGKDPEME.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "헥스 : 듄 버스트",
+   "apiType": "스킬 코어",
+   "iconFile": "KEKGKDPEMG.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "아츠 : 플러리 VI/아츠 : 크레센텀 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKGKDPBMA.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "보이드 러쉬 VI/보이드 블리츠 VI/헥스 : 차크람 스플릿 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKGKDPBMD.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "헥스 : 차크람 스윕 VI/헥스 : 차크람 퓨리 VI/데스 블로섬 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKGKDPBNB.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "레조네이트 VI/디시빙 블레이드 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEKGKDPBND.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "헥스 : 판데모니움",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKI.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "보이드 버스트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAKJ.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "아츠 : 아스트라",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALA.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "레조네이트 : 얼티메이텀",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALB.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "칼리",
+   "name": "매직 서킷 풀드라이브 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPAND.webp"
+  },
+  {
+   "job": "라라",
+   "name": "새록새록 꽃누리",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJAKDPEMA.webp"
+  },
+  {
+   "job": "라라",
+   "name": "안다미로",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJAKDPEMC.webp"
+  },
+  {
+   "job": "라라",
+   "name": "한아름 아우른 숨결",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJAKDPEMD.webp"
+  },
+  {
+   "job": "라라",
+   "name": "정기 뿌리기 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJAKDPBMA.webp"
+  },
+  {
+   "job": "라라",
+   "name": "용맥 분출 VI/분출 : 너울이는 강 VI/분출 : 돌개바람 VI/분출 : 해돋이 우물 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJAKDPBMB.webp"
+  },
+  {
+   "job": "라라",
+   "name": "용맥 흡수 VI/흡수 : 강 웅덩이 물벼락 VI/흡수 : 소소리 바람 VI/흡수 : 햇빛 맹아리 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJAKDPBNA.webp"
+  },
+  {
+   "job": "라라",
+   "name": "잠 깨우기 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJAKDPBOA.webp"
+  },
+  {
+   "job": "라라",
+   "name": "큰 기지개",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALG.webp"
+  },
+  {
+   "job": "라라",
+   "name": "해 강 산 바람",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALH.webp"
+  },
+  {
+   "job": "라라",
+   "name": "용솟음치는 정기",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALI.webp"
+  },
+  {
+   "job": "라라",
+   "name": "산등성이 굽이굽이",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKALJ.webp"
+  },
+  {
+   "job": "라라",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "라라",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "라라",
+   "name": "화중군자 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPAOB.webp"
+  },
+  {
+   "job": "호영",
+   "name": "선기 : 파천황",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJGKDPEMA.webp"
+  },
+  {
+   "job": "호영",
+   "name": "천세휘령",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJGKDPEMD.webp"
+  },
+  {
+   "job": "호영",
+   "name": "선기 : 사흉해방 도철",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJGKDPEMF.webp"
+  },
+  {
+   "job": "호영",
+   "name": "멸화염 : 천 VI/지진쇄 : 지 VI/금고봉 : 인 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJGKDPBMA.webp"
+  },
+  {
+   "job": "호영",
+   "name": "파초풍 : 천 VI/토파류 : 지 VI/여의선 : 인 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJGKDPBPF.webp"
+  },
+  {
+   "job": "호영",
+   "name": "환영 분신부 VI/추적 귀화부 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJGKDPBJE.webp"
+  },
+  {
+   "job": "호영",
+   "name": "흡성와류 VI/권술 : 호접지몽 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJGKDPBJJ.webp"
+  },
+  {
+   "job": "호영",
+   "name": "선기 : 극대 분신난무",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAEA.webp"
+  },
+  {
+   "job": "호영",
+   "name": "권술 : 산령소환",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAEB.webp"
+  },
+  {
+   "job": "호영",
+   "name": "선기 : 강림 괴력난신",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAEC.webp"
+  },
+  {
+   "job": "호영",
+   "name": "선기 : 천지인 환영",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAED.webp"
+  },
+  {
+   "job": "호영",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "호영",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "호영",
+   "name": "화중군자 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPAOD.webp"
+  },
+  {
+   "job": "렌",
+   "name": "창룡파천검 : 승천",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJDKDPEMA.webp"
+  },
+  {
+   "job": "렌",
+   "name": "창룡파천검 : 일매낙화 천비인적",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJDKDPEMG.webp"
+  },
+  {
+   "job": "렌",
+   "name": "창룡파천검 : 만참",
+   "apiType": "스킬 코어",
+   "iconFile": "KEJDKDOEMH.webp"
+  },
+  {
+   "job": "렌",
+   "name": "매화검 본초 : 선참 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJDKDPBMA.webp"
+  },
+  {
+   "job": "렌",
+   "name": "망혼검 본초 : 영격 VI/망혼검 2초식 : 연참 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJDKDPBMB.webp"
+  },
+  {
+   "job": "렌",
+   "name": "망혼강림 VI/망혼검 절기 : 열지 VI/망혼검 절기 : 망탄 VI/망혼검 절기 : 무량겁 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJDKDOBMF.webp"
+  },
+  {
+   "job": "렌",
+   "name": "매화검 2초식 : 쇄매 VI/매화검 3초식 : 예인 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEJDKDOBMH.webp"
+  },
+  {
+   "job": "렌",
+   "name": "매화검 절기 : 만리향",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDMF.webp"
+  },
+  {
+   "job": "렌",
+   "name": "망혼각성",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDMG.webp"
+  },
+  {
+   "job": "렌",
+   "name": "매화검 절기 : 섬무",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDMH.webp"
+  },
+  {
+   "job": "렌",
+   "name": "망혼검 절기 : 심검",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDMI.webp"
+  },
+  {
+   "job": "렌",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "렌",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "렌",
+   "name": "화중군자 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPANJ.webp"
+  },
+  {
+   "job": "레테",
+   "name": "오버로드 : 이터널 게이즈",
+   "apiType": "스킬 코어",
+   "iconFile": "KEGAKDPEMA.webp"
+  },
+  {
+   "job": "레테",
+   "name": "앱솔루트 레인",
+   "apiType": "스킬 코어",
+   "iconFile": "KEGAKDPEMC.webp"
+  },
+  {
+   "job": "레테",
+   "name": "보이드 오리진",
+   "apiType": "스킬 코어",
+   "iconFile": "KEGAKDPEME.webp"
+  },
+  {
+   "job": "레테",
+   "name": "임프린트 VI/이딕트 : 펠 스톰 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEGAKDOBMA.webp"
+  },
+  {
+   "job": "레테",
+   "name": "인보크 : 바르가르 VI/이딕트 : 램페이지 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEGAKDPBMF.webp"
+  },
+  {
+   "job": "레테",
+   "name": "인보크 : 템플러 VI/이딕트 : 템플러 아츠 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEGAKDPBNA.webp"
+  },
+  {
+   "job": "레테",
+   "name": "임펠 VI/팩트 매니페스트",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEGAKDPBNF.webp"
+  },
+  {
+   "job": "레테",
+   "name": "오버로드 : 템플러 온슬로트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDND.webp"
+  },
+  {
+   "job": "레테",
+   "name": "오버로드 : 바르가르 트라이던트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDNE.webp"
+  },
+  {
+   "job": "레테",
+   "name": "인보크/오버로드 : 아즈라스",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDNF.webp"
+  },
+  {
+   "job": "레테",
+   "name": "체인 커맨드",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKDNG.webp"
+  },
+  {
+   "job": "레테",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "레테",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "레테",
+   "name": "프라이멀 퓨리 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPAPG.webp"
+  },
+  {
+   "job": "제로",
+   "name": "크로노 트리거",
+   "apiType": "스킬 코어",
+   "iconFile": "KEPDKDPEMA.webp"
+  },
+  {
+   "job": "제로",
+   "name": "바이템포리스",
+   "apiType": "스킬 코어",
+   "iconFile": "KEPDKDPEMD.webp"
+  },
+  {
+   "job": "제로",
+   "name": "타임 어소리티",
+   "apiType": "스킬 코어",
+   "iconFile": "KEPDKDPEMG.webp"
+  },
+  {
+   "job": "제로",
+   "name": "윈드 커터 VI/기가 크래시 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEPDKDPBMG.webp"
+  },
+  {
+   "job": "제로",
+   "name": "터닝 드라이브 VI/롤링 커브 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEPDKDPBNE.webp"
+  },
+  {
+   "job": "제로",
+   "name": "플래시 어썰터 VI/프론트 슬래시 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEPDKDPBOD.webp"
+  },
+  {
+   "job": "제로",
+   "name": "문 스트라이크 VI/어퍼 슬래시 VI/쉐도우 레인 VI/인피니트 레조넌스",
+   "apiType": "마스터리 코어",
+   "iconFile": "KEPDKDPBOJ.webp"
+  },
+  {
+   "job": "제로",
+   "name": "리미트 브레이크",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJC.webp"
+  },
+  {
+   "job": "제로",
+   "name": "조인트 어택",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJD.webp"
+  },
+  {
+   "job": "제로",
+   "name": "쉐도우 플래시",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJE.webp"
+  },
+  {
+   "job": "제로",
+   "name": "에고 웨폰",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJF.webp"
+  },
+  {
+   "job": "제로",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "제로",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "제로",
+   "name": "트랜센던트 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBEA.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "어나더 렐름",
+   "apiType": "스킬 코어",
+   "iconFile": "KELAKDPEMA.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "프렉탈 호라이즌",
+   "apiType": "스킬 코어",
+   "iconFile": "KELAKDPEMC.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "그래비티 오브젝트",
+   "apiType": "스킬 코어",
+   "iconFile": "KELAKDOEME.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "얼티메이트 : 프레셔 VI/얼티메이트 : 체크 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KELAKDOBMB.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "싸이킥 스매싱 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KELAKDPBMA.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "얼티메이트 : 오프닝 VI/얼티메이트 : 갬빗 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KELAKDPBMD.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "텔레키네시스 VI",
+   "apiType": "마스터리 코어",
+   "iconFile": "KELAKDOBMI.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "얼티메이트 : 체크메이트",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJG.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "싸이킥 노바",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJH.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "싸이킥 불릿",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJI.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "싸이킥 보드",
+   "apiType": "강화 코어",
+   "iconFile": "KAPCLHKAJJ.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "솔 야누스",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMA.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "솔 헤카테",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPBMF.webp"
+  },
+  {
+   "job": "키네시스",
+   "name": "이계의 잔상 VI",
+   "apiType": "공용 코어",
+   "iconFile": "KAPCLHPAMG.webp"
+  }
+ ],
+ "stats": [
+  {
+   "key": "hexa_stat_1",
+   "name": "헥사 스탯 Ⅰ",
+   "activationFragments": 10
+  },
+  {
+   "key": "hexa_stat_2",
+   "name": "헥사 스탯 Ⅱ",
+   "activationFragments": 200
+  },
+  {
+   "key": "hexa_stat_3",
+   "name": "헥사 스탯 Ⅲ",
+   "activationFragments": 350
+  }
+ ]
+}

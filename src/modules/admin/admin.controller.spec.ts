@@ -46,6 +46,15 @@ import {
   NoRegion,
   RegionExists,
 } from '../hunting-grounds/hunting-grounds.repository'
+import {
+  CostLevelsMismatch,
+  DefaultKindTaken,
+  HexaMatrixRepository,
+  JobCoreExists,
+  LevelsAboveMax as HexaLevelsAboveMax,
+  NameKindExists,
+  NoHexaKind,
+} from '../hexa-matrix/hexa-matrix.repository'
 import { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import {
   HuntLootExists,
@@ -195,6 +204,21 @@ describe('AdminController', () => {
 
   const huntLootRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
 
+  const hexaRepo = {
+    adminRows: jest.fn(),
+    createKind: jest.fn(),
+    updateKind: jest.fn(),
+    replaceCosts: jest.fn(),
+    addNameKind: jest.fn(),
+    removeNameKind: jest.fn(),
+    createJobCore: jest.fn(),
+    updateJobCore: jest.fn(),
+    removeJobCore: jest.fn(),
+    moveJobCore: jest.fn(),
+    createStat: jest.fn(),
+    updateStat: jest.fn(),
+  }
+
   const assetsRepo = { missing: jest.fn() }
 
   beforeAll(async () => {
@@ -220,6 +244,7 @@ describe('AdminController', () => {
         { provide: HuntingGroundsRepository, useValue: huntingRepo },
         { provide: CashbookCategoriesRepository, useValue: cashbookRepo },
         { provide: HuntLootRepository, useValue: huntLootRepo },
+        { provide: HexaMatrixRepository, useValue: hexaRepo },
         { provide: AssetsRepository, useValue: assetsRepo },
       ],
     }).compile()
@@ -248,6 +273,7 @@ describe('AdminController', () => {
       ...Object.values(huntingRepo),
       ...Object.values(cashbookRepo),
       ...Object.values(huntLootRepo),
+      ...Object.values(hexaRepo),
     ]) {
       mock.mockReset()
     }
@@ -270,6 +296,7 @@ describe('AdminController', () => {
     '/admin/hunt-loot',
     '/admin/spend-catalog',
     '/admin/symbol-costs',
+    '/admin/hexa-matrix',
     '/admin/contents',
     '/admin/equipment-items',
     '/admin/enhancement-costs',
@@ -1537,6 +1564,135 @@ describe('AdminController', () => {
       symbolRepo.removeLatest.mockResolvedValue(false)
       expect(
         (await app.inject({ method: 'DELETE', url: `/admin/symbol-costs/rows/${ROW}` })).statusCode,
+      ).toBe(404)
+    })
+  })
+
+  describe('헥사 매트릭스', () => {
+    const kind = {
+      key: 'skill_3rd',
+      name: '3rd 스킬 코어',
+      apiType: '스킬 코어',
+      iconFile: 'hexa_core_skill.webp',
+    }
+    const core = {
+      job: '아크메이지(불,독)',
+      name: '인페르날 웨이브',
+      apiType: '스킬 코어',
+      iconFile: 'KFPDKDPEMA.webp',
+    }
+    const send = (method: 'POST' | 'PUT' | 'DELETE', url: string, payload?: object) =>
+      app.inject({ method, url: `/admin/hexa-matrix${url}`, payload })
+
+    it('종류는 기본값을 채워 넘기고, 같은 API 타입의 기본 종류가 겹치면 409 · 그림이 그림 표에 없으면 400 이다', async () => {
+      hexaRepo.createKind.mockResolvedValue({ id: ROW })
+      expect((await send('POST', '/kinds', kind)).statusCode).toBe(201)
+      expect(hexaRepo.createKind).toHaveBeenCalledWith({ ...kind, isDefault: false, maxLevel: 30 })
+      hexaRepo.createKind.mockRejectedValue(new DefaultKindTaken('skill'))
+      expect((await send('POST', '/kinds', { ...kind, isDefault: true })).statusCode).toBe(409)
+      assetsRepo.missing.mockResolvedValue(['hexa_core_skill.webp'])
+      hexaRepo.createKind.mockReset()
+      expect((await send('POST', '/kinds', kind)).statusCode).toBe(400)
+      expect(hexaRepo.createKind).not.toHaveBeenCalled()
+      expect(assetsRepo.missing).toHaveBeenLastCalledWith([
+        { ref: 'itemIcon', value: 'hexa_core_skill.webp' },
+      ])
+    })
+
+    it('종류 고치기는 모르면 404, 기본 종류가 겹치거나 만렙이 비용 줄 아래면 409 다', async () => {
+      const body = { ...kind, key: undefined, isDefault: false, maxLevel: 30 }
+      hexaRepo.updateKind.mockResolvedValue(true)
+      expect((await send('PUT', '/kinds/skill_3rd', body)).statusCode).toBe(204)
+      expect(hexaRepo.updateKind).toHaveBeenCalledWith('skill_3rd', {
+        name: kind.name,
+        apiType: kind.apiType,
+        isDefault: false,
+        maxLevel: 30,
+        iconFile: kind.iconFile,
+      })
+      hexaRepo.updateKind.mockResolvedValue(false)
+      expect((await send('PUT', '/kinds/skill_3rd', body)).statusCode).toBe(404)
+      hexaRepo.updateKind.mockRejectedValue(new DefaultKindTaken('skill'))
+      expect((await send('PUT', '/kinds/skill_3rd', body)).statusCode).toBe(409)
+      hexaRepo.updateKind.mockRejectedValue(new HexaLevelsAboveMax('29'))
+      expect((await send('PUT', '/kinds/skill_3rd', body)).statusCode).toBe(409)
+    })
+
+    it('비용 갈아 끼우기는 레벨이 어긋나면 400 이고 그 이유를 싣는다. 모르는 종류는 404 다', async () => {
+      const costs = [{ level: 0, fragments: 140, solErda: 7 }]
+      hexaRepo.replaceCosts.mockResolvedValue(undefined)
+      expect((await send('PUT', '/kinds/skill_3rd/costs', { costs })).statusCode).toBe(204)
+      expect(hexaRepo.replaceCosts).toHaveBeenCalledWith('skill_3rd', costs)
+      expect(
+        (await send('PUT', '/kinds/skill_3rd/costs', { costs: [{ ...costs[0], fragments: -1 }] }))
+          .statusCode,
+      ).toBe(400)
+      hexaRepo.replaceCosts.mockRejectedValue(new CostLevelsMismatch('레벨 1 의 비용이 없다'))
+      const mismatch = await send('PUT', '/kinds/skill_3rd/costs', { costs })
+      expect(mismatch.statusCode).toBe(400)
+      expect(mismatch.json<{ message: string }>().message).toContain('레벨 1 의 비용이 없다')
+      hexaRepo.replaceCosts.mockRejectedValue(new NoHexaKind('nobody'))
+      expect((await send('PUT', '/kinds/nobody/costs', { costs })).statusCode).toBe(404)
+    })
+
+    it('이름 표는 앞뒤 공백을 걷어 넘기고, 모르는 종류는 400 · 같은 이름은 409 · 없는 줄 지우기는 404 다', async () => {
+      hexaRepo.addNameKind.mockResolvedValue({ id: ROW })
+      expect(
+        (await send('POST', '/names', { name: ' 셀레스티얼 클리브 ', kind: 'skill_3rd' }))
+          .statusCode,
+      ).toBe(201)
+      expect(hexaRepo.addNameKind).toHaveBeenCalledWith({
+        name: '셀레스티얼 클리브',
+        kind: 'skill_3rd',
+      })
+      hexaRepo.addNameKind.mockRejectedValue(new NoHexaKind('nobody'))
+      expect((await send('POST', '/names', { name: 'x', kind: 'nobody' })).statusCode).toBe(400)
+      hexaRepo.addNameKind.mockRejectedValue(new NameKindExists('x'))
+      expect((await send('POST', '/names', { name: 'x', kind: 'skill_3rd' })).statusCode).toBe(409)
+      hexaRepo.removeNameKind.mockResolvedValue(false)
+      expect((await send('DELETE', `/names/${ROW}`)).statusCode).toBe(404)
+      hexaRepo.removeNameKind.mockResolvedValue(true)
+      expect((await send('DELETE', `/names/${ROW}`)).statusCode).toBe(204)
+    })
+
+    it('직업별 코어는 스킬 그림을 보고, 같은 직업에 같은 이름은 409 · 모르는 줄은 404 다', async () => {
+      hexaRepo.createJobCore.mockResolvedValue({ id: ROW })
+      expect((await send('POST', '/job-cores', core)).statusCode).toBe(201)
+      expect(hexaRepo.createJobCore).toHaveBeenCalledWith(core)
+      expect(assetsRepo.missing).toHaveBeenLastCalledWith([
+        { ref: 'skillIcon', value: 'KFPDKDPEMA.webp' },
+      ])
+      hexaRepo.createJobCore.mockRejectedValue(new JobCoreExists('x'))
+      expect((await send('POST', '/job-cores', core)).statusCode).toBe(409)
+
+      const update = { name: core.name, apiType: core.apiType, iconFile: core.iconFile }
+      hexaRepo.updateJobCore.mockResolvedValue(false)
+      expect((await send('PUT', `/job-cores/${ROW}`, update)).statusCode).toBe(404)
+      hexaRepo.updateJobCore.mockRejectedValue(new JobCoreExists('x'))
+      expect((await send('PUT', `/job-cores/${ROW}`, update)).statusCode).toBe(409)
+      hexaRepo.removeJobCore.mockResolvedValue(false)
+      expect((await send('DELETE', `/job-cores/${ROW}`)).statusCode).toBe(404)
+      hexaRepo.moveJobCore.mockResolvedValue(true)
+      expect((await send('POST', `/job-cores/${ROW}/move`, { direction: 'down' })).statusCode).toBe(
+        204,
+      )
+      expect(hexaRepo.moveJobCore).toHaveBeenCalledWith(ROW, 'down')
+      expect((await send('DELETE', '/job-cores/not-a-uuid')).statusCode).toBe(400)
+    })
+
+    it('스탯은 활성화 비용을 비우면 null 로 넘기고, 모르는 key 고치기는 404 다', async () => {
+      hexaRepo.createStat.mockResolvedValue({ id: ROW })
+      expect(
+        (await send('POST', '/stats', { key: 'hexa_stat_4', name: '헥사 스탯 Ⅳ' })).statusCode,
+      ).toBe(201)
+      expect(hexaRepo.createStat).toHaveBeenCalledWith({
+        key: 'hexa_stat_4',
+        name: '헥사 스탯 Ⅳ',
+        activationFragments: null,
+      })
+      hexaRepo.updateStat.mockResolvedValue(false)
+      expect(
+        (await send('PUT', '/stats/nobody', { name: 'x', activationFragments: 1 })).statusCode,
       ).toBe(404)
     })
   })

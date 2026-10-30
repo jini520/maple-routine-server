@@ -12,6 +12,8 @@ describe('parseAssetPath', () => {
     })
     expect(parseAssetPath('drop-effect/loop/10.webp')?.dir).toBe('drop-effect/loop')
     expect(parseAssetPath('items/rings/ring.png')?.dir).toBe('items/rings')
+    expect(parseAssetPath('skills/KFPDKDPEMA.webp')?.dir).toBe('skills')
+    expect(parseAssetPath('skills/KFPDKDPEMA.jpg')).toBeNull()
     expect(parseAssetPath('mvp/gold.png')).toBeNull()
     expect(parseAssetPath('themes/hontail-background.webp')).toBeNull()
     expect(parseAssetPath('guide/a.webp')).toBeNull()
@@ -39,6 +41,7 @@ describe('refCandidates', () => {
       'items/ring.png',
       'items/rings/ring.png',
     ])
+    expect(refCandidates('skillIcon', 'KFPDKDPEMA.webp')).toEqual(['skills/KFPDKDPEMA.webp'])
   })
 })
 

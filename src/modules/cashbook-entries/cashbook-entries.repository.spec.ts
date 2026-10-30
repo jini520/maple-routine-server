@@ -67,6 +67,51 @@ describeDb('CashbookEntriesRepository', () => {
     ])
   })
 
+  // 수정으로 다시 열 때 앱이 이 칸으로 폼을 세우므로 보낸 값 그대로 남아야 한다. 안 보낸 품목은 NULL 이다.
+  it('헥사 품목의 조각 칸 셋과 활성화 여부를 적고, 다른 품목은 비워 둔다', async () => {
+    await repo.upsert(
+      input({
+        categoryKey: 'hexa_matrix',
+        items: [
+          {
+            itemKey: '인페르날 웨이브',
+            fromLevel: 0,
+            toLevel: 1,
+            amountMeso: 4_000_000_000,
+            fragmentCount: 100,
+            untradableFragmentCount: 60,
+            fragmentPriceMeso: 100_000_000,
+          },
+          {
+            itemKey: 'hexa_stat_1',
+            amountMeso: 0,
+            fragmentCount: 10,
+            untradableFragmentCount: 10,
+            fragmentPriceMeso: 100_000_000,
+            hexaActivation: true,
+          },
+          { itemKey: 'high_mountain_1', formKey: 'exp', amountPoint: 20_000 },
+        ],
+      }),
+    )
+    const items = await db
+      .select()
+      .from(serverCashbookEntryItems)
+      .orderBy(asc(serverCashbookEntryItems.sortOrder))
+    expect(
+      items.map((item) => [
+        item.fragmentCount,
+        item.untradableFragmentCount,
+        item.fragmentPriceMeso,
+        item.hexaActivation,
+      ]),
+    ).toEqual([
+      [100, 60, 100_000_000, null],
+      [10, 10, 100_000_000, true],
+      [null, null, null, null],
+    ])
+  })
+
   it('캐릭터 없는 기록은 기기 계정 id 로 그 사람의 넥슨 계정을 적고, 캐릭터가 있거나 못 찾으면 비운다', async () => {
     await repo.upsert(input())
     expect((await db.select().from(serverCashbookEntries))[0]?.nexonAccountId).toBe(myAccount)

@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describeDb, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
 import { CashbookCategoriesRepository } from '../modules/cashbook-categories/cashbook-categories.repository'
 import { ContentsRepository } from '../modules/contents/contents.repository'
 import { EnhancementCostsRepository } from '../modules/enhancement-costs/enhancement-costs.repository'
 import { EquipmentItemsRepository } from '../modules/equipment-items/equipment-items.repository'
+import { HexaMatrixRepository } from '../modules/hexa-matrix/hexa-matrix.repository'
 import { HuntingGroundsRepository } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../modules/mvp-grades/mvp-grades.repository'
 import { HuntLootRepository } from '../modules/hunt-loot/hunt-loot.repository'
@@ -19,6 +23,7 @@ import {
   parseDropItemsSeed,
   parseEnhancementCostsSeed,
   parseEquipmentItemsSeed,
+  parseHexaMatrixSeed,
   parseHuntingGroundsSeed,
   parseMvpGradesSeed,
   parseHuntLootSeed,
@@ -400,6 +405,43 @@ const huntLootSeed = {
   ],
 }
 
+const hexaMatrixSeed = {
+  kinds: [
+    {
+      key: 'skill',
+      name: '스킬 코어',
+      apiType: '스킬 코어',
+      isDefault: true,
+      maxLevel: 2,
+      iconFile: 'hexa_core_skill.webp',
+    },
+    {
+      key: 'skill_3rd',
+      name: '3rd 스킬 코어',
+      apiType: '스킬 코어',
+      isDefault: false,
+      maxLevel: 2,
+      iconFile: 'hexa_core_skill.webp',
+    },
+  ],
+  levelCosts: [
+    { kind: 'skill', level: 0, fragments: 100, solErda: 5 },
+    { kind: 'skill_3rd', level: 0, fragments: 140, solErda: 7 },
+    { kind: 'skill', level: 1, fragments: 30, solErda: 1 },
+    { kind: 'skill_3rd', level: 1, fragments: 42, solErda: 1 },
+  ],
+  nameKinds: [{ name: '레이지 익스플로젼', kind: 'skill_3rd' }],
+  jobCores: [
+    { job: '히어로', name: '스피릿 칼리버', apiType: '스킬 코어', iconFile: 'KFPDKDPEMA.webp' },
+    { job: '히어로', name: '레이지 익스플로젼', apiType: '스킬 코어', iconFile: 'KFPDKDPEMB.webp' },
+    { job: '렌', name: '창룡파천검 : 만참', apiType: '스킬 코어', iconFile: 'KJPDKDPEMA.webp' },
+  ],
+  stats: [
+    { key: 'hexa_stat_1', name: '헥사 스탯 Ⅰ', activationFragments: 10 },
+    { key: 'hexa_stat_4', name: '헥사 스탯 Ⅳ', activationFragments: null },
+  ],
+}
+
 const huntingGroundsSeed = {
   regions: [
     { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane', iconMap: 'roadOfVanishing' },
@@ -443,6 +485,13 @@ describe('씨앗 넷의 모양', () => {
     expect(parseEnhancementCostsSeed(enhancementCostsSeed)).toEqual(enhancementCostsSeed)
     expect(parseMvpGradesSeed(mvpGradesSeed)).toEqual(mvpGradesSeed)
     expect(parseHuntingGroundsSeed(huntingGroundsSeed)).toEqual(huntingGroundsSeed)
+    expect(parseHexaMatrixSeed(hexaMatrixSeed)).toEqual(hexaMatrixSeed)
+    expect(() =>
+      parseHexaMatrixSeed({
+        ...hexaMatrixSeed,
+        levelCosts: [{ ...hexaMatrixSeed.levelCosts[0], fragments: -1 }],
+      }),
+    ).toThrow()
     expect(() =>
       parseSpendCatalogSeed({
         ...spendCatalogSeed,
@@ -505,6 +554,25 @@ describe('씨앗 넷의 모양', () => {
   })
 })
 
+describe('헥사 매트릭스 씨앗 파일', () => {
+  // 씨앗 파일은 사용자가 확인한 게임 데이터를 그대로 옮긴 것이다. 모양이 어긋나면 배포 때가 아니라 여기서 깨져야 한다.
+  it('그대로 읽히고 만렙을 안 적은 종류는 30 이다', () => {
+    const seed = parseHexaMatrixSeed(
+      JSON.parse(
+        readFileSync(join(__dirname, '..', 'database', 'seed', 'hexa-matrix.json'), 'utf8'),
+      ),
+    )
+    expect(seed.kinds.map((k) => k.maxLevel)).toEqual([30, 30, 30, 30, 30, 30])
+    expect([
+      seed.kinds.length,
+      seed.levelCosts.length,
+      seed.nameKinds.length,
+      seed.jobCores.length,
+      seed.stats.length,
+    ]).toEqual([6, 180, 50, 672, 3])
+  })
+})
+
 describeDb('seedGameData', () => {
   let db: TestDb
   let close: () => Promise<void>
@@ -559,7 +627,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('열다섯을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열여섯을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -576,6 +644,7 @@ describeDb('seedGameData', () => {
       mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
       huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
       huntLoot: parseHuntLootSeed(huntLootSeed),
+      hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -593,6 +662,7 @@ describeDb('seedGameData', () => {
       mvpGrades: 'seeded',
       huntingGrounds: 'seeded',
       huntLoot: 'seeded',
+      hexaMatrix: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -653,6 +723,7 @@ describeDb('seedGameData', () => {
       mvpGrades: parseMvpGradesSeed(mvpGradesSeed),
       huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
       huntLoot: parseHuntLootSeed(huntLootSeed),
+      hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
@@ -665,6 +736,66 @@ describeDb('seedGameData', () => {
       mvpGrades: 'skipped',
       huntingGrounds: 'skipped',
       huntLoot: 'skipped',
+      hexaMatrix: 'skipped',
+    })
+  })
+
+  it('헥사 매트릭스는 종류 표가 비었을 때만 다섯을 채운다. 직업별 코어는 직업 안 차례가 씨앗 차례다', async () => {
+    expect(await seedGameData(db, { hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed) })).toEqual({
+      hexaMatrix: 'seeded',
+    })
+    const section = await new HexaMatrixRepository(db).section()
+    expect(section.updatedAt).not.toBeNull()
+    expect(section.kinds).toEqual(hexaMatrixSeed.kinds)
+    expect(section.levelCosts.map((c) => [c.kind, c.level, c.fragments])).toEqual([
+      ['skill', 0, 100],
+      ['skill', 1, 30],
+      ['skill_3rd', 0, 140],
+      ['skill_3rd', 1, 42],
+    ])
+    expect(section.nameKinds).toEqual(hexaMatrixSeed.nameKinds)
+    expect(section.jobCores.map((c) => c.name)).toEqual([
+      '창룡파천검 : 만참',
+      '스피릿 칼리버',
+      '레이지 익스플로젼',
+    ])
+    expect(section.stats).toEqual(hexaMatrixSeed.stats)
+
+    // 운영자가 고친 값을 씨앗이 되돌리면 안 된다. 종류 표에 줄이 있으면 다섯 다 건너뛴다.
+    await new HexaMatrixRepository(db).updateStat('hexa_stat_4', {
+      name: '헥사 스탯 Ⅳ',
+      activationFragments: 500,
+    })
+    expect(await seedGameData(db, { hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed) })).toEqual({
+      hexaMatrix: 'skipped',
+    })
+    expect((await new HexaMatrixRepository(db).section()).stats[1]?.activationFragments).toBe(500)
+  })
+
+  it('헥사 씨앗이 없는 종류를 가리키거나 레벨 비용이 비면 던지고 아무것도 안 넣는다', async () => {
+    await expect(
+      seedGameData(db, {
+        hexaMatrix: parseHexaMatrixSeed({
+          ...hexaMatrixSeed,
+          nameKinds: [{ name: '무아지경', kind: 'nobody' }],
+        }),
+      }),
+    ).rejects.toThrow('씨앗이 가리키는 헥사 코어 종류 줄이 표에 없다: nobody')
+    await expect(
+      seedGameData(db, {
+        hexaMatrix: parseHexaMatrixSeed({
+          ...hexaMatrixSeed,
+          levelCosts: hexaMatrixSeed.levelCosts.slice(1),
+        }),
+      }),
+    ).rejects.toThrow('헥사 코어 비용이 어긋난다: skill 레벨 0 의 비용이 없다')
+    expect(await new HexaMatrixRepository(db).section()).toEqual({
+      updatedAt: null,
+      kinds: [],
+      levelCosts: [],
+      nameKinds: [],
+      jobCores: [],
+      stats: [],
     })
   })
 

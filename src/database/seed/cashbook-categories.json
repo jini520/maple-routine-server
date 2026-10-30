@@ -47,6 +47,15 @@
     },
     {
       "entryType": "spend",
+      "key": "hexa_matrix",
+      "name": "헥사 매트릭스",
+      "cardTitle": "헥사 매트릭스",
+      "iconFile": "hexa_matrix.webp",
+      "description": "헥사 스킬 · 헥사 스탯 강화",
+      "unit": null
+    },
+    {
+      "entryType": "spend",
       "key": "item_purchase",
       "name": "아이템 구매",
       "cardTitle": "아이템 구매",

@@ -1169,6 +1169,12 @@ export const serverCashbookEntryItems = pgTable(
     amountPoint: bigint('amount_point', { mode: 'number' }),
     pointPer100mMeso: integer('point_per_100m_meso'),
     amountCash: bigint('amount_cash', { mode: 'number' }),
+    /** 헥사 강화에 든 솔 에르다 조각. 금액은 (이 값 - 교환 불가) × 개당 가격이다. */
+    fragmentCount: integer('fragment_count'),
+    untradableFragmentCount: integer('untradable_fragment_count'),
+    fragmentPriceMeso: bigint('fragment_price_meso', { mode: 'number' }),
+    /** 헥사 스탯 기록이 활성화 비용을 포함하는가. 다시 열 때 활성화 체크를 세운다. */
+    hexaActivation: boolean('hexa_activation'),
   },
   (t) => [unique('cashbook_entry_items_entry_order_unique').on(t.entryId, t.sortOrder)],
 )

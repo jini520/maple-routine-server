@@ -75,6 +75,10 @@ export class CashbookEntriesRepository {
           amountPoint: item.amountPoint ?? null,
           pointPer100mMeso: item.pointPer100mMeso ?? null,
           amountCash: item.amountCash ?? null,
+          fragmentCount: item.fragmentCount ?? null,
+          untradableFragmentCount: item.untradableFragmentCount ?? null,
+          fragmentPriceMeso: item.fragmentPriceMeso ?? null,
+          hexaActivation: item.hexaActivation ?? null,
         })),
       )
     })

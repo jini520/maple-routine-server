@@ -26,6 +26,33 @@ describe('cashbookEntryBody', () => {
     ).toBe(true)
   })
 
+  it('헥사 강화 품목은 조각 칸 셋과 활성화 여부를 받고, 조각 수나 가격이 음수면 거절한다', () => {
+    const hexa = {
+      ...ok,
+      categoryKey: 'hexa_matrix',
+      items: [
+        {
+          itemKey: 'hexa_stat_1',
+          amountMeso: 1_000_000_000,
+          fragmentCount: 20,
+          untradableFragmentCount: 10,
+          fragmentPriceMeso: 100_000_000,
+          hexaActivation: true,
+        },
+      ],
+    }
+    expect(cashbookEntryBody.safeParse(hexa).success).toBe(true)
+    for (const bad of [
+      { fragmentCount: -1 },
+      { untradableFragmentCount: -1 },
+      { fragmentPriceMeso: -1 },
+      { fragmentCount: 1.5 },
+    ]) {
+      const items = [{ ...hexa.items[0], ...bad }]
+      expect(cashbookEntryBody.safeParse({ ...hexa, items }).success).toBe(false)
+    }
+  })
+
   // 금액은 품목에 있다. 품목 없는 기록은 합계가 0 으로 둔갑한다.
   it('품목이 없거나 날짜 모양이 틀리면 거절한다', () => {
     expect(cashbookEntryBody.safeParse({ ...ok, items: [] }).success).toBe(false)

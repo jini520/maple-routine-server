@@ -162,6 +162,13 @@
       "when": 1793330273795,
       "tag": "0022_hexa_matrix",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793330722362,
+      "tag": "0023_cashbook_entry_hexa_fragments",
+      "breakpoints": true
     }
   ]
 }

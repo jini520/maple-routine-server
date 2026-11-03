@@ -5,6 +5,7 @@ type MenuItem =
 const MENU: readonly MenuItem[] = [
   ['/admin', '홈'],
   ['/admin/notices', '공지'],
+  ['/admin/faqs', 'FAQ'],
   {
     label: '게임데이터',
     items: [

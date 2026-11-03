@@ -1,0 +1,462 @@
+{
+  "sheets": [
+    {
+      "key": "today",
+      "title": "today"
+    },
+    {
+      "key": "content",
+      "title": "컨텐츠 스케줄러"
+    },
+    {
+      "key": "boss",
+      "title": "보스 스케줄러"
+    },
+    {
+      "key": "appointments",
+      "title": "파티 스케줄"
+    },
+    {
+      "key": "profit",
+      "title": "보스 수입"
+    },
+    {
+      "key": "cashbook",
+      "title": "가계부"
+    },
+    {
+      "key": "stats",
+      "title": "통계"
+    },
+    {
+      "key": "utility",
+      "title": "유틸리티"
+    },
+    {
+      "key": "settings",
+      "title": "더보기"
+    },
+    {
+      "key": "content-manage",
+      "title": "컨텐츠 관리"
+    },
+    {
+      "key": "boss-manage",
+      "title": "보스 관리"
+    },
+    {
+      "key": "drop-history",
+      "title": "히스토리"
+    },
+    {
+      "key": "drop-price",
+      "title": "아이템 가격 입력"
+    },
+    {
+      "key": "utility-item-split",
+      "title": "판매 분배금 계산기"
+    },
+    {
+      "key": "utility-boss-profit-calculator",
+      "title": "주간 보스 수입 계산기"
+    },
+    {
+      "key": "utility-boss-profit-calculator-records",
+      "title": "계산 기록"
+    },
+    {
+      "key": "settings-characters",
+      "title": "캐릭터 관리"
+    },
+    {
+      "key": "settings-mvp-grade",
+      "title": "MVP 등급"
+    },
+    {
+      "key": "settings-mvp-grade-history",
+      "title": "MVP 등급 이력"
+    },
+    {
+      "key": "settings-notices",
+      "title": "소식"
+    },
+    {
+      "key": "settings-notice-detail",
+      "title": "공지"
+    },
+    {
+      "key": "settings-notice-alerts",
+      "title": "알림 설정"
+    },
+    {
+      "key": "settings-feature-guide-list",
+      "title": "기능 설명"
+    },
+    {
+      "key": "settings-feature-guide",
+      "title": "기능 설명"
+    },
+    {
+      "key": "settings-release-notes",
+      "title": "개발 노트"
+    },
+    {
+      "key": "settings-release-note-guide",
+      "title": "개발 노트"
+    },
+    {
+      "key": "settings-theme",
+      "title": "테마"
+    },
+    {
+      "key": "settings-text-size",
+      "title": "글자 크기"
+    },
+    {
+      "key": "settings-bar-order",
+      "title": "하단 탭 순서"
+    },
+    {
+      "key": "app-settings",
+      "title": "설정"
+    },
+    {
+      "key": "settings-about",
+      "title": "앱 정보 및 계정"
+    },
+    {
+      "key": "settlement",
+      "title": "스케줄러 결산"
+    },
+    {
+      "key": "nexon-maintenance",
+      "title": "Open API 점검"
+    },
+    {
+      "key": "manual-completion",
+      "title": "직접 완료"
+    }
+  ],
+  "items": [
+    {
+      "sheet": "today",
+      "question": "today에서는 무엇을 할 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "여러 화면의 정보를 모아 오늘 할 일과 이번 주 결과를 한눈에 보여 주는 화면이에요. 남은 스케줄, 다음 파티 스케줄, 이번 주 수입 등을 확인할 수 있고, ‘빠른 이동’으로 원하는 화면에 바로 갈 수 있어요."
+        }
+      ]
+    },
+    {
+      "sheet": "today",
+      "question": "공유 컨텐츠가 실제 캐릭터의 진행과 달라요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "공유 컨텐츠는 넥슨 스케줄러 API가 주는 기준을 그대로 따라요. 몬스터파크와 익스트림 몬스터파커는 마지막에 접속한 캐릭터, 에픽 던전과 메이플 유니온은 메이플 ID가 기준이에요. 그래서 일부 컨텐츠의 완료 여부가 실제와 다르게 보일 수 있어요."
+        }
+      ]
+    },
+    {
+      "sheet": "today",
+      "question": "정보를 다시 불러오려면 어떻게 하나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "화면을 아래로 당기면 새로고침돼요. 다른 화면에서도 대부분 같은 방법으로 새로고침할 수 있어요."
+        }
+      ]
+    },
+    {
+      "sheet": "content",
+      "question": "게임에서 방금 끝낸 컨텐츠가 아직 완료로 안 보여요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "넥슨 API가 게임 기록을 제공하기까지 시간이 걸려요. 게임에서 캐시샵에 들어갔다 나오거나 다시 접속하면 더 빨리 반영돼요."
+        }
+      ]
+    },
+    {
+      "sheet": "content",
+      "question": "컨텐츠를 앱에서 직접 추가하거나 뺄 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘자동’ 방식에서는 게임 내 스케줄러에 등록한 컨텐츠를 그대로 보여 줘서, 게임에서 등록하거나 빼야 해요. 더보기 탭 > 설정 > 스케줄 관리 방법을 ‘수동’으로 바꾸면 제목 오른쪽의 ‘컨텐츠 관리’에서 직접 고를 수 있어요. 다만 ‘수동’ 방식에서는 게임 내 스케줄러에서 항목을 바꿔도 앱에 반영되지 않아서 추천하지 않아요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss",
+      "question": "게임에서 방금 잡은 보스가 아직 완료로 안 보여요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "넥슨 API가 게임 기록을 제공하기까지 시간이 걸려요. 게임에서 캐시샵에 들어갔다 나오거나 다시 접속하면 더 빨리 반영돼요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss",
+      "question": "보스나 난이도를 앱에서 바꿀 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘자동’ 방식에서는 게임 내 스케줄러에 등록한 보스를 그대로 보여 줘서, 게임에서 등록하거나 난이도를 바꿔야 해요. 더보기 탭 > 설정 > 스케줄 관리 방법을 ‘수동’으로 바꾸면 같은 화면의 ‘보스 관리’에서 보스와 난이도를 직접 고를 수 있어요. 다만 ‘수동’ 방식에서는 게임 내 스케줄러에서 항목을 바꿔도 앱에 반영되지 않아서 추천하지 않아요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss",
+      "question": "보스 카드를 누르면 무엇을 할 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "그 보스의 파티 인원과 분배 방식을 정할 수 있어요. 보스 수입에서 내 몫의 결정석 금액을 계산할 때 쓰여요. 이미 잡은 보스에는 다음 처치부터 적용돼요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss",
+      "question": "등록한 것과 다른 난이도로 잡으면 어떻게 되나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "같은 보스라면 다른 난이도로 잡아도 ‘완료’로 표시돼요. 보스 수입에는 실제로 잡은 난이도의 결정석 가격으로 기록돼요."
+        }
+      ]
+    },
+    {
+      "sheet": "appointments",
+      "question": "파티 스케줄은 어떤 기능인가요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "파티로 잡을 보스 일정을 적어 두고, 시작 전에 알림을 받는 기능입니다. 여기에 적은 일정은 보스 완료나 보스 수입에 반영되지 않습니다. 결정석을 나누는 파티 인원은 스케줄러 탭 > 보스에서 보스 카드를 눌러 정해 주세요."
+        }
+      ]
+    },
+    {
+      "sheet": "appointments",
+      "question": "스케줄은 어떻게 추가하나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "오른쪽 아래 ＋를 눌러 ‘매주 반복’이나 ‘한 번만’을 고른 뒤, 시간을 정하고 보스를 하나 이상 넣어 ‘저장’을 눌러 주세요. ‘보스 추가’에서 캐릭터를 바꿔 가며 고르면 여러 캐릭터의 보스를 한 스케줄에 담을 수 있습니다. 목록에 없는 보스는 ‘모든 보스’를 켜면 보입니다."
+        }
+      ]
+    },
+    {
+      "sheet": "appointments",
+      "question": "‘목록’과 ‘보드’는 어떻게 다른가요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘목록’은 시간표와 요일별 스케줄을 위아래로 보여 주고, ‘보드’는 요일별 칸을 옆으로 넘겨 보여 줍니다. ‘목록’의 시간표에서 막대를 누르면 아래에 있는 해당 스케줄로 이동합니다. 한 주는 게임의 주간 초기화에 맞춰 목요일에 시작합니다."
+        }
+      ]
+    },
+    {
+      "sheet": "appointments",
+      "question": "매주 반복 스케줄을 이번 주만 바꾸고 싶어요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "스케줄 카드를 눌러 ‘수정’에서 ‘이 주만 적용하기’를 켜고 저장해 주세요. 이 항목을 끄고 저장하면 그 주부터 앞으로의 스케줄이 모두 바뀝니다. 한 주만 건너뛰는 기능은 없으며, ‘삭제’는 그 주부터 앞으로의 스케줄을 모두 지웁니다."
+        }
+      ]
+    },
+    {
+      "sheet": "appointments",
+      "question": "알림이 오지 않아요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "스케줄의 ‘알림’, 기기의 앱 알림 권한, 더보기 탭 > 설정 > 알림 설정의 ‘파티 스케줄 알림’이 모두 켜져 있는지 확인해 주세요. 앱은 열 때마다 앞으로 7일 안에 울릴 알림만 기기에 예약합니다. 앱을 오래 열지 않으면 그 뒤의 스케줄은 알림이 오지 않을 수 있습니다."
+        }
+      ]
+    },
+    {
+      "sheet": "content-manage",
+      "question": "컨텐츠 관리에서는 무엇을 할 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘수동’ 방식에서 볼 컨텐츠를 직접 추가하거나 뺄 수 있어요."
+        }
+      ]
+    },
+    {
+      "sheet": "content-manage",
+      "question": "게임 내 스케줄러에 새로 등록한 컨텐츠도 자동으로 추가되나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘수동’ 방식의 목록은 ‘수동’으로 바꿀 때 한 번만 게임 내 스케줄러에 맞춰 채워지고, 그 뒤로는 자동으로 반영되지 않아요. 게임 내 스케줄러를 그대로 따르려면 ‘자동’ 방식으로 바꿔 주세요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss-manage",
+      "question": "보스 관리에서는 무엇을 할 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘자동’ 방식에서는 보스마다 파티 인원과 분배 방식을 미리 정해요. ‘수동’ 방식에서는 카드를 눌러 볼 보스를 고르고, 난이도와 파티도 함께 정해요. 위쪽에서 캐릭터를 눌러 대상을 바꿀 수 있고, 파티는 캐릭터 · 보스 · 난이도마다 따로 저장돼요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss-manage",
+      "question": "‘모든 보스 보기’는 무엇인가요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘자동’ 방식에서 쓰는 설정이에요. 끄면 게임 내 스케줄러에 등록한 보스만 보이고, 켜면 등록하지 않은 보스의 파티도 미리 정해 둘 수 있어요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss-manage",
+      "question": "주간 보스를 더 고를 수 없어요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘수동’ 방식에서는 주간 보스를 주간 한도까지만 고를 수 있어요. 고른 보스를 빼면 다른 보스를 고를 수 있고, 난이도만 바꾸는 것은 개수에 들어가지 않아요. 월간 보스와 시즌 보스는 한도와 관계없이 고를 수 있어요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss-manage",
+      "question": "‘기본’과 ‘비율’은 어떻게 다른가요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "‘변경’을 누르면 고를 수 있는 분배 방식이에요. ‘기본’은 결정석을 파티 인원으로 똑같이 나누고, ‘비율’은 2:1처럼 약속한 비율로 내 몫을 계산해요. ‘비율’을 고르면 메소를 보낼 때 드는 수수료까지 반영해요."
+        }
+      ]
+    },
+    {
+      "sheet": "boss-manage",
+      "question": "파티 인원을 바꾸면 언제 반영되나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "앞으로 기록될 보스부터 반영되고, 이미 기록된 보스 수입은 바뀌지 않아요. 이미 잡은 보스나 이번에만 다른 인원으로 잡을 보스는 수입 · 지출 탭 > 보스 수입에서 그 보스의 ‘변경’을 눌러 고쳐 주세요."
+        }
+      ]
+    },
+    {
+      "sheet": "settlement",
+      "question": "결산이 무엇인가요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "넥슨이 일간, 주간 스케줄러 기록을 모아 확정하는 작업입니다. 00:00 ~ 04:00 사이에 진행되며, 결산 중에는 일부 기록이 조회되지 않습니다."
+        }
+      ]
+    },
+    {
+      "sheet": "settlement",
+      "question": "왜 보스가 완료 처리되지 않나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "결산 시간이 아닐 때 보스를 처치하더라도 결산 시간 전에 앱에서 기록을 호출하지 않으면 완료로 처리되지 않을 수 있습니다."
+        }
+      ]
+    },
+    {
+      "sheet": "settlement",
+      "question": "어떻게 해야 하나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "결산이 완료되면 다음 조회 시 앱이 알아서 데이터를 동기화합니다. 기다려주세요."
+        }
+      ]
+    },
+    {
+      "sheet": "settlement",
+      "question": "가계부와 통계에 오늘 잡은 보스가 안 보여요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "결산 중에는 처치 날짜를 결정할 수 없어 보스 수입 화면에만 보입니다. 결산이 끝나면 가계부와 통계에도 정상적으로 기록됩니다."
+        }
+      ]
+    },
+    {
+      "sheet": "nexon-maintenance",
+      "question": "점검 중에는 무엇을 불러올 수 없나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "캐릭터 정보, 컨텐츠와 보스 진행 상태처럼 넥슨에서 받아 오는 정보는 대부분 불러올 수 없습니다. 그래서 대부분의 기능은 마지막으로 불러온 기록을 기준으로 보여 줍니다. 실제 게임 속 데이터와 다를 수 있습니다. 가계부, 보스 수입 기록, 통계처럼 앱에 저장된 기록은 그대로 쓸 수 있습니다."
+        }
+      ]
+    },
+    {
+      "sheet": "nexon-maintenance",
+      "question": "기록이 사라지나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "사라지지 않습니다. 기기에 저장된 기록과 마지막으로 불러온 정보를 그대로 보여 줍니다."
+        }
+      ]
+    },
+    {
+      "sheet": "nexon-maintenance",
+      "question": "어떻게 해야 하나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "점검이 끝나면 다음 조회 때 앱이 알아서 다시 불러오고, 배너도 사라집니다. 기다려주세요."
+        }
+      ]
+    },
+    {
+      "sheet": "manual-completion",
+      "question": "보스를 잡았는데 완료가 되지 않아요.",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "보스 완료 기록은 넥슨이 API로 주는 데이터를 사용해서 처리하고 있습니다. 넥슨에서 완료 기록을 주지 않는 경우 보스를 잡았어도 처리가 완료로 표시되지 않을 수 있습니다."
+        }
+      ]
+    },
+    {
+      "sheet": "manual-completion",
+      "question": "직접 완료로 기록하면 어떻게 되나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "자동으로 완료한 방식과 똑같이 처리됩니다. 다만, 기록 작성 중 실수를 할 수 있기 때문에 직접 입력된 데이터임을 표시하고 기록을 수정하거나 삭제할 수 있습니다. 작성 후 넥슨에서 정상적인 데이터를 주면 자동으로 동기화 데이터로 전환되고 직접 완료 표시가 사라집니다."
+        }
+      ]
+    },
+    {
+      "sheet": "manual-completion",
+      "question": "아무 보스나 직접 완료할 수 있나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "아닙니다. 현재는 이 기능을 제한적으로 도입하려고 합니다. 충분한 기간 검토를 진행하여 정식 기능으로 도입할지 지켜볼 예정입니다."
+        }
+      ]
+    },
+    {
+      "sheet": "manual-completion",
+      "question": "어떻게 사용하나요?",
+      "answer": [
+        {
+          "kind": "paragraph",
+          "text": "수입 · 지출 탭 > 보스 수입 > 캐릭터 목록 열고 직접 완료하려고 하는 보스 카드에 \"완료 상태로 변경하기\" 통해 사용하실 수 있습니다."
+        }
+      ]
+    }
+  ]
+}

@@ -5,7 +5,7 @@
  * 운영자가 관리 화면 폼으로 고친 값을 배포 때 씨앗이 되돌리면 안 되기 때문이다. 씨앗 파일은 앱 번들
  * JSON 과 같은 모양이고 `updatedAt` 은 있어도 버린다. 서버가 넣는 시각이 기준이다.
  *
- * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터 → 사냥 전리품 → 헥사 매트릭스.
+ * 차례가 있다. 보스 → 드롭 아이템 → 드롭 표 · 상자 · 결정석 가격 → 월드 → 지출 · 심볼 → 컨텐츠 → 장비 · 강화 비용 · MVP 등급 → 사냥터 → 사냥 전리품 → 헥사 매트릭스 → FAQ.
  * 뒤의 것이 앞의 줄을 가리킨다.
  *
  * 마이그레이션처럼 컨테이너 안에서 돌린다. `docker compose run --rm server node dist/cli/seed-game-data.js`
@@ -37,6 +37,7 @@ import { FORCE_TYPES } from '../modules/hunting-grounds/hunting-grounds.reposito
 import { MVP_GRADES } from '../modules/mvp-grades/mvp-grades.repository'
 import { HUNT_LOOT_KINDS } from '../modules/hunt-loot/hunt-loot.repository'
 import { costLevelsProblem } from '../modules/hexa-matrix/hexa-matrix.repository'
+import { FAQ_KEY } from '../modules/faqs/faqs.repository'
 import { type DbOrTx, touchSection } from '../modules/game-data/sections'
 import { CASHBOOK_ENTRY_TYPES } from '../modules/cashbook-categories/cashbook-categories.repository'
 import {
@@ -59,6 +60,8 @@ const {
   dropBoxes,
   dropItems,
   equipmentItems,
+  faqItems,
+  faqSheets,
   gameRules,
   hexaCoreKinds,
   hexaCoreLevelCosts,
@@ -542,6 +545,22 @@ export function parseHexaMatrixSeed(value: unknown): HexaMatrixSeed {
   return hexaMatrixSeed.parse(value)
 }
 
+const faqKey = z.string().regex(FAQ_KEY)
+const faqsSeed = z.object({
+  sheets: z.array(z.object({ key: faqKey, title: z.string().min(1) })).min(1),
+  items: z.array(
+    z.object({
+      sheet: faqKey,
+      question: z.string().min(1),
+      answer: z.array(z.object({ kind: z.literal('paragraph'), text: z.string().min(1) })).min(1),
+    }),
+  ),
+})
+export type FaqsSeed = z.infer<typeof faqsSeed>
+export function parseFaqsSeed(value: unknown): FaqsSeed {
+  return faqsSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -559,6 +578,7 @@ export interface GameDataSeeds {
   huntingGrounds?: HuntingGroundsSeed
   huntLoot?: HuntLootSeed
   hexaMatrix?: HexaMatrixSeed
+  faqs?: FaqsSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -592,6 +612,7 @@ export async function seedGameData(
     result.huntingGrounds = await seedHuntingGrounds(db, seeds.huntingGrounds)
   if (seeds.huntLoot !== undefined) result.huntLoot = await seedHuntLoot(db, seeds.huntLoot)
   if (seeds.hexaMatrix !== undefined) result.hexaMatrix = await seedHexaMatrix(db, seeds.hexaMatrix)
+  if (seeds.faqs !== undefined) result.faqs = await seedFaqs(db, seeds.faqs)
   return result
 }
 
@@ -627,6 +648,7 @@ async function isEmpty(
     | typeof mvpGrades
     | typeof huntLootItems
     | typeof hexaCoreKinds
+    | typeof faqSheets
     | typeof huntingRegions,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
@@ -1102,6 +1124,34 @@ async function seedHexaMatrix(db: Db, seed: HexaMatrixSeed): Promise<SeedOutcome
   return 'seeded'
 }
 
+/** 묶음 표가 비어 있을 때만 둘을 채운다. 묶음 차례는 씨앗 차례이고, 문항은 묶음마다 씨앗에 나온 차례다. */
+async function seedFaqs(db: Db, seed: FaqsSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, faqSheets))) return 'skipped'
+  await db.transaction(async (tx) => {
+    const sheetRows = await tx
+      .insert(faqSheets)
+      .values(seed.sheets.map((s, sortOrder) => ({ ...s, sortOrder })))
+      .returning({ id: faqSheets.id, key: faqSheets.key })
+    const sheetIds = new Map(sheetRows.map((r) => [r.key, r.id]))
+    const counters = new Map<string, number>()
+    if (seed.items.length > 0)
+      await tx.insert(faqItems).values(
+        seed.items.map((i) => {
+          const sortOrder = counters.get(i.sheet) ?? 0
+          counters.set(i.sheet, sortOrder + 1)
+          return {
+            sheetId: must(sheetIds, i.sheet, 'FAQ 묶음 줄'),
+            sortOrder,
+            question: i.question,
+            answer: i.answer,
+          }
+        }),
+      )
+    await touchSection(tx, 'faqs')
+  })
+  return 'seeded'
+}
+
 async function seedBosses(db: Db, seed: BossesSeed): Promise<SeedOutcome> {
   const repo = new BossesRepository(db)
   if ((await repo.options()).length > 0) return 'skipped'
@@ -1137,6 +1187,7 @@ async function main(): Promise<void> {
       huntingGrounds: parseHuntingGroundsSeed(readSeed('hunting-grounds')),
       huntLoot: parseHuntLootSeed(readSeed('hunt-loot')),
       hexaMatrix: parseHexaMatrixSeed(readSeed('hexa-matrix')),
+      faqs: parseFaqsSeed(readSeed('faqs')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

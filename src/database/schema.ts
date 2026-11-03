@@ -1,5 +1,5 @@
 /**
- * Model. 표 쉰하나와 ENUM 스물다섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 쉰셋과 ENUM 스물다섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -791,6 +791,35 @@ export const hexaStats = pgTable(
       sql`${t.activationFragments} IS NULL OR ${t.activationFragments} >= 0`,
     ),
   ],
+)
+
+/** 앱 화면의 FAQ 시트 하나. 묶음 목록이 ENUM 이 아니라 이 표의 줄이라 페이지가 늘면 줄만 더한다. */
+export const faqSheets = pgTable(
+  'faq_sheets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** 앱이 화면에 단 값. 소문자 · 숫자 · 붙임표다. */
+    key: text('key').notNull().unique(),
+    title: text('title').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [check('faq_sheets_key_format', sql`${t.key} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`)],
+)
+
+/** FAQ 문항 하나. sort_order 는 묶음 안의 차례다. */
+export const faqItems = pgTable(
+  'faq_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sheetId: uuid('sheet_id')
+      .notNull()
+      .references(() => faqSheets.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull(),
+    question: text('question').notNull(),
+    /** 블록 배열. 앱은 모르는 kind 의 블록만 버린다. */
+    answer: jsonb('answer').$type<{ kind: 'paragraph'; text: string }[]>().notNull(),
+  },
+  (t) => [check('faq_items_answer_array', sql`jsonb_typeof(${t.answer}) = 'array'`)],
 )
 
 /** 컨텐츠 갈래. 앱 CONTENT_CATEGORIES 의 key 집합 그대로다. 카드 모양 · 길드 판정 · 계열 한도가 이 값으로 갈린다. */

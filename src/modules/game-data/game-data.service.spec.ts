@@ -9,6 +9,7 @@ import type { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
 import type { DropItemsRepository } from '../drop-items/drop-items.repository'
 import type { EnhancementCostsRepository } from '../enhancement-costs/enhancement-costs.repository'
 import type { EquipmentItemsRepository } from '../equipment-items/equipment-items.repository'
+import type { FaqsRepository } from '../faqs/faqs.repository'
 import type { HuntingGroundsRepository } from '../hunting-grounds/hunting-grounds.repository'
 import type { HexaMatrixRepository } from '../hexa-matrix/hexa-matrix.repository'
 import type { HuntLootRepository } from '../hunt-loot/hunt-loot.repository'
@@ -61,6 +62,7 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
       jobCores: [],
       stats: [],
     }) as unknown as HexaMatrixRepository,
+    empty({ sheets: [], items: [] }) as unknown as FaqsRepository,
     empty({ categories: [], itemKinds: [] }) as unknown as CashbookCategoriesRepository,
     empty({ files: [] }) as unknown as AssetsRepository,
     empty({ crops: [] }) as unknown as ImageCropsRepository,
@@ -74,7 +76,7 @@ const catalog: Catalog = {
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열일곱은 각 리포지토리의 section 이다', async () => {
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열여덟은 각 리포지토리의 section 이다', async () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
@@ -120,6 +122,7 @@ describe('GameDataService', () => {
         jobCores: [],
         stats: [],
       },
+      faqs: { updatedAt: null, sheets: [], items: [] },
       assets: { updatedAt: null, files: [] },
       imageCrops: { updatedAt: null, crops: [] },
     })

@@ -61,6 +61,7 @@ import {
   HuntLootPriceShape,
   HuntLootRepository,
 } from '../hunt-loot/hunt-loot.repository'
+import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -219,6 +220,18 @@ describe('AdminController', () => {
     updateStat: jest.fn(),
   }
 
+  const faqRepo = {
+    adminRows: jest.fn(),
+    createSheet: jest.fn(),
+    updateSheet: jest.fn(),
+    removeSheet: jest.fn(),
+    moveSheet: jest.fn(),
+    createItem: jest.fn(),
+    updateItem: jest.fn(),
+    removeItem: jest.fn(),
+    moveItem: jest.fn(),
+  }
+
   const assetsRepo = { missing: jest.fn() }
 
   beforeAll(async () => {
@@ -245,6 +258,7 @@ describe('AdminController', () => {
         { provide: CashbookCategoriesRepository, useValue: cashbookRepo },
         { provide: HuntLootRepository, useValue: huntLootRepo },
         { provide: HexaMatrixRepository, useValue: hexaRepo },
+        { provide: FaqsRepository, useValue: faqRepo },
         { provide: AssetsRepository, useValue: assetsRepo },
       ],
     }).compile()
@@ -274,6 +288,7 @@ describe('AdminController', () => {
       ...Object.values(cashbookRepo),
       ...Object.values(huntLootRepo),
       ...Object.values(hexaRepo),
+      ...Object.values(faqRepo),
     ]) {
       mock.mockReset()
     }
@@ -285,6 +300,7 @@ describe('AdminController', () => {
     '/admin/bosses',
     '/admin/manual-completion',
     '/admin/notices',
+    '/admin/faqs',
     '/admin/drop-prices',
     '/admin/drop-market',
     '/admin/drop-items',
@@ -352,7 +368,8 @@ describe('AdminController', () => {
         else ancestors = [...stack]
       }
       expect(ancestors).not.toBeNull()
-      if (url !== '/admin' && url !== '/admin/notices') expect(ancestors!.length).toBeGreaterThan(0)
+      if (!['/admin', '/admin/notices', '/admin/faqs'].includes(url))
+        expect(ancestors!.length).toBeGreaterThan(0)
       expect(ancestors!.every(Boolean)).toBe(true)
       expect(opened).toBe(ancestors!.length)
     }
@@ -1472,6 +1489,109 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(404)
+    })
+  })
+
+  describe('FAQ', () => {
+    const createSheet = (payload: object) =>
+      app.inject({ method: 'POST', url: '/admin/faqs/sheets', payload })
+    const createItem = (payload: object) =>
+      app.inject({ method: 'POST', url: '/admin/faqs/sheets/boss-manage/items', payload })
+
+    it('묶음 화면은 HTML 이고 메뉴는 FAQ 에 표시를 단다', async () => {
+      const res = await app.inject({ method: 'GET', url: '/admin/faqs/sheets/boss-manage' })
+      expect(res.statusCode).toBe(200)
+      expect(res.headers['content-type']).toContain('text/html')
+      expect(res.headers['cache-control']).toBe('no-store')
+      expect(res.body.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
+        '<a href="/admin/faqs" aria-current="page">',
+      ])
+    })
+
+    it('묶음 key 는 소문자 · 숫자 · 붙임표만 받는다. 모양이 틀리면 400 이고 리포지토리를 안 부르며, 같은 key 는 409 다', async () => {
+      faqRepo.createSheet.mockResolvedValue({ id: ROW })
+      expect((await createSheet({ key: 'boss-manage', title: ' 보스 관리 ' })).statusCode).toBe(201)
+      expect(faqRepo.createSheet).toHaveBeenCalledWith({ key: 'boss-manage', title: '보스 관리' })
+      expect((await createSheet({ key: 'settings-2fa', title: '보안' })).statusCode).toBe(201)
+
+      for (const key of [
+        'BossManage',
+        'boss_manage',
+        '-boss',
+        'boss-',
+        'boss--manage',
+        '보스',
+        '',
+      ]) {
+        expect((await createSheet({ key, title: '보스 관리' })).statusCode).toBe(400)
+      }
+      expect((await createSheet({ key: 'boss-manage', title: '  ' })).statusCode).toBe(400)
+      expect(faqRepo.createSheet).toHaveBeenCalledTimes(2)
+
+      faqRepo.createSheet.mockRejectedValue(new FaqSheetExists('boss-manage'))
+      expect((await createSheet({ key: 'boss-manage', title: '보스 관리' })).statusCode).toBe(409)
+    })
+
+    it('답은 빈 줄로 나눈 문단마다 앞뒤 공백을 걷어 문단 블록이 되고, 빈 문단은 버린다', async () => {
+      const answer =
+        '  추가 버튼을 누릅니다.\n이름을 고릅니다.  \n\n \n\n  다시 켜면 보입니다. \n\n'
+      const blocks = [
+        { kind: 'paragraph', text: '추가 버튼을 누릅니다.\n이름을 고릅니다.' },
+        { kind: 'paragraph', text: '다시 켜면 보입니다.' },
+      ]
+      faqRepo.createItem.mockResolvedValue({ id: ROW })
+      expect((await createItem({ question: ' 보스는 어떻게 더하나요? ', answer })).statusCode).toBe(
+        201,
+      )
+      expect(faqRepo.createItem).toHaveBeenCalledWith('boss-manage', {
+        question: '보스는 어떻게 더하나요?',
+        answer: blocks,
+      })
+
+      faqRepo.updateItem.mockResolvedValue(true)
+      const put = await app.inject({
+        method: 'PUT',
+        url: '/admin/faqs/items/' + ROW,
+        payload: { question: '보스 추가', answer },
+      })
+      expect(put.statusCode).toBe(204)
+      expect(faqRepo.updateItem).toHaveBeenCalledWith(ROW, {
+        question: '보스 추가',
+        answer: blocks,
+      })
+    })
+
+    it('질문이 비거나 답에 문단이 없으면 400 이고 리포지토리를 안 부른다', async () => {
+      expect((await createItem({ question: '  ', answer: '추가 버튼' })).statusCode).toBe(400)
+      expect((await createItem({ question: '보스 추가', answer: ' \n\n  \n' })).statusCode).toBe(
+        400,
+      )
+      expect(faqRepo.createItem).not.toHaveBeenCalled()
+    })
+
+    it('모르는 묶음과 문항은 404 다', async () => {
+      faqRepo.createItem.mockRejectedValue(new NoFaqSheet('boss-manage'))
+      expect((await createItem({ question: '보스 추가', answer: '추가 버튼' })).statusCode).toBe(
+        404,
+      )
+
+      faqRepo.updateSheet.mockResolvedValue(false)
+      faqRepo.removeSheet.mockResolvedValue(false)
+      faqRepo.moveSheet.mockResolvedValue(false)
+      faqRepo.updateItem.mockResolvedValue(false)
+      faqRepo.removeItem.mockResolvedValue(false)
+      faqRepo.moveItem.mockResolvedValue(false)
+      const move = { direction: 'up' }
+      for (const [method, url, payload] of [
+        ['PUT', '/admin/faqs/sheets/nobody', { title: '누구' }],
+        ['DELETE', '/admin/faqs/sheets/nobody', undefined],
+        ['POST', '/admin/faqs/sheets/nobody/move', move],
+        ['PUT', '/admin/faqs/items/' + ROW, { question: '누구', answer: '누구' }],
+        ['DELETE', '/admin/faqs/items/' + ROW, undefined],
+        ['POST', '/admin/faqs/items/' + ROW + '/move', move],
+      ] as const) {
+        expect((await app.inject({ method, url, payload })).statusCode).toBe(404)
+      }
     })
   })
 

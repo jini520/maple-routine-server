@@ -45,6 +45,8 @@ const TABLES = [
   'hexa_core_kinds',
   'hexa_job_cores',
   'hexa_stats',
+  'faq_items',
+  'faq_sheets',
   'cashbook_item_kinds',
   'boss_crystal_prices',
   'drop_box_contents',

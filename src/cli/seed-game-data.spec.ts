@@ -7,6 +7,7 @@ import { CashbookCategoriesRepository } from '../modules/cashbook-categories/cas
 import { ContentsRepository } from '../modules/contents/contents.repository'
 import { EnhancementCostsRepository } from '../modules/enhancement-costs/enhancement-costs.repository'
 import { EquipmentItemsRepository } from '../modules/equipment-items/equipment-items.repository'
+import { FaqsRepository } from '../modules/faqs/faqs.repository'
 import { HexaMatrixRepository } from '../modules/hexa-matrix/hexa-matrix.repository'
 import { HuntingGroundsRepository } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../modules/mvp-grades/mvp-grades.repository'
@@ -23,6 +24,7 @@ import {
   parseDropItemsSeed,
   parseEnhancementCostsSeed,
   parseEquipmentItemsSeed,
+  parseFaqsSeed,
   parseHexaMatrixSeed,
   parseHuntingGroundsSeed,
   parseMvpGradesSeed,
@@ -442,6 +444,34 @@ const hexaMatrixSeed = {
   ],
 }
 
+const faqsSeed = {
+  sheets: [
+    { key: 'today', title: 'today' },
+    { key: 'boss-manage', title: '보스 관리' },
+    { key: 'settings-theme', title: '테마' },
+  ],
+  items: [
+    {
+      sheet: 'boss-manage',
+      question: '보스는 어떻게 더하나요?',
+      answer: [{ kind: 'paragraph', text: '추가 버튼을 누릅니다.' }],
+    },
+    {
+      sheet: 'today',
+      question: 'today에서는 무엇을 할 수 있나요?',
+      answer: [{ kind: 'paragraph', text: '오늘 할 일을 봅니다.' }],
+    },
+    {
+      sheet: 'boss-manage',
+      question: '보스를 숨길 수 있나요?',
+      answer: [
+        { kind: 'paragraph', text: '꺼 두면 숨겨집니다.' },
+        { kind: 'paragraph', text: '다시 켜면 보입니다.' },
+      ],
+    },
+  ],
+}
+
 const huntingGroundsSeed = {
   regions: [
     { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane', iconMap: 'roadOfVanishing' },
@@ -486,6 +516,13 @@ describe('씨앗 넷의 모양', () => {
     expect(parseMvpGradesSeed(mvpGradesSeed)).toEqual(mvpGradesSeed)
     expect(parseHuntingGroundsSeed(huntingGroundsSeed)).toEqual(huntingGroundsSeed)
     expect(parseHexaMatrixSeed(hexaMatrixSeed)).toEqual(hexaMatrixSeed)
+    expect(parseFaqsSeed(faqsSeed)).toEqual(faqsSeed)
+    expect(() =>
+      parseFaqsSeed({ ...faqsSeed, sheets: [{ key: 'BossManage', title: '보스 관리' }] }),
+    ).toThrow()
+    expect(() =>
+      parseFaqsSeed({ ...faqsSeed, items: [{ ...faqsSeed.items[0], answer: [] }] }),
+    ).toThrow()
     expect(() =>
       parseHexaMatrixSeed({
         ...hexaMatrixSeed,
@@ -573,6 +610,19 @@ describe('헥사 매트릭스 씨앗 파일', () => {
   })
 })
 
+describe('FAQ 씨앗 파일', () => {
+  // 씨앗 파일은 사용자가 확정한 문구 그대로다. 모양이 어긋나면 배포 때가 아니라 여기서 깨져야 한다.
+  it('그대로 읽히고 문항마다 씨앗에 있는 묶음을 가리킨다', () => {
+    const seed = parseFaqsSeed(
+      JSON.parse(readFileSync(join(__dirname, '..', 'database', 'seed', 'faqs.json'), 'utf8')),
+    )
+    expect([seed.sheets.length, seed.items.length]).toEqual([34, 32])
+    const keys = new Set(seed.sheets.map((s) => s.key))
+    expect(keys.size).toBe(seed.sheets.length)
+    expect(seed.items.filter((i) => !keys.has(i.sheet))).toEqual([])
+  })
+})
+
 describeDb('seedGameData', () => {
   let db: TestDb
   let close: () => Promise<void>
@@ -627,7 +677,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('열여섯을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열일곱을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -645,6 +695,7 @@ describeDb('seedGameData', () => {
       huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
       huntLoot: parseHuntLootSeed(huntLootSeed),
       hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed),
+      faqs: parseFaqsSeed(faqsSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -663,6 +714,7 @@ describeDb('seedGameData', () => {
       huntingGrounds: 'seeded',
       huntLoot: 'seeded',
       hexaMatrix: 'seeded',
+      faqs: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -705,6 +757,7 @@ describeDb('seedGameData', () => {
     expect(hunting.grounds).toEqual(huntingGroundsSeed.grounds)
     expect(hunting.groundLevels).toEqual(huntingGroundsSeed.groundLevels)
     expect((await new HuntLootRepository(db).section()).items).toEqual(huntLootSeed.items)
+    expect((await new FaqsRepository(db).section()).sheets).toEqual(faqsSeed.sheets)
 
     const catalog = await new BossesRepository(db).catalog()
     expect(catalog.rules.defaultMaxPartySize).toBe(6)
@@ -724,6 +777,7 @@ describeDb('seedGameData', () => {
       huntingGrounds: parseHuntingGroundsSeed(huntingGroundsSeed),
       huntLoot: parseHuntLootSeed(huntLootSeed),
       hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed),
+      faqs: parseFaqsSeed(faqsSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
@@ -737,6 +791,7 @@ describeDb('seedGameData', () => {
       huntingGrounds: 'skipped',
       huntLoot: 'skipped',
       hexaMatrix: 'skipped',
+      faqs: 'skipped',
     })
   })
 
@@ -770,6 +825,33 @@ describeDb('seedGameData', () => {
       hexaMatrix: 'skipped',
     })
     expect((await new HexaMatrixRepository(db).section()).stats[1]?.activationFragments).toBe(500)
+  })
+
+  it('FAQ 는 묶음 표가 비었을 때만 둘을 채운다. 문항은 묶음 차례를 따르고 묶음 안에서는 씨앗 차례다', async () => {
+    expect(await seedGameData(db, { faqs: parseFaqsSeed(faqsSeed) })).toEqual({ faqs: 'seeded' })
+    const repo = new FaqsRepository(db)
+    const section = await repo.section()
+    expect(section.updatedAt).not.toBeNull()
+    expect(section.sheets).toEqual(faqsSeed.sheets)
+    expect(section.items).toEqual([faqsSeed.items[1], faqsSeed.items[0], faqsSeed.items[2]])
+
+    // 관리 화면에서 고친 문구를 배포가 되돌리면 안 된다. 묶음 표에 줄이 있으면 둘 다 건너뛴다.
+    await repo.updateSheet('today', { title: '오늘' })
+    expect(await seedGameData(db, { faqs: parseFaqsSeed(faqsSeed) })).toEqual({ faqs: 'skipped' })
+    expect((await repo.section()).sheets[0]).toEqual({ key: 'today', title: '오늘' })
+  })
+
+  it('FAQ 씨앗이 없는 묶음을 가리키면 던지고 아무것도 안 넣는다', async () => {
+    await expect(
+      seedGameData(db, {
+        faqs: parseFaqsSeed({ ...faqsSeed, items: [{ ...faqsSeed.items[0], sheet: 'nobody' }] }),
+      }),
+    ).rejects.toThrow('씨앗이 가리키는 FAQ 묶음 줄이 표에 없다: nobody')
+    expect(await new FaqsRepository(db).section()).toEqual({
+      updatedAt: null,
+      sheets: [],
+      items: [],
+    })
   })
 
   it('헥사 씨앗이 없는 종류를 가리키거나 레벨 비용이 비면 던지고 아무것도 안 넣는다', async () => {

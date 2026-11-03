@@ -131,6 +131,7 @@ import {
   HuntLootPriceShape,
   HuntLootRepository,
 } from '../hunt-loot/hunt-loot.repository'
+import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
@@ -266,6 +267,13 @@ import {
   worldCreateBody,
   type WorldUpdateBody,
   worldUpdateBody,
+  type FaqItemBody,
+  faqItemBody,
+  faqKey,
+  type FaqSheetCreateBody,
+  faqSheetCreateBody,
+  type FaqSheetUpdateBody,
+  faqSheetUpdateBody,
 } from './admin.dto'
 import { BOSS_DROPS_HTML } from './views/boss-drops'
 import { BOSSES_HTML } from './views/bosses'
@@ -281,6 +289,7 @@ import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
 import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
 import { EQUIPMENT_ITEMS_HTML } from './views/equipment-items'
+import { FAQ_SHEET_HTML, FAQS_HTML } from './views/faqs'
 import { HEXA_MATRIX_HTML } from './views/hexa-matrix'
 import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
 import { HUNT_LOOT_HTML } from './views/hunt-loot'
@@ -292,7 +301,7 @@ import { NOTICES_HTML } from './views/notices'
 
 /**
  * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 장비 ·
- * 강화 비용 · MVP 등급 · 사냥터)도 여기다.
+ * 강화 비용 · MVP 등급 · 사냥터 · FAQ)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
@@ -322,6 +331,7 @@ export class AdminController {
     private readonly cashbook: CashbookCategoriesRepository,
     private readonly huntLoot: HuntLootRepository,
     private readonly hexa: HexaMatrixRepository,
+    private readonly faqs: FaqsRepository,
     private readonly assets: AssetsRepository,
   ) {}
 
@@ -559,6 +569,110 @@ export class AdminController {
   @HttpCode(204)
   async cancelSchedule(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
     if (!(await this.notices.cancelSchedule(id))) throw new NotFoundException()
+  }
+
+  /* ── FAQ ── */
+
+  @Get('faqs')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  faqsPage(): string {
+    return FAQS_HTML
+  }
+
+  /** 두 화면이 부른다. 앱이 받는 칸에 문항 id 를 더한 것이다. */
+  @Get('faqs/rows')
+  @Header('cache-control', 'no-store')
+  faqRows() {
+    return this.faqs.adminRows()
+  }
+
+  /** 묶음 하나의 문항 화면. 화면이 주소에서 key 를 읽는다. */
+  @Get('faqs/sheets/:key')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  faqSheetPage(): string {
+    return FAQ_SHEET_HTML
+  }
+
+  /** 묶음을 맨 뒤에 더한다. key 모양이 틀리면 400, 같은 key 는 409 다. */
+  @Post('faqs/sheets')
+  @HttpCode(201)
+  async createFaqSheet(@Body(new ZodValidationPipe(faqSheetCreateBody)) body: FaqSheetCreateBody) {
+    try {
+      return await this.faqs.createSheet(body)
+    } catch (error) {
+      if (error instanceof FaqSheetExists)
+        throw new ConflictException(`이미 있는 묶음이다: ${body.key}`)
+      throw error
+    }
+  }
+
+  /** 제목을 갈아 끼운다. key 는 앱 코드가 들어 못 바꾼다. 모르면 404 다. */
+  @Put('faqs/sheets/:key')
+  @HttpCode(204)
+  async updateFaqSheet(
+    @Param('key', new ZodValidationPipe(faqKey)) key: string,
+    @Body(new ZodValidationPipe(faqSheetUpdateBody)) body: FaqSheetUpdateBody,
+  ): Promise<void> {
+    if (!(await this.faqs.updateSheet(key, body)))
+      throw new NotFoundException(`모르는 묶음이다: ${key}`)
+  }
+
+  /** 묶음과 그 문항을 지운다. 모르면 404 다. */
+  @Delete('faqs/sheets/:key')
+  @HttpCode(204)
+  async removeFaqSheet(@Param('key', new ZodValidationPipe(faqKey)) key: string): Promise<void> {
+    if (!(await this.faqs.removeSheet(key))) throw new NotFoundException(`모르는 묶음이다: ${key}`)
+  }
+
+  @Post('faqs/sheets/:key/move')
+  @HttpCode(204)
+  async moveFaqSheet(
+    @Param('key', new ZodValidationPipe(faqKey)) key: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.faqs.moveSheet(key, body.direction)))
+      throw new NotFoundException(`모르는 묶음이다: ${key}`)
+  }
+
+  /** 문항을 묶음 맨 뒤에 더한다. 모르는 묶음은 404 다. */
+  @Post('faqs/sheets/:key/items')
+  @HttpCode(201)
+  async createFaqItem(
+    @Param('key', new ZodValidationPipe(faqKey)) key: string,
+    @Body(new ZodValidationPipe(faqItemBody)) body: FaqItemBody,
+  ) {
+    try {
+      return await this.faqs.createItem(key, body)
+    } catch (error) {
+      if (error instanceof NoFaqSheet) throw new NotFoundException(`모르는 묶음이다: ${key}`)
+      throw error
+    }
+  }
+
+  @Put('faqs/items/:id')
+  @HttpCode(204)
+  async updateFaqItem(
+    @Param('id', new ZodValidationPipe(rowId)) id: string,
+    @Body(new ZodValidationPipe(faqItemBody)) body: FaqItemBody,
+  ): Promise<void> {
+    if (!(await this.faqs.updateItem(id, body))) throw new NotFoundException()
+  }
+
+  @Delete('faqs/items/:id')
+  @HttpCode(204)
+  async removeFaqItem(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    if (!(await this.faqs.removeItem(id))) throw new NotFoundException()
+  }
+
+  @Post('faqs/items/:id/move')
+  @HttpCode(204)
+  async moveFaqItem(
+    @Param('id', new ZodValidationPipe(rowId)) id: string,
+    @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
+  ): Promise<void> {
+    if (!(await this.faqs.moveItem(id, body.direction))) throw new NotFoundException()
   }
 
   @Get('drop-prices')

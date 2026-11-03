@@ -20,6 +20,7 @@ export const SECTION_KEYS = [
   'huntingGrounds',
   'huntLoot',
   'hexaMatrix',
+  'faqs',
   'assets',
   'imageCrops',
 ] as const

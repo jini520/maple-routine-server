@@ -3,10 +3,14 @@ import { layout } from './layout'
 export const INDEX_HTML = layout(
   '/admin',
   '홈',
-  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 스물. 인증은 앞단 nginx 가 한다.</p></div></div>
+  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 스물둘. 인증은 앞단 nginx 가 한다.</p></div></div>
 <h2 class="section">공지</h2>
 <div class="links">
   <a class="card" href="/admin/notices"><h3>공지</h3><p>운영자 공지를 쓰고 고치고 알림을 보낸다</p></a>
+</div>
+<h2 class="section">FAQ</h2>
+<div class="links">
+  <a class="card" href="/admin/faqs"><h3>FAQ</h3><p>앱 화면의 물음표가 여는 시트. 묶음을 더하고 문항을 쓰고 고친다</p></a>
 </div>
 <h2 class="section">게임데이터</h2>
 <h3 class="subsection">보스</h3>

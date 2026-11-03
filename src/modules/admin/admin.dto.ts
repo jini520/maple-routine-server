@@ -12,6 +12,7 @@ import {
   POTENTIAL_GRADES,
   POTENTIAL_RESET_TYPES,
 } from '../enhancement-costs/enhancement-costs.repository'
+import { FAQ_KEY, type FaqBlock } from '../faqs/faqs.repository'
 import { FORCE_TYPES } from '../hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
 import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories.repository'
@@ -551,3 +552,31 @@ export const huntingGroundUpdateBody = huntingGroundBase
   .omit({ key: true, region: true })
   .refine(distinctLevels, LEVELS_MESSAGE)
 export type HuntingGroundUpdateBody = z.infer<typeof huntingGroundUpdateBody>
+
+/* ── FAQ ── */
+
+/** 묶음 key. 앱이 화면의 물음표에 단 값과 같아야 한다. */
+export const faqKey = z.string().max(60).regex(FAQ_KEY)
+export const faqSheetCreateBody = z.object({ key: faqKey, title: z.string().trim().min(1).max(50) })
+export type FaqSheetCreateBody = z.infer<typeof faqSheetCreateBody>
+export const faqSheetUpdateBody = faqSheetCreateBody.omit({ key: true })
+export type FaqSheetUpdateBody = z.infer<typeof faqSheetUpdateBody>
+
+/** 빈 줄로 나눈 답 글을 문단 블록으로 바꾼다. 문단마다 앞뒤 공백을 걷고 빈 문단은 버린다. */
+function paragraphs(text: string): FaqBlock[] {
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p !== '')
+    .map((p): FaqBlock => ({ kind: 'paragraph', text: p }))
+}
+/** 문항 하나. 답은 관리 화면의 글 한 칸으로 받아 문단 블록으로 바꾼다. */
+export const faqItemBody = z.object({
+  question: z.string().trim().min(1).max(200),
+  answer: z
+    .string()
+    .max(5000)
+    .transform(paragraphs)
+    .refine((blocks) => blocks.length > 0, { message: '답은 문단이 하나 이상이어야 한다' }),
+})
+export type FaqItemBody = z.infer<typeof faqItemBody>

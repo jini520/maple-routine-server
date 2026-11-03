@@ -23,6 +23,7 @@ import {
   EquipmentItemsRepository,
   type EquipmentItemsSection,
 } from '../equipment-items/equipment-items.repository'
+import { FaqsRepository, type FaqsSection } from '../faqs/faqs.repository'
 import {
   HuntingGroundsRepository,
   type HuntingGroundsSection,
@@ -62,6 +63,7 @@ export interface GameDataSnapshot {
   huntingGrounds: HuntingGroundsSection
   huntLoot: HuntLootSection
   hexaMatrix: HexaMatrixSection
+  faqs: FaqsSection
   assets: AssetsSection
   imageCrops: ImageCropsSection
 }
@@ -84,6 +86,7 @@ export class GameDataService {
     private readonly huntingGrounds: HuntingGroundsRepository,
     private readonly huntLoot: HuntLootRepository,
     private readonly hexaMatrix: HexaMatrixRepository,
+    private readonly faqs: FaqsRepository,
     private readonly cashbookCategories: CashbookCategoriesRepository,
     private readonly assets: AssetsRepository,
     private readonly imageCrops: ImageCropsRepository,
@@ -106,6 +109,7 @@ export class GameDataService {
       huntingGrounds,
       huntLoot,
       hexaMatrix,
+      faqs,
       cashbookCategories,
       assets,
       imageCrops,
@@ -125,6 +129,7 @@ export class GameDataService {
       this.huntingGrounds.section(),
       this.huntLoot.section(),
       this.hexaMatrix.section(),
+      this.faqs.section(),
       this.cashbookCategories.section(),
       this.assets.section(),
       this.imageCrops.section(),
@@ -146,6 +151,7 @@ export class GameDataService {
       huntingGrounds,
       huntLoot,
       hexaMatrix,
+      faqs,
       assets,
       imageCrops,
     }

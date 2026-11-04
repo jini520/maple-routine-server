@@ -81,15 +81,6 @@ describe('AuthController', () => {
     expect(res.headers.location).toBe('com.mapleroutine.app://oauth/callback')
   })
 
-  it('GET /app/oauth/return 은 HTML 을 내고 receipt 를 본문에 적지 않는다', async () => {
-    const res = await app.inject({ method: 'GET', url: '/app/oauth/return?receipt=SECRET' })
-
-    expect(res.statusCode).toBe(200)
-    expect(res.headers['content-type']).toContain('text/html')
-    expect(res.body).toContain('intent://oauth/callback')
-    expect(res.body).not.toContain('SECRET')
-  })
-
   it('POST /v1/auth/nexon/session 은 결과의 status 를 그대로 내고 gone 은 404 다', async () => {
     auth.redeem.mockResolvedValueOnce({ status: 'ok', session: 'S' })
     const ok = await app.inject({

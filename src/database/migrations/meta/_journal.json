@@ -183,6 +183,20 @@
       "when": 1793763827959,
       "tag": "0025_usage_events",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793771565534,
+      "tag": "0026_record_owner_set_null",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793771565923,
+      "tag": "0027_deletion_requested_at",
+      "breakpoints": true
     }
   ]
 }

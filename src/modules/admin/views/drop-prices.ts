@@ -53,7 +53,7 @@ export const DROP_PRICES_HTML = layout(
       var tr = document.createElement('tr'); if (row.recordStatus === 'deleted') tr.className = 'deleted'; else if (row.recordStatus !== 'completed') tr.className = 'muted';
       cell(tr, when(row.updatedAt), 'mono'); cell(tr, row.itemName).title = row.itemKey; cell(tr, row.bossName || '-').title = row.boss || ''; cell(tr, row.difficulty || '-', 'mono'); cell(tr, row.periodKey, 'mono');
       cell(tr, row.worldName || '-').title = row.worldKey || ''; cell(tr, row.ringLevel === null ? '-' : String(row.ringLevel), 'num');
-      cell(tr, row.priceMeso === null ? '-' : meso(row.priceMeso), 'num'); cell(tr, row.recordStatus, 'mono'); cell(tr, row.identifiedBy); cell(tr, row.userId.slice(0, 8), 'mono');
+      cell(tr, row.priceMeso === null ? '-' : meso(row.priceMeso), 'num'); cell(tr, row.recordStatus, 'mono'); cell(tr, row.identifiedBy); cell(tr, row.userId === null ? '삭제됨' : row.userId.slice(0, 8), 'mono');
       rows.appendChild(tr);
     });
     if (r.json.rows.length === 0) emptyRow(rows, 11);

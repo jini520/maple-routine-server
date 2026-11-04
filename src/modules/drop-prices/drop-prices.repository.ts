@@ -41,7 +41,8 @@ export interface DropPriceInput {
 /** 관리 화면이 보는 줄. completed 가 아닌 줄도 상태를 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
 export interface DropPriceAdminRow {
   id: string
-  userId: string
+  /** 계정을 삭제한 사람의 줄은 NULL 이다. */
+  userId: string | null
   identifiedBy: IdentitySource
   dropRecordId: string
   itemKey: string

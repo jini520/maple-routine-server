@@ -52,8 +52,8 @@ export const dropCategoryEnum = pgEnum('drop_category', ['fixed', 'equipment', '
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
-  /** 탈퇴. 사용자 요청으로 줄을 지우지 않는다. */
-  deletedAt: timestamptz('deleted_at'),
+  /** 계정 삭제를 요청한 때. 30일 뒤 밤 일이 행을 지운다. NULL 이면 예약이 없다. */
+  deletionRequestedAt: timestamptz('deletion_requested_at'),
 })
 
 /**
@@ -250,10 +250,8 @@ export const dropPrices = pgTable(
   'drop_prices',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    /** 행은 하드 삭제되지 않아 CASCADE 가 실제로 돌 일이 없다. 탈퇴는 users.deleted_at 이다. */
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    /** 계정을 삭제하면 비우고 줄은 남긴다. 사람과의 연결을 끊은 익명 표본이다. */
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     /** 기기가 만든 v4. 사람 안에서만 유일하다. 남의 기록 id 로 남의 줄을 못 덮는다. */
     dropRecordId: uuid('drop_record_id').notNull(),
     identifiedBy: identitySourceEnum('identified_by').notNull(),
@@ -1292,9 +1290,7 @@ export const usageEvents = pgTable(
   'usage_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     identifiedBy: identitySourceEnum('identified_by').notNull(),
     type: usageEventTypeEnum('type').notNull(),
     /** 화면은 라우트 이름, 동작은 동작 이름이다. 방문은 빈 글자다. */
@@ -1317,9 +1313,7 @@ export const enhancementAnomalies = pgTable(
   'enhancement_anomalies',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     identifiedBy: identitySourceEnum('identified_by').notNull(),
     /** 강화한 날(KST YYYY-MM-DD). */
     historyDate: text('history_date').notNull(),

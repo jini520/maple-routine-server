@@ -26,6 +26,7 @@ describe('DropPricesController', () => {
     upsertByApiKeyHash: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
     recordAccountId: jest.fn(),
+    deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const prices = { upsert: jest.fn(), markDeleted: jest.fn() }
   const bosses = { findDifficulty: jest.fn() }

@@ -15,6 +15,7 @@ export const callbackQuery = z
     code: z.string().optional(),
     state: z.string().optional(),
     error: z.string().optional(),
+    error_name: z.string().optional(),
   })
   .passthrough()
 export type CallbackQuery = z.infer<typeof callbackQuery>

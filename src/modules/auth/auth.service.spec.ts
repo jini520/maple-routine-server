@@ -130,6 +130,16 @@ describe('AuthService', () => {
     expect(nexon.exchange).not.toHaveBeenCalled()
   })
 
+  it('넥슨 동의 화면에서 취소하면 state 없이 오는 error_name 을 돌아갈 주소에 싣는다', async () => {
+    const { service, attempts, nexon } = build()
+
+    const url = await service.callback({ error_name: 'user_cancel_consent' })
+
+    expect(url).toBe('com.mapleroutine.app://oauth/callback?error_name=user_cancel_consent')
+    expect(attempts.claim).not.toHaveBeenCalled()
+    expect(nexon.exchange).not.toHaveBeenCalled()
+  })
+
   it('넥슨이 code 대신 error 로 끝내면 짝을 지우고 receipt 없이 돌려보낸다', async () => {
     const { service, attempts, nexon } = build()
 

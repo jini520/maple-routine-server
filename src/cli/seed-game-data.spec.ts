@@ -616,7 +616,7 @@ describe('FAQ 씨앗 파일', () => {
     const seed = parseFaqsSeed(
       JSON.parse(readFileSync(join(__dirname, '..', 'database', 'seed', 'faqs.json'), 'utf8')),
     )
-    expect([seed.sheets.length, seed.items.length]).toEqual([34, 32])
+    expect([seed.sheets.length, seed.items.length]).toEqual([31, 32])
     const keys = new Set(seed.sheets.map((s) => s.key))
     expect(keys.size).toBe(seed.sheets.length)
     expect(seed.items.filter((i) => !keys.has(i.sheet))).toEqual([])

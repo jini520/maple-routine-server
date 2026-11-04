@@ -33,6 +33,8 @@ export interface CallbackQuery {
   code?: string
   state?: string
   error?: string
+  /** 넥슨 동의 화면의 `취소` 는 state · code 없이 이것 하나로 온다(`user_cancel_consent`). */
+  error_name?: string
 }
 
 /**
@@ -72,15 +74,18 @@ export class AuthService {
    * 화면에 갇히고 앱으로 못 돌아온다.
    */
   async callback(query: CallbackQuery): Promise<string> {
-    if (!query.state) return SCHEME_RETURN
+    // receipt 없이 돌아갈 때는 넥슨이 보낸 error_name 을 싣는다. 앱이 이것으로 취소와 실패를 가른다.
+    const back = this.returnUrl({ errorName: query.error_name })
+    // state 가 없으면 짝도 플랫폼도 모른다. 두 플랫폼이 같은 스킴으로 돌아오므로 주소는 하나다.
+    if (!query.state) return back
     const claimed = await this.attempts.claim(query.state)
-    if (claimed === null) return SCHEME_RETURN
+    if (claimed === null) return back
     const { id, platform } = claimed
 
     if (!query.code) {
-      // 넥슨이 동의를 거절로 끝냈다. code 가 올 자리에 error 가 온다.
+      // code 없이는 교환할 수 없다. 동의 취소는 state 없이 오므로 여기가 아니라 위에서 끝난다.
       await this.attempts.delete(id)
-      return this.returnUrl()
+      return back
     }
 
     let sessionId: string | undefined
@@ -107,13 +112,13 @@ export class AuthService {
         sessionSealed: this.seal.seal('session', sessionValue),
         sessionId,
       })
-      return this.returnUrl(receipt)
+      return this.returnUrl({ receipt })
     } catch (error) {
       this.logger.warn(`콜백이 실패했다: ${String(error)}`)
       // 실패한 짝에 봉한 것이 남을 일이 없게 행을 지운다. 세션까지 만들었으면 그것도 고아라 지운다.
       await this.attempts.delete(id).catch(() => undefined)
       if (sessionId !== undefined) await this.sessions.delete(sessionId).catch(() => undefined)
-      return this.returnUrl()
+      return back
     }
   }
 
@@ -136,7 +141,9 @@ export class AuthService {
     return `${this.config.get('PUBLIC_BASE_URL', { infer: true })}${CALLBACK_PATH}`
   }
 
-  private returnUrl(receipt?: string): string {
-    return receipt === undefined ? SCHEME_RETURN : `${SCHEME_RETURN}?receipt=${encodeURIComponent(receipt)}`
+  private returnUrl(params: { receipt?: string; errorName?: string }): string {
+    if (params.receipt !== undefined) return `${SCHEME_RETURN}?receipt=${encodeURIComponent(params.receipt)}`
+    if (params.errorName) return `${SCHEME_RETURN}?error_name=${encodeURIComponent(params.errorName)}`
+    return SCHEME_RETURN
   }
 }

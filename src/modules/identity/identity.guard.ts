@@ -2,9 +2,12 @@ import {
   type CanActivate,
   createParamDecorator,
   type ExecutionContext,
+  ForbiddenException,
   Injectable,
+  SetMetadata,
   UnauthorizedException,
 } from '@nestjs/common'
+import { Reflector } from '@nestjs/core'
 import type { FastifyRequest } from 'fastify'
 
 import { sha256 } from '../../common/hash'
@@ -31,20 +34,44 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** 앱이 만든 SHA-256 의 소문자 16진. 키 원문이 실려 오면 길이가 안 맞아 여기서 걸린다. */
 const API_KEY_HASH = /^[0-9a-f]{64}$/
 
+export const ALLOW_DELETION_PENDING = 'identity:allow-deletion-pending'
+
+/** 삭제를 예약한 사람도 지나는 경로. 예약을 묻고 취소하는 경로만 단다. */
+export const AllowDeletionPending = () => SetMetadata(ALLOW_DELETION_PENDING, true)
+
 /**
  * 쓰기 경로의 신원. Authorization: Bearer <세션> 아니면 x-api-key-hash 다.
  *
  * 세션이 왔으면 키는 안 읽는다. 죽은 세션도 키로 안 넘어가고 401 이다. 넘어가면 같은 사람의 기록이
  * 두 열쇠로 갈라진다. 세션은 수명만 보고 넥슨을 안 부른다.
+ *
+ * 삭제를 예약한 사람은 403(`account_deletion_pending`)이다. 지울 사람에게 새 기록이 붙으면 30일 뒤 익명 표본에 섞여 남는다.
  */
 @Injectable()
 export class IdentityGuard implements CanActivate {
   constructor(
     private readonly sessions: SessionsRepository,
     private readonly users: UsersRepository,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    await this.identify(context)
+    const request = context.switchToHttp().getRequest<IdentityRequest>()
+    const allowed = this.reflector.getAllAndOverride<boolean | undefined>(ALLOW_DELETION_PENDING, [
+      context.getHandler(),
+      context.getClass(),
+    ])
+    if (
+      allowed !== true &&
+      (await this.users.deletionRequestedAt(request.identity!.userId)) != null
+    ) {
+      throw new ForbiddenException({ code: 'account_deletion_pending' })
+    }
+    return true
+  }
+
+  private async identify(context: ExecutionContext): Promise<void> {
     const request = context.switchToHttp().getRequest<IdentityRequest>()
     const bearer = bearerOf(request)
     if (bearer !== null) {
@@ -57,14 +84,13 @@ export class IdentityGuard implements CanActivate {
         nexonAccountId: account?.nexonAccountId ?? null,
       }
       await this.recordAccountId(request, account)
-      return true
+      return
     }
     const header = request.headers[API_KEY_HASH_HEADER]
     if (typeof header !== 'string' || !API_KEY_HASH.test(header)) throw new UnauthorizedException()
     const found = await this.users.upsertByApiKeyHash(sha256(header))
     request.identity = { userId: found.id, source: 'key', nexonAccountId: found.nexonAccountId }
     await this.recordAccountId(request, found)
-    return true
   }
 
   /** 헤더의 기기 계정 id 가 적힌 값과 다를 때만 적는다. 없거나 모양이 틀리면 신원만 세운다. */

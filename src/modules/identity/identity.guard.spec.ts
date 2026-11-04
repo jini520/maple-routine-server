@@ -1,9 +1,10 @@
-import type { ExecutionContext } from '@nestjs/common'
+import { ForbiddenException, type ExecutionContext } from '@nestjs/common'
+import { Reflector } from '@nestjs/core'
 
 import { sha256 } from '../../common/hash'
 import type { SessionsRepository } from '../auth/sessions.repository'
 import type { UsersRepository } from '../users/users.repository'
-import { IdentityGuard, type IdentityRequest } from './identity.guard'
+import { ALLOW_DELETION_PENDING, IdentityGuard, type IdentityRequest } from './identity.guard'
 
 const HEX = 'ab'.repeat(32)
 
@@ -13,21 +14,30 @@ function build() {
     upsertByApiKeyHash: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
     recordAccountId: jest.fn().mockResolvedValue(undefined),
+    deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const guard = new IdentityGuard(
     sessions as unknown as SessionsRepository,
     users as unknown as UsersRepository,
+    new Reflector(),
   )
   return { guard, sessions, users }
 }
 
-function contextOf(headers: Record<string, string>): {
+function contextOf(
+  headers: Record<string, string>,
+  allowDeletionPending = false,
+): {
   context: ExecutionContext
   request: IdentityRequest
 } {
   const request = { headers } as unknown as IdentityRequest
+  const handler = () => undefined
+  if (allowDeletionPending) Reflect.defineMetadata(ALLOW_DELETION_PENDING, true, handler)
   const context = {
     switchToHttp: () => ({ getRequest: () => request }),
+    getHandler: () => handler,
+    getClass: () => class {},
   } as unknown as ExecutionContext
   return { context, request }
 }
@@ -148,6 +158,33 @@ describe('IdentityGuard', () => {
       ).resolves.toBe(true)
 
       expect(users.recordAccountId).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('삭제 예약', () => {
+    // 지울 사람에게 새 기록이 붙으면 30일 뒤 익명 표본에 섞여 남는다.
+    it('예약된 사람의 쓰기는 403 account_deletion_pending 이다', async () => {
+      const { guard, sessions, users } = build()
+      sessions.findByHash.mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
+      users.deletionRequestedAt.mockResolvedValue(new Date('2026-11-04T00:00:00Z'))
+      const { context } = contextOf({ authorization: 'Bearer S' })
+
+      const thrown = await guard.canActivate(context).catch((error: unknown) => error)
+
+      expect(thrown).toBeInstanceOf(ForbiddenException)
+      expect((thrown as ForbiddenException).getResponse()).toEqual(
+        expect.objectContaining({ code: 'account_deletion_pending' }),
+      )
+    })
+
+    it('예약을 묻고 취소하는 경로는 지난다', async () => {
+      const { guard, sessions, users } = build()
+      sessions.findByHash.mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
+      users.deletionRequestedAt.mockResolvedValue(new Date('2026-11-04T00:00:00Z'))
+      const { context, request } = contextOf({ authorization: 'Bearer S' }, true)
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request.identity?.userId).toBe('u1')
     })
   })
 })

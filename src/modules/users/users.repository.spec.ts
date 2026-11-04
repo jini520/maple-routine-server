@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { sha256 } from '../../common/hash'
-import { nexonAccounts, users } from '../../database/schema'
+import { nexonAccounts, usageEvents, users } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { UsersRepository } from './users.repository'
 
@@ -57,20 +57,20 @@ describeDb('UsersRepository', () => {
     expect(await db.select().from(users)).toHaveLength(1)
   })
 
-  it('탈퇴한 사람이 다시 로그인하면 탈퇴 표시를 거둔다', async () => {
+  // 다시 왔다고 예약을 거두면 사용자가 모르는 채로 삭제가 취소된다. 취소는 앱이 물은 뒤에만 한다.
+  it('삭제를 예약한 사람이 다시 와도 같은 사람이고 예약은 그대로다', async () => {
     const { id } = await repo.upsertByNexonUid('uid-1')
-    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id))
+    await repo.requestDeletion(id)
 
-    await repo.upsertByNexonUid('uid-1')
+    const again = await repo.upsertByNexonUid('uid-1')
 
-    const [row] = await db.select().from(users).where(eq(users.id, id))
-    expect(row?.deletedAt).toBeNull()
+    expect(again.id).toBe(id)
+    await expect(repo.deletionRequestedAt(id)).resolves.not.toBeNull()
   })
 
-  it('키 해시도 같은 규칙이다. 처음은 만들고 다시 오면 같은 계정이고 탈퇴 표시를 거둔다', async () => {
+  it('키 해시도 같은 규칙이다. 처음은 만들고 다시 오면 같은 계정이다', async () => {
     const hash = sha256('a'.repeat(64))
     const first = await repo.upsertByApiKeyHash(hash)
-    await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, first.id))
 
     const second = await repo.upsertByApiKeyHash(hash)
 
@@ -79,8 +79,6 @@ describeDb('UsersRepository', () => {
     expect(account).toEqual(
       expect.objectContaining({ identitySource: 'key', apiKeyHash: hash, nexonUid: null }),
     )
-    const [row] = await db.select().from(users).where(eq(users.id, first.id))
-    expect(row?.deletedAt).toBeNull()
   })
 
   it('세션 경로는 그 사람의 로그인 계정을 찾는다', async () => {
@@ -131,19 +129,67 @@ describeDb('UsersRepository', () => {
     expect(key?.id).toBeDefined()
   })
 
-  it('markDeleted 는 탈퇴 시각을 적고 두 번째는 안 덮는다', async () => {
+  // 다시 누를 때마다 시각을 덮으면 유예가 끝없이 밀린다.
+  it('삭제 예약은 처음 시각을 남기고, 취소하면 비운다', async () => {
     const { id } = await repo.upsertByNexonUid('uid-1')
-
-    await repo.markDeleted(id)
-    const [first] = await db.select().from(users).where(eq(users.id, id))
-    expect(first?.deletedAt).not.toBeNull()
-
     await db
       .update(users)
-      .set({ deletedAt: new Date('2026-01-01T00:00:00Z') })
+      .set({ deletionRequestedAt: new Date('2026-01-01T00:00:00Z') })
       .where(eq(users.id, id))
-    await repo.markDeleted(id)
-    const [second] = await db.select().from(users).where(eq(users.id, id))
-    expect(second?.deletedAt?.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+
+    await repo.requestDeletion(id)
+    expect((await repo.deletionRequestedAt(id))?.toISOString()).toBe('2026-01-01T00:00:00.000Z')
+
+    await repo.cancelDeletion(id)
+    await expect(repo.deletionRequestedAt(id)).resolves.toBeNull()
+  })
+
+  it('기준보다 앞서 예약한 사람만 지우고, 남기는 표의 줄은 사람과의 연결만 끊는다', async () => {
+    const hash = sha256('b'.repeat(64))
+    const due = await repo.upsertByApiKeyHash(hash)
+    const kept = await repo.upsertByNexonUid('uid-2')
+    await db
+      .update(users)
+      .set({ deletionRequestedAt: new Date('2026-10-01T00:00:00Z') })
+      .where(eq(users.id, due.id))
+    await db
+      .update(users)
+      .set({ deletionRequestedAt: new Date('2026-11-01T00:00:00Z') })
+      .where(eq(users.id, kept.id))
+    const event = {
+      identifiedBy: 'key' as const,
+      type: 'visit' as const,
+      name: '',
+      platform: 'ios' as const,
+      appVersion: '1.0.13',
+      occurredAt: new Date('2026-10-01T00:00:00Z'),
+    }
+    await db.insert(usageEvents).values([
+      { ...event, userId: due.id },
+      { ...event, userId: kept.id },
+    ])
+
+    await expect(repo.purgeDeletionsBefore(new Date('2026-10-15T00:00:00Z'))).resolves.toBe(1)
+
+    expect((await db.select().from(users)).map((row) => row.id)).toEqual([kept.id])
+    expect((await db.select().from(nexonAccounts)).map((row) => row.userId)).toEqual([kept.id])
+    expect((await db.select().from(usageEvents)).map((row) => row.userId).sort()).toEqual(
+      [kept.id, null].sort(),
+    )
+  })
+
+  // 지운 사람의 기록과 이어지면 익명이 아니다.
+  it('지운 뒤 같은 키로 오면 새 사람이다', async () => {
+    const hash = sha256('c'.repeat(64))
+    const before = await repo.upsertByApiKeyHash(hash)
+    await db
+      .update(users)
+      .set({ deletionRequestedAt: new Date('2026-01-01T00:00:00Z') })
+      .where(eq(users.id, before.id))
+    await repo.purgeDeletionsBefore(new Date('2026-02-01T00:00:00Z'))
+
+    const after = await repo.upsertByApiKeyHash(hash)
+
+    expect(after.id).not.toBe(before.id)
   })
 })

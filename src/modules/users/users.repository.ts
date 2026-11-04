@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, lt, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { nexonAccounts, users } from '../../database/schema'
@@ -26,7 +26,7 @@ const ACCOUNT_COLUMNS = {
 export class UsersRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** 넥슨 uid 로 사람을 하나로 묶는다. 탈퇴 표시는 다시 로그인한 순간 거둔다. */
+  /** 넥슨 uid 로 사람을 하나로 묶는다. 삭제 예약은 건드리지 않는다. 취소는 앱이 물은 뒤에만 한다. */
   upsertByNexonUid(nexonUid: string): Promise<FoundAccount> {
     return this.upsertAccount({ identitySource: 'login', nexonUid })
   }
@@ -62,12 +62,37 @@ export class UsersRepository {
               AND other.id <> ${nexonAccountId})`)
   }
 
-  /** 탈퇴를 적는다. 이미 적힌 시각은 안 덮는다. 처음 탈퇴한 때가 답이어야 한다. */
-  async markDeleted(id: string): Promise<void> {
+  /** 계정 삭제를 예약한다. 이미 적힌 시각은 안 덮는다. 덮으면 다시 누를 때마다 유예가 밀린다. */
+  async requestDeletion(id: string): Promise<void> {
     await this.db
       .update(users)
-      .set({ deletedAt: sql`COALESCE(${users.deletedAt}, now())` })
+      .set({ deletionRequestedAt: sql`COALESCE(${users.deletionRequestedAt}, now())` })
       .where(eq(users.id, id))
+  }
+
+  async cancelDeletion(id: string): Promise<void> {
+    await this.db.update(users).set({ deletionRequestedAt: null }).where(eq(users.id, id))
+  }
+
+  /** 삭제를 예약한 때. 예약이 없거나 사람이 없으면 NULL. */
+  async deletionRequestedAt(id: string): Promise<Date | null> {
+    const [row] = await this.db
+      .select({ at: users.deletionRequestedAt })
+      .from(users)
+      .where(eq(users.id, id))
+    return row?.at ?? null
+  }
+
+  /**
+   * 기준보다 앞서 예약한 사람을 지우고 지운 수를 돌려준다. 열쇠 · 세션 · 옛 표의 줄은 함께 지워지고, 드롭 가격 · 사용 로그 ·
+   * 강화 상황은 `user_id` 만 비워 남는다(외래키가 정한다).
+   */
+  async purgeDeletionsBefore(cutoff: Date): Promise<number> {
+    const deleted = await this.db
+      .delete(users)
+      .where(lt(users.deletionRequestedAt, cutoff))
+      .returning({ id: users.id })
+    return deleted.length
   }
 
   /**
@@ -82,10 +107,7 @@ export class UsersRepository {
         : eq(nexonAccounts.apiKeyHash, credential.apiKeyHash)
     return this.db.transaction(async (tx) => {
       const [found] = await tx.select(ACCOUNT_COLUMNS).from(nexonAccounts).where(match)
-      if (found !== undefined) {
-        await tx.update(users).set({ deletedAt: null }).where(eq(users.id, found.id))
-        return found
-      }
+      if (found !== undefined) return found
       const [user] = await tx.insert(users).values({}).returning({ id: users.id })
       if (user === undefined) throw new Error('사람을 만들지 못했다')
       const [created] = await tx

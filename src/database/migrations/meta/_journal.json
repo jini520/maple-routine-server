@@ -176,6 +176,13 @@
       "when": 1793711695372,
       "tag": "0024_faqs",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793763827959,
+      "tag": "0025_usage_events",
+      "breakpoints": true
     }
   ]
 }

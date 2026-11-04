@@ -18,6 +18,7 @@ import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
 import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories.repository'
 import { HUNT_LOOT_KINDS } from '../hunt-loot/hunt-loot.repository'
 import { SPEND_CURRENCIES, SPEND_FORMS } from '../spend-catalog/spend-catalog.repository'
+import { USAGE_RETENTION_DAYS } from '../usage-events/usage-events.purge.job'
 
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
@@ -64,6 +65,12 @@ export const dropPriceQuery = z.object({
   limit: z.coerce.number().int().min(1).max(1000).default(200),
 })
 export type DropPriceQuery = z.infer<typeof dropPriceQuery>
+
+/** 사용 로그 기간. 보관 기간보다 길게 물으면 비어 있는 날만 늘어난다. */
+export const usageQuery = z.object({
+  days: z.coerce.number().int().min(1).max(USAGE_RETENTION_DAYS).default(30),
+})
+export type UsageQuery = z.infer<typeof usageQuery>
 
 /** 난이도 줄 하나의 본문. 난이도는 경로가 든다. 유효 기간은 새 줄을 더할 때 함께 적고, 있는 줄은 period 끝점으로 고친다. */
 export const requiredLevelBody = z

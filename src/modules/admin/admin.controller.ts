@@ -62,6 +62,7 @@ import {
 import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
+import { UsageEventsRepository } from '../usage-events/usage-events.repository'
 import {
   NoSpendCategory,
   NoSpendGroup,
@@ -161,6 +162,8 @@ import {
   dropMarketItemQuery,
   dropMarketQuery,
   dropPriceQuery,
+  type UsageQuery,
+  usageQuery,
   type MaxPartySizeBody,
   maxPartySizeBody,
   type MoveBody,
@@ -284,6 +287,7 @@ import { DROP_ITEMS_HTML } from './views/drop-items'
 import { DROP_MARKET_HTML } from './views/drop-market'
 import { DROP_MARKET_ITEM_HTML } from './views/drop-market-item'
 import { DROP_PRICES_HTML } from './views/drop-prices'
+import { USAGE_HTML } from './views/usage'
 import { SPEND_CATALOG_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
@@ -305,6 +309,15 @@ import { NOTICES_HTML } from './views/notices'
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
  */
+const KST_OFFSET_MS = 9 * 3_600_000
+const DAY_MS = 86_400_000
+
+/** 한국 시각 오늘 자정에서 n 일 전 자정. */
+function kstMidnightDaysAgo(n: number): Date {
+  const kstNow = Date.now() + KST_OFFSET_MS
+  return new Date(Math.floor(kstNow / DAY_MS) * DAY_MS - n * DAY_MS - KST_OFFSET_MS)
+}
+
 /** 첫 요청에 읽어 둔다. 바뀌는 것은 배포뿐이다. */
 let chartScript: string | undefined
 
@@ -333,6 +346,7 @@ export class AdminController {
     private readonly hexa: HexaMatrixRepository,
     private readonly faqs: FaqsRepository,
     private readonly assets: AssetsRepository,
+    private readonly usage: UsageEventsRepository,
   ) {}
 
   /**
@@ -692,6 +706,26 @@ export class AdminController {
       this.prices.recent(filter, query.limit),
     ])
     return { summary, rows }
+  }
+
+  @Get('usage')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  usagePage(): string {
+    return USAGE_HTML
+  }
+
+  /** 화면이 부른다. 날짜는 한국 시각으로 자르고, 오늘을 넣어 days 일 전 자정부터 센다. */
+  @Get('usage/stats')
+  @Header('cache-control', 'no-store')
+  async usageStats(@Query(new ZodValidationPipe(usageQuery)) query: UsageQuery) {
+    const since = kstMidnightDaysAgo(query.days - 1)
+    const [days, screens, versions] = await Promise.all([
+      this.usage.daily(since),
+      this.usage.screens(since),
+      this.usage.versions(since),
+    ])
+    return { days, screens, versions }
   }
 
   @Get('drop-market')

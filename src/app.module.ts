@@ -27,6 +27,7 @@ import { PushModule } from './modules/push/push.module'
 import { SettlementModule } from './modules/settlement/settlement.module'
 import { SpendCatalogModule } from './modules/spend-catalog/spend-catalog.module'
 import { SymbolCostsModule } from './modules/symbol-costs/symbol-costs.module'
+import { UsageEventsModule } from './modules/usage-events/usage-events.module'
 import { UsersModule } from './modules/users/users.module'
 import { WorldsModule } from './modules/worlds/worlds.module'
 
@@ -58,6 +59,7 @@ import { WorldsModule } from './modules/worlds/worlds.module'
     CashbookEntriesModule,
     EnhancementTotalsModule,
     EnhancementAnomaliesModule,
+    UsageEventsModule,
     UsersModule,
     IdentityModule,
     AdminModule,

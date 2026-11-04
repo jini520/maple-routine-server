@@ -64,6 +64,7 @@ import {
 import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
+import { UsageEventsRepository } from '../usage-events/usage-events.repository'
 import {
   AlreadyOpen,
   ManualCompletionRepository,
@@ -233,6 +234,7 @@ describe('AdminController', () => {
   }
 
   const assetsRepo = { missing: jest.fn() }
+  const usageRepo = { daily: jest.fn(), screens: jest.fn(), versions: jest.fn() }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -260,6 +262,7 @@ describe('AdminController', () => {
         { provide: HexaMatrixRepository, useValue: hexaRepo },
         { provide: FaqsRepository, useValue: faqRepo },
         { provide: AssetsRepository, useValue: assetsRepo },
+        { provide: UsageEventsRepository, useValue: usageRepo },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -273,6 +276,7 @@ describe('AdminController', () => {
       ...Object.values(manual),
       ...Object.values(notices),
       ...Object.values(prices),
+      ...Object.values(usageRepo),
       ...Object.values(items),
       ...Object.values(boxes),
       ...Object.values(drops),
@@ -670,6 +674,40 @@ describe('AdminController', () => {
         (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}/schedule` })).statusCode,
       ).toBe(404)
       expect(notices.cancelSchedule).toHaveBeenCalledWith(ROW)
+    })
+  })
+
+  describe('사용 로그', () => {
+    // 한국 시각으로 자르지 않으면 첫날의 오전 9시 전 사건이 빠진다.
+    it('GET /admin/usage/stats 는 한국 시각 자정부터 날짜별 · 화면별 · 버전별을 함께 낸다', async () => {
+      usageRepo.daily.mockResolvedValue([{ day: '2026-11-03' }])
+      usageRepo.screens.mockResolvedValue([{ name: 'Boss' }])
+      usageRepo.versions.mockResolvedValue([{ appVersion: '1.0.13' }])
+      jest.useFakeTimers({
+        now: new Date('2026-11-03T20:00:00Z'),
+        doNotFake: ['nextTick', 'setImmediate'],
+      })
+
+      const res = await app.inject({ method: 'GET', url: '/admin/usage/stats?days=2' })
+      jest.useRealTimers()
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json()).toEqual({
+        days: [{ day: '2026-11-03' }],
+        screens: [{ name: 'Boss' }],
+        versions: [{ appVersion: '1.0.13' }],
+      })
+      // 지금은 한국 시각 11월 4일 05시다. 이틀이면 11월 3일 00시(KST)부터다.
+      const since = new Date('2026-11-02T15:00:00Z')
+      expect(usageRepo.daily).toHaveBeenCalledWith(since)
+      expect(usageRepo.screens).toHaveBeenCalledWith(since)
+      expect(usageRepo.versions).toHaveBeenCalledWith(since)
+    })
+
+    it('기간이 보관 기간을 넘으면 400 이다', async () => {
+      const res = await app.inject({ method: 'GET', url: '/admin/usage/stats?days=181' })
+
+      expect(res.statusCode).toBe(400)
     })
   })
 

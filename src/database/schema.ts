@@ -1,5 +1,5 @@
 /**
- * Model. 표 쉰셋과 ENUM 스물다섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 표 쉰넷과 ENUM 스물여섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -1281,6 +1281,38 @@ export const enhancementAnomalyTypeEnum = pgEnum('enhancement_anomaly_type', [
  * 앱이 강화 합계에서 빼거나 이벤트 월드를 판정하지 못한 줄의 수. 운영자가 예상하지 못한 상황의 양과 모양을 보는 표이고 통계에
  * 쓰지 않는다. 앱은 응답 원본을 저장하지 않아 이 값이 원인을 볼 유일한 단서다. 캐릭터 이름은 받지 않는다.
  */
+/** 사용 로그 사건의 종류. 모르는 종류를 받으면 운영자가 뜻을 모르는 줄이 쌓인다. */
+export const usageEventTypeEnum = pgEnum('usage_event_type', ['visit', 'screen', 'action'])
+
+/**
+ * 앱 사용 로그. 사건 하나에 줄 하나다. 일 방문자 · 방문 횟수 · 화면별 방문자가 모두 사건을 세는 질문이라 사람 표의 칸으로는
+ * 답할 수 없다. 180일이 지난 줄은 매일 밤 지운다.
+ */
+export const usageEvents = pgTable(
+  'usage_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    identifiedBy: identitySourceEnum('identified_by').notNull(),
+    type: usageEventTypeEnum('type').notNull(),
+    /** 화면은 라우트 이름, 동작은 동작 이름이다. 방문은 빈 글자다. */
+    name: text('name').notNull(),
+    /** 화면에 머문 시간. 화면 사건만 있다. */
+    durationMs: integer('duration_ms'),
+    platform: platformEnum('platform').notNull(),
+    appVersion: text('app_version').notNull(),
+    /** 기기 시각. 묶어 보내므로 받은 시각으로 적으면 어제 쓴 것이 오늘로 잡힌다. */
+    occurredAt: timestamptz('occurred_at').notNull(),
+    receivedAt: timestamptz('received_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('usage_events_occurred_at_idx').on(t.occurredAt),
+    index('usage_events_user_id_idx').on(t.userId),
+  ],
+)
+
 export const enhancementAnomalies = pgTable(
   'enhancement_anomalies',
   {

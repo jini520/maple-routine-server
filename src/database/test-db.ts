@@ -61,6 +61,7 @@ const TABLES = [
   'cashbook_entries',
   'boss_clears',
   'drop_prices',
+  'usage_events',
   'nexon_login_attempts',
   'nexon_sessions',
   'nexon_accounts',

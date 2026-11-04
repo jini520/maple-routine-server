@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 
 import type { Env } from '../config/env.schema'
-import { errorNameOf } from './nexon-error'
+import { errorNameOf, TOKEN_REJECTED } from './nexon-error'
 
 export type Platform = 'ios' | 'android'
 
@@ -41,9 +41,6 @@ const USERINFO_URL = 'https://openid.nexon.com/oauth2/userinfo'
 
 /** 넥슨이 답을 안 주면 이만큼 기다리고 끊는다. 매달린 호출 하나가 회차 슬롯을 영구히 쥐지 않게. */
 const TIMEOUT_MS = 10_000
-
-/** 죽은 토큰과 틀린 인가 코드의 에러 이름. 같은 400 이라도 OPENAPI00004 는 파라미터나 자격 쌍이 틀린 것이라 토큰 탓이 아니다. */
-const TOKEN_REJECTED = 'OPENAPI00012'
 
 interface TokenBody {
   access_token: string

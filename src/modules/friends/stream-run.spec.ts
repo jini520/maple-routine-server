@@ -33,6 +33,7 @@ function build(over: Partial<RunOptions> = {}): RunOptions {
     signal: new AbortController().signal,
     now: () => Date.now(),
     tokenFor: async () => 'AT',
+    tokenRejected: async () => undefined,
     fetchPage: async () => page('{"count":0}'),
     sink: sinkOf(),
     ...over,
@@ -197,6 +198,42 @@ describe('runStream', () => {
     expect(fetchPage).toHaveBeenCalledTimes(1)
     expect(parsed(sink.lines).at(-1)).toEqual({ t: 'end', reason: 'relogin' })
     expect(summary.reason).toBe('relogin')
+  })
+
+  // 동의를 철회하면 넥슨이 저장한 토큰을 이 코드로 거절한다. fail 을 실으면 앱이 조회 실패로만 읽는다.
+  it('넥슨이 토큰을 거절하면 fail 없이 세션을 지우고 end 는 relogin 이다', async () => {
+    const sink = sinkOf()
+    const tokenRejected = jest.fn(async () => undefined)
+    const fetchPage = jest.fn(async () =>
+      page('{"error":{"name":"OPENAPI00012","message":"The token is not valid."}}', 400),
+    )
+
+    const summary = await runStream(
+      build({ tasks: [cube('2026-10-01'), cube('2026-10-02')], fanout: 1, tokenRejected, fetchPage, sink }),
+    )
+
+    expect(parsed(sink.lines)).toEqual([{ t: 'end', reason: 'relogin' }])
+    expect(tokenRejected).toHaveBeenCalledTimes(1)
+    expect(fetchPage).toHaveBeenCalledTimes(1)
+    expect(summary).toMatchObject({ reason: 'relogin', failed: 0 })
+  })
+
+  it('토큰 거절이 아닌 400 은 code 를 실은 fail 이고 세션은 그대로다', async () => {
+    const sink = sinkOf()
+    const tokenRejected = jest.fn(async () => undefined)
+    const fetchPage = jest.fn(async () => page('{"error":{"name":"OPENAPI00009"}}', 400))
+
+    const summary = await runStream(build({ tasks: [cube('2026-10-01')], tokenRejected, fetchPage, sink }))
+
+    expect(parsed(sink.lines)[0]).toEqual({
+      t: 'fail',
+      kind: 'cube',
+      date: '2026-10-01',
+      status: 400,
+      code: 'OPENAPI00009',
+    })
+    expect(tokenRejected).not.toHaveBeenCalled()
+    expect(summary.reason).toBe('done')
   })
 
   it('sink 가 배수를 기다리는 동안 다음 쪽을 당기지 않는다', async () => {

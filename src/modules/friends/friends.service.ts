@@ -65,6 +65,7 @@ export class FriendsService {
         signal: abort.signal,
         now: Date.now,
         tokenFor,
+        tokenRejected: () => this.tokens.rejected(session.id),
         fetchPage: (task, cursor, token, signal) =>
           this.nexon.page(session.platform, token, pathOf(task, cursor), signal),
         sink: out,

@@ -35,6 +35,14 @@ export class TokenService {
     return task
   }
 
+  /**
+   * 넥슨이 이 세션의 토큰을 거절했다. 갱신 거절과 데이터 조회의 거절(동의 철회)이 함께 쓰는 유일한 삭제 자리.
+   * 다음 tokenFor 는 ReloginRequired 다.
+   */
+  async rejected(sessionId: string): Promise<void> {
+    await this.sessions.delete(sessionId)
+  }
+
   private async resolve(sessionId: string): Promise<string> {
     const session = await this.sessions.findById(sessionId)
     if (session === null) throw new ReloginRequired('세션이 없다')
@@ -50,7 +58,7 @@ export class TokenService {
       )
     } catch (error) {
       if (error instanceof NexonTokenRejected) {
-        await this.sessions.delete(sessionId)
+        await this.rejected(sessionId)
         throw new ReloginRequired('갱신 토큰이 죽었다')
       }
       throw error

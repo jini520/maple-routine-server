@@ -10,7 +10,7 @@ import {
   pageLine,
   sanitizeBody,
 } from './lines'
-import { errorNameOf } from '../../clients/nexon-error'
+import { errorNameOf, TOKEN_REJECTED } from '../../clients/nexon-error'
 
 /** 넥슨 쪽 하나. status 0 은 못 닿은 것이다. */
 export interface PageResult {
@@ -43,6 +43,8 @@ export interface RunOptions {
   signal: AbortSignal
   now: () => number
   tokenFor: () => Promise<string>
+  /** 넥슨이 조회에서 토큰을 거절했을 때 세션을 지운다 */
+  tokenRejected: () => Promise<void>
   fetchPage: PageFetcher
   sink: LineSink
 }
@@ -84,8 +86,15 @@ export async function runStream(options: RunOptions): Promise<RunSummary> {
       }
       if (signal.aborted) return
       if (page.status !== 200 || !isJsonObject(page.body)) {
+        const code = errorNameOf(page.body.toString('utf8'))
+        // fail 을 실으면 앱이 조회 실패로 읽어 로그인 만료 창을 안 띄운다. 회차를 relogin 으로 끝낸다.
+        if (code === TOKEN_REJECTED) {
+          state.stop = 'relogin'
+          await options.tokenRejected()
+          return
+        }
         state.failed += 1
-        await sink.write(failLine(task, page.status, errorNameOf(page.body.toString('utf8'))))
+        await sink.write(failLine(task, page.status, code))
         return
       }
       const body = sanitizeBody(page.body)

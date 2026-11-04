@@ -12,18 +12,13 @@ import { SessionsRepository } from './sessions.repository'
 /** 사용자가 넥슨 화면에서 쓰는 시간. 이 안에 콜백이 안 오면 짝은 죽는다. */
 const ATTEMPT_TTL_MS = 10 * 60_000
 
-/** 앱이 등록한 커스텀 스킴. iOS 는 인증 세션이 이것을 연 앱에만 돌려주므로 값을 실어도 안전하다. */
+/**
+ * 두 플랫폼이 돌아오는 커스텀 스킴. iOS 는 인증 세션이 이것을 연 앱에만 돌려주므로 값을 실어도 안전하다.
+ * 안드로이드는 다른 앱이 가로챌 수 있지만 receipt 만으로는 세션을 못 받으므로(redeem_key 가 둘째 열쇠) 그 로그인이 실패할 뿐이다.
+ */
 const SCHEME_RETURN = 'com.mapleroutine.app://oauth/callback'
 /** 넥슨이 돌아오는 자리. 넥슨 애플리케이션 둘에 같은 주소를 등록한다. */
 const CALLBACK_PATH = '/v1/auth/nexon/callback'
-/**
- * 안드로이드가 돌아오는 주소. 서명을 확인한 앱만 열도록 App Link 로 걸 자리다.
- * 앱 매니페스트에 그 필터가 아직 없어(스토어 빌드가 필요하다) 지금은 안 쓰고, 안드로이드도 스킴으로 돌려보낸다.
- * receipt 만으로는 세션을 못 받으므로(redeem_key 가 둘째 열쇠) 가로채여도 그 로그인이 실패할 뿐이다.
- */
-export const ANDROID_RETURN_PATH = '/app/oauth/return'
-/** 다음 스토어 빌드에 App Link 필터가 실리면 true 로 바꾼다. 이슈가 그 일을 든다. */
-const ANDROID_USES_APP_LINK = false
 
 export type RedeemResult =
   | { status: 'ok'; session: string }
@@ -85,7 +80,7 @@ export class AuthService {
     if (!query.code) {
       // 넥슨이 동의를 거절로 끝냈다. code 가 올 자리에 error 가 온다.
       await this.attempts.delete(id)
-      return this.returnUrl(platform)
+      return this.returnUrl()
     }
 
     let sessionId: string | undefined
@@ -112,13 +107,13 @@ export class AuthService {
         sessionSealed: this.seal.seal('session', sessionValue),
         sessionId,
       })
-      return this.returnUrl(platform, receipt)
+      return this.returnUrl(receipt)
     } catch (error) {
       this.logger.warn(`콜백이 실패했다: ${String(error)}`)
       // 실패한 짝에 봉한 것이 남을 일이 없게 행을 지운다. 세션까지 만들었으면 그것도 고아라 지운다.
       await this.attempts.delete(id).catch(() => undefined)
       if (sessionId !== undefined) await this.sessions.delete(sessionId).catch(() => undefined)
-      return this.returnUrl(platform)
+      return this.returnUrl()
     }
   }
 
@@ -141,11 +136,7 @@ export class AuthService {
     return `${this.config.get('PUBLIC_BASE_URL', { infer: true })}${CALLBACK_PATH}`
   }
 
-  private returnUrl(platform: Platform, receipt?: string): string {
-    const base =
-      platform === 'android' && ANDROID_USES_APP_LINK
-        ? `${this.config.get('PUBLIC_BASE_URL', { infer: true })}${ANDROID_RETURN_PATH}`
-        : SCHEME_RETURN
-    return receipt === undefined ? base : `${base}?receipt=${encodeURIComponent(receipt)}`
+  private returnUrl(receipt?: string): string {
+    return receipt === undefined ? SCHEME_RETURN : `${SCHEME_RETURN}?receipt=${encodeURIComponent(receipt)}`
   }
 }

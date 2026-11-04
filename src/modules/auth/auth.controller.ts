@@ -19,7 +19,6 @@ import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { callbackQuery, loginBody, sessionBody, type LoginBody, type SessionBody } from './auth.dto'
 import { AuthService } from './auth.service'
 import { bearerOf, SessionGuard } from './session.guard'
-import { OAUTH_RETURN_HTML } from './views/oauth-return'
 
 /** 넥슨 화면에서 돌아올 때까지 아무것도 캐시되면 안 된다. 302 가 캐시되면 다음 로그인이 옛 짝으로 간다. */
 const NO_STORE = 'no-store'
@@ -51,14 +50,6 @@ export class AuthController {
       this.logger.error(`콜백에서 던졌다: ${String(error)}`)
     }
     await reply.header('cache-control', NO_STORE).redirect(location, 302)
-  }
-
-  /** 안드로이드 App Link 가 앱을 못 열었을 때 브라우저가 오는 자리. */
-  @Get('app/oauth/return')
-  @Header('Content-Type', 'text/html; charset=utf-8')
-  @Header('Cache-Control', NO_STORE)
-  oauthReturn(): string {
-    return OAUTH_RETURN_HTML
   }
 
   /** ④. 열쇠 둘로 세션을 받는다. gone 만 404 이고 나머지는 status 로 가른다. */

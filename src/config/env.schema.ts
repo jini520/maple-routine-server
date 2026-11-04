@@ -8,7 +8,7 @@ import { z } from 'zod'
 export const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(4000),
-  /** 넥슨에 등록한 redirect_uri 와 안드로이드 App Link 의 호스트. 로컬에서는 바꿔 쓴다. */
+  /** 넥슨에 등록한 redirect_uri 의 호스트. 로컬에서는 바꿔 쓴다. */
   PUBLIC_BASE_URL: z.string().url().default('https://mapleroutine.store'),
   /** 그림 파일을 두는 디렉터리. 같은 박스의 nginx 가 `/assets/` 로 낸다. 컨테이너에서는 볼륨을 건 경로다. */
   ASSETS_DIR: z.string().min(1).default('/data/assets'),

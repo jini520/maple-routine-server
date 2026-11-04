@@ -17,12 +17,11 @@ const SCHEME_RETURN = 'com.mapleroutine.app://oauth/callback'
 /** 넥슨이 돌아오는 자리. 넥슨 애플리케이션 둘에 같은 주소를 등록한다. */
 const CALLBACK_PATH = '/v1/auth/nexon/callback'
 /**
- * 안드로이드가 돌아오는 주소. 서명을 확인한 앱만 열도록 App Link 로 걸 자리다.
- * 앱 매니페스트에 그 필터가 아직 없어(스토어 빌드가 필요하다) 지금은 안 쓰고, 안드로이드도 스킴으로 돌려보낸다.
+ * 안드로이드를 App Link 로 돌려보낼 때의 주소. 안드로이드도 스킴으로 돌려보내기로 해서 쓰지 않는다.
  * receipt 만으로는 세션을 못 받으므로(redeem_key 가 둘째 열쇠) 가로채여도 그 로그인이 실패할 뿐이다.
  */
 export const ANDROID_RETURN_PATH = '/app/oauth/return'
-/** 다음 스토어 빌드에 App Link 필터가 실리면 true 로 바꾼다. 이슈가 그 일을 든다. */
+/** 앱 매니페스트에 App Link 필터가 없어 false 다. */
 const ANDROID_USES_APP_LINK = false
 
 export type RedeemResult =

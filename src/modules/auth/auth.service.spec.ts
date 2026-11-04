@@ -110,7 +110,7 @@ describe('AuthService', () => {
     expect(sealed.receiptHash.equals(sha256(receipt!))).toBe(true)
   })
 
-  it('안드로이드도 지금은 스킴으로 돌아간다. App Link 필터는 다음 스토어 빌드를 기다린다', async () => {
+  it('안드로이드도 iOS 와 같은 스킴으로 돌아간다', async () => {
     const { service, attempts } = build()
     attempts.claim.mockResolvedValue({ id: 'aid', platform: 'android' })
 

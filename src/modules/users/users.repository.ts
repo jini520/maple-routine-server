@@ -1,8 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, eq, lt, sql } from 'drizzle-orm'
+import { and, eq, isNull, lt, notExists, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { nexonAccounts, users } from '../../database/schema'
+import {
+  dropPrices,
+  enhancementAnomalies,
+  nexonAccounts,
+  nexonSessions,
+  usageEvents,
+  users,
+} from '../../database/schema'
 
 /** 찾은 사람과 그 자격의 넥슨 계정. */
 export interface FoundAccount {
@@ -60,6 +67,80 @@ export class UsersRepository {
            SELECT 1 FROM ${nexonAccounts} other
             WHERE other.user_id = ${nexonAccounts.userId} AND other.account_record_id = ${accountRecordId}
               AND other.id <> ${nexonAccountId})`)
+  }
+
+  /**
+   * 키 사용자가 로그인을 붙였을 때 키의 사람을 로그인한 사람에 합친다. 앱이 기기에서 키를 지우기 전에 부른다.
+   *
+   * 키 줄이 로그인한 다른 사람이나 삭제를 예약한 사람에게 붙어 있으면 옮기지 않는다. 해시는 신원의 증명이 아니고,
+   * 예약한 사람을 합치면 그 삭제 요청이 사라진다.
+   */
+  async linkApiKey(userId: string, apiKeyHash: Buffer): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .insert(nexonAccounts)
+        .values({ userId, identitySource: 'key', apiKeyHash })
+        .onConflictDoNothing()
+      const [key] = await tx
+        .select({ userId: nexonAccounts.userId })
+        .from(nexonAccounts)
+        .where(eq(nexonAccounts.apiKeyHash, apiKeyHash))
+        .for('update')
+      if (key === undefined) throw new Error('키 줄을 읽지 못했다')
+      const from = key.userId
+      if (from === userId) return
+
+      const [movable] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, from),
+            isNull(users.deletionRequestedAt),
+            notExists(
+              tx
+                .select()
+                .from(nexonAccounts)
+                .where(
+                  and(eq(nexonAccounts.userId, from), eq(nexonAccounts.identitySource, 'login')),
+                ),
+            ),
+            notExists(tx.select().from(nexonSessions).where(eq(nexonSessions.userId, from))),
+          ),
+        )
+      if (movable === undefined) return
+
+      // 같은 기록이 양쪽에 있으면 늦게 고친 줄만 남긴다. 시각이 같으면 키 쪽을 버린다.
+      await tx.execute(sql`
+        DELETE FROM ${dropPrices} d USING ${dropPrices} o
+         WHERE d.user_id IN (${from}, ${userId}) AND o.user_id IN (${from}, ${userId})
+           AND d.user_id <> o.user_id AND d.drop_record_id = o.drop_record_id
+           AND (d.updated_at < o.updated_at OR (d.updated_at = o.updated_at AND d.user_id = ${from}))`)
+      await tx.execute(sql`
+        DELETE FROM ${enhancementAnomalies} d USING ${enhancementAnomalies} o
+         WHERE d.user_id IN (${from}, ${userId}) AND o.user_id IN (${from}, ${userId})
+           AND d.user_id <> o.user_id
+           AND d.history_date = o.history_date AND d.enhancement_type = o.enhancement_type
+           AND d.anomaly_type = o.anomaly_type AND d.item_name = o.item_name
+           AND (d.updated_at < o.updated_at OR (d.updated_at = o.updated_at AND d.user_id = ${from}))`)
+      await tx.update(dropPrices).set({ userId }).where(eq(dropPrices.userId, from))
+      await tx
+        .update(enhancementAnomalies)
+        .set({ userId })
+        .where(eq(enhancementAnomalies.userId, from))
+      await tx.update(usageEvents).set({ userId }).where(eq(usageEvents.userId, from))
+      // (user_id, account_record_id) 가 UNIQUE 라 로그인한 사람의 줄과 겹치는 계정 id 는 비운다.
+      await tx.execute(sql`
+        UPDATE ${nexonAccounts} a
+           SET user_id = ${userId}, updated_at = now(),
+               account_record_id = CASE WHEN EXISTS (
+                 SELECT 1 FROM ${nexonAccounts} o
+                  WHERE o.user_id = ${userId} AND o.account_record_id = a.account_record_id
+               ) THEN NULL ELSE a.account_record_id END
+         WHERE a.user_id = ${from}`)
+      // 옛 표(boss_clears 등)의 줄은 외래키가 함께 지운다.
+      await tx.delete(users).where(eq(users.id, from))
+    })
   }
 
   /** 계정 삭제를 예약한다. 이미 적힌 시각은 안 덮는다. 덮으면 다시 누를 때마다 유예가 밀린다. */

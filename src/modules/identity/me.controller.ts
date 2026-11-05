@@ -1,5 +1,16 @@
-import { Controller, Delete, Get, HttpCode, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  Post,
+  UseGuards,
+} from '@nestjs/common'
 
+import { sha256 } from '../../common/hash'
+import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { SessionsRepository } from '../auth/sessions.repository'
 import { ACCOUNT_DELETION_GRACE_DAYS } from '../users/account-deletion.job'
 import { UsersRepository } from '../users/users.repository'
@@ -9,10 +20,11 @@ import {
   type IdentityContext,
   IdentityGuard,
 } from './identity.guard'
+import { type ApiKeyLinkBody, apiKeyLinkBody } from './me.dto'
 
 const DAY_MS = 86_400_000
 
-/** 나. 계정 삭제 예약 · 예약 확인 · 취소다. */
+/** 나. 계정 삭제 예약 · 예약 확인 · 취소와, 키 사용자를 로그인한 사람에 합치기다. */
 @Controller()
 @UseGuards(IdentityGuard)
 export class MeController {
@@ -49,5 +61,16 @@ export class MeController {
   @AllowDeletionPending()
   async cancelDeletion(@CurrentIdentity() identity: IdentityContext): Promise<void> {
     await this.users.cancelDeletion(identity.userId)
+  }
+
+  /** 키 사용자가 로그인을 붙였을 때, 앱이 그 키를 지우기 전에 보낸다. 키의 사람을 세션의 사람에 합친다. */
+  @Post('v1/me/api-key-links')
+  @HttpCode(204)
+  async linkApiKey(
+    @CurrentIdentity() identity: IdentityContext,
+    @Body(new ZodValidationPipe(apiKeyLinkBody)) body: ApiKeyLinkBody,
+  ): Promise<void> {
+    if (identity.source !== 'login') throw new ForbiddenException({ code: 'login_required' })
+    await this.users.linkApiKey(identity.userId, sha256(body.apiKeyHash))
   }
 }

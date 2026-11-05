@@ -1,3 +1,4 @@
+import { sha256 } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -16,6 +17,7 @@ describe('MeController', () => {
     deletionRequestedAt: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
     recordAccountId: jest.fn(),
+    linkApiKey: jest.fn(),
   }
   const bearer = { authorization: 'Bearer S' }
 
@@ -40,6 +42,7 @@ describe('MeController', () => {
     users.requestDeletion.mockReset().mockResolvedValue(undefined)
     users.cancelDeletion.mockReset().mockResolvedValue(undefined)
     users.deletionRequestedAt.mockReset().mockResolvedValue(null)
+    users.linkApiKey.mockReset().mockResolvedValue(undefined)
   })
 
   it('신원이 없으면 401 이고 아무것도 안 적는다', async () => {
@@ -100,5 +103,68 @@ describe('MeController', () => {
     const res = await app.inject({ method: 'GET', url: '/v1/me/deletion', headers: bearer })
 
     expect(res.json()).toEqual({ deletion: null })
+  })
+
+  describe('POST /v1/me/api-key-links', () => {
+    const hash = 'ab'.repeat(32)
+
+    it('세션의 사람에 키 해시를 한 번 더 해시해 잇는다. 204 다', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/api-key-links',
+        headers: bearer,
+        payload: { apiKeyHash: hash },
+      })
+
+      expect(res.statusCode).toBe(204)
+      expect(users.linkApiKey).toHaveBeenCalledWith('u1', sha256(hash))
+    })
+
+    // 어느 사람에 합칠지는 세션이 정한다. 키 해시 헤더로는 합칠 사람이 없다.
+    it('키 해시 헤더로 오면 403 이고 잇지 않는다', async () => {
+      users.upsertByApiKeyHash.mockResolvedValue({
+        id: 'u2',
+        nexonAccountId: 'a2',
+        accountRecordId: null,
+      })
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/api-key-links',
+        headers: { 'x-api-key-hash': 'cd'.repeat(32) },
+        payload: { apiKeyHash: hash },
+      })
+
+      expect(res.statusCode).toBe(403)
+      expect(res.json()).toEqual(expect.objectContaining({ code: 'login_required' }))
+      expect(users.linkApiKey).not.toHaveBeenCalled()
+    })
+
+    // 키 원문이 실려 오면 길이가 안 맞아 여기서 걸린다.
+    it('해시 모양이 틀리면 400 이다', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/api-key-links',
+        headers: bearer,
+        payload: { apiKeyHash: 'test_' + 'a'.repeat(40) },
+      })
+
+      expect(res.statusCode).toBe(400)
+      expect(users.linkApiKey).not.toHaveBeenCalled()
+    })
+
+    it('삭제를 예약한 사람이면 403 이다', async () => {
+      users.deletionRequestedAt.mockResolvedValue(new Date('2026-11-04T03:00:00Z'))
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/me/api-key-links',
+        headers: bearer,
+        payload: { apiKeyHash: hash },
+      })
+
+      expect(res.statusCode).toBe(403)
+      expect(users.linkApiKey).not.toHaveBeenCalled()
+    })
   })
 })

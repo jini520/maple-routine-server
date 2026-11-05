@@ -1,7 +1,16 @@
 import { eq } from 'drizzle-orm'
 
 import { sha256 } from '../../common/hash'
-import { nexonAccounts, usageEvents, users } from '../../database/schema'
+import {
+  bossClears,
+  dropItems,
+  dropPrices,
+  enhancementAnomalies,
+  nexonAccounts,
+  nexonSessions,
+  usageEvents,
+  users,
+} from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { UsersRepository } from './users.repository'
 
@@ -191,5 +200,216 @@ describeDb('UsersRepository', () => {
     const after = await repo.upsertByApiKeyHash(hash)
 
     expect(after.id).not.toBe(before.id)
+  })
+
+  describe('linkApiKey', () => {
+    const KEY = sha256('k'.repeat(64))
+    const RECORD_C = '0c0c0c0c-0000-4000-8000-00000000000c'
+    let itemId: string
+
+    beforeEach(async () => {
+      const [item] = await db
+        .insert(dropItems)
+        .values({ key: 'ring', name: '반지', iconFile: null, valuable: true })
+        .returning({ id: dropItems.id })
+      itemId = item.id
+    })
+
+    function dropPrice(userId: string, dropRecordId: string, updatedAt: string) {
+      return {
+        userId,
+        dropRecordId,
+        identifiedBy: 'key' as const,
+        itemId,
+        recordStatus: 'pending' as const,
+        periodKey: '2026-11-05',
+        updatedAt: new Date(updatedAt),
+      }
+    }
+
+    function anomaly(userId: string, updatedAt: string) {
+      return {
+        userId,
+        identifiedBy: 'key' as const,
+        historyDate: '2026-11-01',
+        enhancementType: 'cube' as const,
+        anomalyType: 'event_world_unknown' as const,
+        itemName: '',
+        rowCount: 1,
+        updatedAt: new Date(updatedAt),
+      }
+    }
+
+    async function ownerOfKey(): Promise<string | undefined> {
+      const [row] = await db
+        .select({ userId: nexonAccounts.userId })
+        .from(nexonAccounts)
+        .where(eq(nexonAccounts.apiKeyHash, KEY))
+      return row?.userId
+    }
+
+    // 다른 기기가 아직 그 키를 쓰면 그 기기가 보내는 값도 로그인한 사람으로 모여야 한다.
+    it('처음 보는 키는 로그인한 사람 아래에 키 줄을 만든다', async () => {
+      const login = await repo.upsertByNexonUid('uid-1')
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect(await ownerOfKey()).toBe(login.id)
+      expect((await repo.upsertByApiKeyHash(KEY)).id).toBe(login.id)
+      expect(await db.select().from(users)).toHaveLength(1)
+    })
+
+    // 앱은 로그인 직후와 앱을 켤 때 같은 키를 다시 보낼 수 있다.
+    it('이미 이은 키를 다시 보내도 바뀌는 것이 없다', async () => {
+      const login = await repo.upsertByNexonUid('uid-1')
+      await repo.linkApiKey(login.id, KEY)
+      const before = await db.select().from(nexonAccounts)
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect(await db.select().from(nexonAccounts)).toEqual(before)
+    })
+
+    // identified_by 는 받을 때의 값이다. 합치는 일도 해시만 보고 해서, 그 줄을 믿을 정도는 그대로다.
+    it('키 사람의 기록과 키 줄을 로그인한 사람에게 옮기고 키 사람을 지운다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      const login = await repo.upsertByNexonUid('uid-1')
+      await db.insert(dropPrices).values(dropPrice(key.id, RECORD_A, '2026-11-01T00:00:00Z'))
+      await db.insert(enhancementAnomalies).values(anomaly(key.id, '2026-11-01T00:00:00Z'))
+      await db.insert(usageEvents).values({
+        userId: key.id,
+        identifiedBy: 'key',
+        type: 'visit',
+        name: '',
+        platform: 'ios',
+        appVersion: '1.0.13',
+        occurredAt: new Date('2026-11-01T00:00:00Z'),
+      })
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect((await db.select().from(users)).map((row) => row.id)).toEqual([login.id])
+      expect(await ownerOfKey()).toBe(login.id)
+      expect(await db.select().from(dropPrices)).toEqual([
+        expect.objectContaining({ userId: login.id, dropRecordId: RECORD_A, identifiedBy: 'key' }),
+      ])
+      expect(await db.select().from(enhancementAnomalies)).toEqual([
+        expect.objectContaining({ userId: login.id, identifiedBy: 'key' }),
+      ])
+      expect((await db.select().from(usageEvents)).map((row) => row.userId)).toEqual([login.id])
+      expect((await repo.upsertByApiKeyHash(KEY)).id).toBe(login.id)
+    })
+
+    // 같은 사람 안에서는 나중 값이 앞 값을 덮는다. 합칠 때도 같은 규칙이라야 UNIQUE 가 깨지지 않는다.
+    it('같은 기록이 양쪽에 있으면 updated_at 이 늦은 줄을 남긴다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      const login = await repo.upsertByNexonUid('uid-1')
+      const [keyNewer] = await db
+        .insert(dropPrices)
+        .values(dropPrice(key.id, RECORD_A, '2026-11-03T00:00:00Z'))
+        .returning({ id: dropPrices.id })
+      await db.insert(dropPrices).values(dropPrice(login.id, RECORD_A, '2026-11-02T00:00:00Z'))
+      await db.insert(dropPrices).values(dropPrice(key.id, RECORD_B, '2026-11-02T00:00:00Z'))
+      const [loginNewer] = await db
+        .insert(dropPrices)
+        .values(dropPrice(login.id, RECORD_B, '2026-11-03T00:00:00Z'))
+        .returning({ id: dropPrices.id })
+      await db.insert(enhancementAnomalies).values(anomaly(key.id, '2026-11-02T00:00:00Z'))
+      const [anomalyNewer] = await db
+        .insert(enhancementAnomalies)
+        .values(anomaly(login.id, '2026-11-03T00:00:00Z'))
+        .returning({ id: enhancementAnomalies.id })
+
+      await repo.linkApiKey(login.id, KEY)
+
+      const prices = await db.select().from(dropPrices)
+      expect(prices.map((row) => row.id).sort()).toEqual([keyNewer.id, loginNewer.id].sort())
+      expect(prices.every((row) => row.userId === login.id)).toBe(true)
+      expect((await db.select().from(enhancementAnomalies)).map((row) => row.id)).toEqual([
+        anomalyNewer.id,
+      ])
+    })
+
+    // (user_id, account_record_id) 가 UNIQUE 다. 겹친 채 옮기면 합치기 전체가 실패한다.
+    it('옮기는 키 줄의 계정 id 가 로그인한 사람의 것과 겹치면 그 칸을 비운다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      const login = await repo.upsertByNexonUid('uid-1')
+      await repo.recordAccountId(key.nexonAccountId, RECORD_C)
+      await repo.recordAccountId(login.nexonAccountId, RECORD_C)
+
+      await repo.linkApiKey(login.id, KEY)
+
+      const [moved] = await db.select().from(nexonAccounts).where(eq(nexonAccounts.apiKeyHash, KEY))
+      expect(moved).toEqual(expect.objectContaining({ userId: login.id, accountRecordId: null }))
+    })
+
+    it('옛 표의 줄은 옮기지 않고 키 사람과 함께 지운다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      const login = await repo.upsertByNexonUid('uid-1')
+      await db.insert(bossClears).values({
+        userId: key.id,
+        identifiedBy: 'key',
+        periodRecordId: RECORD_A,
+        ocid: 'o1',
+        cycle: 'weekly',
+        periodKey: '2026-11-05',
+        priceMeso: 0,
+        payoutMeso: 0,
+        splitMode: 'even',
+        partySize: 1,
+        source: 'auto',
+      })
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect(await db.select().from(bossClears)).toEqual([])
+    })
+
+    // 로그인한 두 사람을 해시 하나로 합치지 않는다. 해시는 신원의 증명이 아니다.
+    it('키 줄이 로그인한 다른 사람에게 붙어 있으면 옮기지 않는다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      const other = await repo.upsertByNexonUid('uid-2')
+      await db
+        .update(nexonAccounts)
+        .set({ userId: other.id })
+        .where(eq(nexonAccounts.id, key.nexonAccountId))
+      await db.delete(users).where(eq(users.id, key.id))
+      const login = await repo.upsertByNexonUid('uid-1')
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect(await ownerOfKey()).toBe(other.id)
+      expect(await db.select().from(users)).toHaveLength(2)
+    })
+
+    it('키 사람에게 세션이 있으면 옮기지 않는다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      await db.insert(nexonSessions).values({
+        sessionHash: sha256('session'),
+        userId: key.id,
+        platform: 'ios',
+        accessSealed: Buffer.from('a'),
+        accessExpiresAt: new Date('2026-12-01T00:00:00Z'),
+        refreshSealed: Buffer.from('r'),
+        refreshExpiresAt: new Date('2026-12-01T00:00:00Z'),
+      })
+      const login = await repo.upsertByNexonUid('uid-1')
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect(await ownerOfKey()).toBe(key.id)
+    })
+
+    // 합치면 사용자가 한 삭제 요청이 말없이 사라진다. 키 사람은 예약대로 지워진다.
+    it('키 사람이 삭제를 예약했으면 옮기지 않는다', async () => {
+      const key = await repo.upsertByApiKeyHash(KEY)
+      await repo.requestDeletion(key.id)
+      const login = await repo.upsertByNexonUid('uid-1')
+
+      await repo.linkApiKey(login.id, KEY)
+
+      expect(await ownerOfKey()).toBe(key.id)
+      expect(await repo.deletionRequestedAt(key.id)).not.toBeNull()
+    })
   })
 })

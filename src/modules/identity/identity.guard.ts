@@ -32,7 +32,7 @@ export const API_KEY_HASH_HEADER = 'x-api-key-hash'
 export const NEXON_ACCOUNT_HEADER = 'x-nexon-account-id'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** 앱이 만든 SHA-256 의 소문자 16진. 키 원문이 실려 오면 길이가 안 맞아 여기서 걸린다. */
-const API_KEY_HASH = /^[0-9a-f]{64}$/
+export const API_KEY_HASH = /^[0-9a-f]{64}$/
 
 export const ALLOW_DELETION_PENDING = 'identity:allow-deletion-pending'
 

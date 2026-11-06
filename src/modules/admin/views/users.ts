@@ -3,12 +3,12 @@ import { layout } from './layout'
 
 /**
  * 사용자 대시보드. 사람 수와 그 일별 · 요일별 증감을 본다. 읽기만 한다.
- * 기간은 오늘을 빼고 한국 시각 어제까지다. 플랫폼을 고르면 사건으로 세는 값만 그 플랫폼으로 센다.
+ * 기간은 한국 시각 오늘까지다. 오늘 값은 새로고침할 때마다 늘어난다. 플랫폼을 고르면 사건으로 세는 값만 그 플랫폼으로 센다.
  */
 export const USERS_HTML = layout(
   '/admin/users',
   '사용자',
-  `<div class="head"><div><h1>사용자</h1><p>앱을 쓰는 사람의 수다. 방문자는 그 날 사용 사건을 하나라도 보낸 서로 다른 사람이고, 새 사용자는 서버가 그 사람을 처음 만든 날로 센다. 날짜는 한국 시각으로 자르고 오늘은 뺀다.</p></div></div>
+  `<div class="head"><div><h1>사용자</h1><p>앱을 쓰는 사람의 수다. 방문자는 그 날 사용 사건을 하나라도 보낸 서로 다른 사람이고, 새 사용자는 서버가 그 사람을 처음 만든 날로 센다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="dash-filters">
   <div class="btns" role="group" aria-label="기간" id="presets"></div>
@@ -58,7 +58,7 @@ ${DASHBOARD_SCRIPT}
     var kpis = clear(document.getElementById('kpis'));
     [
       { label: '전체 사용자', value: t.total.value, delta: t.total.delta, vs: n + '일 전보다', series: t.total.series, note: allPlatforms },
-      { label: '어제 방문자', value: t.yesterday.value, delta: t.yesterday.delta, vs: '전날보다', series: t.yesterday.series },
+      { label: '오늘 방문자', value: t.today.value, delta: t.today.delta, vs: '어제보다', series: t.today.series },
       { label: '7일 방문자', value: t.week.value, delta: t.week.delta, vs: '그 전 7일보다' },
       { label: n + '일 방문자', value: t.period.value, delta: t.period.delta, vs: '그 전 ' + n + '일보다' },
       { label: n + '일 새 사용자', value: t.fresh.value, delta: t.fresh.delta, vs: '그 전 ' + n + '일보다', series: t.fresh.series, note: allPlatforms },

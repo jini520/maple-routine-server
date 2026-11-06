@@ -412,4 +412,36 @@ describeDb('UsersRepository', () => {
       expect(await repo.deletionRequestedAt(key.id)).not.toBeNull()
     })
   })
+
+  it('전체 사용자는 삭제를 예약한 사람을 빼고, 기준 시각 앞에 만든 사람만 따로 셀 수 있다', async () => {
+    await db.insert(users).values([
+      { createdAt: new Date('2026-11-01T00:00:00Z') },
+      { createdAt: new Date('2026-11-03T00:00:00Z') },
+      {
+        createdAt: new Date('2026-11-03T00:00:00Z'),
+        deletionRequestedAt: new Date('2026-11-04T00:00:00Z'),
+      },
+    ])
+
+    expect(await repo.countActive()).toBe(2)
+    expect(await repo.countActive(new Date('2026-11-02T00:00:00Z'))).toBe(1)
+  })
+
+  // UTC 로 자르면 한국 시각 오전 9시 전에 만든 사람이 전날로 간다.
+  it('새 사용자를 한국 시각 날짜로 세고, 그 중 삭제를 예약하지 않은 사람을 따로 센다', async () => {
+    await db.insert(users).values([
+      { createdAt: new Date('2026-11-02T14:00:00Z') },
+      { createdAt: new Date('2026-11-02T15:30:00Z') },
+      {
+        createdAt: new Date('2026-11-03T03:00:00Z'),
+        deletionRequestedAt: new Date('2026-11-04T00:00:00Z'),
+      },
+    ])
+
+    const range = {
+      since: new Date('2026-11-02T15:00:00Z'),
+      until: new Date('2026-11-03T15:00:00Z'),
+    }
+    expect(await repo.createdDaily(range)).toEqual([{ day: '2026-11-03', created: 2, active: 1 }])
+  })
 })

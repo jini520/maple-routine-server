@@ -3,7 +3,7 @@ import { layout } from './layout'
 export const INDEX_HTML = layout(
   '/admin',
   '홈',
-  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 스물둘. 인증은 앞단 nginx 가 한다.</p></div></div>
+  `<div class="head"><div><h1>메이플 루틴 관리</h1><p>운영자 화면 스물넷. 인증은 앞단 nginx 가 한다.</p></div></div>
 <h2 class="section">공지</h2>
 <div class="links">
   <a class="card" href="/admin/notices"><h3>공지</h3><p>운영자 공지를 쓰고 고치고 알림을 보낸다</p></a>
@@ -43,6 +43,8 @@ export const INDEX_HTML = layout(
 <div class="links">
   <a class="card" href="/admin/drop-prices"><h3>드롭 가격</h3><p>모인 시세 표본과 분포를 본다</p></a>
   <a class="card" href="/admin/drop-market"><h3>드롭 시세</h3><p>월드 묶음마다 잘못 적은 값을 빼고 일봉으로 본다</p></a>
+  <a class="card" href="/admin/users"><h3>사용자</h3><p>사람 수와 그 일별 · 요일별 증감, 그 날 보낸 알림 수</p></a>
+  <a class="card" href="/admin/usage"><h3>사용 로그</h3><p>방문 · 화면 조회 · 동작 횟수와 화면별 방문자 · 체류</p></a>
 </div>
 <h2 class="section">임시 기능</h2>
 <div class="links">

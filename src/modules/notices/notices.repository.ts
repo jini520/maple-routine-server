@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { notices } from '../../database/schema'
@@ -131,6 +131,20 @@ export class NoticesRepository {
 
   async markSent(id: string, at: Date): Promise<void> {
     await this.db.update(notices).set({ sentAt: at }).where(eq(notices.id, id))
+  }
+
+  /** 날마다(한국 시각) 분류별로 알림을 보낸 공지 수. 몇 대에 닿았는지가 아니다. 토픽 발송은 배달 수를 돌려주지 않는다. */
+  sentDaily(range: {
+    since: Date
+    until: Date
+  }): Promise<{ day: string; kind: NoticeKind; count: number }[]> {
+    const day = sql<string>`to_char(${notices.sentAt} at time zone 'Asia/Seoul', 'YYYY-MM-DD')`
+    return this.db
+      .select({ day, kind: notices.kind, count: sql<number>`count(*)::int` })
+      .from(notices)
+      .where(and(gte(notices.sentAt, range.since), lt(notices.sentAt, range.until)))
+      .groupBy(day, notices.kind)
+      .orderBy(sql`1`, notices.kind)
   }
 
   /** 운영자 공지만 최근 것부터. 관리 화면이 읽는다. */

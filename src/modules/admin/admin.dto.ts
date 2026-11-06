@@ -19,6 +19,7 @@ import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories
 import { HUNT_LOOT_KINDS } from '../hunt-loot/hunt-loot.repository'
 import { SPEND_CURRENCIES, SPEND_FORMS } from '../spend-catalog/spend-catalog.repository'
 import { USAGE_RETENTION_DAYS } from '../usage-events/usage-events.purge.job'
+import { platformEnum } from '../../database/schema'
 
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
@@ -66,11 +67,22 @@ export const dropPriceQuery = z.object({
 })
 export type DropPriceQuery = z.infer<typeof dropPriceQuery>
 
-/** 사용 로그 기간. 보관 기간보다 길게 물으면 비어 있는 날만 늘어난다. */
-export const usageQuery = z.object({
-  days: z.coerce.number().int().min(1).max(USAGE_RETENTION_DAYS).default(30),
-})
+/** 대시보드 기간. 보관 기간보다 길게 물으면 비어 있는 날만 늘어난다. 화면의 기본 단추가 28일이다. */
+const dashboardDays = z.coerce.number().int().min(1).max(USAGE_RETENTION_DAYS).default(28)
+
+export const usageQuery = z.object({ days: dashboardDays })
 export type UsageQuery = z.infer<typeof usageQuery>
+
+/** 사용자 화면. 플랫폼을 고르면 사건으로 세는 값만 그 플랫폼으로 센다. */
+export const usersQuery = z.object({
+  days: dashboardDays,
+  platform: z.enum(platformEnum.enumValues).optional(),
+})
+export type UsersQuery = z.infer<typeof usersQuery>
+
+/** 사용 로그 화면에서 고른 화면 하나. 이름은 앱 라우트 이름이다. */
+export const screenQuery = z.object({ days: dashboardDays, name: z.string().min(1).max(64) })
+export type ScreenQuery = z.infer<typeof screenQuery>
 
 /** 난이도 줄 하나의 본문. 난이도는 경로가 든다. 유효 기간은 새 줄을 더할 때 함께 적고, 있는 줄은 period 끝점으로 고친다. */
 export const requiredLevelBody = z

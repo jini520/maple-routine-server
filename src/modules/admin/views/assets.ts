@@ -36,16 +36,16 @@ export const ASSETS_HTML = layout(
   <div class="table"><table><thead><tr><th>미리보기</th><th>slug</th><th>크기</th><th>위치</th><th></th></tr></thead><tbody id="crop-rows"></tbody></table></div>
 </section>
 <style>
-  .assets-split { display: grid; grid-template-columns: 200px minmax(0, 1fr); border-top: 1px solid var(--line); margin-top: 14px }
+  .assets-split { display: grid; grid-template-columns: 200px minmax(0, 1fr); margin-top: 14px }
   @media (max-width: 760px) { .assets-split { grid-template-columns: 1fr } }
-  .tree { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-right: 1px solid var(--line); background: var(--surface-2) }
+  .tree { display: flex; flex-direction: column; gap: 2px; padding: 12px; background: var(--surface-2) }
   .tree button { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: 500 13px/1.3 var(--font); text-align: left; cursor: pointer }
   .tree button:hover { background: var(--surface); color: var(--text) }
   .tree button[aria-current="true"] { background: var(--accent-tint); color: var(--accent-ink) }
   .tree button.child { padding-left: 24px; font-weight: 400 }
   .tree button span { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums }
   .assets-main { min-width: 0 }
-  .upload { padding: 14px 16px; border-bottom: 1px solid var(--line) }
+  .upload { padding: 14px 16px 6px }
   .thumb { width: 48px; height: 48px; object-fit: contain; background: var(--surface-2); border-radius: 6px; display: block }
   .crop { background-color: var(--surface-2); background-repeat: no-repeat; border-radius: 8px; flex: none }
   .crop.boss_portrait { width: 180px; height: 90px }

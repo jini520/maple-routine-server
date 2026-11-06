@@ -170,4 +170,32 @@ describeDb('NoticesRepository', () => {
 
     expect(await repo.cancelSchedule(id)).toBe(false)
   })
+
+  // 알림을 보낸 날 방문자가 뛰므로 대시보드가 날짜 아래에 놓는다. 보낸 시각이 없는 공지는 알림을 안 쏜 것이다.
+  it('날마다 분류별 발송 수를 한국 시각으로 세고, 보내지 않은 공지는 뺀다', async () => {
+    const sent = async (noticeKey: string, kind: NewNotice['kind'], at: string | null) => {
+      const { id } = await repo.insert(notice({ noticeKey, kind }))
+      if (at !== null) await repo.markSent(id, new Date(at))
+    }
+    await sent('app-1', 'app', '2026-11-02T15:30:00Z')
+    await sent('game-1', 'game', '2026-11-03T03:00:00Z')
+    await sent('game-2', 'game', '2026-11-03T04:00:00Z')
+    await sent('cash-1', 'cashshop', '2026-11-03T04:00:00Z')
+    await sent('event-1', 'event', null)
+    await sent('game-3', 'game', '2026-11-03T15:10:00Z')
+
+    const rows = await repo.sentDaily({
+      since: new Date('2026-11-02T15:00:00Z'),
+      until: new Date('2026-11-03T15:00:00Z'),
+    })
+
+    expect(rows).toHaveLength(3)
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        { day: '2026-11-03', kind: 'app', count: 1 },
+        { day: '2026-11-03', kind: 'game', count: 2 },
+        { day: '2026-11-03', kind: 'cashshop', count: 1 },
+      ]),
+    )
+  })
 })

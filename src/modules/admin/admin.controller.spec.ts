@@ -64,7 +64,6 @@ import {
 import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
 import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
-import { UsageEventsRepository } from '../usage-events/usage-events.repository'
 import {
   AlreadyOpen,
   ManualCompletionRepository,
@@ -73,6 +72,7 @@ import { OperatorNoticesService, SchedulePassed } from '../notices/operator-noti
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { AssetsRepository } from '../assets/assets.repository'
 import { AdminController } from './admin.controller'
+import { UsageDashboardService } from './usage-dashboard.service'
 
 const ROW = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const newBoss = {
@@ -234,7 +234,7 @@ describe('AdminController', () => {
   }
 
   const assetsRepo = { missing: jest.fn() }
-  const usageRepo = { daily: jest.fn(), screens: jest.fn(), versions: jest.fn() }
+  const dashboard = { forUsers: jest.fn(), forUsage: jest.fn(), forScreen: jest.fn() }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -262,7 +262,7 @@ describe('AdminController', () => {
         { provide: HexaMatrixRepository, useValue: hexaRepo },
         { provide: FaqsRepository, useValue: faqRepo },
         { provide: AssetsRepository, useValue: assetsRepo },
-        { provide: UsageEventsRepository, useValue: usageRepo },
+        { provide: UsageDashboardService, useValue: dashboard },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -276,7 +276,7 @@ describe('AdminController', () => {
       ...Object.values(manual),
       ...Object.values(notices),
       ...Object.values(prices),
-      ...Object.values(usageRepo),
+      ...Object.values(dashboard),
       ...Object.values(items),
       ...Object.values(boxes),
       ...Object.values(drops),
@@ -307,6 +307,8 @@ describe('AdminController', () => {
     '/admin/faqs',
     '/admin/drop-prices',
     '/admin/drop-market',
+    '/admin/users',
+    '/admin/usage',
     '/admin/drop-items',
     '/admin/drop-boxes',
     '/admin/boss-drops',
@@ -677,37 +679,35 @@ describe('AdminController', () => {
     })
   })
 
-  describe('사용 로그', () => {
-    // 한국 시각으로 자르지 않으면 첫날의 오전 9시 전 사건이 빠진다.
-    it('GET /admin/usage/stats 는 한국 시각 자정부터 날짜별 · 화면별 · 버전별을 함께 낸다', async () => {
-      usageRepo.daily.mockResolvedValue([{ day: '2026-11-03' }])
-      usageRepo.screens.mockResolvedValue([{ name: 'Boss' }])
-      usageRepo.versions.mockResolvedValue([{ appVersion: '1.0.13' }])
-      jest.useFakeTimers({
-        now: new Date('2026-11-03T20:00:00Z'),
-        doNotFake: ['nextTick', 'setImmediate'],
-      })
+  describe('사용자 · 사용 로그 대시보드', () => {
+    it('GET /admin/users/stats 는 기간과 플랫폼을 넘기고, 기간이 없으면 28일이다', async () => {
+      dashboard.forUsers.mockResolvedValue({ tiles: {} })
 
-      const res = await app.inject({ method: 'GET', url: '/admin/usage/stats?days=2' })
-      jest.useRealTimers()
+      const res = await app.inject({ method: 'GET', url: '/admin/users/stats?platform=ios' })
 
       expect(res.statusCode).toBe(200)
-      expect(res.json()).toEqual({
-        days: [{ day: '2026-11-03' }],
-        screens: [{ name: 'Boss' }],
-        versions: [{ appVersion: '1.0.13' }],
-      })
-      // 지금은 한국 시각 11월 4일 05시다. 이틀이면 11월 3일 00시(KST)부터다.
-      const since = new Date('2026-11-02T15:00:00Z')
-      expect(usageRepo.daily).toHaveBeenCalledWith(since)
-      expect(usageRepo.screens).toHaveBeenCalledWith(since)
-      expect(usageRepo.versions).toHaveBeenCalledWith(since)
+      expect(res.headers['cache-control']).toBe('no-store')
+      expect(res.json()).toEqual({ tiles: {} })
+      expect(dashboard.forUsers).toHaveBeenCalledWith(28, 'ios')
     })
 
-    it('기간이 보관 기간을 넘으면 400 이다', async () => {
-      const res = await app.inject({ method: 'GET', url: '/admin/usage/stats?days=181' })
+    it('모르는 플랫폼이나 보관 기간을 넘는 기간은 400 이다', async () => {
+      const platform = await app.inject({ method: 'GET', url: '/admin/users/stats?platform=web' })
+      const usage = await app.inject({ method: 'GET', url: '/admin/usage/stats?days=181' })
 
-      expect(res.statusCode).toBe(400)
+      expect(platform.statusCode).toBe(400)
+      expect(usage.statusCode).toBe(400)
+      expect(dashboard.forUsers).not.toHaveBeenCalled()
+      expect(dashboard.forUsage).not.toHaveBeenCalled()
+    })
+
+    it('GET /admin/usage/screen 은 화면 이름과 기간을 넘긴다', async () => {
+      dashboard.forScreen.mockResolvedValue({ daily: [] })
+
+      const res = await app.inject({ method: 'GET', url: '/admin/usage/screen?name=Boss&days=7' })
+
+      expect(res.statusCode).toBe(200)
+      expect(dashboard.forScreen).toHaveBeenCalledWith('Boss', 7)
     })
   })
 

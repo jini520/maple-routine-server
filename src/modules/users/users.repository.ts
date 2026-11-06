@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, eq, isNull, lt, notExists, sql } from 'drizzle-orm'
+import { and, eq, gte, isNull, lt, notExists, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import {
@@ -181,6 +181,38 @@ export class UsersRepository {
    *
    * 같은 자격이 동시에 오면 둘 다 사람을 만들 수 있다. 계정의 UNIQUE 에 진 쪽은 만든 사람을 지우고 이긴 쪽을 다시 읽는다.
    */
+  /** 삭제를 예약하지 않은 사람 수. createdBefore 를 주면 그 앞에 만든 사람만 센다. 예약한 사람은 30일 뒤 지워진다. */
+  async countActive(createdBefore?: Date): Promise<number> {
+    const [row] = await this.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletionRequestedAt),
+          createdBefore ? lt(users.createdAt, createdBefore) : undefined,
+        ),
+      )
+    return row?.n ?? 0
+  }
+
+  /** 날마다(한국 시각) 새로 만든 사람과 그 중 삭제를 예약하지 않은 사람. 오래된 날부터. */
+  createdDaily(range: {
+    since: Date
+    until: Date
+  }): Promise<{ day: string; created: number; active: number }[]> {
+    const day = sql<string>`to_char(${users.createdAt} at time zone 'Asia/Seoul', 'YYYY-MM-DD')`
+    return this.db
+      .select({
+        day,
+        created: sql<number>`count(*)::int`,
+        active: sql<number>`(count(*) filter (where ${users.deletionRequestedAt} is null))::int`,
+      })
+      .from(users)
+      .where(and(gte(users.createdAt, range.since), lt(users.createdAt, range.until)))
+      .groupBy(day)
+      .orderBy(sql`1`)
+  }
+
   private async upsertAccount(credential: Credential): Promise<FoundAccount> {
     const match =
       credential.identitySource === 'login'

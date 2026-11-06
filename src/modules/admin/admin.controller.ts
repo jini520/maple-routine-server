@@ -711,7 +711,7 @@ export class AdminController {
     return USERS_HTML
   }
 
-  /** 화면이 부른다. 기간은 오늘을 빼고 한국 시각 어제까지다. */
+  /** 화면이 부른다. 기간은 한국 시각 오늘까지다. */
   @Get('users/stats')
   @Header('cache-control', 'no-store')
   usersStats(@Query(new ZodValidationPipe(usersQuery)) query: UsersQuery) {
@@ -725,7 +725,7 @@ export class AdminController {
     return USAGE_HTML
   }
 
-  /** 화면이 부른다. 기간은 오늘을 빼고 한국 시각 어제까지다. */
+  /** 화면이 부른다. 기간은 한국 시각 오늘까지다. */
   @Get('usage/stats')
   @Header('cache-control', 'no-store')
   usageStats(@Query(new ZodValidationPipe(usageQuery)) query: UsageQuery) {

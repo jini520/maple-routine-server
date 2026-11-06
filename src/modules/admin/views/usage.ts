@@ -8,7 +8,7 @@ import { layout } from './layout'
 export const USAGE_HTML = layout(
   '/admin/usage',
   '사용 로그',
-  `<div class="head"><div><h1>사용 로그</h1><p>앱이 묶어 보낸 사용 사건이다. 방문은 앱을 열거나 30분 넘게 비웠다 돌아온 횟수고, 동작 이름은 앱이 보낸 그대로다. 날짜는 한국 시각으로 자르고 오늘은 뺀다.</p></div></div>
+  `<div class="head"><div><h1>사용 로그</h1><p>앱이 묶어 보낸 사용 사건이다. 방문은 앱을 열거나 30분 넘게 비웠다 돌아온 횟수고, 동작 이름은 앱이 보낸 그대로다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="dash-filters">
   <div class="btns" role="group" aria-label="기간" id="presets"></div>

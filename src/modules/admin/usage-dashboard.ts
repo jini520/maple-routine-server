@@ -8,10 +8,11 @@ export interface KstRange {
 const KST_OFFSET_MS = 9 * 3_600_000
 const DAY_MS = 86_400_000
 
-/** 오늘(한국 시각)을 빼고 어제까지 days 일. 오늘을 넣으면 마지막 막대가 늘 줄어든 것처럼 보인다. */
-export function periodEndingYesterday(days: number, now: Date): KstRange {
+/** 오늘(한국 시각)까지 days 일. 오늘도 다른 날과 똑같이 세므로 오늘 값은 새로고침할 때마다 늘어난다. */
+export function periodEndingToday(days: number, now: Date): KstRange {
   const todayStart = Math.floor((now.getTime() + KST_OFFSET_MS) / DAY_MS) * DAY_MS - KST_OFFSET_MS
-  return { since: new Date(todayStart - days * DAY_MS), until: new Date(todayStart) }
+  const until = todayStart + DAY_MS
+  return { since: new Date(until - days * DAY_MS), until: new Date(until) }
 }
 
 /** 바로 앞의 같은 길이 기간. */
@@ -34,7 +35,7 @@ export function kstWeekday(day: string): number {
   return (new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7
 }
 
-/** 앞 기간에 사건이 하나도 없으면 맞댈 것이 없어 비운다. 사건은 2026-11-06 부터 쌓였다. */
+/** 앞 기간에 사건이 하나도 없으면 맞댈 것이 없어 비운다. 사건은 2026-11-04 부터 쌓였다. */
 export function delta(current: number, previous: number, hasPrevious: boolean): number | null {
   return hasPrevious ? current - previous : null
 }

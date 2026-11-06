@@ -13,7 +13,7 @@ import {
   delta,
   hourGrid,
   kstDays,
-  periodEndingYesterday,
+  periodEndingToday,
   previousOf,
   type WeekdayStat,
   weekdayStats,
@@ -42,7 +42,7 @@ export interface UsersDashboard {
   range: DashboardRange
   tiles: {
     total: Tile & { series: number[] }
-    yesterday: Tile & { series: number[] }
+    today: Tile & { series: number[] }
     week: Tile
     period: Tile
     fresh: Tile & { series: number[] }
@@ -84,7 +84,7 @@ export interface UsageDashboard {
 /** 지표 칸의 작은 막대 수. */
 const SPARK_DAYS = 12
 
-/** 관리자 대시보드 두 장(사용자 · 사용 로그)의 값을 모은다. 기간은 늘 어제까지다. */
+/** 관리자 대시보드 두 장(사용자 · 사용 로그)의 값을 모은다. 기간은 늘 오늘까지다. */
 @Injectable()
 export class UsageDashboardService {
   constructor(
@@ -99,9 +99,9 @@ export class UsageDashboardService {
     now = new Date(),
   ): Promise<UsersDashboard> {
     const filter: UsageFilter = platform ? { platform } : {}
-    const period = periodEndingYesterday(days, now)
+    const period = periodEndingToday(days, now)
     const previous = previousOf(period)
-    const week = periodEndingYesterday(7, now)
+    const week = periodEndingToday(7, now)
     const dayList = kstDays(period)
     const sparkStart = new Date(period.until.getTime() - Math.min(SPARK_DAYS, days) * 86_400_000)
 
@@ -135,7 +135,7 @@ export class UsageDashboardService {
       alerts: alerts.get(day) ?? emptyAlerts(),
     }))
     const fresh = sum(daily.map((d) => d.fresh))
-    const yesterday = daily[daily.length - 1]?.visitors ?? 0
+    const today = daily[daily.length - 1]?.visitors ?? 0
     const dayBefore = daily[daily.length - 2]?.visitors ?? 0
 
     let running = totalBeforeSpark
@@ -148,9 +148,9 @@ export class UsageDashboardService {
       range: rangeOf(dayList),
       tiles: {
         total: { value: total, delta: delta(total, totalBefore, hasPrevious), series: totalSeries },
-        yesterday: {
-          value: yesterday,
-          delta: delta(yesterday, dayBefore, dayBefore > 0),
+        today: {
+          value: today,
+          delta: delta(today, dayBefore, dayBefore > 0),
           series: daily.slice(-SPARK_DAYS).map((d) => d.visitors),
         },
         week: { value: weekVisitors, delta: delta(weekVisitors, weekBefore, weekBefore > 0) },
@@ -172,9 +172,9 @@ export class UsageDashboardService {
   }
 
   async forUsage(days: number, now = new Date()): Promise<UsageDashboard> {
-    const period = periodEndingYesterday(days, now)
+    const period = periodEndingToday(days, now)
     const previous = previousOf(period)
-    const recent = periodEndingYesterday(7, now)
+    const recent = periodEndingToday(7, now)
     const before = previousOf(recent)
     const dayList = kstDays(period)
 
@@ -268,7 +268,7 @@ export class UsageDashboardService {
     days: number,
     now = new Date(),
   ): Promise<{ daily: { day: string; visitors: number }[] }> {
-    const period = periodEndingYesterday(days, now)
+    const period = periodEndingToday(days, now)
     const rows = await this.usage.screenDaily(name, period)
     const byDay = new Map(rows.map((r) => [r.day, r.visitors]))
     return { daily: kstDays(period).map((day) => ({ day, visitors: byDay.get(day) ?? 0 })) }

@@ -3,46 +3,46 @@ import {
   hourGrid,
   kstDays,
   kstWeekday,
-  periodEndingYesterday,
+  periodEndingToday,
   previousOf,
   weekdayStats,
 } from './usage-dashboard'
 
 describe('대시보드 기간', () => {
-  // 오늘을 넣으면 마지막 막대가 늘 줄어든 것처럼 보인다.
-  it('오늘을 빼고 한국 시각 어제까지 센다', () => {
-    const range = periodEndingYesterday(28, new Date('2026-12-09T03:00:00Z'))
+  // 오늘도 다른 날과 똑같이 센다(사용자 지정). 오늘 값은 새로고침할 때마다 늘어난다.
+  it('한국 시각 오늘까지 센다', () => {
+    const range = periodEndingToday(28, new Date('2026-12-09T03:00:00Z'))
 
     expect(range).toEqual({
-      since: new Date('2026-11-10T15:00:00Z'),
-      until: new Date('2026-12-08T15:00:00Z'),
+      since: new Date('2026-11-11T15:00:00Z'),
+      until: new Date('2026-12-09T15:00:00Z'),
     })
     const days = kstDays(range)
     expect(days).toHaveLength(28)
-    expect(days[0]).toBe('2026-11-11')
-    expect(days[27]).toBe('2026-12-08')
+    expect(days[0]).toBe('2026-11-12')
+    expect(days[27]).toBe('2026-12-09')
   })
 
-  // UTC 로 자르면 한국 시각 0시 ~ 9시에는 어제가 하루 밀린다.
+  // UTC 로 자르면 한국 시각 0시 ~ 9시에는 오늘이 하루 밀린다.
   it('한국 시각 자정을 넘기면 하루가 넘어가고, 넘기기 전에는 넘어가지 않는다', () => {
-    const before = periodEndingYesterday(1, new Date('2026-12-08T14:59:00Z'))
-    const after = periodEndingYesterday(1, new Date('2026-12-08T15:00:00Z'))
+    const before = periodEndingToday(1, new Date('2026-12-08T14:59:00Z'))
+    const after = periodEndingToday(1, new Date('2026-12-08T15:00:00Z'))
 
-    expect(kstDays(before)).toEqual(['2026-12-07'])
-    expect(kstDays(after)).toEqual(['2026-12-08'])
+    expect(kstDays(before)).toEqual(['2026-12-08'])
+    expect(kstDays(after)).toEqual(['2026-12-09'])
   })
 
   it('앞 기간은 바로 앞의 같은 길이다', () => {
-    const range = periodEndingYesterday(7, new Date('2026-12-09T03:00:00Z'))
+    const range = periodEndingToday(7, new Date('2026-12-09T03:00:00Z'))
 
     expect(kstDays(previousOf(range))).toEqual([
-      '2026-11-25',
       '2026-11-26',
       '2026-11-27',
       '2026-11-28',
       '2026-11-29',
       '2026-11-30',
       '2026-12-01',
+      '2026-12-02',
     ])
   })
 

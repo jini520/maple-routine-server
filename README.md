@@ -53,22 +53,40 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
 ```
 
 ```
-# 맥에서
-rsync -az --delete --exclude node_modules --exclude dist --exclude legacy --exclude .git ./ ubuntu@158.179.175.230:~/maple-routine-server/
+# 맥에서. 이미지는 맥에서 빌드한다. 앱 박스에서 docker compose build 를 돌리지 않는다(아래 배포 규칙)
+colima start
+git archive --format=tar HEAD | docker build --platform linux/amd64 -t maple-routine-server:prod -
+docker save maple-routine-server:prod | gzip > ~/maple-routine-server-image.tar.gz
+scp ~/maple-routine-server-image.tar.gz ubuntu@158.179.175.230:~/
+rsync -az --delete --exclude node_modules --exclude dist --exclude legacy --exclude .git --exclude .claude ./ ubuntu@158.179.175.230:~/maple-routine-server/
 
-# 앱 박스에서
+# 앱 박스에서. 여기부터는 한국 시각 3 ~ 7시에 한다(아래 배포 규칙)
+docker tag maple-routine-server:prod maple-routine-server:prev   # 되돌릴 이미지
+gunzip -c ~/maple-routine-server-image.tar.gz | docker load
 cd ~/maple-routine-server
-docker compose build
 docker compose run --rm --no-deps server node dist/cli/migrate.js   # 새 마이그레이션이 있을 때
 docker compose run --rm --no-deps server node dist/cli/seed-game-data.js   # 게임 데이터 표가 비었을 때. 줄이 있는 표는 건너뛴다
-docker compose up -d
+docker compose up -d --no-build
 curl -s http://127.0.0.1:4000/healthz
 docker logs --since 5m maple-routine-server
+
+# 되돌릴 때
+docker tag maple-routine-server:prev maple-routine-server:prod && docker compose up -d --no-build
 
 # DB 를 직접 볼 때. 앱 박스에는 psql 이 없어 도커로 띄운다
 docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16-alpine sh -c 'psql "$DATABASE_URL"'
 ```
 
+- **배포 규칙. 빌드는 맥에서, 재시작은 한국 시각 3 ~ 7시에 한다**(2026-11-06 사용자 지정). 배포하는 동안 사용자가 기능을 못 쓸 수 있어서다.
+  - 앱 박스는 메모리 952MB · CPU 2 다. 2026-11-06 에 박스에서 `docker compose build` 를 돌리자 10분 넘게 부하가 5.4 까지 오르고
+    남은 메모리가 66MB 로 줄어 스왑을 썼다. 그동안 사용 중인 요청이 느려진다. 그래서 박스에서는 이미지를 받기만 한다.
+  - `git archive` 로 커밋된 파일만 빌드 맥락에 보낸다. 체크아웃을 그대로 보내면 `.claude/worktrees/` 의 `node_modules` 까지 실린다.
+    맥은 arm64 라 `--platform linux/amd64` 로 에뮬레이션해 빌드한다.
+  - `docker compose up -d --no-build` 의 재시작 동안 15초쯤 요청이 502 로 떨어진다(2026-11-06 실측 17건). 앱은 서버 없이도 돌지만
+    그 사이 보낸 사용 로그 묶음은 사라지고 로그인 · 프렌즈 조회가 실패한다. 그래서 사용자가 가장 적은 새벽에 한다.
+    nginx 로그의 결산 요청을 시간마다 세면 3 ~ 7시가 가장 적고 5 ~ 6시가 바닥이다.
+  - 무중단 전환(새 컨테이너를 옆에 띄우고 nginx 를 넘기는 것)은 아직 안 한다. 공지 폴러 같은 예약 작업이 두 컨테이너에서
+    함께 돌면 알림이 두 번 나간다. 예약 작업을 한쪽에서만 돌게 막은 뒤에야 할 수 있다.
 - **그림은 `/admin/assets` 에서 올린다**(앱 저장소 `ADR-103`). 파일은 `/srv/maple-routine-assets/` 에 내용 해시 이름으로 쌓이고,
   표 `assets` 가 앱 경로(`bosses/bellona.webp`)와 해시를 잇는다. 옛 해시 파일은 지우지 않는다. 옛 목록을 받은 앱이 아직 받는 중일 수
   있다. 게임 데이터 표의 그림 칸은 그림 표에 있는 그림만 가리킬 수 있다(쓰기 때 400). 처음 채울 때는 맥에서

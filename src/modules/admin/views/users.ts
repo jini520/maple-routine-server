@@ -76,8 +76,8 @@ ${DASHBOARD_SCRIPT}
     }));
     document.getElementById('comp-note').textContent = n + '일 방문자 ' + num(t.period.value) + '명. 마지막으로 보낸 사건으로 한 번씩 센다';
     var comp = clear(document.getElementById('composition'));
-    comp.appendChild(splitPart('플랫폼', inOrder(d.composition.platform, ['ios', 'android'], PLATFORM_NAMES), ['#2F5BEA', '#0E9384'], '명'));
-    comp.appendChild(splitPart('로그인 방식', inOrder(d.composition.identity, ['login', 'key'], IDENTITY_NAMES), ['#2F5BEA', '#0E9384'], '명'));
+    comp.appendChild(splitPart('플랫폼', inOrder(d.composition.platform, ['ios', 'android'], PLATFORM_NAMES), PARTS, '명'));
+    comp.appendChild(splitPart('로그인 방식', inOrder(d.composition.identity, ['login', 'key'], IDENTITY_NAMES), PARTS, '명'));
   }
 
   async function load() {

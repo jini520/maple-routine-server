@@ -10,7 +10,8 @@ export const DASHBOARD_SCRIPT = `<script>
   var KIND_ORDER = ['game', 'event', 'update', 'cashshop'];
   // 앱 알림 설정에 보이는 이름이다(앱 features/notice/topics.ts).
   var KIND_LABELS = { game: '게임 공지 사항', event: '썬데이 메이플', update: '게임 업데이트 안내', cashshop: '캐시 아이템 업데이트' };
-  var HEAT = ['#EEF2FD', '#D3DDFA', '#A9BBF3', '#7D97EE', '#2F5BEA', '#1A3BA8'];
+  var HEAT = ['var(--ramp-0)', 'var(--ramp-1)', 'var(--ramp-2)', 'var(--ramp-3)', 'var(--ramp-4)', 'var(--ramp-5)'];
+  var PARTS = ['var(--part-1)', 'var(--part-2)'];
   var PRESETS = [7, 28, 90, 180];
 
   function num(v) { return Number(v).toLocaleString('ko-KR'); }

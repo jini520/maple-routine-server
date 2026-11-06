@@ -101,6 +101,8 @@ export function layout(path: string, title: string, body: string): string {
     --accent: #2F5BEA; --accent-hover: #2449C7; --accent-ink: #1E40AF; --accent-tint: #E9EEFF; --on-accent: #FFFFFF;
     --ok-ink: #15803D; --ok-tint: #DCFCE7; --danger-ink: #B91C1C; --danger-tint: #FEE2E2;
     --rise: #D92D20; --rise-ink: #B42318; --fall: #2F5BEA; --fall-ink: #1E40AF; --bar: #9DB1F2; --band: #EEF2FD; --grid: #EEF0F3;
+    --part-1: #2F5BEA; --part-2: #0E9384;
+    --ramp-0: #EEF2FD; --ramp-1: #D3DDFA; --ramp-2: #A9BBF3; --ramp-3: #7D97EE; --ramp-4: #2F5BEA; --ramp-5: #1A3BA8; --ramp-gray: #D2D6DC;
     --r-card: 10px; --r-input: 8px; --r-btn: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
     --font: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;

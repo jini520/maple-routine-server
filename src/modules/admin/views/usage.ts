@@ -40,7 +40,7 @@ ${DASHBOARD_SCRIPT}
 <script>
   var state = { days: 28, tab: 'visits', screen: null, showAll: false, data: null };
   var PLATFORM_NAMES = { ios: 'iOS', android: 'Android' };
-  var VERSION_COLORS = ['#1A3BA8', '#2F5BEA', '#6585EC', '#9DB1F2', '#D2D6DC'];
+  var VERSION_COLORS = ['var(--ramp-5)', 'var(--ramp-4)', 'var(--ramp-3)', 'var(--ramp-2)', 'var(--ramp-gray)'];
   var TOP_SCREENS = 10;
 
   function put(id, node) { clear(document.getElementById(id)).appendChild(node); }
@@ -177,7 +177,7 @@ ${DASHBOARD_SCRIPT}
     document.getElementById('comp-note').textContent = num(visitors) + '명';
     var comp = clear(document.getElementById('composition'));
     comp.appendChild(splitPart('앱 버전', versionParts(d.composition.version), VERSION_COLORS, '명'));
-    comp.appendChild(splitPart('플랫폼', inOrder(d.composition.platform, ['ios', 'android'], PLATFORM_NAMES), ['#2F5BEA', '#0E9384'], '명'));
+    comp.appendChild(splitPart('플랫폼', inOrder(d.composition.platform, ['ios', 'android'], PLATFORM_NAMES), PARTS, '명'));
     if (!d.screens.some(function (s) { return s.name === state.screen; })) state.screen = d.screens.length ? d.screens[0].name : null;
     renderScreens(d);
     if (state.screen) pickScreen(state.screen);

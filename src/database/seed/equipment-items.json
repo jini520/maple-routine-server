@@ -151,6 +151,11 @@
       "level": 160
     },
     {
+      "key": "absolab_goeseon",
+      "name": "앱솔랩스괴선",
+      "level": 160
+    },
+    {
       "key": "absolab_hellslayer",
       "name": "앱솔랩스헬슬레이어",
       "level": 160
@@ -331,6 +336,11 @@
       "level": 160
     },
     {
+      "key": "absolab_tuner",
+      "name": "앱솔랩스튜너",
+      "level": 160
+    },
+    {
       "key": "absolab_whip_blade",
       "name": "앱솔랩스스플릿엣지",
       "level": 160
@@ -338,6 +348,11 @@
     {
       "key": "absolab_whispershot",
       "name": "앱솔랩스브레스슈터",
+      "level": 160
+    },
+    {
+      "key": "absolab_wingtooth",
+      "name": "앱솔랩스윙투스",
       "level": 160
     },
     {
@@ -397,7 +412,7 @@
     },
     {
       "key": "arcane_umbra_bladecaster",
-      "name": "아케인셰이드블레이드캐스터",
+      "name": "아케인셰이드블레이드",
       "level": 200
     },
     {
@@ -426,6 +441,11 @@
       "level": 200
     },
     {
+      "key": "arcane_umbra_choseon",
+      "name": "아케인셰이드초선",
+      "level": 200
+    },
+    {
       "key": "arcane_umbra_crossbow",
       "name": "아케인셰이드크로스보우",
       "level": 200
@@ -438,6 +458,11 @@
     {
       "key": "arcane_umbra_desperado",
       "name": "아케인셰이드데스페라도",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_dikio",
+      "name": "아케인셰이드디키오",
       "level": 200
     },
     {
@@ -463,6 +488,11 @@
     {
       "key": "arcane_umbra_hammer",
       "name": "아케인셰이드해머",
+      "level": 200
+    },
+    {
+      "key": "arcane_umbra_hwangeom",
+      "name": "아케인셰이드환검",
       "level": 200
     },
     {
@@ -671,8 +701,13 @@
       "level": 200
     },
     {
+      "key": "arcane_umbra_tuner",
+      "name": "아케인셰이드튜너",
+      "level": 200
+    },
+    {
       "key": "arcane_umbra_two_handed_axe",
-      "name": "아케인셰이드투핸드액스",
+      "name": "아케인셰이드투핸드엑스",
       "level": 200
     },
     {
@@ -1313,6 +1348,11 @@
     {
       "key": "fafnir_dual_windwing",
       "name": "파프니르듀얼윈드윙",
+      "level": 150
+    },
+    {
+      "key": "fafnir_edict",
+      "name": "파프니르이딕트",
       "level": 150
     },
     {

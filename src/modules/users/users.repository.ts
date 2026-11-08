@@ -10,6 +10,7 @@ import {
   usageEvents,
   users,
 } from '../../database/schema'
+import { newReferralCode } from './referral-code'
 
 /** 찾은 사람과 그 자격의 넥슨 계정. */
 export interface FoundAccount {
@@ -22,6 +23,9 @@ export interface FoundAccount {
 
 type Credential =
   { identitySource: 'login'; nexonUid: string } | { identitySource: 'key'; apiKeyHash: Buffer }
+
+/** 추천인 코드가 겹쳐 다시 뽑는 횟수의 끝. 코드가 1조 가지가 넘어 한 번 겹치는 일도 드물다. */
+const ACCOUNT_INSERT_ATTEMPTS = 5
 
 const ACCOUNT_COLUMNS = {
   id: nexonAccounts.userId,
@@ -176,11 +180,6 @@ export class UsersRepository {
     return deleted.length
   }
 
-  /**
-   * 자격으로 계정을 찾고, 없으면 사람과 계정을 함께 만든다.
-   *
-   * 같은 자격이 동시에 오면 둘 다 사람을 만들 수 있다. 계정의 UNIQUE 에 진 쪽은 만든 사람을 지우고 이긴 쪽을 다시 읽는다.
-   */
   /** 삭제를 예약하지 않은 사람 수. createdBefore 를 주면 그 앞에 만든 사람만 센다. 예약한 사람은 30일 뒤 지워진다. */
   async countActive(createdBefore?: Date): Promise<number> {
     const [row] = await this.db
@@ -213,6 +212,12 @@ export class UsersRepository {
       .orderBy(sql`1`)
   }
 
+  /**
+   * 자격으로 계정을 찾고, 없으면 사람과 계정을 함께 만든다. 로그인 계정이면 추천인 코드도 함께 만든다.
+   *
+   * 같은 자격이 동시에 오면 둘 다 사람을 만들 수 있다. 계정의 UNIQUE 에 진 쪽은 만든 사람을 지우고 이긴 쪽을 다시 읽는다.
+   * 이긴 쪽이 없으면 겹친 것은 추천인 코드라서 코드를 다시 뽑는다.
+   */
   private async upsertAccount(credential: Credential): Promise<FoundAccount> {
     const match =
       credential.identitySource === 'login'
@@ -223,16 +228,21 @@ export class UsersRepository {
       if (found !== undefined) return found
       const [user] = await tx.insert(users).values({}).returning({ id: users.id })
       if (user === undefined) throw new Error('사람을 만들지 못했다')
-      const [created] = await tx
-        .insert(nexonAccounts)
-        .values({ userId: user.id, ...credential })
-        .onConflictDoNothing()
-        .returning(ACCOUNT_COLUMNS)
-      if (created !== undefined) return created
-      await tx.delete(users).where(eq(users.id, user.id))
-      const [winner] = await tx.select(ACCOUNT_COLUMNS).from(nexonAccounts).where(match)
-      if (winner === undefined) throw new Error('겹친 계정을 다시 읽지 못했다')
-      return winner
+      for (let attempt = 0; attempt < ACCOUNT_INSERT_ATTEMPTS; attempt += 1) {
+        const referralCode = credential.identitySource === 'login' ? newReferralCode() : null
+        const [created] = await tx
+          .insert(nexonAccounts)
+          .values({ userId: user.id, ...credential, referralCode })
+          .onConflictDoNothing()
+          .returning(ACCOUNT_COLUMNS)
+        if (created !== undefined) return created
+        const [winner] = await tx.select(ACCOUNT_COLUMNS).from(nexonAccounts).where(match)
+        if (winner !== undefined) {
+          await tx.delete(users).where(eq(users.id, user.id))
+          return winner
+        }
+      }
+      throw new Error('계정 줄을 만들지 못했다')
     })
   }
 }

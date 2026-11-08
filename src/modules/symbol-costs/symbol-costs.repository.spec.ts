@@ -21,6 +21,7 @@ describeDb('SymbolCostsRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: SymbolCostsRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -28,7 +29,7 @@ describeDb('SymbolCostsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -86,7 +87,9 @@ describeDb('SymbolCostsRepository', () => {
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
     expect(section.groups).toEqual([grand])
-    expect(section.symbols).toEqual([tallahart])
+    expect(section.symbols).toEqual([
+      { ...tallahart, iconAssetId: assetIds[`items/${tallahart.iconFile}`] },
+    ])
     expect(section.levelCosts).toEqual(
       three.map((c) => ({ symbol: 'tallahart', ...c, from: '2026-09-17', until: null })),
     )

@@ -21,6 +21,7 @@ describeDb('SpendCatalogRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: SpendCatalogRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -28,7 +29,7 @@ describeDb('SpendCatalogRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -154,7 +155,11 @@ describeDb('SpendCatalogRepository', () => {
 
     const section = await repo.section()
     expect(section.groups).toEqual([epic, scroll])
-    expect(section.tiles.map((t) => t.key)).toEqual(['high_mountain', 'magical_scroll'])
+    // 타일은 아이템 그림과 지역 아이콘 중 하나를 들고, 새 앱은 둘 중 있는 그림 하나를 id 로 받는다
+    expect(section.tiles.map((t) => [t.key, t.iconAssetId])).toEqual([
+      ['high_mountain', assetIds['maps/icons/highMountain.png']],
+      ['magical_scroll', assetIds['items/magical.webp']],
+    ])
     expect(section.items.map((i) => [i.key, i.tier, i.rewardCoins])).toEqual([
       ['high_mountain_1', '1단계', 4],
       ['high_mountain_2', '2단계', 4],

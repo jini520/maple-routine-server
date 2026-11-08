@@ -46,6 +46,12 @@ describeDb('HuntLootRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: HuntLootRepository
+  let assetIds: Record<string, string>
+  /** 칸이 내는 줄. 그림 이름 옆에 그 그림의 id 가 선다 */
+  const withIcon = (row: HuntLootInput) => ({
+    ...row,
+    iconAssetId: assetIds[`items/${row.iconFile}`],
+  })
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -53,7 +59,7 @@ describeDb('HuntLootRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -79,9 +85,9 @@ describeDb('HuntLootRepository', () => {
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
     expect(section.items).toEqual([
-      fragment,
-      { ...magnifier, name: '수상한 돋보기!', until: '2026-11-26' },
-      milk,
+      withIcon(fragment),
+      withIcon({ ...magnifier, name: '수상한 돋보기!', until: '2026-11-26' }),
+      withIcon(milk),
     ])
   })
 
@@ -96,6 +102,6 @@ describeDb('HuntLootRepository', () => {
     await expect(
       repo.update('reindeer_milk', { ...milk, npcPriceMeso: null }),
     ).rejects.toBeInstanceOf(HuntLootPriceShape)
-    expect((await repo.section()).items).toEqual([milk])
+    expect((await repo.section()).items).toEqual([withIcon(milk)])
   })
 })

@@ -13,6 +13,7 @@ describeDb('CashbookCategoriesRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: CashbookCategoriesRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -20,7 +21,7 @@ describeDb('CashbookCategoriesRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -86,6 +87,7 @@ describeDb('CashbookCategoriesRepository', () => {
         name: '사냥 수익',
         cardTitle: '사냥',
         iconFile: 'wealth.webp',
+        iconAssetId: assetIds['items/wealth.webp'],
         description: '메소 · 조각',
         unit: '소재',
       },

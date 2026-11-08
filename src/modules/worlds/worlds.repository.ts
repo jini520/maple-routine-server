@@ -18,11 +18,13 @@ export interface WorldView {
 /** GET /v1/game-data 의 worlds 칸. 차례가 곧 앱의 월드 차례다. */
 export interface WorldsSection {
   updatedAt: string | null
-  worlds: WorldView[]
+  /** emblem 은 옛 앱이 읽는 그림 이름이다 */
+  worlds: (WorldView & { emblemAssetId: string | null })[]
 }
 
 /** 관리 화면이 보는 월드. 거래권은 앱에 안 싣고 여기에만 있다. NULL 이면 시세에서 빠진다. */
 export interface WorldAdminView extends WorldView {
+  emblemAssetId: string | null
   priceGroup: string | null
 }
 
@@ -44,6 +46,7 @@ export class WorldsRepository {
         key: r.key,
         name: r.name,
         emblem: r.emblem,
+        emblemAssetId: r.emblemAssetId,
         challengers: r.challengers,
         event: r.event,
       })),
@@ -61,6 +64,7 @@ export class WorldsRepository {
         key: worlds.key,
         name: worlds.name,
         emblemPath: assets.path,
+        emblemAssetId: worlds.emblemAssetId,
         challengers: worlds.challengers,
         event: worlds.event,
         priceGroup: worlds.priceGroup,
@@ -72,6 +76,7 @@ export class WorldsRepository {
       key: r.key,
       name: r.name,
       emblem: optionalRefValueOf('worldEmblem', r.emblemPath),
+      emblemAssetId: r.emblemAssetId,
       challengers: r.challengers,
       event: r.event,
       priceGroup: r.priceGroup,

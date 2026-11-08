@@ -144,6 +144,15 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   한 줄이고 `is_drop` · `is_equipment` 와 사냥 전리품 줄(`hunt_loot_items.item_id`)이 역할을 가른다. `dropItems` · `equipmentItems` ·
   `huntLoot` 칸은 자기 역할의 줄만 내므로 응답 모양은 그대로다. 이름을 NFC 로 맞추고 공백을 지웠을 때 다른 key 의 아이템과
   같으면 더하거나 고칠 수 없다. 한 물건이 두 key 로 서면 기록이 갈려서다.
+- **게임 데이터의 그림 칸은 그림 표의 id 를 함께 낸다**(앱 저장소 `ADR-187` 결정 4). `assets` 칸의 줄은 `id` 를 들고, 그림 칸마다
+  옛 글자 칸(`portraitSlug` · `iconFile` · `emblem` · `backgroundMap` 등) 옆에 `id` 칸(`portraitAssetId` · `iconAssetId` 등)이
+  선다. 크롭 줄은 `assetId` 를 든다. 옛 글자 칸은 이미 깔린 옛 앱이 읽어 남긴다. 칸이 없으면 옛 앱이 게임 데이터를 거절하고
+  잠금 화면에서 멈추기 때문이다. 새 앱이 퍼지고 옛 버전을 잠근 뒤에 지운다.
+- **앱 코드가 쓰는 그림도 표에 붙어 있다**(앱 저장소 `ADR-187` 결정 8). MVP 명패는 `mvp_grades.plate_asset_id`, 컨텐츠 카드의
+  지역 아이콘은 `contents.region_icon_asset_id`, 붙일 표가 없는 72장(결정석 칩 · 강화 다섯 · 메소 주머니 · 포스 · 드롭 연출
+  프레임 등)은 `app_images`(key 와 그림 id)이고 게임 데이터 칸 `appImages` 로 나간다. key 는 앱 코드가 그림을 찾는 이름이다.
+  지역 아이콘은 고르는 칸이 아직 없어서, 컨텐츠의 지도 배경을 바꾸면 같은 이름의 `maps/icons/` 그림이 따라간다. `app_images`
+  를 고치는 화면도 아직 없다.
 - **시각은 timestamptz 로 저장하고, 사람이 보는 글자는 전부 KST `YYYY-MM-DD HH:mm:ss` 다**(앱 저장소 `ADR-347` 정정 2). 관리 화면은
   `layout.ts` 의 `when()` 으로만 시각을 그리고 `datetime-local` 입력도 KST 로 읽는다. CLI 는 `common/kst.ts` 의 `formatKst` 다. 브라우저와
   컨테이너의 시간대에 기대지 않는다.

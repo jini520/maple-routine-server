@@ -10,7 +10,9 @@ import { sameNameItem } from '../items/items'
 export interface DropItemView {
   key: string
   name: string
+  /** 옛 앱이 읽는 그림 이름 */
   iconFile: string | null
+  iconAssetId: string | null
   valuable: boolean
 }
 
@@ -56,6 +58,7 @@ export class DropItemsRepository {
         key: r.key,
         name: r.name,
         iconFile: r.iconFile,
+        iconAssetId: r.iconAssetId,
         valuable: r.valuable,
       })),
     }
@@ -72,6 +75,7 @@ export class DropItemsRepository {
         key: items.key,
         name: items.name,
         iconPath: assets.path,
+        iconAssetId: items.iconAssetId,
         valuable: items.valuable,
         worldBound: items.worldBound,
       })
@@ -83,6 +87,7 @@ export class DropItemsRepository {
       key: r.key,
       name: r.name,
       iconFile: optionalRefValueOf('itemIcon', r.iconPath),
+      iconAssetId: r.iconAssetId,
       valuable: r.valuable,
       worldBound: r.worldBound,
     }))

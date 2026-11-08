@@ -53,6 +53,7 @@ const TABLES = [
   'boss_drop_rewards',
   'items',
   'game_data_sections',
+  'app_images',
   'assets',
   'image_crops',
   'worlds',

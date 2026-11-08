@@ -40,6 +40,12 @@ describeDb('HexaMatrixRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: HexaMatrixRepository
+  let assetIds: Record<string, string>
+  /** 칸이 내는 줄. 그림 이름 옆에 그 그림의 id 가 선다 */
+  const withIcon = <T extends { iconFile: string }>(dir: 'items' | 'skills', row: T) => ({
+    ...row,
+    iconAssetId: assetIds[`${dir}/${row.iconFile}`],
+  })
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -47,7 +53,7 @@ describeDb('HexaMatrixRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -72,7 +78,7 @@ describeDb('HexaMatrixRepository', () => {
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.kinds).toEqual([skill3rd, skill])
+    expect(section.kinds).toEqual([withIcon('items', skill3rd), withIcon('items', skill)])
     expect(section.levelCosts).toEqual([
       ...costs(140).map((c) => ({ kind: 'skill_3rd', ...c })),
       ...costs(100).map((c) => ({ kind: 'skill', ...c })),
@@ -180,9 +186,13 @@ describeDb('HexaMatrixRepository', () => {
       }),
     ).rejects.toBeInstanceOf(JobCoreExists)
     expect((await repo.section()).jobCores).toEqual([
-      core('렌', '창룡파천검 : 만참'),
-      core('히어로', '레이지 익스플로젼'),
-      { ...core('히어로', '스피릿 칼리버'), name: '스피릿 칼리버!', iconFile: 'x.webp' },
+      withIcon('skills', core('렌', '창룡파천검 : 만참')),
+      withIcon('skills', core('히어로', '레이지 익스플로젼')),
+      withIcon('skills', {
+        ...core('히어로', '스피릿 칼리버'),
+        name: '스피릿 칼리버!',
+        iconFile: 'x.webp',
+      }),
     ])
 
     rows = await repo.adminRows()

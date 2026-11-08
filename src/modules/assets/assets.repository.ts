@@ -7,7 +7,9 @@ import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 import { type AssetRef, parseAssetPath, refCandidates, storedFileName } from './asset-paths'
 
 export interface AssetFileView {
-  /** 앱 `src/assets/` 기준 경로. 앱은 이 경로로 그림을 찾는다 */
+  /** 그림 표의 id. 게임 데이터 표의 그림 칸이 이 값을 든다 */
+  id: string
+  /** 앱 `src/assets/` 기준 경로. 옛 앱이 이 경로로 그림을 찾는다 */
   path: string
   /** nginx `/assets/` 아래의 파일 이름 */
   file: string
@@ -32,6 +34,7 @@ export class AssetsRepository {
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'assets'),
       files: rows.map((r) => ({
+        id: r.id,
         path: r.path,
         file: storedFileName(r.sha256, parseAssetPath(r.path)?.ext ?? 'png'),
         sha256: r.sha256,

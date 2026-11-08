@@ -127,6 +127,12 @@
       "name": "기타",
       "unit": "개",
       "hasTariff": false
+    },
+    {
+      "key": "cash",
+      "name": "캐시",
+      "unit": "개",
+      "hasTariff": true
     }
   ]
 }

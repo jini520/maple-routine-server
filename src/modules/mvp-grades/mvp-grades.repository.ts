@@ -14,6 +14,8 @@ export interface MvpGradeView {
   name: string
   auctionFeePercent: number
   starforceDiscountPercent: number
+  /** 명패 그림. 일반 등급은 없다 */
+  plateAssetId: string | null
 }
 
 /** GET /v1/game-data 의 mvpGrades 칸. 차례가 등급의 높낮이다. */
@@ -22,7 +24,7 @@ export interface MvpGradesSection {
   grades: MvpGradeView[]
 }
 
-export type MvpGradeInput = Omit<MvpGradeView, 'key'>
+export type MvpGradeInput = Omit<MvpGradeView, 'key' | 'plateAssetId'>
 
 /** 등급은 고치고 옮기기만 있다. ENUM 과 일대일이라 더하고 지우는 것은 마이그레이션이다. */
 @Injectable()
@@ -41,6 +43,7 @@ export class MvpGradesRepository {
         name: g.name,
         auctionFeePercent: g.auctionFeePercent,
         starforceDiscountPercent: g.starforceDiscountPercent,
+        plateAssetId: g.plateAssetId,
       })),
     }
   }

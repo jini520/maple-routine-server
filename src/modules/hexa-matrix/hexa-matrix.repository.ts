@@ -51,17 +51,18 @@ export interface HexaStatView {
 /** GET /v1/game-data 의 hexaMatrix 칸. 참조는 전부 key 이고 비용은 종류 · 레벨마다 한 줄이다. */
 export interface HexaMatrixSection {
   updatedAt: string | null
-  kinds: HexaCoreKindView[]
+  /** iconFile 은 옛 앱이 읽는 그림 이름이다 */
+  kinds: (HexaCoreKindView & { iconAssetId: string })[]
   levelCosts: HexaCoreLevelCostView[]
   nameKinds: HexaCoreNameKindView[]
-  jobCores: HexaJobCoreView[]
+  jobCores: (HexaJobCoreView & { iconAssetId: string })[]
   stats: HexaStatView[]
 }
 
 /** 관리 화면의 줄. 이름 표와 직업별 코어는 이름이 key 가 아니라서 id 로 고르고 지운다. */
 export interface HexaMatrixAdminRows extends Omit<HexaMatrixSection, 'nameKinds' | 'jobCores'> {
   nameKinds: (HexaCoreNameKindView & { id: string })[]
-  jobCores: (HexaJobCoreView & { id: string })[]
+  jobCores: (HexaJobCoreView & { id: string; iconAssetId: string })[]
 }
 
 export type HexaCoreKindUpdate = Omit<HexaCoreKindView, 'key'>
@@ -109,11 +110,12 @@ export class HexaMatrixRepository {
     return {
       ...rows,
       nameKinds: rows.nameKinds.map(({ name, kind }) => ({ name, kind })),
-      jobCores: rows.jobCores.map(({ job, name, apiType, iconFile }) => ({
+      jobCores: rows.jobCores.map(({ job, name, apiType, iconFile, iconAssetId }) => ({
         job,
         name,
         apiType,
         iconFile,
+        iconAssetId,
       })),
     }
   }
@@ -128,6 +130,7 @@ export class HexaMatrixRepository {
           isDefault: hexaCoreKinds.isDefault,
           maxLevel: hexaCoreKinds.maxLevel,
           iconPath: assets.path,
+          iconAssetId: hexaCoreKinds.iconAssetId,
         })
         .from(hexaCoreKinds)
         .innerJoin(assets, eq(assets.id, hexaCoreKinds.iconAssetId))
@@ -158,6 +161,7 @@ export class HexaMatrixRepository {
           name: hexaJobCores.name,
           apiType: hexaJobCores.apiType,
           iconPath: assets.path,
+          iconAssetId: hexaJobCores.iconAssetId,
         })
         .from(hexaJobCores)
         .innerJoin(assets, eq(assets.id, hexaJobCores.iconAssetId))
@@ -179,6 +183,7 @@ export class HexaMatrixRepository {
       isDefault: r.isDefault,
       maxLevel: r.maxLevel,
       iconFile: refValueOf('itemIcon', r.iconPath),
+      iconAssetId: r.iconAssetId,
     }))
     const jobCores = jobCoreRows.map((r) => ({
       id: r.id,
@@ -186,6 +191,7 @@ export class HexaMatrixRepository {
       name: r.name,
       apiType: r.apiType,
       iconFile: refValueOf('skillIcon', r.iconPath),
+      iconAssetId: r.iconAssetId,
     }))
     return { updatedAt, kinds, levelCosts, nameKinds, jobCores, stats }
   }

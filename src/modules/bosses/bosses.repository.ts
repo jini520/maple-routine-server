@@ -20,7 +20,9 @@ export interface BossView {
   name: string
   alias: string
   cycle: 'weekly' | 'event_weekly' | 'monthly'
+  /** 옛 앱이 읽는 그림 이름 */
   portraitSlug: string
+  portraitAssetId: string
   /** 유효 기간. KST 글자. null 은 없음이다. */
   from: string | null
   until: string | null
@@ -159,6 +161,7 @@ export class BossesRepository {
         alias: bosses.alias,
         cycle: bosses.cycle,
         portraitPath: assets.path,
+        portraitAssetId: bosses.portraitAssetId,
         from: bosses.from,
         until: bosses.until,
         updatedAt: bosses.updatedAt,
@@ -199,6 +202,7 @@ export class BossesRepository {
         alias: r.alias,
         cycle: r.cycle,
         portraitSlug: refValueOf('bossPortrait', r.portraitPath),
+        portraitAssetId: r.portraitAssetId,
         from: r.from,
         until: r.until,
         difficulties: difficultyRows

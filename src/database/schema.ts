@@ -381,6 +381,18 @@ export const imageCrops = pgTable(
 )
 
 /**
+ * 붙일 게임 데이터 표가 없는 앱 그림. key 는 앱이 그림을 찾는 이름이고 앱 코드가 든다. 드롭 연출 프레임은
+ * `drop_effect_<단계>_<번호>` 라 key 가 단계와 차례를 든다.
+ */
+export const appImages = pgTable('app_images', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  assetId: uuid('asset_id')
+    .notNull()
+    .references(() => assets.id),
+})
+
+/**
  * 아이템 표 하나. 드롭 아이템 · 강화 장비 · 사냥 전리품이 모두 여기 한 줄이다(앱 저장소 ADR-187 결정 1). 기기 기록과
  * 강화 합계가 key 를 들어 key 는 못 바꾸고 줄을 지우지 않는다. 드롭 표 · 상자 · 드롭 가격은 id 를 FK 로 든다.
  */
@@ -936,11 +948,12 @@ export const contents = pgTable(
     displayName: text('display_name').notNull(),
     shortName: text('short_name').notNull(),
     /**
-     * 카드 그림. 지도 배경과 보스 초상 중 하나다. 앱에는 그림 이름(확장자를 뗀 것)을 backgroundMap · backgroundPortrait 로
-     * 낸다. 둘 다 없으면 카드가 고정 그림을 쓴다.
+     * 카드 그림. 지도 배경과 보스 초상 중 하나다. 앱에는 그림 id 와 옛 앱이 읽는 그림 이름(확장자를 뗀 것)을 함께 낸다.
      */
     backgroundMapAssetId: uuid('background_map_asset_id').references(() => assets.id),
     backgroundPortraitAssetId: uuid('background_portrait_asset_id').references(() => assets.id),
+    /** 카드의 지역 아이콘. 지도 배경이 있는 카드가 그 옆에 세운다. */
+    regionIconAssetId: uuid('region_icon_asset_id').references(() => assets.id),
     /** 컨텐츠가 참고 태그를 덮는 글자. */
     countTag: text('count_tag'),
     type: contentTypeEnum('type').notNull(),
@@ -1059,6 +1072,8 @@ export const mvpGrades = pgTable(
     name: text('name').notNull(),
     auctionFeePercent: integer('auction_fee_percent').notNull(),
     starforceDiscountPercent: integer('starforce_discount_percent').notNull(),
+    /** 명패 그림. 일반 등급은 명패가 없어 NULL 이다. */
+    plateAssetId: uuid('plate_asset_id').references(() => assets.id),
     /** 낮은 등급이 앞. 소속을 모르는 스타포스 줄이 그 날 가장 높은 등급을 찾을 때 쓴다. */
     sortOrder: integer('sort_order').notNull(),
   },

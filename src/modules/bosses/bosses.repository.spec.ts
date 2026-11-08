@@ -38,6 +38,7 @@ describeDb('BossesRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: BossesRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -45,7 +46,7 @@ describeDb('BossesRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -77,6 +78,7 @@ describeDb('BossesRepository', () => {
     ])
     expect(catalog.bosses[1]).toEqual({
       ...meirin,
+      portraitAssetId: assetIds['bosses/maerin.webp'],
       from: null,
       until: null,
       difficulties: meirin.difficulties.map((d) => ({

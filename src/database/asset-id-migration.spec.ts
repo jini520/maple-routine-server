@@ -2,47 +2,28 @@
  * 0029 이관을 진짜 Postgres 에서 본다. 0028 까지 올린 새 DB 에 글자로 된 그림 칸을 넣고 0029 를 적용한다. 운영 DB 는 줄이
  * 차 있어서, 빈 표에서만 도는 test-db 의 마이그레이션으로는 채우는 SQL 이 한 번도 안 돈다.
  */
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
 import { sql } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 
+import { migrationFoldersUpTo } from './migration-folders'
 import { describeDb, TEST_DATABASE_URL } from './test-db'
 
-const MIGRATIONS = join(__dirname, 'migrations')
 const BEFORE = '0028_referral_code'
-
-interface Journal {
-  entries: { tag: string }[]
-}
-
-/** 저널을 BEFORE 까지 자른 마이그레이션 폴더 사본. 0029 를 빼고 올리기 위해서다. */
-function foldersUpTo(tag: string): { before: string; all: string; cleanup: () => void } {
-  const root = mkdtempSync(join(tmpdir(), 'mig-'))
-  const before = join(root, 'before')
-  cpSync(MIGRATIONS, before, { recursive: true })
-  const journalPath = join(before, 'meta', '_journal.json')
-  const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as Journal
-  const cut = journal.entries.findIndex((e) => e.tag === tag)
-  journal.entries = journal.entries.slice(0, cut + 1)
-  writeFileSync(journalPath, JSON.stringify(journal))
-  return { before, all: MIGRATIONS, cleanup: () => rmSync(root, { recursive: true, force: true }) }
-}
+const AFTER = '0029_asset_id_refs'
 
 describeDb('0029 그림 id 이관', () => {
   const name = `mig_${process.pid}_${Date.now()}`
   let admin: Pool
   let pool: Pool
   let db: NodePgDatabase
-  let folders: ReturnType<typeof foldersUpTo>
+  let folders: Record<typeof BEFORE | typeof AFTER, string>
+  let cleanup: () => void
 
   beforeAll(async () => {
     admin = new Pool({ connectionString: TEST_DATABASE_URL })
-    folders = foldersUpTo(BEFORE)
+    ;({ folders, cleanup } = migrationFoldersUpTo([BEFORE, AFTER]))
   })
   beforeEach(async () => {
     await admin.query(`CREATE DATABASE ${name}`)
@@ -50,7 +31,7 @@ describeDb('0029 그림 id 이관', () => {
     url.pathname = `/${name}`
     pool = new Pool({ connectionString: url.toString() })
     db = drizzle(pool)
-    await migrate(db, { migrationsFolder: folders.before })
+    await migrate(db, { migrationsFolder: folders[BEFORE] })
     // 0014 가 넣은 가계부 분류 줄은 이 스펙이 넣는 그림을 안 가리켜 0029 를 멈추게 한다. 스펙마다 볼 표만 남긴다.
     await pool.query('DELETE FROM cashbook_categories')
   })
@@ -59,7 +40,7 @@ describeDb('0029 그림 id 이관', () => {
     await admin.query(`DROP DATABASE ${name} WITH (FORCE)`)
   })
   afterAll(async () => {
-    folders.cleanup()
+    cleanup()
     await admin.end()
   })
 
@@ -91,7 +72,7 @@ describeDb('0029 그림 id 이관', () => {
       `INSERT INTO image_crops (kind, slug, size, position) VALUES ('boss_portrait', 'lotus', '100% auto', '50% 50%'), ('daily_quest_region', 'arcana', '100% auto', '50% 50%')`,
     )
 
-    await migrate(db, { migrationsFolder: folders.all })
+    await migrate(db, { migrationsFolder: folders[AFTER] })
 
     const one = async (q: string): Promise<unknown[]> => (await pool.query<object>(q)).rows
     expect(await one(`SELECT portrait_asset_id AS id FROM bosses`)).toEqual([{ id: webp }])
@@ -116,7 +97,7 @@ describeDb('0029 그림 id 이관', () => {
       `INSERT INTO bosses (key, name, alias, cycle, portrait_slug, sort_order) VALUES ('lotus', '스우', '스우', 'weekly', 'lotus', 0), ('ghost', '없는 보스', '없는 보스', 'weekly', 'ghost', 1)`,
     )
 
-    const failure: unknown = await migrate(db, { migrationsFolder: folders.all }).then(
+    const failure: unknown = await migrate(db, { migrationsFolder: folders[AFTER] }).then(
       () => null,
       (error: unknown) => error,
     )

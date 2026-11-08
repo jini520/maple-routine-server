@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
-import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { assets, dropItems } from '../../database/schema'
+import { assets, items } from '../../database/schema'
 import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
+import { sameNameItem } from '../items/items'
 
 export interface DropItemView {
   key: string
@@ -34,9 +34,15 @@ export interface DropItemInput {
   worldBound?: boolean
 }
 
-/** 같은 key 의 아이템이 이미 있다. */
+/** 같은 key 의 드롭 아이템이 이미 있다. */
 export class DropItemExists extends Error {}
+/** 비교 모양의 이름이 같은 아이템이 다른 key 로 있다. message 가 그 아이템의 key 다. */
+export class DropItemNameTaken extends Error {}
 
+/**
+ * 아이템 표에서 드롭 아이템(is_drop)만 다룬다. 같은 key 의 아이템이 강화 장비나 사냥 전리품으로 이미 있으면 새 줄을 만들지
+ * 않고 그 줄에 드롭을 얹는다. 한 물건이 두 줄이 되면 기록이 갈리기 때문이다.
+ */
 @Injectable()
 export class DropItemsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -63,15 +69,16 @@ export class DropItemsRepository {
   private async rows(): Promise<DropItemAdminView[]> {
     const rows = await this.db
       .select({
-        key: dropItems.key,
-        name: dropItems.name,
+        key: items.key,
+        name: items.name,
         iconPath: assets.path,
-        valuable: dropItems.valuable,
-        worldBound: dropItems.worldBound,
+        valuable: items.valuable,
+        worldBound: items.worldBound,
       })
-      .from(dropItems)
-      .leftJoin(assets, eq(assets.id, dropItems.iconAssetId))
-      .orderBy(asc(dropItems.key))
+      .from(items)
+      .leftJoin(assets, eq(assets.id, items.iconAssetId))
+      .where(eq(items.isDrop, true))
+      .orderBy(asc(items.key))
     return rows.map((r) => ({
       key: r.key,
       name: r.name,
@@ -81,32 +88,47 @@ export class DropItemsRepository {
     }))
   }
 
+  /** 같은 key 의 드롭 아이템은 DropItemExists, 이름이 같은 다른 key 의 아이템은 DropItemNameTaken 이다. */
   async create(input: DropItemInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
-      let row: { id: string } | undefined
-      try {
-        ;[row] = await tx
-          .insert(dropItems)
-          .values(await columnsOf(tx, input))
-          .returning({ id: dropItems.id })
-      } catch (error) {
-        if (isUniqueViolation(error)) throw new DropItemExists(input.key)
-        throw error
+      const [same] = await tx
+        .select({ id: items.id, isDrop: items.isDrop })
+        .from(items)
+        .where(eq(items.key, input.key))
+      if (same?.isDrop) throw new DropItemExists(input.key)
+      const twin = await sameNameItem(tx, input.key, input.name)
+      if (twin !== null) throw new DropItemNameTaken(twin.key)
+      const columns = { ...(await columnsOf(tx, input)), isDrop: true }
+      let id: string
+      if (same === undefined) {
+        const [row] = await tx.insert(items).values(columns).returning({ id: items.id })
+        if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
+        id = row.id
+      } else {
+        await tx
+          .update(items)
+          .set({ ...columns, updatedAt: new Date() })
+          .where(eq(items.id, same.id))
+        id = same.id
       }
-      if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
       await touchSection(tx, 'dropItems')
-      return row
+      return { id }
     })
   }
 
-  /** 이름 · 그림 · 고가 · 월드 간 거래 불가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르는 key 면 false 다. */
+  /**
+   * 이름 · 그림 · 고가 · 월드 간 거래 불가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르는 key 면 false, 이름이 같은
+   * 다른 key 의 아이템이 있으면 DropItemNameTaken 이다.
+   */
   async update(key: string, input: Omit<DropItemInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
+      const twin = await sameNameItem(tx, key, input.name)
+      if (twin !== null) throw new DropItemNameTaken(twin.key)
       const rows = await tx
-        .update(dropItems)
+        .update(items)
         .set({ ...(await columnsOf(tx, input)), updatedAt: new Date() })
-        .where(eq(dropItems.key, key))
-        .returning({ id: dropItems.id })
+        .where(and(eq(items.key, key), eq(items.isDrop, true)))
+        .returning({ id: items.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'dropItems')
       return true
@@ -115,9 +137,9 @@ export class DropItemsRepository {
 
   async findByKey(key: string): Promise<{ id: string } | null> {
     const [row] = await this.db
-      .select({ id: dropItems.id })
-      .from(dropItems)
-      .where(eq(dropItems.key, key))
+      .select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.key, key), eq(items.isDrop, true)))
     return row ?? null
   }
 }

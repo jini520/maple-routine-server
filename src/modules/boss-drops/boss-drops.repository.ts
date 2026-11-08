@@ -3,7 +3,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { isForeignKeyViolation, isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { bossDifficulties, bossDropRewards, bosses, dropItems } from '../../database/schema'
+import { bossDifficulties, bossDropRewards, bosses, items } from '../../database/schema'
 import type { DifficultyInput } from '../bosses/bosses.dto'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
@@ -202,8 +202,8 @@ export class BossDropsRepository {
         boss: bosses.key,
         difficulty: bossDifficulties.difficulty,
         category: bossDropRewards.category,
-        item: dropItems.key,
-        itemName: dropItems.name,
+        item: items.key,
+        itemName: items.name,
         amount: bossDropRewards.amount,
         from: bossDropRewards.from,
         until: bossDropRewards.until,
@@ -212,7 +212,7 @@ export class BossDropsRepository {
       .from(bossDropRewards)
       .innerJoin(bossDifficulties, eq(bossDropRewards.bossDifficultyId, bossDifficulties.id))
       .innerJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
-      .innerJoin(dropItems, eq(bossDropRewards.itemId, dropItems.id))
+      .innerJoin(items, eq(bossDropRewards.itemId, items.id))
       .where(where)
       .orderBy(
         asc(bosses.sortOrder),
@@ -233,9 +233,9 @@ export class BossDropsRepository {
 
   private async itemId(key: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ id: dropItems.id })
-      .from(dropItems)
-      .where(eq(dropItems.key, key))
+      .select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.key, key), eq(items.isDrop, true)))
     return row?.id ?? null
   }
 }

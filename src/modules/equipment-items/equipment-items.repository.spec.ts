@@ -1,4 +1,4 @@
-import { dropItems } from '../../database/schema'
+import { items } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import {
   comparableEquipmentName,
@@ -47,9 +47,11 @@ describeDb('EquipmentItemsRepository', () => {
     expect(section.items).toEqual([bow, ring])
   })
 
-  // 두 표가 한 물건을 두 key 로 부르면 기록이 갈린다. 앱 스펙이 지키던 규칙이다.
-  it('드롭 아이템 표에 같은 이름이 있으면 key 가 같아야 한다', async () => {
-    await db.insert(dropItems).values({ key: 'berserked', name: '거대한 공포', valuable: true })
+  // 한 물건을 두 key 로 부르면 기록이 갈린다. 앱 스펙이 지키던 규칙이다.
+  it('이름이 같은 드롭 아이템이 있으면 key 가 같아야 한다', async () => {
+    await db
+      .insert(items)
+      .values({ key: 'berserked', name: '거대한 공포', valuable: true, isDrop: true })
     await expect(
       repo.create({ key: 'great_terror', name: '거대한공포', level: 200 }),
     ).rejects.toThrow(new DropItemKeyMismatch('berserked'))

@@ -284,7 +284,7 @@ export const dropPrices = pgTable(
     /** 어느 아이템의 시세인가. 서버가 전송값의 key 로 찾아 적고, 모르는 key 는 받지 않는다. */
     itemId: uuid('item_id')
       .notNull()
-      .references(() => dropItems.id),
+      .references(() => items.id),
     /** 판매 총액. 내 몫이 아니다. completed 만 값이 있고 나머지 상태는 NULL 이다. 0 으로 적으면 미입력과 구분이 사라진다. */
     priceMeso: bigint('price_meso', { mode: 'number' }),
     recordStatus: dropRecordStatusEnum('record_status').notNull(),
@@ -380,19 +380,35 @@ export const imageCrops = pgTable(
   (t) => [unique('image_crops_kind_asset_unique').on(t.kind, t.assetId)],
 )
 
-/** 드롭 아이템 마스터 표. 기록과 drop_prices.item_key 가 key 를 든다. */
-export const dropItems = pgTable('drop_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  key: text('key').notNull().unique(),
-  name: text('name').notNull(),
-  /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. 없으면 앱이 자리 그림을 그린다. */
-  iconAssetId: uuid('icon_asset_id').references(() => assets.id),
-  /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */
-  valuable: boolean('valuable').notNull().default(false),
-  /** 월드끼리 거래할 수 없는 소비 아이템. 시세를 거래권이 아니라 월드 하나로 센다. 앱의 게임 데이터에는 안 싣는다. */
-  worldBound: boolean('world_bound').notNull().default(false),
-  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
-})
+/**
+ * 아이템 표 하나. 드롭 아이템 · 강화 장비 · 사냥 전리품이 모두 여기 한 줄이다(앱 저장소 ADR-187 결정 1). 기기 기록과
+ * 강화 합계가 key 를 들어 key 는 못 바꾸고 줄을 지우지 않는다. 드롭 표 · 상자 · 드롭 가격은 id 를 FK 로 든다.
+ */
+export const items = pgTable(
+  'items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    /** 띄어 쓴 게임 표기. NFC · 공백 제거 뒤에도 표 전체에서 유일하다(쓰기 검사). 앱이 넥슨 이름과 그 모양으로 맞춘다. */
+    name: text('name').notNull(),
+    /** 분류. 서버 코드의 ITEM_CATEGORIES 에 있는 묶음 key 다. 아직 안 정했으면 NULL 이다. */
+    category: text('category'),
+    /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. 없으면 앱이 자리 그림을 그린다. */
+    iconAssetId: uuid('icon_asset_id').references(() => assets.id),
+    /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */
+    valuable: boolean('valuable').notNull().default(false),
+    /** 월드끼리 거래할 수 없는 소비 아이템. 시세를 거래권이 아니라 월드 하나로 센다. 앱의 게임 데이터에는 안 싣는다. */
+    worldBound: boolean('world_bound').notNull().default(false),
+    /** 착용 레벨. 강화 장비만 든다. NULL 은 모른다는 뜻이고 0 이 아니다. 그 장비의 스타포스는 안 매기고 건수만 센다. */
+    level: integer('level'),
+    /** 앱의 dropItems 칸에 서는 아이템. 드롭 기록 시트 · 드롭 가격이 쓴다. */
+    isDrop: boolean('is_drop').notNull().default(false),
+    /** 앱의 equipmentItems 칸에 서는 장비. 앱이 강화 기록의 장비 이름에서 key 를 찾는다. */
+    isEquipment: boolean('is_equipment').notNull().default(false),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [check('items_level_positive', sql`${t.level} IS NULL OR ${t.level} >= 1`)],
+)
 
 /** 드롭 표. 보스 한 난이도의 보상 한 줄. sort_order 가 드롭 시트의 타일 차례다. */
 export const bossDropRewards = pgTable(
@@ -405,7 +421,7 @@ export const bossDropRewards = pgTable(
     category: dropCategoryEnum('category').notNull(),
     itemId: uuid('item_id')
       .notNull()
-      .references(() => dropItems.id),
+      .references(() => items.id),
     /** 고정 보상의 수량 글자. '160개'. */
     amount: text('amount'),
     /** KST 글자 그대로. YYYY-MM-DD 또는 YYYY-MM-DDTHH:mm. 앱의 기간 판정이 문자열 비교다. */
@@ -428,7 +444,7 @@ export const dropBoxes = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .unique()
-      .references(() => dropItems.id),
+      .references(() => items.id),
     levelMin: integer('level_min'),
     levelMax: integer('level_max'),
   },
@@ -448,7 +464,7 @@ export const dropBoxContents = pgTable(
       .references(() => dropBoxes.id, { onDelete: 'cascade' }),
     itemId: uuid('item_id')
       .notNull()
-      .references(() => dropItems.id),
+      .references(() => items.id),
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [unique('drop_box_contents_box_item_unique').on(t.boxId, t.itemId)],
@@ -545,13 +561,12 @@ export const huntLootItems = pgTable(
   'hunt_loot_items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    key: text('key').notNull().unique(),
-    kind: huntLootKindEnum('kind').notNull(),
-    name: text('name').notNull(),
-    /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
-    iconAssetId: uuid('icon_asset_id')
+    /** 아이템. key · 이름 · 그림은 아이템 표에 있다. */
+    itemId: uuid('item_id')
       .notNull()
-      .references(() => assets.id),
+      .unique()
+      .references(() => items.id),
+    kind: huntLootKindEnum('kind').notNull(),
     /** NPC 에 파는 소비 아이템의 개당 가격. 앱이 단가를 채우고 수수료를 안 뗀다. */
     npcPriceMeso: integer('npc_price_meso'),
     /** KST 글자 그대로. 앱이 적는 날짜로 판정한다. */
@@ -989,20 +1004,6 @@ export const mvpGradeEnum = pgEnum('mvp_grade', [
   'red',
   'black',
 ])
-
-/** 강화 비용을 매길 장비. 기록(enhancement_history.item_key)이 key 를 들어 지우지 않는다. 강화할 수 없는 장비는 안 담는다. */
-export const equipmentItems = pgTable(
-  'equipment_items',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    key: text('key').notNull().unique(),
-    /** 붙여 쓴 이름. 앱이 API target_item 을 NFC · 공백 제거 뒤 완전 일치로 key 를 얻는다. */
-    name: text('name').notNull().unique(),
-    /** 착용 레벨. NULL 은 모른다는 뜻이고 0 이 아니다. 그 장비의 스타포스는 안 매기고 건수만 센다. */
-    level: integer('level'),
-  },
-  (t) => [check('equipment_items_level_positive', sql`${t.level} IS NULL OR ${t.level} >= 1`)],
-)
 
 /** 잠재 재설정 1회 비용. 종류 · 레벨 구간 · 등급마다 한 줄이고 기간 줄이 없다. 비용은 누르기 전 등급으로 매긴다. */
 export const potentialResetCosts = pgTable(

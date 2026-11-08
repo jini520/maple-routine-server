@@ -5,7 +5,7 @@ import { DB, type Db } from '../../database/database.module'
 import {
   bossDifficulties,
   bosses,
-  dropItems,
+  items,
   dropPrices,
   type dropRecordStatusEnum,
   worlds,
@@ -83,7 +83,7 @@ export interface DropPriceFilter {
 }
 
 function itemMatches(value: string | null) {
-  return value === null ? undefined : or(eq(dropItems.key, value), eq(dropItems.name, value))
+  return value === null ? undefined : or(eq(items.key, value), eq(items.name, value))
 }
 
 /** 아이템 표에 없는 key 다. message 가 그 key 다. */
@@ -101,8 +101,8 @@ export class DropPricesRepository {
     const rows = await this.db
       .select({
         price: dropPrices,
-        itemKey: dropItems.key,
-        itemName: dropItems.name,
+        itemKey: items.key,
+        itemName: items.name,
         worldKey: worlds.key,
         worldName: worlds.name,
         boss: bosses.key,
@@ -110,7 +110,7 @@ export class DropPricesRepository {
         difficulty: bossDifficulties.difficulty,
       })
       .from(dropPrices)
-      .innerJoin(dropItems, eq(dropPrices.itemId, dropItems.id))
+      .innerJoin(items, eq(dropPrices.itemId, items.id))
       .leftJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .leftJoin(bossDifficulties, eq(dropPrices.bossDifficultyId, bossDifficulties.id))
       .leftJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
@@ -150,8 +150,8 @@ export class DropPricesRepository {
     // bigint 집계는 문자열로 오므로 float8 로 받는다. 시세는 안전한 정수 안이다.
     const rows = await this.db
       .select({
-        itemKey: dropItems.key,
-        itemName: dropItems.name,
+        itemKey: items.key,
+        itemName: items.name,
         periodKey: dropPrices.periodKey,
         count: sql<number>`count(*)::int`,
         min: sql<number>`min(${dropPrices.priceMeso})::float8`,
@@ -159,7 +159,7 @@ export class DropPricesRepository {
         max: sql<number>`max(${dropPrices.priceMeso})::float8`,
       })
       .from(dropPrices)
-      .innerJoin(dropItems, eq(dropPrices.itemId, dropItems.id))
+      .innerJoin(items, eq(dropPrices.itemId, items.id))
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),
@@ -167,8 +167,8 @@ export class DropPricesRepository {
           filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
         ),
       )
-      .groupBy(dropItems.key, dropItems.name, dropPrices.periodKey)
-      .orderBy(desc(dropPrices.periodKey), desc(sql`count(*)`), dropItems.key)
+      .groupBy(items.key, items.name, dropPrices.periodKey)
+      .orderBy(desc(dropPrices.periodKey), desc(sql`count(*)`), items.key)
     return rows
   }
 
@@ -181,9 +181,9 @@ export class DropPricesRepository {
   async upsert(input: DropPriceInput): Promise<void> {
     const { userId, dropRecordId, itemKey, worldKey, pricedAt: sentPricedAt, ...rest } = input
     const [item] = await this.db
-      .select({ id: dropItems.id })
-      .from(dropItems)
-      .where(eq(dropItems.key, itemKey))
+      .select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.key, itemKey), eq(items.isDrop, true)))
     if (item === undefined) throw new NoDropItem(itemKey)
     let worldId: string | null = null
     if (worldKey !== null) {

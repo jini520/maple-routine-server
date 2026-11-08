@@ -211,6 +211,13 @@
       "when": 1794146963697,
       "tag": "0029_asset_id_refs",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1794148160830,
+      "tag": "0030_items_table",
+      "breakpoints": true
     }
   ]
 }

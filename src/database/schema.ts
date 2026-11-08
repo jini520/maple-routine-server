@@ -74,6 +74,8 @@ export const nexonAccounts = pgTable(
     /** 앱이 보낸 해시를 서버가 한 번 더 해시한 것. */
     apiKeyHash: bytea('api_key_hash').unique(),
     accountRecordId: uuid('account_record_id'),
+    /** 다른 사람에게 알려 줄 추천인 코드. 로그인 계정에만 있다. */
+    referralCode: text('referral_code').unique(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
@@ -85,7 +87,29 @@ export const nexonAccounts = pgTable(
       sql`(${t.identitySource} = 'login' AND ${t.nexonUid} IS NOT NULL AND ${t.apiKeyHash} IS NULL)
         OR (${t.identitySource} = 'key' AND ${t.apiKeyHash} IS NOT NULL AND ${t.nexonUid} IS NULL)`,
     ),
+    check(
+      'nexon_accounts_referral_code_login_only',
+      sql`(${t.identitySource} = 'login') = (${t.referralCode} IS NOT NULL)`,
+    ),
   ],
+)
+
+/** 추천 하나. 추천받은 계정이 추천인을 한 번만 넣으므로 그 칸이 UNIQUE 다. */
+export const referrals = pgTable(
+  'referrals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    referredAccountId: uuid('referred_account_id')
+      .notNull()
+      .unique()
+      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+    /** 추천한 계정이 지워지면 비운다. 줄이 남아야 추천받은 계정이 다른 코드를 다시 넣지 못한다. */
+    referrerAccountId: uuid('referrer_account_id').references(() => nexonAccounts.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [check('referrals_not_self', sql`${t.referredAccountId} <> ${t.referrerAccountId}`)],
 )
 
 export const nexonSessions = pgTable(

@@ -41,7 +41,13 @@ describeDb('EnhancementTotalsRepository', () => {
     ;[{ id: me }] = await db.insert(users).values({}).returning({ id: users.id })
     ;[{ id: myAccount }] = await db
       .insert(nexonAccounts)
-      .values({ userId: me, identitySource: 'login', nexonUid: 'uid', accountRecordId: ACCOUNT })
+      .values({
+        userId: me,
+        identitySource: 'login',
+        nexonUid: 'uid',
+        referralCode: 'AAAAAAAA',
+        accountRecordId: ACCOUNT,
+      })
       .returning({ id: nexonAccounts.id })
   })
   afterAll(() => close())

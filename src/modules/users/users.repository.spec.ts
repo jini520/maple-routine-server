@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { sha256 } from '../../common/hash'
+import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
   bossClears,
   dropItems,
@@ -8,14 +9,25 @@ import {
   enhancementAnomalies,
   nexonAccounts,
   nexonSessions,
+  referrals,
   usageEvents,
   users,
 } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import * as referralCode from './referral-code'
 import { UsersRepository } from './users.repository'
 
 const RECORD_A = '0a0a0a0a-0000-4000-8000-00000000000a'
 const RECORD_B = '0b0b0b0b-0000-4000-8000-00000000000b'
+
+async function errorOf(query: PromiseLike<unknown>): Promise<unknown> {
+  try {
+    await query
+  } catch (error) {
+    return error
+  }
+  return undefined
+}
 
 describeDb('UsersRepository', () => {
   let db: TestDb
@@ -443,5 +455,100 @@ describeDb('UsersRepository', () => {
       until: new Date('2026-11-03T15:00:00Z'),
     }
     expect(await repo.createdDaily(range)).toEqual([{ day: '2026-11-03', created: 2, active: 1 }])
+  })
+
+  describe('추천인 코드', () => {
+    afterEach(() => jest.restoreAllMocks())
+
+    async function codeOf(nexonAccountId: string): Promise<string | null | undefined> {
+      const [row] = await db
+        .select({ code: nexonAccounts.referralCode })
+        .from(nexonAccounts)
+        .where(eq(nexonAccounts.id, nexonAccountId))
+      return row?.code
+    }
+
+    it('로그인 계정 줄은 코드를 받고 키 줄은 받지 않는다', async () => {
+      const login = await repo.upsertByNexonUid('uid-1')
+      const key = await repo.upsertByApiKeyHash(sha256('k'))
+
+      expect(await codeOf(login.nexonAccountId)).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/)
+      expect(await codeOf(key.nexonAccountId)).toBeNull()
+    })
+
+    it('뽑은 코드가 다른 계정의 것과 겹치면 다시 뽑는다', async () => {
+      jest
+        .spyOn(referralCode, 'newReferralCode')
+        .mockReturnValueOnce('AAAAAAAA')
+        .mockReturnValueOnce('AAAAAAAA')
+        .mockReturnValueOnce('BBBBBBBB')
+      const first = await repo.upsertByNexonUid('uid-1')
+
+      const second = await repo.upsertByNexonUid('uid-2')
+
+      expect(await codeOf(first.nexonAccountId)).toBe('AAAAAAAA')
+      expect(await codeOf(second.nexonAccountId)).toBe('BBBBBBBB')
+      expect(await db.select().from(users)).toHaveLength(2)
+    })
+
+    // 코드를 만드는 곳은 upsertAccount 하나뿐이라, 다른 경로로 코드 없는 로그인 줄이 생기면 DB 가 막아야 한다.
+    it('코드 없는 로그인 줄과 코드 있는 키 줄은 DB 가 거절한다', async () => {
+      const [{ id }] = await db.insert(users).values({}).returning({ id: users.id })
+
+      const login = db
+        .insert(nexonAccounts)
+        .values({ userId: id, identitySource: 'login', nexonUid: 'uid-1' })
+      expect(isCheckViolation(await errorOf(login))).toBe(true)
+      const key = db.insert(nexonAccounts).values({
+        userId: id,
+        identitySource: 'key',
+        apiKeyHash: sha256('k'),
+        referralCode: 'AAAAAAAA',
+      })
+      expect(isCheckViolation(await errorOf(key))).toBe(true)
+    })
+  })
+
+  describe('referrals', () => {
+    it('자기 계정 추천과 한 계정의 두 번째 추천은 거절된다', async () => {
+      const a = await repo.upsertByNexonUid('uid-1')
+      const b = await repo.upsertByNexonUid('uid-2')
+      const c = await repo.upsertByNexonUid('uid-3')
+      await db
+        .insert(referrals)
+        .values({ referredAccountId: a.nexonAccountId, referrerAccountId: b.nexonAccountId })
+
+      const self = db
+        .insert(referrals)
+        .values({ referredAccountId: c.nexonAccountId, referrerAccountId: c.nexonAccountId })
+      expect(isCheckViolation(await errorOf(self))).toBe(true)
+      const again = db
+        .insert(referrals)
+        .values({ referredAccountId: a.nexonAccountId, referrerAccountId: c.nexonAccountId })
+      expect(isUniqueViolation(await errorOf(again))).toBe(true)
+    })
+
+    // 추천인을 넣었다는 줄이 남아야 추천받은 계정이 다른 코드를 다시 넣지 못한다.
+    it('지운 계정이 추천받은 줄은 지워지고, 추천한 줄은 그 칸만 빈다', async () => {
+      const a = await repo.upsertByNexonUid('uid-1')
+      const b = await repo.upsertByNexonUid('uid-2')
+      const c = await repo.upsertByNexonUid('uid-3')
+      await db.insert(referrals).values([
+        { referredAccountId: b.nexonAccountId, referrerAccountId: a.nexonAccountId },
+        { referredAccountId: c.nexonAccountId, referrerAccountId: b.nexonAccountId },
+      ])
+      await db
+        .update(users)
+        .set({ deletionRequestedAt: new Date('2026-01-01T00:00:00Z') })
+        .where(eq(users.id, b.id))
+
+      await repo.purgeDeletionsBefore(new Date('2026-02-01T00:00:00Z'))
+
+      expect(
+        await db
+          .select({ referred: referrals.referredAccountId, referrer: referrals.referrerAccountId })
+          .from(referrals),
+      ).toEqual([{ referred: c.nexonAccountId, referrer: null }])
+    })
   })
 })

@@ -17,6 +17,7 @@ import { z } from 'zod'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { imageSize, parseAssetPath, sniffImage, storedFileName } from '../assets/asset-paths'
+import { AssetNotFound } from '../assets/asset-refs'
 import { AssetStore } from '../assets/asset-store'
 import { AssetsRepository } from '../assets/assets.repository'
 import {
@@ -88,7 +89,13 @@ export class AdminAssetsController {
     @Param('slug', new ZodValidationPipe(cropSlugParam)) slug: string,
     @Body(new ZodValidationPipe(cropBody)) body: ImageCrop,
   ): Promise<void> {
-    await this.crops.put(kind, slug.normalize('NFC'), body)
+    try {
+      await this.crops.put(kind, slug.normalize('NFC'), body)
+    } catch (error) {
+      if (error instanceof AssetNotFound)
+        throw new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
+      throw error
+    }
   }
 
   /** 줄을 지우면 앱은 그 그림을 기본 크롭(cover · 가운데)으로 그린다. 없으면 404 다. */

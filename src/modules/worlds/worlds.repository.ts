@@ -3,8 +3,9 @@ import { asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { worlds } from '../../database/schema'
-import { sectionUpdatedAt, touchSection } from '../game-data/sections'
+import { assets, worlds } from '../../database/schema'
+import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface WorldView {
   key: string
@@ -36,7 +37,7 @@ export class WorldsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<WorldsSection> {
-    const rows = await this.db.select().from(worlds).orderBy(asc(worlds.sortOrder), asc(worlds.key))
+    const rows = await this.rows()
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'worlds'),
       worlds: rows.map((r) => ({
@@ -51,18 +52,30 @@ export class WorldsRepository {
 
   /** 관리 화면의 표. section 에 거래권을 더한 것이다. */
   async adminSection(): Promise<{ updatedAt: string | null; worlds: WorldAdminView[] }> {
-    const rows = await this.db.select().from(worlds).orderBy(asc(worlds.sortOrder), asc(worlds.key))
-    return {
-      updatedAt: await sectionUpdatedAt(this.db, 'worlds'),
-      worlds: rows.map((r) => ({
-        key: r.key,
-        name: r.name,
-        emblem: r.emblem,
-        challengers: r.challengers,
-        event: r.event,
-        priceGroup: r.priceGroup,
-      })),
-    }
+    return { updatedAt: await sectionUpdatedAt(this.db, 'worlds'), worlds: await this.rows() }
+  }
+
+  private async rows(): Promise<WorldAdminView[]> {
+    const rows = await this.db
+      .select({
+        key: worlds.key,
+        name: worlds.name,
+        emblemPath: assets.path,
+        challengers: worlds.challengers,
+        event: worlds.event,
+        priceGroup: worlds.priceGroup,
+      })
+      .from(worlds)
+      .leftJoin(assets, eq(assets.id, worlds.emblemAssetId))
+      .orderBy(asc(worlds.sortOrder), asc(worlds.key))
+    return rows.map((r) => ({
+      key: r.key,
+      name: r.name,
+      emblem: optionalRefValueOf('worldEmblem', r.emblemPath),
+      challengers: r.challengers,
+      event: r.event,
+      priceGroup: r.priceGroup,
+    }))
   }
 
   /** 맨 뒤에 더한다. 같은 key 는 WorldExists 다. */
@@ -75,7 +88,7 @@ export class WorldsRepository {
       try {
         ;[row] = await tx
           .insert(worlds)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({ ...(await columnsOf(tx, input)), sortOrder: (last?.max ?? -1) + 1 })
           .returning({ id: worlds.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new WorldExists(input.key)
@@ -92,7 +105,7 @@ export class WorldsRepository {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(worlds)
-        .set({ ...input, updatedAt: new Date() })
+        .set({ ...(await columnsOf(tx, input)), updatedAt: new Date() })
         .where(eq(worlds.key, key))
         .returning({ id: worlds.id })
       if (rows.length === 0) return false
@@ -119,4 +132,10 @@ export class WorldsRepository {
       return true
     })
   }
+}
+
+/** 입력의 엠블럼 이름을 그림 id 로 푼 표의 칸. 그림이 표에 없으면 AssetNotFound 다. */
+async function columnsOf<T extends { emblem: string | null }>(db: DbOrTx, input: T) {
+  const { emblem, ...rest } = input
+  return { ...rest, emblemAssetId: await resolveOptionalAssetId(db, 'worldEmblem', emblem) }
 }

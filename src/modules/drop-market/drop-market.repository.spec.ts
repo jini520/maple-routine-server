@@ -50,19 +50,19 @@ describeDb('DropMarketRepository', () => {
     const items = await db
       .insert(dropItems)
       .values([
-        { key: 'ring', name: '반지', iconFile: null },
-        { key: 'whetstone', name: '연마석', iconFile: null, worldBound: true },
+        { key: 'ring', name: '반지' },
+        { key: 'whetstone', name: '연마석', worldBound: true },
       ])
       .returning({ id: dropItems.id, key: dropItems.key })
     for (const r of items) item[r.key] = r.id
     const rows = await db
       .insert(worlds)
       .values([
-        { key: 'scania', name: '스카니아', emblem: null, sortOrder: 0 },
-        { key: 'bera', name: '베라', emblem: null, sortOrder: 1 },
-        { key: 'eos', name: '에오스', emblem: null, sortOrder: 2, priceGroup: 'helios_eos' },
-        { key: 'helios', name: '핼리오스', emblem: null, sortOrder: 3, priceGroup: 'helios_eos' },
-        { key: 'special', name: '스페셜', emblem: null, sortOrder: 4, priceGroup: null },
+        { key: 'scania', name: '스카니아', sortOrder: 0 },
+        { key: 'bera', name: '베라', sortOrder: 1 },
+        { key: 'eos', name: '에오스', sortOrder: 2, priceGroup: 'helios_eos' },
+        { key: 'helios', name: '핼리오스', sortOrder: 3, priceGroup: 'helios_eos' },
+        { key: 'special', name: '스페셜', sortOrder: 4, priceGroup: null },
       ])
       .returning({ id: worlds.id, key: worlds.key })
     for (const r of rows) world[r.key] = r.id

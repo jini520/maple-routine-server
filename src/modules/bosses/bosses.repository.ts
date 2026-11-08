@@ -3,7 +3,8 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { bossDifficulties, bosses, gameRules } from '../../database/schema'
+import { assets, bossDifficulties, bosses, gameRules } from '../../database/schema'
+import { refValueOf, resolveAssetId } from '../assets/asset-refs'
 import {
   BOSS_DIFFICULTIES,
   type BossInput,
@@ -78,7 +79,7 @@ export class BossesRepository {
             name: input.name,
             alias: input.alias,
             cycle: input.cycle,
-            portraitSlug: input.portraitSlug,
+            portraitAssetId: await resolveAssetId(tx, 'bossPortrait', input.portraitSlug),
             from: input.from ?? null,
             until: input.until ?? null,
             sortOrder,
@@ -150,7 +151,21 @@ export class BossesRepository {
   }
 
   async catalog(): Promise<Catalog> {
-    const rows = await this.db.select().from(bosses).orderBy(asc(bosses.sortOrder), asc(bosses.key))
+    const rows = await this.db
+      .select({
+        id: bosses.id,
+        key: bosses.key,
+        name: bosses.name,
+        alias: bosses.alias,
+        cycle: bosses.cycle,
+        portraitPath: assets.path,
+        from: bosses.from,
+        until: bosses.until,
+        updatedAt: bosses.updatedAt,
+      })
+      .from(bosses)
+      .innerJoin(assets, eq(assets.id, bosses.portraitAssetId))
+      .orderBy(asc(bosses.sortOrder), asc(bosses.key))
     const ids = rows.map((r) => r.id)
     const difficultyRows =
       ids.length === 0
@@ -183,7 +198,7 @@ export class BossesRepository {
         name: r.name,
         alias: r.alias,
         cycle: r.cycle,
-        portraitSlug: r.portraitSlug,
+        portraitSlug: refValueOf('bossPortrait', r.portraitPath),
         from: r.from,
         until: r.until,
         difficulties: difficultyRows

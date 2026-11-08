@@ -1,5 +1,5 @@
 import { contentCategories } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import {
   ApiNameTaken,
   comparableApiName,
@@ -8,6 +8,9 @@ import {
   ContentsRepository,
   NoContentCategory,
 } from './contents.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['bosses/ancientGodMitra.webp', 'bosses/lesa.webp', 'maps/monsterPark.webp']
 
 describe('comparableApiName', () => {
   it('NFC 로 맞추고 공백을 모두 지운다. 앱이 key 를 얻는 모양이다', () => {
@@ -28,6 +31,7 @@ describeDb('ContentsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
+    await insertAssets(db, SPEC_ASSETS)
     // 갈래 줄은 ENUM 과 일대일이라 리포지토리가 더하지 않는다. 씨앗이 넣는 모양 그대로 둘만 둔다.
     await db.insert(contentCategories).values([
       {

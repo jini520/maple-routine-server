@@ -1,4 +1,4 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import {
   CostLevelsMismatch,
   DefaultKindTaken,
@@ -10,6 +10,18 @@ import {
   NameKindExists,
   NoHexaKind,
 } from './hexa-matrix.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = [
+  'items/hexa_core_skill.webp',
+  'items/x.webp',
+  'skills/hexa_core_skill.webp',
+  'skills/x.webp',
+  // core() 가 `${name}.webp` 로 짓는 직업별 코어 그림
+  'skills/레이지 익스플로젼.webp',
+  'skills/스피릿 칼리버.webp',
+  'skills/창룡파천검 : 만참.webp',
+]
 
 const skill = {
   key: 'skill',
@@ -33,7 +45,10 @@ describeDb('HexaMatrixRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new HexaMatrixRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   it('빈 표는 칸 전부가 빈다', async () => {

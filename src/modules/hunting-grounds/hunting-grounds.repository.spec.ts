@@ -1,4 +1,4 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import {
   GroundExists,
   GroundKeyPrefix,
@@ -7,6 +7,9 @@ import {
   NoRegion,
   RegionExists,
 } from './hunting-grounds.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['maps/icons/cernium.png', 'maps/icons/roadOfVanishing.png']
 
 describeDb('HuntingGroundsRepository', () => {
   let db: TestDb
@@ -18,7 +21,10 @@ describeDb('HuntingGroundsRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new HuntingGroundsRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   const vanishing = {
@@ -27,7 +33,12 @@ describeDb('HuntingGroundsRepository', () => {
     forceType: 'arcane' as const,
     iconMap: 'roadOfVanishing',
   }
-  const cernium = { key: 'cernium', name: '세르니움', forceType: 'authentic' as const, iconMap: null }
+  const cernium = {
+    key: 'cernium',
+    name: '세르니움',
+    forceType: 'authentic' as const,
+    iconMap: null,
+  }
   const joy = {
     key: 'road_of_vanishing_weathered_land_of_joy',
     region: 'road_of_vanishing',
@@ -100,7 +111,11 @@ describeDb('HuntingGroundsRepository', () => {
     await repo.createGround(joyAndAnger)
 
     expect(
-      await repo.updateRegion('cernium', { name: '세르니움', forceType: 'authentic', iconMap: 'cernium' }),
+      await repo.updateRegion('cernium', {
+        name: '세르니움',
+        forceType: 'authentic',
+        iconMap: 'cernium',
+      }),
     ).toBe(true)
     expect(
       await repo.updateRegion('limen', { name: '리멘', forceType: 'arcane', iconMap: null }),

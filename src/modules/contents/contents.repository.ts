@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { asc, eq, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { contentCategories, contents } from '../../database/schema'
+import { assets, contentCategories, contents } from '../../database/schema'
+import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 /** 앱 CONTENT_CATEGORIES 의 key 집합 그대로. 글자 · 태그 · 차례는 표가 든다. */
@@ -77,6 +79,9 @@ export function comparableApiName(name: string): string {
   return name.normalize('NFC').replace(/\s+/g, '')
 }
 
+const BACKGROUND_MAP_ASSET = alias(assets, 'background_map_asset')
+const BACKGROUND_PORTRAIT_ASSET = alias(assets, 'background_portrait_asset')
+
 const CONTENT_COLUMNS = {
   key: contents.key,
   section: contents.section,
@@ -84,8 +89,8 @@ const CONTENT_COLUMNS = {
   category: contentCategories.key,
   displayName: contents.displayName,
   shortName: contents.shortName,
-  backgroundMap: contents.backgroundMap,
-  backgroundPortrait: contents.backgroundPortrait,
+  backgroundMapPath: BACKGROUND_MAP_ASSET.path,
+  backgroundPortraitPath: BACKGROUND_PORTRAIT_ASSET.path,
   countTag: contents.countTag,
   type: contents.type,
   maxCount: contents.maxCount,
@@ -118,6 +123,11 @@ export class ContentsRepository {
         .select(CONTENT_COLUMNS)
         .from(contents)
         .innerJoin(contentCategories, eq(contents.categoryId, contentCategories.id))
+        .leftJoin(BACKGROUND_MAP_ASSET, eq(BACKGROUND_MAP_ASSET.id, contents.backgroundMapAssetId))
+        .leftJoin(
+          BACKGROUND_PORTRAIT_ASSET,
+          eq(BACKGROUND_PORTRAIT_ASSET.id, contents.backgroundPortraitAssetId),
+        )
         .orderBy(asc(contents.section), asc(contents.sortOrder), asc(contents.key)),
       sectionUpdatedAt(this.db, 'contents'),
     ])
@@ -131,7 +141,28 @@ export class ContentsRepository {
         weeklyLimit: c.weeklyLimit,
         sharedOrder: c.sharedOrder,
       })),
-      contents: rows,
+      contents: rows.map(({ backgroundMapPath, backgroundPortraitPath, ...r }) => ({
+        key: r.key,
+        section: r.section,
+        apiName: r.apiName,
+        category: r.category,
+        displayName: r.displayName,
+        shortName: r.shortName,
+        backgroundMap: optionalRefValueOf('mapBackground', backgroundMapPath),
+        backgroundPortrait: optionalRefValueOf('bossPortrait', backgroundPortraitPath),
+        countTag: r.countTag,
+        type: r.type,
+        maxCount: r.maxCount,
+        requiredLevel: r.requiredLevel,
+        from: r.from,
+        until: r.until,
+        shareScope: r.shareScope,
+        sharedShortName: r.sharedShortName,
+        onlyWhenScheduled: r.onlyWhenScheduled,
+        trustRegistrationFlag: r.trustRegistrationFlag,
+        cumulativeScore: r.cumulativeScore,
+        maxCountOverride: r.maxCountOverride,
+      })),
     }
   }
 
@@ -188,7 +219,7 @@ export class ContentsRepository {
         ;[row] = await tx
           .insert(contents)
           .values({
-            ...this.columns(input),
+            ...(await this.columns(tx, input)),
             key: input.key,
             section: input.section,
             categoryId,
@@ -215,7 +246,7 @@ export class ContentsRepository {
       await this.checkApiName(tx, input.apiName, row.id)
       await tx
         .update(contents)
-        .set({ ...this.columns(input), categoryId })
+        .set({ ...(await this.columns(tx, input)), categoryId })
         .where(eq(contents.id, row.id))
       await touchSection(tx, 'contents')
       return true
@@ -239,13 +270,18 @@ export class ContentsRepository {
     })
   }
 
-  private columns(input: Omit<ContentInput, 'key' | 'section'>) {
+  /** 입력의 배경 이름 둘을 그림 id 로 푼 표의 칸. 그림이 표에 없으면 AssetNotFound 다. */
+  private async columns(db: DbOrTx, input: Omit<ContentInput, 'key' | 'section'>) {
     return {
       apiName: input.apiName,
       displayName: input.displayName,
       shortName: input.shortName,
-      backgroundMap: input.backgroundMap,
-      backgroundPortrait: input.backgroundPortrait,
+      backgroundMapAssetId: await resolveOptionalAssetId(db, 'mapBackground', input.backgroundMap),
+      backgroundPortraitAssetId: await resolveOptionalAssetId(
+        db,
+        'bossPortrait',
+        input.backgroundPortrait,
+      ),
       countTag: input.countTag,
       type: input.type,
       maxCount: input.maxCount,

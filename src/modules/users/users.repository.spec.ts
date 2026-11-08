@@ -222,7 +222,7 @@ describeDb('UsersRepository', () => {
     beforeEach(async () => {
       const [item] = await db
         .insert(dropItems)
-        .values({ key: 'ring', name: '반지', iconFile: null, valuable: true })
+        .values({ key: 'ring', name: '반지', valuable: true })
         .returning({ id: dropItems.id })
       itemId = item.id
     })

@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing'
 
 import { registerImageBody } from '../../common/image-body'
 import { AssetStore } from '../assets/asset-store'
+import { AssetNotFound } from '../assets/asset-refs'
 import { AssetsRepository } from '../assets/assets.repository'
 import { ImageCropsRepository } from '../assets/image-crops.repository'
 import { AdminAssetsController } from './admin-assets.controller'
@@ -125,5 +126,16 @@ describe('AdminAssetsController', () => {
       (await app.inject({ method: 'DELETE', url: '/admin/image-crops/boss_portrait/zakum' }))
         .statusCode,
     ).toBe(404)
+  })
+
+  it('PUT /admin/image-crops 는 크롭이 가리킬 그림이 그림 표에 없으면 400 이다', async () => {
+    crops.put.mockRejectedValue(new AssetNotFound('nope'))
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/admin/image-crops/boss_portrait/nope',
+      payload: { size: '100% auto', position: '50% 45%' },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json()).toMatchObject({ message: '그림 표에 없는 그림이다: nope' })
   })
 })

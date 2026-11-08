@@ -1,9 +1,12 @@
 import { eq } from 'drizzle-orm'
 
 import { bossDifficulties, bosses } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import type { BossInput } from './bosses.dto'
 import { BossesRepository, BossExists, LastDifficulty } from './bosses.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['bosses/lotus.webp', 'bosses/maerin.webp']
 
 const lotus: BossInput = {
   key: 'lotus',
@@ -40,7 +43,10 @@ describeDb('BossesRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new BossesRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   it('빈 표의 catalog 는 updatedAt 과 규칙이 null 이고 목록이 빈다', async () => {
@@ -201,7 +207,11 @@ describeDb('BossesRepository', () => {
     expect(await repo.setAlias('nobody', '누구')).toBe(false)
 
     const catalog = await repo.catalog()
-    expect(catalog.bosses[0]).toMatchObject({ key: 'meirin', name: '시즌 보스 메이린', alias: '메린' })
+    expect(catalog.bosses[0]).toMatchObject({
+      key: 'meirin',
+      name: '시즌 보스 메이린',
+      alias: '메린',
+    })
     expect(catalog.updatedAt).not.toBe(before)
   })
 

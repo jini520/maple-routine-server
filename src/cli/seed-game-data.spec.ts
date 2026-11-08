@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { describeDb, openTestDb, type TestDb } from '../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
 import { CashbookCategoriesRepository } from '../modules/cashbook-categories/cashbook-categories.repository'
 import { ContentsRepository } from '../modules/contents/contents.repository'
@@ -34,6 +34,41 @@ import {
   parseWorldsSeed,
   seedGameData,
 } from './seed-game-data'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = [
+  'bosses/ancientGodMitra.webp',
+  'bosses/lotus.webp',
+  'bosses/maerin.webp',
+  'items/KFPDKDPEMA.webp',
+  'items/KFPDKDPEMB.webp',
+  'items/KJPDKDPEMA.webp',
+  'items/hexa_core_skill.webp',
+  'items/mihoroid.webp',
+  'items/monster_park_ticket.webp',
+  'items/reindeer_milk.png',
+  'items/sol_erda_fragment.webp',
+  'items/t.webp',
+  'items/vip_sauna_ticket.webp',
+  'items/wealth_acquisition_potion_small.webp',
+  'items/x.png',
+  'maps/icons/highMountain.png',
+  'maps/icons/roadOfVanishing.png',
+  'maps/monsterPark.webp',
+  'skills/KFPDKDPEMA.webp',
+  'skills/KFPDKDPEMB.webp',
+  'skills/KJPDKDPEMA.webp',
+  'skills/hexa_core_skill.webp',
+  'skills/mihoroid.webp',
+  'skills/monster_park_ticket.webp',
+  'skills/reindeer_milk.png',
+  'skills/sol_erda_fragment.webp',
+  'skills/t.webp',
+  'skills/vip_sauna_ticket.webp',
+  'skills/wealth_acquisition_potion_small.webp',
+  'skills/x.png',
+  'worlds/scania.png',
+]
 
 const bossesSeed = {
   rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
@@ -474,7 +509,12 @@ const faqsSeed = {
 
 const huntingGroundsSeed = {
   regions: [
-    { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane', iconMap: 'roadOfVanishing' },
+    {
+      key: 'road_of_vanishing',
+      name: '소멸의 여로',
+      forceType: 'arcane',
+      iconMap: 'roadOfVanishing',
+    },
     { key: 'cernium', name: '세르니움', forceType: 'authentic', iconMap: null },
   ],
   grounds: [
@@ -631,7 +671,10 @@ describeDb('seedGameData', () => {
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   it('빈 표를 씨앗으로 채운다. 차례는 씨앗 파일 순이고 규칙도 함께 든다', async () => {

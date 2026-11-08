@@ -73,6 +73,27 @@ const TABLES = [
   'game_rules',
 ] as const
 
+/**
+ * 그림 줄을 넣고 경로마다 id 를 돌려준다. 그림 칸이 FK 라 그 칸을 채우는 스펙은 그림부터 넣어야 한다. 해시 · 크기는 가짜다.
+ * 같은 경로가 이미 있으면 그 줄의 id 다.
+ */
+export async function insertAssets(
+  db: TestDb,
+  paths: readonly string[],
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  for (const path of paths) {
+    const [row] = await db
+      .insert(schema.assets)
+      .values({ path, sha256: '0'.repeat(64), size: 1, width: 1, height: 1 })
+      .onConflictDoUpdate({ target: schema.assets.path, set: { path } })
+      .returning({ id: schema.assets.id })
+    if (row === undefined) throw new Error(`그림 줄을 못 넣었다: ${path}`)
+    out[path] = row.id
+  }
+  return out
+}
+
 export async function openTestDb(): Promise<{
   db: TestDb
   truncate: () => Promise<void>

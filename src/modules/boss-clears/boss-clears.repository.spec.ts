@@ -43,16 +43,13 @@ describeDb('BossClearsRepository', () => {
     const rows = await db.insert(users).values([{}, {}]).returning({ id: users.id })
     me = rows[0].id
     other = rows[1].id
-    await db
-      .insert(worlds)
-      .values({
-        key: 'scania',
-        name: '스카니아',
-        emblem: null,
-        challengers: false,
-        event: false,
-        sortOrder: 0,
-      })
+    await db.insert(worlds).values({
+      key: 'scania',
+      name: '스카니아',
+      challengers: false,
+      event: false,
+      sortOrder: 0,
+    })
   })
   afterAll(() => close())
 

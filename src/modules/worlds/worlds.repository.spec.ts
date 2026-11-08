@@ -1,5 +1,8 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { WorldExists, WorldsRepository } from './worlds.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['worlds/challengers.png', 'worlds/scania.png']
 
 describeDb('WorldsRepository', () => {
   let db: TestDb
@@ -11,7 +14,10 @@ describeDb('WorldsRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new WorldsRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   const scania = {

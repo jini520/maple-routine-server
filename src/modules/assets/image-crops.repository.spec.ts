@@ -1,5 +1,8 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { ImageCropsRepository } from './image-crops.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['bosses/zakum.webp', 'maps/arcana.webp']
 
 describeDb('ImageCropsRepository', () => {
   let db: TestDb
@@ -11,7 +14,10 @@ describeDb('ImageCropsRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new ImageCropsRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   it('종류 · slug 하나에 줄 하나를 갈아 끼우고, 지우면 칸 시각을 민다', async () => {

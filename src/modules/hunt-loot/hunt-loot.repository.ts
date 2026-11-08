@@ -3,7 +3,8 @@ import { asc, eq, sql } from 'drizzle-orm'
 
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { huntLootItems } from '../../database/schema'
+import { assets, huntLootItems } from '../../database/schema'
+import { refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 /** 앱 HuntLootKind 그대로. 조각 · 소비 · 이벤트. */
@@ -39,21 +40,31 @@ export class HuntLootRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<HuntLootSection> {
-    const [items, updatedAt] = await Promise.all([
+    const [rows, updatedAt] = await Promise.all([
       this.db
         .select({
           key: huntLootItems.key,
           kind: huntLootItems.kind,
           name: huntLootItems.name,
-          iconFile: huntLootItems.iconFile,
+          iconPath: assets.path,
           npcPriceMeso: huntLootItems.npcPriceMeso,
           from: huntLootItems.from,
           until: huntLootItems.until,
         })
         .from(huntLootItems)
+        .innerJoin(assets, eq(assets.id, huntLootItems.iconAssetId))
         .orderBy(asc(huntLootItems.sortOrder), asc(huntLootItems.key)),
       sectionUpdatedAt(this.db, 'huntLoot'),
     ])
+    const items = rows.map((r) => ({
+      key: r.key,
+      kind: r.kind,
+      name: r.name,
+      iconFile: refValueOf('itemIcon', r.iconPath),
+      npcPriceMeso: r.npcPriceMeso,
+      from: r.from,
+      until: r.until,
+    }))
     return { updatedAt, items }
   }
 
@@ -67,7 +78,16 @@ export class HuntLootRepository {
       try {
         ;[row] = await tx
           .insert(huntLootItems)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            key: input.key,
+            kind: input.kind,
+            name: input.name,
+            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+            npcPriceMeso: input.npcPriceMeso,
+            from: input.from,
+            until: input.until,
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: huntLootItems.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new HuntLootExists(input.key)
@@ -89,7 +109,7 @@ export class HuntLootRepository {
           .update(huntLootItems)
           .set({
             name: input.name,
-            iconFile: input.iconFile,
+            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
             npcPriceMeso: input.npcPriceMeso,
             from: input.from,
             until: input.until,

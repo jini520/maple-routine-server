@@ -3,7 +3,8 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { cashbookCategories, cashbookItemKinds } from '../../database/schema'
+import { assets, cashbookCategories, cashbookItemKinds } from '../../database/schema'
+import { refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export const CASHBOOK_ENTRY_TYPES = ['income', 'spend'] as const
@@ -48,18 +49,19 @@ export class CashbookCategoriesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<CashbookCategoriesSection> {
-    const [categories, itemKinds, updatedAt] = await Promise.all([
+    const [categoryRows, itemKinds, updatedAt] = await Promise.all([
       this.db
         .select({
           entryType: cashbookCategories.entryType,
           key: cashbookCategories.key,
           name: cashbookCategories.name,
           cardTitle: cashbookCategories.cardTitle,
-          iconFile: cashbookCategories.iconFile,
+          iconPath: assets.path,
           description: cashbookCategories.description,
           unit: cashbookCategories.unit,
         })
         .from(cashbookCategories)
+        .innerJoin(assets, eq(assets.id, cashbookCategories.iconAssetId))
         .orderBy(
           asc(cashbookCategories.entryType),
           asc(cashbookCategories.sortOrder),
@@ -76,6 +78,15 @@ export class CashbookCategoriesRepository {
         .orderBy(asc(cashbookItemKinds.sortOrder), asc(cashbookItemKinds.key)),
       sectionUpdatedAt(this.db, 'cashbookCategories'),
     ])
+    const categories = categoryRows.map((r) => ({
+      entryType: r.entryType,
+      key: r.key,
+      name: r.name,
+      cardTitle: r.cardTitle,
+      iconFile: refValueOf('itemIcon', r.iconPath),
+      description: r.description,
+      unit: r.unit,
+    }))
     return { updatedAt, categories, itemKinds }
   }
 
@@ -90,7 +101,16 @@ export class CashbookCategoriesRepository {
       try {
         ;[row] = await tx
           .insert(cashbookCategories)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            entryType: input.entryType,
+            key: input.key,
+            name: input.name,
+            cardTitle: input.cardTitle,
+            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+            description: input.description,
+            unit: input.unit,
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: cashbookCategories.id })
       } catch (error) {
         if (isUniqueViolation(error))
@@ -115,7 +135,7 @@ export class CashbookCategoriesRepository {
         .set({
           name: input.name,
           cardTitle: input.cardTitle,
-          iconFile: input.iconFile,
+          iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
           description: input.description,
           unit: input.unit,
         })

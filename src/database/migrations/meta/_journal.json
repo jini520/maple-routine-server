@@ -204,6 +204,13 @@
       "when": 1794122993924,
       "tag": "0028_referral_code",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794146963697,
+      "tag": "0029_asset_id_refs",
+      "breakpoints": true
     }
   ]
 }

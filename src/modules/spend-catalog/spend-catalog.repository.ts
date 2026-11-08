@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import {
+  assets,
   cashbookCategories,
   gameRules,
   spendForms,
@@ -13,6 +15,7 @@ import {
   spendItems,
   spendTiles,
 } from '../../database/schema'
+import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export const SPEND_CURRENCIES = ['point', 'meso'] as const
@@ -147,7 +150,7 @@ export class SpendCatalogRepository {
         .from(spendGroups)
         .innerJoin(cashbookCategories, eq(spendGroups.categoryId, cashbookCategories.id))
         .orderBy(asc(spendGroups.sortOrder), asc(spendGroups.key)),
-      this.db.select().from(spendTiles).orderBy(asc(spendTiles.key)),
+      this.tileRows(),
       this.itemRows(this.db),
       this.db
         .select({
@@ -183,12 +186,7 @@ export class SpendCatalogRepository {
         rewardCoinPriceMeso: ruleOf('rewardCoinPriceMeso'),
       },
       groups,
-      tiles: tiles.map((t) => ({
-        key: t.key,
-        name: t.name,
-        iconFile: t.iconFile,
-        iconMap: t.iconMap,
-      })),
+      tiles,
       items,
       itemOptions: options,
       itemForms,
@@ -306,12 +304,38 @@ export class SpendCatalogRepository {
     })
   }
 
+  /** 타일은 아이템 그림이나 지역 아이콘 중 하나를 든다. 칸마다 그림 표를 따로 붙인다. */
+  private async tileRows(): Promise<SpendTileView[]> {
+    const iconAsset = alias(assets, 'icon_asset')
+    const mapAsset = alias(assets, 'icon_map_asset')
+    const rows = await this.db
+      .select({
+        key: spendTiles.key,
+        name: spendTiles.name,
+        iconPath: iconAsset.path,
+        iconMapPath: mapAsset.path,
+      })
+      .from(spendTiles)
+      .leftJoin(iconAsset, eq(iconAsset.id, spendTiles.iconAssetId))
+      .leftJoin(mapAsset, eq(mapAsset.id, spendTiles.iconMapAssetId))
+      .orderBy(asc(spendTiles.key))
+    return rows.map((r) => ({
+      key: r.key,
+      name: r.name,
+      iconFile: optionalRefValueOf('itemIcon', r.iconPath),
+      iconMap: optionalRefValueOf('mapIcon', r.iconMapPath),
+    }))
+  }
+
   /** 타일을 더한다. 같은 key 는 SpendTileExists 다. */
   async createTile(input: SpendTileInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
       let row: { id: string } | undefined
       try {
-        ;[row] = await tx.insert(spendTiles).values(input).returning({ id: spendTiles.id })
+        ;[row] = await tx
+          .insert(spendTiles)
+          .values({ key: input.key, ...(await tileImageColumns(tx, input)) })
+          .returning({ id: spendTiles.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new SpendTileExists(input.key)
         throw error
@@ -327,7 +351,7 @@ export class SpendCatalogRepository {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(spendTiles)
-        .set({ name: input.name, iconFile: input.iconFile, iconMap: input.iconMap })
+        .set(await tileImageColumns(tx, input))
         .where(eq(spendTiles.key, key))
         .returning({ id: spendTiles.id })
       if (rows.length === 0) return false
@@ -577,5 +601,14 @@ export class SpendCatalogRepository {
     await db.update(table).set({ sortOrder: mine.sortOrder }).where(eq(table.id, other.id))
     await touchSection(db, 'spendCatalog')
     return true
+  }
+}
+
+/** 타일 입력의 이름과 그림 두 칸. 그림 이름을 그림 id 로 푼다. 그림이 표에 없으면 AssetNotFound 다. */
+async function tileImageColumns(db: DbOrTx, input: Omit<SpendTileInput, 'key'>) {
+  return {
+    name: input.name,
+    iconAssetId: await resolveOptionalAssetId(db, 'itemIcon', input.iconFile),
+    iconMapAssetId: await resolveOptionalAssetId(db, 'mapIcon', input.iconMap),
   }
 }

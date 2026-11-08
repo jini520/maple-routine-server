@@ -3,7 +3,8 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { symbolGroups, symbolLevelCosts, symbols } from '../../database/schema'
+import { assets, symbolGroups, symbolLevelCosts, symbols } from '../../database/schema'
+import { refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { isPeriodText } from '../crystal-prices/period-boundary'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
@@ -228,7 +229,7 @@ export class SymbolCostsRepository {
             groupId: group.id,
             name: input.name,
             requiredLevel: input.requiredLevel,
-            iconFile: input.iconFile,
+            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
             sortOrder: (last?.max ?? -1) + 1,
           })
           .returning({ id: symbols.id })
@@ -247,7 +248,11 @@ export class SymbolCostsRepository {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(symbols)
-        .set({ name: input.name, requiredLevel: input.requiredLevel, iconFile: input.iconFile })
+        .set({
+          name: input.name,
+          requiredLevel: input.requiredLevel,
+          iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+        })
         .where(eq(symbols.key, key))
         .returning({ id: symbols.id })
       if (rows.length === 0) return false
@@ -366,19 +371,28 @@ export class SymbolCostsRepository {
     })
   }
 
-  private symbolRows(db: DbOrTx = this.db) {
-    return db
+  private async symbolRows(db: DbOrTx = this.db) {
+    const rows = await db
       .select({
         id: symbols.id,
         key: symbols.key,
         group: symbolGroups.key,
         name: symbols.name,
         requiredLevel: symbols.requiredLevel,
-        iconFile: symbols.iconFile,
+        iconPath: assets.path,
       })
       .from(symbols)
       .innerJoin(symbolGroups, eq(symbols.groupId, symbolGroups.id))
+      .innerJoin(assets, eq(assets.id, symbols.iconAssetId))
       .orderBy(asc(symbolGroups.sortOrder), asc(symbols.sortOrder), asc(symbols.key))
+    return rows.map((r) => ({
+      id: r.id,
+      key: r.key,
+      group: r.group,
+      name: r.name,
+      requiredLevel: r.requiredLevel,
+      iconFile: refValueOf('itemIcon', r.iconPath),
+    }))
   }
 
   private async symbol(key: string): Promise<{ id: string; maxLevel: number } | null> {

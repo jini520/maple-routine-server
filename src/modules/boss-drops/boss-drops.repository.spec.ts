@@ -1,4 +1,4 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { DropItemsRepository } from '../drop-items/drop-items.repository'
 import {
@@ -7,6 +7,9 @@ import {
   NoDropItem,
   RewardExists,
 } from './boss-drops.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['bosses/lotus.webp']
 
 describeDb('BossDropsRepository', () => {
   let db: TestDb
@@ -20,6 +23,7 @@ describeDb('BossDropsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
+    await insertAssets(db, SPEC_ASSETS)
     await new BossesRepository(db).createBoss({
       key: 'lotus',
       name: '스우',

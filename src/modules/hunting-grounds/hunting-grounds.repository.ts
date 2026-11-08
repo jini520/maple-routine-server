@@ -3,7 +3,8 @@ import { asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { huntingGroundLevels, huntingGrounds, huntingRegions } from '../../database/schema'
+import { assets, huntingGroundLevels, huntingGrounds, huntingRegions } from '../../database/schema'
+import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 /** 앱 ForceType 그대로. 이름 · 아이콘은 앱이 든다. */
@@ -59,15 +60,16 @@ export class HuntingGroundsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<HuntingGroundsSection> {
-    const [regions, grounds, levels, updatedAt] = await Promise.all([
+    const [regionRows, grounds, levels, updatedAt] = await Promise.all([
       this.db
         .select({
           key: huntingRegions.key,
           name: huntingRegions.name,
           forceType: huntingRegions.forceType,
-          iconMap: huntingRegions.iconMap,
+          iconPath: assets.path,
         })
         .from(huntingRegions)
+        .leftJoin(assets, eq(assets.id, huntingRegions.iconMapAssetId))
         .orderBy(asc(huntingRegions.sortOrder), asc(huntingRegions.key)),
       this.db
         .select({
@@ -99,6 +101,12 @@ export class HuntingGroundsRepository {
         ),
       sectionUpdatedAt(this.db, 'huntingGrounds'),
     ])
+    const regions = regionRows.map((r) => ({
+      key: r.key,
+      name: r.name,
+      forceType: r.forceType,
+      iconMap: optionalRefValueOf('mapIcon', r.iconPath),
+    }))
     return { updatedAt, regions, grounds, groundLevels: levels }
   }
 
@@ -112,7 +120,13 @@ export class HuntingGroundsRepository {
       try {
         ;[row] = await tx
           .insert(huntingRegions)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            key: input.key,
+            name: input.name,
+            forceType: input.forceType,
+            iconMapAssetId: await resolveOptionalAssetId(tx, 'mapIcon', input.iconMap),
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: huntingRegions.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new RegionExists(input.key)
@@ -129,7 +143,11 @@ export class HuntingGroundsRepository {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(huntingRegions)
-        .set({ name: input.name, forceType: input.forceType, iconMap: input.iconMap })
+        .set({
+          name: input.name,
+          forceType: input.forceType,
+          iconMapAssetId: await resolveOptionalAssetId(tx, 'mapIcon', input.iconMap),
+        })
         .where(eq(huntingRegions.key, key))
         .returning({ id: huntingRegions.id })
       if (rows.length === 0) return false

@@ -1,5 +1,5 @@
 import { bosses } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { AlreadyOpen, ManualCompletionRepository } from './manual-completion.repository'
 
 describeDb('ManualCompletionRepository', () => {
@@ -16,6 +16,7 @@ describeDb('ManualCompletionRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
+    const portraits = await insertAssets(db, ['bosses/kaling.webp', 'bosses/blackMage.webp'])
     const rows = await db
       .insert(bosses)
       .values([
@@ -24,7 +25,7 @@ describeDb('ManualCompletionRepository', () => {
           name: '카링',
           alias: '카링',
           cycle: 'weekly',
-          portraitSlug: 'kaling',
+          portraitAssetId: portraits['bosses/kaling.webp'],
           sortOrder: 0,
         },
         {
@@ -32,7 +33,7 @@ describeDb('ManualCompletionRepository', () => {
           name: '검은 마법사',
           alias: '검은 마법사',
           cycle: 'monthly',
-          portraitSlug: 'blackMage',
+          portraitAssetId: portraits['bosses/blackMage.webp'],
           sortOrder: 1,
         },
       ])

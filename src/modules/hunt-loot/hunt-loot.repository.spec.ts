@@ -1,10 +1,17 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import {
   HuntLootExists,
   HuntLootPriceShape,
   HuntLootRepository,
   type HuntLootInput,
 } from './hunt-loot.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = [
+  'items/reindeer_milk.png',
+  'items/sol_erda_fragment.webp',
+  'items/suspicious_magnifier.webp',
+]
 
 const milk: HuntLootInput = {
   key: 'reindeer_milk',
@@ -44,7 +51,10 @@ describeDb('HuntLootRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new HuntLootRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   it('더한 차례로 내고, 고치기는 key · 분류를 빼고 갈아 끼우며 차례를 옮긴다. 모르는 key 는 false 다', async () => {

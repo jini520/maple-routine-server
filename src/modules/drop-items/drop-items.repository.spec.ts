@@ -1,4 +1,4 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import {
   ContentExists,
   DropBoxesRepository,
@@ -6,6 +6,9 @@ import {
   NoDropItem,
 } from './drop-boxes.repository'
 import { DropItemExists, DropItemsRepository } from './drop-items.repository'
+
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['items/Restraint_Ring.png']
 
 describeDb('DropItemsRepository · DropBoxesRepository', () => {
   let db: TestDb
@@ -19,12 +22,21 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
     items = new DropItemsRepository(db)
     boxes = new DropBoxesRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   // 소비 여부는 시세만 쓴다. 앱의 게임 데이터에 실리면 번들 사본까지 바뀐다.
   it('소비 여부는 adminSection 에만 보이고 안 주면 장비, 고칠 때 안 주면 그대로다', async () => {
-    await items.create({ key: 'life_whetstone', name: '생명의 연마석', iconFile: null, valuable: false, worldBound: true })
+    await items.create({
+      key: 'life_whetstone',
+      name: '생명의 연마석',
+      iconFile: null,
+      valuable: false,
+      worldBound: true,
+    })
     await items.create({ key: 'dreamy_belt', name: '몽환의 벨트', iconFile: null, valuable: true })
     await items.update('life_whetstone', { name: '생명의 연마석', iconFile: null, valuable: false })
 

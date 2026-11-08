@@ -19,6 +19,7 @@ import { z } from 'zod'
 
 import type { Db } from '../database/database.module'
 import * as schema from '../database/schema'
+import { assetResolver } from '../modules/assets/asset-refs'
 import { BOSS_DIFFICULTIES, bossInput, rulesInput } from '../modules/bosses/bosses.dto'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
 import {
@@ -619,7 +620,14 @@ export async function seedGameData(
 async function seedWorlds(db: Db, seed: WorldsSeed): Promise<SeedOutcome> {
   if (!(await isEmpty(db, worlds))) return 'skipped'
   await db.transaction(async (tx) => {
-    await tx.insert(worlds).values(seed.worlds.map((w, sortOrder) => ({ ...w, sortOrder })))
+    const asset = await assetResolver(tx)
+    await tx.insert(worlds).values(
+      seed.worlds.map(({ emblem, ...w }, sortOrder) => ({
+        ...w,
+        emblemAssetId: asset.optional('worldEmblem', emblem),
+        sortOrder,
+      })),
+    )
     await touchSection(tx, 'worlds')
   })
   return 'seeded'
@@ -678,7 +686,13 @@ function must<T>(map: Map<string, T>, key: string, what: string): T {
 async function seedDropItems(db: Db, seed: DropItemsSeed): Promise<SeedOutcome> {
   if (!(await isEmpty(db, dropItems))) return 'skipped'
   await db.transaction(async (tx) => {
-    await tx.insert(dropItems).values(seed.items)
+    const asset = await assetResolver(tx)
+    await tx.insert(dropItems).values(
+      seed.items.map(({ iconFile, ...i }) => ({
+        ...i,
+        iconAssetId: asset.optional('itemIcon', iconFile),
+      })),
+    )
     await touchSection(tx, 'dropItems')
   })
   return 'seeded'
@@ -784,13 +798,15 @@ async function seedCashbookCategories(db: Db, seed: CashbookCategoriesSeed): Pro
   ])
   if (!noCategories && !noKinds) return 'skipped'
   await db.transaction(async (tx) => {
+    const asset = await assetResolver(tx)
     if (noCategories) {
       const counters = new Map<string, number>()
       await tx.insert(cashbookCategories).values(
         seed.categories.map((c) => {
           const sortOrder = counters.get(c.entryType) ?? 0
           counters.set(c.entryType, sortOrder + 1)
-          return { ...c, sortOrder }
+          const { iconFile, ...rest } = c
+          return { ...rest, iconAssetId: asset.id('itemIcon', iconFile), sortOrder }
         }),
       )
     }
@@ -823,6 +839,7 @@ async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOut
   ])
   if (!empties.every(Boolean)) return 'skipped'
   await db.transaction(async (tx) => {
+    const asset = await assetResolver(tx)
     if (await isEmpty(tx, spendForms))
       await tx.insert(spendForms).values(seed.forms.map((f, sortOrder) => ({ ...f, sortOrder })))
     const formRows = await tx.select({ id: spendForms.id, key: spendForms.key }).from(spendForms)
@@ -847,7 +864,13 @@ async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOut
       .returning({ id: spendGroups.id, key: spendGroups.key })
     const tileRows = await tx
       .insert(spendTiles)
-      .values(seed.tiles)
+      .values(
+        seed.tiles.map(({ iconFile, iconMap, ...t }) => ({
+          ...t,
+          iconAssetId: asset.optional('itemIcon', iconFile),
+          iconMapAssetId: asset.optional('mapIcon', iconMap),
+        })),
+      )
       .returning({ id: spendTiles.id, key: spendTiles.key })
     const groupIds = new Map(groupRows.map((r) => [r.key, r.id]))
     const tileIds = new Map(tileRows.map((r) => [r.key, r.id]))
@@ -903,6 +926,7 @@ async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOut
 async function seedSymbolCosts(db: Db, seed: SymbolCostsSeed): Promise<SeedOutcome> {
   if (!(await isEmpty(db, symbolGroups))) return 'skipped'
   await db.transaction(async (tx) => {
+    const asset = await assetResolver(tx)
     const groupRows = await tx
       .insert(symbolGroups)
       .values(seed.groups.map((g, sortOrder) => ({ ...g, sortOrder })))
@@ -921,7 +945,7 @@ async function seedSymbolCosts(db: Db, seed: SymbolCostsSeed): Promise<SeedOutco
             groupId,
             name: s.name,
             requiredLevel: s.requiredLevel,
-            iconFile: s.iconFile,
+            iconAssetId: asset.id('itemIcon', s.iconFile),
             sortOrder,
           }
         }),
@@ -957,11 +981,18 @@ async function seedContents(db: Db, seed: ContentsSeed): Promise<SeedOutcome> {
       .returning({ id: contentCategories.id, key: contentCategories.key })
     const categoryIds = new Map(categoryRows.map((r) => [r.key, r.id]))
     const counters = new Map<string, number>()
+    const asset = await assetResolver(tx)
     await tx.insert(contents).values(
-      seed.contents.map(({ category, ...c }) => {
+      seed.contents.map(({ category, backgroundMap, backgroundPortrait, ...c }) => {
         const sortOrder = counters.get(c.section) ?? 0
         counters.set(c.section, sortOrder + 1)
-        return { ...c, categoryId: must(categoryIds, category, '갈래'), sortOrder }
+        return {
+          ...c,
+          backgroundMapAssetId: asset.optional('mapBackground', backgroundMap),
+          backgroundPortraitAssetId: asset.optional('bossPortrait', backgroundPortrait),
+          categoryId: must(categoryIds, category, '갈래'),
+          sortOrder,
+        }
       }),
     )
     await touchSection(tx, 'contents')
@@ -1039,9 +1070,16 @@ async function seedHuntingGrounds(db: Db, seed: HuntingGroundsSeed): Promise<See
   if (noLevel.length > 0)
     throw new Error(`레벨이 없는 사냥터가 있다: ${noLevel.map((g) => g.key).join(', ')}`)
   await db.transaction(async (tx) => {
+    const asset = await assetResolver(tx)
     const regionRows = await tx
       .insert(huntingRegions)
-      .values(seed.regions.map((r, sortOrder) => ({ ...r, sortOrder })))
+      .values(
+        seed.regions.map(({ iconMap, ...r }, sortOrder) => ({
+          ...r,
+          iconMapAssetId: asset.optional('mapIcon', iconMap),
+          sortOrder,
+        })),
+      )
       .returning({ id: huntingRegions.id, key: huntingRegions.key })
     const regionIds = new Map(regionRows.map((r) => [r.key, r.id]))
     const counters = new Map<string, number>()
@@ -1071,7 +1109,14 @@ async function seedHuntingGrounds(db: Db, seed: HuntingGroundsSeed): Promise<See
 async function seedHuntLoot(db: Db, seed: HuntLootSeed): Promise<SeedOutcome> {
   if (!(await isEmpty(db, huntLootItems))) return 'skipped'
   await db.transaction(async (tx) => {
-    await tx.insert(huntLootItems).values(seed.items.map((i, sortOrder) => ({ ...i, sortOrder })))
+    const asset = await assetResolver(tx)
+    await tx.insert(huntLootItems).values(
+      seed.items.map(({ iconFile, ...i }, sortOrder) => ({
+        ...i,
+        iconAssetId: asset.id('itemIcon', iconFile),
+        sortOrder,
+      })),
+    )
     await touchSection(tx, 'huntLoot')
   })
   return 'seeded'
@@ -1089,9 +1134,16 @@ async function seedHexaMatrix(db: Db, seed: HexaMatrixSeed): Promise<SeedOutcome
     if (problem !== null) throw new Error(`헥사 코어 비용이 어긋난다: ${kind.key} ${problem}`)
   }
   await db.transaction(async (tx) => {
+    const asset = await assetResolver(tx)
     const kindRows = await tx
       .insert(hexaCoreKinds)
-      .values(seed.kinds.map((k, sortOrder) => ({ ...k, sortOrder })))
+      .values(
+        seed.kinds.map(({ iconFile, ...k }, sortOrder) => ({
+          ...k,
+          iconAssetId: asset.id('itemIcon', iconFile),
+          sortOrder,
+        })),
+      )
       .returning({ id: hexaCoreKinds.id, key: hexaCoreKinds.key })
     const kindIds = new Map(kindRows.map((r) => [r.key, r.id]))
     const kindId = (kind: string) => must(kindIds, kind, '헥사 코어 종류 줄')
@@ -1114,7 +1166,8 @@ async function seedHexaMatrix(db: Db, seed: HexaMatrixSeed): Promise<SeedOutcome
         seed.jobCores.map((c) => {
           const sortOrder = counters.get(c.job) ?? 0
           counters.set(c.job, sortOrder + 1)
-          return { ...c, sortOrder }
+          const { iconFile, ...rest } = c
+          return { ...rest, iconAssetId: asset.id('skillIcon', iconFile), sortOrder }
         }),
       )
     if (seed.stats.length > 0)

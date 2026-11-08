@@ -4,12 +4,14 @@ import { and, asc, eq, ne, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import {
+  assets,
   hexaCoreKinds,
   hexaCoreLevelCosts,
   hexaCoreNameKinds,
   hexaJobCores,
   hexaStats,
 } from '../../database/schema'
+import { refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface HexaCoreKindView {
@@ -117,7 +119,7 @@ export class HexaMatrixRepository {
   }
 
   async adminRows(): Promise<HexaMatrixAdminRows> {
-    const [kinds, levelCosts, nameKinds, jobCores, stats, updatedAt] = await Promise.all([
+    const [kindRows, levelCosts, nameKinds, jobCoreRows, stats, updatedAt] = await Promise.all([
       this.db
         .select({
           key: hexaCoreKinds.key,
@@ -125,9 +127,10 @@ export class HexaMatrixRepository {
           apiType: hexaCoreKinds.apiType,
           isDefault: hexaCoreKinds.isDefault,
           maxLevel: hexaCoreKinds.maxLevel,
-          iconFile: hexaCoreKinds.iconFile,
+          iconPath: assets.path,
         })
         .from(hexaCoreKinds)
+        .innerJoin(assets, eq(assets.id, hexaCoreKinds.iconAssetId))
         .orderBy(asc(hexaCoreKinds.sortOrder), asc(hexaCoreKinds.key)),
       this.db
         .select({
@@ -154,9 +157,10 @@ export class HexaMatrixRepository {
           job: hexaJobCores.job,
           name: hexaJobCores.name,
           apiType: hexaJobCores.apiType,
-          iconFile: hexaJobCores.iconFile,
+          iconPath: assets.path,
         })
         .from(hexaJobCores)
+        .innerJoin(assets, eq(assets.id, hexaJobCores.iconAssetId))
         .orderBy(asc(hexaJobCores.job), asc(hexaJobCores.sortOrder), asc(hexaJobCores.name)),
       this.db
         .select({
@@ -168,6 +172,21 @@ export class HexaMatrixRepository {
         .orderBy(asc(hexaStats.sortOrder), asc(hexaStats.key)),
       sectionUpdatedAt(this.db, 'hexaMatrix'),
     ])
+    const kinds = kindRows.map((r) => ({
+      key: r.key,
+      name: r.name,
+      apiType: r.apiType,
+      isDefault: r.isDefault,
+      maxLevel: r.maxLevel,
+      iconFile: refValueOf('itemIcon', r.iconPath),
+    }))
+    const jobCores = jobCoreRows.map((r) => ({
+      id: r.id,
+      job: r.job,
+      name: r.name,
+      apiType: r.apiType,
+      iconFile: refValueOf('skillIcon', r.iconPath),
+    }))
     return { updatedAt, kinds, levelCosts, nameKinds, jobCores, stats }
   }
 
@@ -187,7 +206,15 @@ export class HexaMatrixRepository {
       try {
         ;[row] = await tx
           .insert(hexaCoreKinds)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            key: input.key,
+            name: input.name,
+            apiType: input.apiType,
+            isDefault: input.isDefault,
+            maxLevel: input.maxLevel,
+            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: hexaCoreKinds.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new HexaKindExists(input.key)
@@ -220,7 +247,7 @@ export class HexaMatrixRepository {
           apiType: input.apiType,
           isDefault: input.isDefault,
           maxLevel: input.maxLevel,
-          iconFile: input.iconFile,
+          iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
         })
         .where(eq(hexaCoreKinds.id, kind.id))
       await touchSection(tx, 'hexaMatrix')
@@ -303,7 +330,13 @@ export class HexaMatrixRepository {
       try {
         ;[row] = await tx
           .insert(hexaJobCores)
-          .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            job: input.job,
+            name: input.name,
+            apiType: input.apiType,
+            iconAssetId: await resolveAssetId(tx, 'skillIcon', input.iconFile),
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: hexaJobCores.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new JobCoreExists(`${input.job}/${input.name}`)
@@ -322,7 +355,11 @@ export class HexaMatrixRepository {
       try {
         rows = await tx
           .update(hexaJobCores)
-          .set({ name: input.name, apiType: input.apiType, iconFile: input.iconFile })
+          .set({
+            name: input.name,
+            apiType: input.apiType,
+            iconAssetId: await resolveAssetId(tx, 'skillIcon', input.iconFile),
+          })
           .where(eq(hexaJobCores.id, id))
           .returning({ id: hexaJobCores.id })
       } catch (error) {

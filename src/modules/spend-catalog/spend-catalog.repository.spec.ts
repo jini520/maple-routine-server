@@ -1,4 +1,4 @@
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { CashbookCategoriesRepository } from '../cashbook-categories/cashbook-categories.repository'
 import {
@@ -13,6 +13,9 @@ import {
   SpendTileExists,
 } from './spend-catalog.repository'
 
+/** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
+const SPEC_ASSETS = ['items/magical.webp', 'items/x.webp', 'maps/icons/highMountain.png']
+
 describeDb('SpendCatalogRepository', () => {
   let db: TestDb
   let close: () => Promise<void>
@@ -23,7 +26,10 @@ describeDb('SpendCatalogRepository', () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new SpendCatalogRepository(db)
   })
-  beforeEach(() => truncate())
+  beforeEach(async () => {
+    await truncate()
+    await insertAssets(db, SPEC_ASSETS)
+  })
   afterAll(() => close())
 
   const empty = {

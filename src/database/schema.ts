@@ -201,8 +201,10 @@ export const bosses = pgTable('bosses', {
   name: text('name').notNull(),
   alias: text('alias').notNull(),
   cycle: bossCycleEnum('cycle').notNull(),
-  /** 앱 자산 파일명. 앱에 그 파일이 있어야 그려진다. */
-  portraitSlug: text('portrait_slug').notNull(),
+  /** 초상 그림. 앱에는 그림 경로의 이름(확장자를 뗀 것)을 portraitSlug 로 낸다. 쓰는 그림은 지울 수 없다. */
+  portraitAssetId: uuid('portrait_asset_id')
+    .notNull()
+    .references(() => assets.id),
   /** 배열 순서가 곧 화면 순서다. */
   sortOrder: integer('sort_order').notNull(),
   /** 유효 기간. KST 글자 그대로. 없으면 처음부터 · 끝없이. 시즌 보스가 끝을 든다. 앱이 기간 첫날로 판정한다. */
@@ -365,15 +367,17 @@ export const imageCrops = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     kind: imageCropKindEnum('kind').notNull(),
-    /** 보스는 portrait_slug, 지역은 background_map 의 값. */
-    slug: text('slug').notNull(),
+    /** 자를 그림. 앱에는 그림 이름(확장자를 뗀 것)을 slug 로 낸다. 보스 초상이나 지역 지도다. */
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id),
     /** `<퍼센트>% auto` */
     size: text('size').notNull(),
     /** `<퍼센트>% <퍼센트>%` */
     position: text('position').notNull(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
-  (t) => [unique('image_crops_kind_slug_unique').on(t.kind, t.slug)],
+  (t) => [unique('image_crops_kind_asset_unique').on(t.kind, t.assetId)],
 )
 
 /** 드롭 아이템 마스터 표. 기록과 drop_prices.item_key 가 key 를 든다. */
@@ -381,8 +385,8 @@ export const dropItems = pgTable('drop_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
-  /** 앱 자산 파일명. 없으면 앱이 자리 그림을 그린다. */
-  iconFile: text('icon_file'),
+  /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. 없으면 앱이 자리 그림을 그린다. */
+  iconAssetId: uuid('icon_asset_id').references(() => assets.id),
   /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */
   valuable: boolean('valuable').notNull().default(false),
   /** 월드끼리 거래할 수 없는 소비 아이템. 시세를 거래권이 아니라 월드 하나로 센다. 앱의 게임 데이터에는 안 싣는다. */
@@ -476,8 +480,8 @@ export const worlds = pgTable('worlds', {
   key: text('key').notNull().unique(),
   /** API world_name 표기. 보이는 이름이다. */
   name: text('name').notNull(),
-  /** 앱 자산 파일 basename. 스페셜은 없다. */
-  emblem: text('emblem'),
+  /** 엠블럼 그림. 앱에는 그림 이름(확장자를 뗀 것)을 emblem 으로 낸다. 스페셜은 없다. */
+  emblemAssetId: uuid('emblem_asset_id').references(() => assets.id),
   /** 시즌 보스를 보이고 월드 리프를 묻는 월드. */
   challengers: boolean('challengers').notNull().default(false),
   /** 재화에 가치가 없어 강화 지출에서 빼는 월드. */
@@ -508,8 +512,10 @@ export const cashbookCategories = pgTable(
     name: text('name').notNull(),
     /** 묶음이 없는 갈래의 하루 목록 카드 첫 줄. 묶음이 있는 갈래는 묶음의 card_title 을 쓴다. */
     cardTitle: text('card_title').notNull(),
-    /** 앱 자산 src/assets/items/ 의 파일명. */
-    iconFile: text('icon_file').notNull(),
+    /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
+    iconAssetId: uuid('icon_asset_id')
+      .notNull()
+      .references(() => assets.id),
     /** 갈래 카드에만 서는 한 줄. */
     description: text('description').notNull(),
     /** 묶음이 없는 갈래의 수량 단위(사냥의 소재 등). NULL 은 수량이 없거나 항목 · 종류가 단위를 든다. */
@@ -542,8 +548,10 @@ export const huntLootItems = pgTable(
     key: text('key').notNull().unique(),
     kind: huntLootKindEnum('kind').notNull(),
     name: text('name').notNull(),
-    /** 앱 자산 src/assets/items/ 의 파일명. */
-    iconFile: text('icon_file').notNull(),
+    /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
+    iconAssetId: uuid('icon_asset_id')
+      .notNull()
+      .references(() => assets.id),
     /** NPC 에 파는 소비 아이템의 개당 가격. 앱이 단가를 채우고 수수료를 안 뗀다. */
     npcPriceMeso: integer('npc_price_meso'),
     /** KST 글자 그대로. 앱이 적는 날짜로 판정한다. */
@@ -594,12 +602,14 @@ export const spendTiles = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
-    /** 앱 자산 src/assets/items/ 의 파일명. */
-    iconFile: text('icon_file'),
-    /** 앱 자산 src/assets/maps/icons/ 의 slug. 에픽던전 넷. */
-    iconMap: text('icon_map'),
+    /** 아이템 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
+    iconAssetId: uuid('icon_asset_id').references(() => assets.id),
+    /** 지역 아이콘 그림. 앱에는 그림 이름(확장자를 뗀 것)을 iconMap 으로 낸다. 에픽던전 넷. */
+    iconMapAssetId: uuid('icon_map_asset_id').references(() => assets.id),
   },
-  (t) => [check('spend_tiles_icon_one', sql`${t.iconFile} IS NULL OR ${t.iconMap} IS NULL`)],
+  (t) => [
+    check('spend_tiles_icon_one', sql`${t.iconAssetId} IS NULL OR ${t.iconMapAssetId} IS NULL`),
+  ],
 )
 
 /** 지출 항목. 기록이 key 를 든다. 가격 하나와 그 단위다. 지우지 않고 until 로 닫는다. */
@@ -700,7 +710,10 @@ export const symbols = pgTable('symbols', {
   name: text('name').notNull(),
   /** 착용 레벨. 캐릭터 레벨 이하인 것만 드롭다운에 선다. */
   requiredLevel: integer('required_level').notNull(),
-  iconFile: text('icon_file').notNull(),
+  /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
+  iconAssetId: uuid('icon_asset_id')
+    .notNull()
+    .references(() => assets.id),
   sortOrder: integer('sort_order').notNull(),
 })
 
@@ -735,8 +748,10 @@ export const hexaCoreKinds = pgTable(
     apiType: text('api_type').notNull(),
     isDefault: boolean('is_default').notNull().default(false),
     maxLevel: integer('max_level').notNull().default(30),
-    /** 앱 자산 src/assets/items/ 의 파일명. */
-    iconFile: text('icon_file').notNull(),
+    /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
+    iconAssetId: uuid('icon_asset_id')
+      .notNull()
+      .references(() => assets.id),
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
@@ -789,8 +804,10 @@ export const hexaJobCores = pgTable(
     job: text('job').notNull(),
     name: text('name').notNull(),
     apiType: text('api_type').notNull(),
-    /** 앱 자산 src/assets/skills/ 의 파일명. */
-    iconFile: text('icon_file').notNull(),
+    /** 스킬 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
+    iconAssetId: uuid('icon_asset_id')
+      .notNull()
+      .references(() => assets.id),
     /** 직업 안의 차례. hexamatrix 응답의 차례다. */
     sortOrder: integer('sort_order').notNull(),
   },
@@ -903,9 +920,12 @@ export const contents = pgTable(
       .references(() => contentCategories.id),
     displayName: text('display_name').notNull(),
     shortName: text('short_name').notNull(),
-    /** 카드 그림. 지도 배경 slug 와 보스 초상 slug 중 하나다. 둘 다 없으면 카드가 고정 그림을 쓴다. */
-    backgroundMap: text('background_map'),
-    backgroundPortrait: text('background_portrait'),
+    /**
+     * 카드 그림. 지도 배경과 보스 초상 중 하나다. 앱에는 그림 이름(확장자를 뗀 것)을 backgroundMap · backgroundPortrait 로
+     * 낸다. 둘 다 없으면 카드가 고정 그림을 쓴다.
+     */
+    backgroundMapAssetId: uuid('background_map_asset_id').references(() => assets.id),
+    backgroundPortraitAssetId: uuid('background_portrait_asset_id').references(() => assets.id),
     /** 컨텐츠가 참고 태그를 덮는 글자. */
     countTag: text('count_tag'),
     type: contentTypeEnum('type').notNull(),
@@ -933,7 +953,7 @@ export const contents = pgTable(
   (t) => [
     check(
       'contents_background_one',
-      sql`${t.backgroundMap} IS NULL OR ${t.backgroundPortrait} IS NULL`,
+      sql`${t.backgroundMapAssetId} IS NULL OR ${t.backgroundPortraitAssetId} IS NULL`,
     ),
     check(
       'contents_shared_name_pairs_scope',
@@ -1059,8 +1079,8 @@ export const huntingRegions = pgTable('hunting_regions', {
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
   forceType: forceTypeEnum('force_type').notNull(),
-  /** 앱 자산 src/assets/maps/icons/ 의 slug. 가계부 사냥 시트의 지역 드롭다운에 선다. 비면 이름만 선다. */
-  iconMap: text('icon_map'),
+  /** 지역 아이콘 그림. 앱에는 그림 이름(확장자를 뗀 것)을 iconMap 으로 낸다. 가계부 사냥 시트의 지역 드롭다운에 선다. 비면 이름만 선다. */
+  iconMapAssetId: uuid('icon_map_asset_id').references(() => assets.id),
   /** 파일의 차례. 앱은 역순으로 세운다. */
   sortOrder: integer('sort_order').notNull(),
 })

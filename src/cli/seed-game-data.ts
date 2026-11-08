@@ -59,8 +59,7 @@ const {
   contents,
   dropBoxContents,
   dropBoxes,
-  dropItems,
-  equipmentItems,
+  items,
   faqItems,
   faqSheets,
   gameRules,
@@ -636,7 +635,6 @@ async function seedWorlds(db: Db, seed: WorldsSeed): Promise<SeedOutcome> {
 async function isEmpty(
   db: DbOrTx,
   table:
-    | typeof dropItems
     | typeof bossDropRewards
     | typeof dropBoxes
     | typeof bossCrystalPrices
@@ -649,7 +647,6 @@ async function isEmpty(
     | typeof spendItems
     | typeof symbolGroups
     | typeof contentCategories
-    | typeof equipmentItems
     | typeof potentialResetCosts
     | typeof soulPotentialResetCosts
     | typeof starforceSteps
@@ -663,6 +660,15 @@ async function isEmpty(
   return (row?.n ?? 0) === 0
 }
 
+/** 아이템 표에 그 역할의 줄이 없는가. 세 씨앗이 한 표를 채워서 표가 비었는지로는 못 가른다. */
+async function noItemsWith(db: DbOrTx, role: 'isDrop' | 'isEquipment'): Promise<boolean> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(items)
+    .where(eq(items[role], true))
+  return (row?.n ?? 0) === 0
+}
+
 /** 보스 key · 난이도 → 난이도 줄 id. 씨앗이 가리키는 조합이 표에 없으면 던진다. */
 async function pairIds(db: Db): Promise<Map<string, string>> {
   const rows = await db
@@ -673,7 +679,7 @@ async function pairIds(db: Db): Promise<Map<string, string>> {
 }
 
 async function itemIds(db: Db): Promise<Map<string, string>> {
-  const rows = await db.select({ id: dropItems.id, key: dropItems.key }).from(dropItems)
+  const rows = await db.select({ id: items.id, key: items.key }).from(items)
   return new Map(rows.map((r) => [r.key, r.id]))
 }
 
@@ -684,15 +690,18 @@ function must<T>(map: Map<string, T>, key: string, what: string): T {
 }
 
 async function seedDropItems(db: Db, seed: DropItemsSeed): Promise<SeedOutcome> {
-  if (!(await isEmpty(db, dropItems))) return 'skipped'
+  if (!(await noItemsWith(db, 'isDrop'))) return 'skipped'
   await db.transaction(async (tx) => {
     const asset = await assetResolver(tx)
-    await tx.insert(dropItems).values(
-      seed.items.map(({ iconFile, ...i }) => ({
+    // 같은 key 의 강화 장비 · 사냥 전리품 줄이 먼저 있으면 그 줄에 드롭을 얹는다.
+    for (const { iconFile, ...i } of seed.items) {
+      const columns = {
         ...i,
         iconAssetId: asset.optional('itemIcon', iconFile),
-      })),
-    )
+        isDrop: true,
+      }
+      await tx.insert(items).values(columns).onConflictDoUpdate({ target: items.key, set: columns })
+    }
     await touchSection(tx, 'dropItems')
   })
   return 'seeded'
@@ -1001,9 +1010,14 @@ async function seedContents(db: Db, seed: ContentsSeed): Promise<SeedOutcome> {
 }
 
 async function seedEquipmentItems(db: Db, seed: EquipmentItemsSeed): Promise<SeedOutcome> {
-  if (!(await isEmpty(db, equipmentItems))) return 'skipped'
+  if (!(await noItemsWith(db, 'isEquipment'))) return 'skipped'
   await db.transaction(async (tx) => {
-    await tx.insert(equipmentItems).values(seed.items)
+    // 같은 key 의 드롭 아이템 줄이 먼저 있으면 레벨과 장비만 얹고 이름은 그 줄의 띄어 쓴 것을 둔다.
+    for (const e of seed.items)
+      await tx
+        .insert(items)
+        .values({ key: e.key, name: e.name, level: e.level, isEquipment: true })
+        .onConflictDoUpdate({ target: items.key, set: { level: e.level, isEquipment: true } })
     await touchSection(tx, 'equipmentItems')
   })
   return 'seeded'
@@ -1110,13 +1124,16 @@ async function seedHuntLoot(db: Db, seed: HuntLootSeed): Promise<SeedOutcome> {
   if (!(await isEmpty(db, huntLootItems))) return 'skipped'
   await db.transaction(async (tx) => {
     const asset = await assetResolver(tx)
-    await tx.insert(huntLootItems).values(
-      seed.items.map(({ iconFile, ...i }, sortOrder) => ({
-        ...i,
-        iconAssetId: asset.id('itemIcon', iconFile),
-        sortOrder,
-      })),
-    )
+    for (const [sortOrder, { key, name, iconFile, ...loot }] of seed.items.entries()) {
+      const item = { key, name, iconAssetId: asset.id('itemIcon', iconFile) }
+      const [row] = await tx
+        .insert(items)
+        .values(item)
+        .onConflictDoUpdate({ target: items.key, set: item })
+        .returning({ id: items.id })
+      if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
+      await tx.insert(huntLootItems).values({ ...loot, itemId: row.id, sortOrder })
+    }
     await touchSection(tx, 'huntLoot')
   })
   return 'seeded'

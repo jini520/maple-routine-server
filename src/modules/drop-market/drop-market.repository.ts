@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { dropItems, dropPrices, worlds } from '../../database/schema'
+import { items, dropPrices, worlds } from '../../database/schema'
 
 /** 장비를 서로 거래할 수 있는 월드들. worlds.price_group 이 같은 월드다. */
 export interface PriceGroup {
@@ -84,8 +84,8 @@ export class DropMarketRepository {
     const rows = await this.db
       .select({
         id: dropPrices.id,
-        itemKey: dropItems.key,
-        itemName: dropItems.name,
+        itemKey: items.key,
+        itemName: items.name,
         ringLevel: dropPrices.ringLevel,
         priceMeso: sql<number>`${dropPrices.priceMeso}::float8`,
         pricedAt: dropPrices.pricedAt,
@@ -93,16 +93,16 @@ export class DropMarketRepository {
         worldName: worlds.name,
       })
       .from(dropPrices)
-      .innerJoin(dropItems, eq(dropPrices.itemId, dropItems.id))
+      .innerJoin(items, eq(dropPrices.itemId, items.id))
       .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),
-          eq(dropItems.worldBound, !equipment),
+          eq(items.worldBound, !equipment),
           isNotNull(worlds.priceGroup),
           equipment ? eq(worlds.priceGroup, scope.key) : eq(worlds.key, scope.key),
           gte(dropPrices.pricedAt, since),
-          market === undefined ? undefined : eq(dropItems.key, market.itemKey),
+          market === undefined ? undefined : eq(items.key, market.itemKey),
           market === undefined
             ? undefined
             : market.ringLevel === null

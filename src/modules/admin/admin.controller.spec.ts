@@ -9,7 +9,11 @@ import {
 } from '../cashbook-categories/cashbook-categories.repository'
 import { CrystalPricesRepository, NotBoundary } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
-import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
+import {
+  DropItemExists,
+  DropItemNameTaken,
+  DropItemsRepository,
+} from '../drop-items/drop-items.repository'
 import {
   NoSpendCategory,
   NoSpendTile,
@@ -58,6 +62,7 @@ import {
 import { MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import {
   HuntLootExists,
+  HuntLootNameTaken,
   HuntLootPriceShape,
   HuntLootRepository,
 } from '../hunt-loot/hunt-loot.repository'
@@ -934,6 +939,29 @@ describe('AdminController', () => {
       ).toBe(404)
     })
 
+    it('이름이 같은 아이템이 다른 key 로 있으면 더하기 · 고치기 모두 409 다', async () => {
+      items.create.mockRejectedValue(new DropItemNameTaken('giant_terror'))
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/drop-items',
+        payload: { key: 'great_terror', name: '거대한 공포', valuable: true },
+      })
+      expect(created.statusCode).toBe(409)
+      expect(created.json()).toMatchObject({
+        message: '이름이 같은 아이템이 다른 key 로 있다: giant_terror',
+      })
+      items.update.mockRejectedValue(new DropItemNameTaken('giant_terror'))
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/drop-items/great_terror',
+            payload: { name: '거대한 공포' },
+          })
+        ).statusCode,
+      ).toBe(409)
+    })
+
     it('상자의 레벨 범위는 둘 다 있거나 둘 다 없어야 400 이 아니다', async () => {
       boxes.create.mockResolvedValue({ id: ROW })
       expect(
@@ -1488,6 +1516,8 @@ describe('AdminController', () => {
       expect((await post(magnifier)).statusCode).toBe(201)
       expect(huntLootRepo.create).toHaveBeenLastCalledWith({ ...magnifier, npcPriceMeso: null })
       huntLootRepo.create.mockRejectedValue(new HuntLootExists('reindeer_milk'))
+      expect((await post(milk)).statusCode).toBe(409)
+      huntLootRepo.create.mockRejectedValue(new HuntLootNameTaken('milk'))
       expect((await post(milk)).statusCode).toBe(409)
     })
 

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 
-import { dropItems, dropPrices, users, worlds } from '../../database/schema'
+import { items, dropPrices, users, worlds } from '../../database/schema'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import {
@@ -50,9 +50,9 @@ describeDb('DropPricesRepository', () => {
     me = rows[0].id
     other = rows[1].id
     // 가격 줄이 아이템 · 월드 표의 줄을 가리킨다. 스펙이 쓰는 key 둘과 월드 하나를 먼저 세운다.
-    await db.insert(dropItems).values([
-      { key: 'ring', name: '반지', valuable: true },
-      { key: 'cape', name: '망토', valuable: false },
+    await db.insert(items).values([
+      { key: 'ring', name: '반지', valuable: true, isDrop: true },
+      { key: 'cape', name: '망토', valuable: false, isDrop: true },
     ])
     await db.insert(worlds).values({
       key: 'scania',

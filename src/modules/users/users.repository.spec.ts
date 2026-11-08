@@ -4,7 +4,7 @@ import { sha256 } from '../../common/hash'
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
   bossClears,
-  dropItems,
+  items,
   dropPrices,
   enhancementAnomalies,
   nexonAccounts,
@@ -221,9 +221,9 @@ describeDb('UsersRepository', () => {
 
     beforeEach(async () => {
       const [item] = await db
-        .insert(dropItems)
-        .values({ key: 'ring', name: '반지', valuable: true })
-        .returning({ id: dropItems.id })
+        .insert(items)
+        .values({ key: 'ring', name: '반지', valuable: true, isDrop: true })
+        .returning({ id: items.id })
       itemId = item.id
     })
 

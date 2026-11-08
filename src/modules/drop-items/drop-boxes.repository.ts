@@ -3,7 +3,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { dropBoxContents, dropBoxes, dropItems } from '../../database/schema'
+import { dropBoxContents, dropBoxes, items } from '../../database/schema'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface DropBoxView {
@@ -40,21 +40,21 @@ export class DropBoxesRepository {
     const boxes = await this.db
       .select({
         id: dropBoxes.id,
-        item: dropItems.key,
+        item: items.key,
         levelMin: dropBoxes.levelMin,
         levelMax: dropBoxes.levelMax,
       })
       .from(dropBoxes)
-      .innerJoin(dropItems, eq(dropBoxes.itemId, dropItems.id))
-      .orderBy(asc(dropItems.key))
+      .innerJoin(items, eq(dropBoxes.itemId, items.id))
+      .orderBy(asc(items.key))
     const contents = await this.db
       .select({
         boxId: dropBoxContents.boxId,
-        item: dropItems.key,
+        item: items.key,
         sortOrder: dropBoxContents.sortOrder,
       })
       .from(dropBoxContents)
-      .innerJoin(dropItems, eq(dropBoxContents.itemId, dropItems.id))
+      .innerJoin(items, eq(dropBoxContents.itemId, items.id))
       .orderBy(asc(dropBoxContents.sortOrder))
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'dropBoxes'),
@@ -166,9 +166,9 @@ export class DropBoxesRepository {
 
   private async itemId(key: string): Promise<string | null> {
     const [row] = await this.db
-      .select({ id: dropItems.id })
-      .from(dropItems)
-      .where(eq(dropItems.key, key))
+      .select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.key, key), eq(items.isDrop, true)))
     return row?.id ?? null
   }
 
@@ -176,8 +176,8 @@ export class DropBoxesRepository {
     const [row] = await this.db
       .select({ id: dropBoxes.id })
       .from(dropBoxes)
-      .innerJoin(dropItems, eq(dropBoxes.itemId, dropItems.id))
-      .where(eq(dropItems.key, boxItem))
+      .innerJoin(items, eq(dropBoxes.itemId, items.id))
+      .where(and(eq(items.key, boxItem), eq(items.isDrop, true)))
     return row?.id ?? null
   }
 

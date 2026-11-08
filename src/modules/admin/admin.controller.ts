@@ -59,7 +59,11 @@ import {
   DropBoxExists,
   NoDropItem as NoDropItemForBox,
 } from '../drop-items/drop-boxes.repository'
-import { DropItemExists, DropItemsRepository } from '../drop-items/drop-items.repository'
+import {
+  DropItemExists,
+  DropItemNameTaken,
+  DropItemsRepository,
+} from '../drop-items/drop-items.repository'
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -128,6 +132,7 @@ import {
 import { type MvpGrade, MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import {
   HuntLootExists,
+  HuntLootNameTaken,
   HuntLootPriceShape,
   HuntLootRepository,
 } from '../hunt-loot/hunt-loot.repository'
@@ -1097,7 +1102,7 @@ export class AdminController {
     return this.huntLoot.section()
   }
 
-  /** 맨 뒤에 더한다. 같은 key 는 409 다. */
+  /** 맨 뒤에 더한다. 같은 key 와 이름이 같은 다른 key 의 아이템은 409 다. */
   @Post('hunt-loot')
   @HttpCode(201)
   async createHuntLoot(@Body(new ZodValidationPipe(huntLootCreateBody)) body: HuntLootCreateBody) {
@@ -1112,7 +1117,7 @@ export class AdminController {
     } catch (error) {
       if (error instanceof HuntLootExists)
         throw new ConflictException(`이미 있는 전리품이다: ${body.key}`)
-      throw error
+      throw nameTakenError(error)
     }
   }
 
@@ -1134,7 +1139,7 @@ export class AdminController {
     } catch (error) {
       if (error instanceof HuntLootPriceShape)
         throw new BadRequestException('NPC 가격은 소비에만 있고 소비에는 반드시 있다')
-      throw error
+      throw nameTakenError(error)
     }
     if (!found) throw new NotFoundException(`모르는 전리품이다: ${key}`)
   }
@@ -1457,7 +1462,7 @@ export class AdminController {
     return this.items.adminSection()
   }
 
-  /** 아이템을 더한다. 같은 key 는 409 다. */
+  /** 아이템을 더한다. 같은 key 와 이름이 같은 다른 key 의 아이템은 409 다. */
   @Post('drop-items')
   @HttpCode(201)
   async createDropItem(@Body(new ZodValidationPipe(dropItemCreateBody)) body: DropItemCreateBody) {
@@ -1467,7 +1472,7 @@ export class AdminController {
     } catch (error) {
       if (error instanceof DropItemExists)
         throw new ConflictException(`이미 있는 아이템이다: ${body.key}`)
-      throw error
+      throw nameTakenError(error)
     }
   }
 
@@ -1479,8 +1484,13 @@ export class AdminController {
     @Body(new ZodValidationPipe(dropItemUpdateBody)) body: DropItemUpdateBody,
   ): Promise<void> {
     await this.requireAssets([['itemIcon', body.iconFile]])
-    if (!(await this.items.update(key, { ...body, iconFile: body.iconFile ?? null })))
-      throw new NotFoundException(`모르는 아이템이다: ${key}`)
+    let found: boolean
+    try {
+      found = await this.items.update(key, { ...body, iconFile: body.iconFile ?? null })
+    } catch (error) {
+      throw nameTakenError(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 아이템이다: ${key}`)
   }
 
   /* ── 상자 ── */
@@ -2122,7 +2132,14 @@ function equipmentError(error: unknown, key: string): unknown {
   if (error instanceof EquipmentNameTaken)
     return new ConflictException(`공백만 다른 이름이 이미 있다: ${error.message}`)
   if (error instanceof DropItemKeyMismatch)
-    return new ConflictException(`드롭 아이템 표에 같은 이름이 다른 key 로 있다: ${error.message}`)
+    return new ConflictException(`이름이 같은 아이템이 다른 key 로 있다: ${error.message}`)
+  return error
+}
+
+/** 드롭 아이템 · 사냥 전리품 쓰기에서 이름이 같은 다른 key 의 아이템을 409 로 옮긴다. 한 물건이 두 key 로 서면 기록이 갈린다. */
+function nameTakenError(error: unknown): unknown {
+  if (error instanceof DropItemNameTaken || error instanceof HuntLootNameTaken)
+    return new ConflictException(`이름이 같은 아이템이 다른 key 로 있다: ${error.message}`)
   return error
 }
 

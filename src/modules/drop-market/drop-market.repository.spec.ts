@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { dropItems, dropPrices, users, worlds } from '../../database/schema'
+import { dropPrices, items, users, worlds } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { DropMarketRepository } from './drop-market.repository'
 
@@ -47,14 +47,14 @@ describeDb('DropMarketRepository', () => {
   beforeEach(async () => {
     await truncate()
     ;[{ id: me }] = await db.insert(users).values({}).returning({ id: users.id })
-    const items = await db
-      .insert(dropItems)
+    const itemRows = await db
+      .insert(items)
       .values([
-        { key: 'ring', name: '반지' },
-        { key: 'whetstone', name: '연마석', worldBound: true },
+        { key: 'ring', name: '반지', isDrop: true },
+        { key: 'whetstone', name: '연마석', worldBound: true, isDrop: true },
       ])
-      .returning({ id: dropItems.id, key: dropItems.key })
-    for (const r of items) item[r.key] = r.id
+      .returning({ id: items.id, key: items.key })
+    for (const r of itemRows) item[r.key] = r.id
     const rows = await db
       .insert(worlds)
       .values([

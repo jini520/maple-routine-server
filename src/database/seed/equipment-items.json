@@ -111,11 +111,6 @@
       "level": 160
     },
     {
-      "key": "absolab_celestial_light",
-      "name": "앱솔랩스셀레스티얼라이트",
-      "level": 160
-    },
-    {
       "key": "absolab_chain",
       "name": "앱솔랩스체인",
       "level": 160
@@ -142,12 +137,12 @@
     },
     {
       "key": "absolab_forked_cane",
-      "name": "앱솔랩스포크드케인",
+      "name": "앱솔랩스핀쳐케인",
       "level": 160
     },
     {
       "key": "absolab_furious_sword",
-      "name": "앱솔랩스퓨리어스소드",
+      "name": "앱솔랩스폭검",
       "level": 160
     },
     {
@@ -157,12 +152,7 @@
     },
     {
       "key": "absolab_hellslayer",
-      "name": "앱솔랩스헬슬레이어",
-      "level": 160
-    },
-    {
-      "key": "absolab_katana",
-      "name": "앱솔랩스카타나",
+      "name": "앱솔랩스핼버드",
       "level": 160
     },
     {
@@ -228,21 +218,6 @@
     {
       "key": "absolab_mage_suit",
       "name": "앱솔랩스메이지슈트",
-      "level": 160
-    },
-    {
-      "key": "absolab_martial_brace",
-      "name": "앱솔랩스마샬브레이스",
-      "level": 160
-    },
-    {
-      "key": "absolab_memorial_staff",
-      "name": "앱솔랩스메모리얼스태프",
-      "level": 160
-    },
-    {
-      "key": "absolab_monster_ritual_fan",
-      "name": "앱솔랩스몬스터리추얼팬",
       "level": 160
     },
     {
@@ -312,7 +287,7 @@
     },
     {
       "key": "absolab_soul_shooter",
-      "name": "앱솔랩스엔젤릭슈터",
+      "name": "앱솔랩스소울슈터",
       "level": 160
     },
     {
@@ -323,11 +298,6 @@
     {
       "key": "absolab_spellsong_wand",
       "name": "앱솔랩스스펠링완드",
-      "level": 160
-    },
-    {
-      "key": "absolab_spirit_walker_fan",
-      "name": "앱솔랩스스피릿워커팬",
       "level": 160
     },
     {
@@ -342,7 +312,7 @@
     },
     {
       "key": "absolab_whip_blade",
-      "name": "앱솔랩스스플릿엣지",
+      "name": "앱솔랩스에너지소드",
       "level": 160
     },
     {
@@ -426,11 +396,6 @@
       "level": 200
     },
     {
-      "key": "arcane_umbra_celestial_light",
-      "name": "아케인셰이드셀레스티얼라이트",
-      "level": 200
-    },
-    {
       "key": "arcane_umbra_chain",
       "name": "아케인셰이드체인",
       "level": 200
@@ -493,16 +458,6 @@
     {
       "key": "arcane_umbra_hwangeom",
       "name": "아케인셰이드환검",
-      "level": 200
-    },
-    {
-      "key": "arcane_umbra_illusory_sword",
-      "name": "아케인셰이드일루저리소드",
-      "level": 200
-    },
-    {
-      "key": "arcane_umbra_katana",
-      "name": "아케인셰이드카타나",
       "level": 200
     },
     {
@@ -576,16 +531,6 @@
       "level": 200
     },
     {
-      "key": "arcane_umbra_martial_brace",
-      "name": "아케인셰이드마샬브레이스",
-      "level": 200
-    },
-    {
-      "key": "arcane_umbra_memorial_staff",
-      "name": "아케인셰이드메모리얼스태프",
-      "level": 200
-    },
-    {
       "key": "arcane_umbra_pirate_cape",
       "name": "아케인셰이드파이렛케이프",
       "level": 200
@@ -656,18 +601,8 @@
       "level": 200
     },
     {
-      "key": "arcane_umbra_spirit_walker_fan",
-      "name": "아케인셰이드스피릿워커팬",
-      "level": 200
-    },
-    {
       "key": "arcane_umbra_staff",
       "name": "아케인셰이드스태프",
-      "level": 200
-    },
-    {
-      "key": "arcane_umbra_super_ritual_fan",
-      "name": "아케인셰이드슈퍼리추얼팬",
       "level": 200
     },
     {
@@ -876,11 +811,6 @@
       "level": 250
     },
     {
-      "key": "destiny_celestial_light",
-      "name": "데스티니셀레스티얼라이트",
-      "level": 250
-    },
-    {
       "key": "destiny_chain",
       "name": "데스티니체인",
       "level": 250
@@ -936,11 +866,6 @@
       "level": 250
     },
     {
-      "key": "destiny_katana",
-      "name": "데스티니카타나",
-      "level": 250
-    },
-    {
       "key": "destiny_knuckle",
       "name": "데스티니클로",
       "level": 250
@@ -958,16 +883,6 @@
     {
       "key": "destiny_magic_gauntlet",
       "name": "데스티니매직건틀렛",
-      "level": 250
-    },
-    {
-      "key": "destiny_memorial_staff",
-      "name": "데스티니메모리얼스태프",
-      "level": 250
-    },
-    {
-      "key": "destiny_mukwon",
-      "name": "데스티니무권",
       "level": 250
     },
     {
@@ -1038,11 +953,6 @@
     {
       "key": "destiny_wand",
       "name": "데스티니완드",
-      "level": 250
-    },
-    {
-      "key": "destiny_yinyang_fan",
-      "name": "데스티니음양선",
       "level": 250
     },
     {
@@ -1506,11 +1416,6 @@
       "level": 200
     },
     {
-      "key": "genesis_celestial_light",
-      "name": "제네시스셀레스티얼라이트",
-      "level": 200
-    },
-    {
       "key": "genesis_chain",
       "name": "제네시스체인",
       "level": 200
@@ -1576,11 +1481,6 @@
       "level": 200
     },
     {
-      "key": "genesis_katana",
-      "name": "제네시스카타나",
-      "level": 200
-    },
-    {
       "key": "genesis_knuckle",
       "name": "제네시스클로",
       "level": 200
@@ -1598,16 +1498,6 @@
     {
       "key": "genesis_magic_gauntlet",
       "name": "제네시스매직건틀렛",
-      "level": 200
-    },
-    {
-      "key": "genesis_memorial_staff",
-      "name": "제네시스메모리얼스태프",
-      "level": 200
-    },
-    {
-      "key": "genesis_mukwon",
-      "name": "제네시스무권",
       "level": 200
     },
     {
@@ -1673,11 +1563,6 @@
     {
       "key": "genesis_wand",
       "name": "제네시스완드",
-      "level": 200
-    },
-    {
-      "key": "genesis_yinyang_fan",
-      "name": "제네시스음양선",
       "level": 200
     },
     {
@@ -2012,7 +1897,7 @@
     },
     {
       "key": "supreme_glorion_ring",
-      "name": "슈프림글로리온링",
+      "name": "글로리온링:슈프림",
       "level": 120
     },
     {

@@ -225,6 +225,13 @@
       "when": 1794180173148,
       "tag": "0031_app_images",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794189044046,
+      "tag": "0032_item_names_kms",
+      "breakpoints": true
     }
   ]
 }

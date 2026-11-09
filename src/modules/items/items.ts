@@ -35,6 +35,8 @@ export const ITEM_CATEGORIES = [
       { key: 'earring', name: '귀고리' },
       { key: 'face_accessory', name: '얼굴 장식' },
       { key: 'shoulder_accessory', name: '어깨 장식' },
+      { key: 'belt', name: '벨트' },
+      { key: 'badge', name: '뱃지' },
       { key: 'dark_boss_set', name: '칠흑의 보스 세트' },
       { key: 'dawn_boss_set', name: '여명의 보스 세트' },
       { key: 'radiance_boss_set', name: '광휘의 보스 세트' },

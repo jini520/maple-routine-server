@@ -22,6 +22,7 @@ export const ITEM_CATEGORIES = [
       { key: 'arcane_weapon', name: '아케인셰이드 무기' },
       { key: 'arcane_armor', name: '아케인셰이드 방어구' },
       { key: 'armor_weapon_set', name: '방어구와 무기 세트' },
+      { key: 'other_armor', name: '기타 방어구' },
       { key: 'secondary_weapon', name: '보조무기' },
       { key: 'genesis_weapon', name: '제네시스 무기' },
       { key: 'destiny_weapon', name: '데스티니 무기' },

@@ -9,11 +9,7 @@ import {
 } from '../cashbook-categories/cashbook-categories.repository'
 import { CrystalPricesRepository, NotBoundary } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
-import {
-  DropItemExists,
-  DropItemNameTaken,
-  DropItemsRepository,
-} from '../drop-items/drop-items.repository'
+import { DropItemsRepository } from '../drop-items/drop-items.repository'
 import {
   NoSpendCategory,
   NoSpendTile,
@@ -38,11 +34,6 @@ import {
   BaseBand,
   EnhancementCostsRepository,
 } from '../enhancement-costs/enhancement-costs.repository'
-import {
-  DropItemKeyMismatch,
-  EquipmentItemsRepository,
-  EquipmentNameTaken,
-} from '../equipment-items/equipment-items.repository'
 import {
   GroundKeyPrefix,
   GroundNameTaken,
@@ -107,8 +98,6 @@ describe('AdminController', () => {
   const items = {
     section: jest.fn(),
     adminSection: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
   }
   const boxes = {
     section: jest.fn(),
@@ -186,7 +175,6 @@ describe('AdminController', () => {
     updateContent: jest.fn(),
     moveContent: jest.fn(),
   }
-  const equipmentRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn() }
   const enhancementRepo = {
     section: jest.fn(),
     setRules: jest.fn(),
@@ -258,7 +246,6 @@ describe('AdminController', () => {
         { provide: SpendCatalogRepository, useValue: spendRepo },
         { provide: SymbolCostsRepository, useValue: symbolRepo },
         { provide: ContentsRepository, useValue: contentsRepo },
-        { provide: EquipmentItemsRepository, useValue: equipmentRepo },
         { provide: EnhancementCostsRepository, useValue: enhancementRepo },
         { provide: MvpGradesRepository, useValue: mvpRepo },
         { provide: HuntingGroundsRepository, useValue: huntingRepo },
@@ -290,7 +277,6 @@ describe('AdminController', () => {
       ...Object.values(spendRepo),
       ...Object.values(symbolRepo),
       ...Object.values(contentsRepo),
-      ...Object.values(equipmentRepo),
       ...Object.values(enhancementRepo),
       ...Object.values(mvpRepo),
       ...Object.values(huntingRepo),
@@ -314,7 +300,6 @@ describe('AdminController', () => {
     '/admin/drop-market',
     '/admin/users',
     '/admin/usage',
-    '/admin/drop-items',
     '/admin/drop-boxes',
     '/admin/boss-drops',
     '/admin/crystal-prices',
@@ -325,7 +310,6 @@ describe('AdminController', () => {
     '/admin/symbol-costs',
     '/admin/hexa-matrix',
     '/admin/contents',
-    '/admin/equipment-items',
     '/admin/enhancement-costs',
     '/admin/mvp-grades',
     '/admin/hunting-grounds',
@@ -861,105 +845,23 @@ describe('AdminController', () => {
       ).toEqual({ updatedAt: null, defaultMaxPartySize: 6, pairs: [] })
     })
 
-    it('POST /admin/drop-items 는 201, 같은 key 는 409, key 모양이 틀리면 400 이다', async () => {
-      items.create.mockResolvedValue({ id: ROW })
-      const ok = await app.inject({
-        method: 'POST',
-        url: '/admin/drop-items',
-        payload: { key: 'dreamy_belt', name: '몽환의 벨트' },
-      })
-      expect(ok.statusCode).toBe(201)
-      expect(items.create).toHaveBeenCalledWith({
-        key: 'dreamy_belt',
-        name: '몽환의 벨트',
-        iconFile: null,
-        valuable: false,
-        worldBound: false,
-      })
-
-      items.create.mockRejectedValue(new DropItemExists('dreamy_belt'))
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: '/admin/drop-items',
-            payload: { key: 'dreamy_belt', name: 'x' },
-          })
-        ).statusCode,
-      ).toBe(409)
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: '/admin/drop-items',
-            payload: { key: 'Dreamy Belt', name: 'x' },
-          })
-        ).statusCode,
-      ).toBe(400)
-    })
-
     it('그림 칸이 그림 표에 없는 그림을 가리키면 400 이고 쓰지 않는다', async () => {
       assetsRepo.missing.mockResolvedValue(['nobody.png'])
       const res = await app.inject({
         method: 'POST',
-        url: '/admin/drop-items',
-        payload: { key: 'dreamy_belt', name: '몽환의 벨트', iconFile: 'nobody.png' },
+        url: '/admin/hunt-loot',
+        payload: {
+          key: 'reindeer_milk',
+          kind: 'consumable',
+          name: '순록의 우유',
+          iconFile: 'nobody.png',
+          npcPriceMeso: 2750,
+        },
       })
       expect(res.statusCode).toBe(400)
       expect(res.json<{ message: string }>().message).toContain('nobody.png')
       expect(assetsRepo.missing).toHaveBeenCalledWith([{ ref: 'itemIcon', value: 'nobody.png' }])
-      expect(items.create).not.toHaveBeenCalled()
-    })
-
-    it('PUT /admin/drop-items/:key 는 204, 모르면 404 다', async () => {
-      items.update.mockResolvedValue(true)
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/drop-items/dreamy_belt',
-            payload: { name: '몽환의 벨트', valuable: true },
-          })
-        ).statusCode,
-      ).toBe(204)
-      expect(items.update).toHaveBeenCalledWith('dreamy_belt', {
-        name: '몽환의 벨트',
-        iconFile: null,
-        valuable: true,
-      })
-      items.update.mockResolvedValue(false)
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/drop-items/nobody',
-            payload: { name: 'x' },
-          })
-        ).statusCode,
-      ).toBe(404)
-    })
-
-    it('이름이 같은 아이템이 다른 key 로 있으면 더하기 · 고치기 모두 409 다', async () => {
-      items.create.mockRejectedValue(new DropItemNameTaken('giant_terror'))
-      const created = await app.inject({
-        method: 'POST',
-        url: '/admin/drop-items',
-        payload: { key: 'great_terror', name: '거대한 공포', valuable: true },
-      })
-      expect(created.statusCode).toBe(409)
-      expect(created.json()).toMatchObject({
-        message: '이름이 같은 아이템이 다른 key 로 있다: giant_terror',
-      })
-      items.update.mockRejectedValue(new DropItemNameTaken('giant_terror'))
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/drop-items/great_terror',
-            payload: { name: '거대한 공포' },
-          })
-        ).statusCode,
-      ).toBe(409)
+      expect(huntLootRepo.create).not.toHaveBeenCalled()
     })
 
     it('상자의 레벨 범위는 둘 다 있거나 둘 다 없어야 400 이 아니다', async () => {
@@ -2157,83 +2059,6 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(204)
-    })
-  })
-
-  describe('장비', () => {
-    it('POST 는 201 · 겹치는 이름과 드롭 표 불일치는 409, PUT 은 204 · 모르면 404 이고 빈 레벨은 null 이다', async () => {
-      equipmentRepo.section.mockResolvedValue({ updatedAt: null, items: [] })
-      expect(
-        (await app.inject({ method: 'GET', url: '/admin/equipment-items/rows' })).json(),
-      ).toEqual({
-        updatedAt: null,
-        items: [],
-      })
-
-      equipmentRepo.create.mockResolvedValue({ id: ROW })
-      const created = await app.inject({
-        method: 'POST',
-        url: '/admin/equipment-items',
-        payload: { key: 'ascendant_pulse_ring', name: '어센던트펄스링' },
-      })
-      expect(created.statusCode).toBe(201)
-      expect(equipmentRepo.create).toHaveBeenCalledWith({
-        key: 'ascendant_pulse_ring',
-        name: '어센던트펄스링',
-        level: null,
-      })
-      equipmentRepo.create.mockRejectedValue(new EquipmentNameTaken('ascendant_pulse_ring'))
-      const taken = await app.inject({
-        method: 'POST',
-        url: '/admin/equipment-items',
-        payload: { key: 'pulse_ring', name: '어센던트 펄스링', level: 130 },
-      })
-      expect(taken.statusCode).toBe(409)
-      expect(taken.json<{ message: string }>().message).toContain('ascendant_pulse_ring')
-      equipmentRepo.create.mockRejectedValue(new DropItemKeyMismatch('berserked'))
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: '/admin/equipment-items',
-            payload: { key: 'great_terror', name: '거대한공포', level: 200 },
-          })
-        ).statusCode,
-      ).toBe(409)
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: '/admin/equipment-items',
-            payload: { key: 'zero', name: 'x', level: 0 },
-          })
-        ).statusCode,
-      ).toBe(400)
-
-      equipmentRepo.update.mockResolvedValue(true)
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/equipment-items/ascendant_pulse_ring',
-            payload: { name: '어센던트펄스링', level: 130 },
-          })
-        ).statusCode,
-      ).toBe(204)
-      expect(equipmentRepo.update).toHaveBeenCalledWith('ascendant_pulse_ring', {
-        name: '어센던트펄스링',
-        level: 130,
-      })
-      equipmentRepo.update.mockResolvedValue(false)
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/equipment-items/nobody',
-            payload: { name: 'x' },
-          })
-        ).statusCode,
-      ).toBe(404)
     })
   })
 

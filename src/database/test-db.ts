@@ -73,6 +73,14 @@ const TABLES = [
   'game_rules',
 ] as const
 
+/** 아이템 줄을 바로 넣는다. 역할 · 성질은 안 주면 꺼진 채다. 칸의 시각은 안 민다. */
+export async function insertItems(
+  db: TestDb,
+  rows: readonly (typeof schema.items.$inferInsert)[],
+): Promise<void> {
+  await db.insert(schema.items).values([...rows])
+}
+
 /**
  * 그림 줄을 넣고 경로마다 id 를 돌려준다. 그림 칸이 FK 라 그 칸을 채우는 스펙은 그림부터 넣어야 한다. 해시 · 크기는 가짜다.
  * 같은 경로가 이미 있으면 그 줄의 id 다.

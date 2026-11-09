@@ -9,11 +9,12 @@ const MENU: readonly MenuItem[] = [
   {
     label: '게임데이터',
     items: [
+      ['/admin/items', '아이템'],
+      ['/admin/assets', '그림'],
       {
         label: '보스',
         items: [
           ['/admin/bosses', '보스 목록'],
-          ['/admin/drop-items', '드롭 아이템'],
           ['/admin/drop-boxes', '상자'],
           ['/admin/boss-drops', '드롭 표'],
           ['/admin/crystal-prices', '결정석 가격'],
@@ -36,9 +37,7 @@ const MENU: readonly MenuItem[] = [
         label: '기타',
         items: [
           ['/admin/worlds', '월드'],
-          ['/admin/equipment-items', '장비'],
           ['/admin/hunting-grounds', '사냥터'],
-          ['/admin/assets', '그림'],
         ],
       },
     ],

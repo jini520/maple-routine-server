@@ -127,7 +127,13 @@ import {
   HuntLootRepository,
 } from '../hunt-loot/hunt-loot.repository'
 import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
-import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
+import {
+  NoWorld,
+  PeriodNotAfter,
+  PeriodOverlap,
+  WorldExists,
+  WorldsRepository,
+} from '../worlds/worlds.repository'
 import type { NoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import {
@@ -260,6 +266,8 @@ import {
   worldCreateBody,
   type WorldUpdateBody,
   worldUpdateBody,
+  type WorldPeriodBody,
+  worldPeriodBody,
   type FaqItemBody,
   faqItemBody,
   faqKey,
@@ -825,6 +833,44 @@ export class AdminController {
   ): Promise<void> {
     if (!(await this.worlds.move(key, body.direction)))
       throw new NotFoundException(`모르는 월드다: ${key}`)
+  }
+
+  /** 월드에 열린 기간을 더한다. 모르는 월드는 404, 겹치거나 until 이 from 보다 뒤가 아니면 400 이다. */
+  @Post('worlds/:key/periods')
+  @HttpCode(201)
+  async addWorldPeriod(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(worldPeriodBody)) body: WorldPeriodBody,
+  ) {
+    try {
+      return await this.worlds.addPeriod(key, { from: body.from, until: body.until })
+    } catch (error) {
+      if (error instanceof NoWorld) throw new NotFoundException(`모르는 월드다: ${key}`)
+      throw periodRejection(error)
+    }
+  }
+
+  /** 기간 한 줄을 갈아 끼운다. 모르면 404, 거절은 더할 때와 같다. */
+  @Put('worlds/periods/:id')
+  @HttpCode(204)
+  async updateWorldPeriod(
+    @Param('id', new ZodValidationPipe(rowId)) id: string,
+    @Body(new ZodValidationPipe(worldPeriodBody)) body: WorldPeriodBody,
+  ): Promise<void> {
+    let found: boolean
+    try {
+      found = await this.worlds.updatePeriod(id, { from: body.from, until: body.until })
+    } catch (error) {
+      throw periodRejection(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 기간이다: ${id}`)
+  }
+
+  /** 기간 한 줄을 지운다. 모르면 404 다. */
+  @Delete('worlds/periods/:id')
+  @HttpCode(204)
+  async removeWorldPeriod(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    if (!(await this.worlds.removePeriod(id))) throw new NotFoundException(`모르는 기간이다: ${id}`)
   }
 
   /* ── 지출 카탈로그 ── */
@@ -2105,4 +2151,12 @@ function toAdminNotice(row: NoticeRow) {
     pushTitle: row.pushTitle,
     pushBody: row.pushBody,
   }
+}
+
+/** 기간 쓰기의 거절을 400 으로 바꾼 예외. 기간 거절이 아니면 받은 것을 그대로 돌려준다. */
+function periodRejection(error: unknown): unknown {
+  if (error instanceof PeriodOverlap)
+    return new BadRequestException('같은 월드의 다른 기간과 겹친다')
+  if (error instanceof PeriodNotAfter) return new BadRequestException('until 은 from 보다 뒤다')
+  return error
 }

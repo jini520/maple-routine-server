@@ -55,6 +55,7 @@ export const ITEM_CATEGORIES = [
       { key: 'soul', name: '소울' },
       { key: 'box', name: '상자' },
       { key: 'hunt_loot', name: '사냥 전리품' },
+      { key: 'boss_loot', name: '보스 전리품' },
     ],
   },
   {
@@ -63,7 +64,6 @@ export const ITEM_CATEGORIES = [
     groups: [
       { key: 'growth_material', name: '성장 재료' },
       { key: 'profession_material_tool', name: '전문기술 재료와 도구' },
-      { key: 'boss_loot', name: '보스 전리품' },
     ],
   },
   { key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] },

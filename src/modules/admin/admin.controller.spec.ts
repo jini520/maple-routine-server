@@ -58,7 +58,13 @@ import {
   HuntLootRepository,
 } from '../hunt-loot/hunt-loot.repository'
 import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
-import { WorldExists, WorldsRepository } from '../worlds/worlds.repository'
+import {
+  NoWorld,
+  PeriodNotAfter,
+  PeriodOverlap,
+  WorldExists,
+  WorldsRepository,
+} from '../worlds/worlds.repository'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
   AlreadyOpen,
@@ -136,6 +142,9 @@ describe('AdminController', () => {
     create: jest.fn(),
     update: jest.fn(),
     move: jest.fn(),
+    addPeriod: jest.fn(),
+    updatePeriod: jest.fn(),
+    removePeriod: jest.fn(),
   }
   const spendRepo = {
     section: jest.fn(),
@@ -1858,6 +1867,49 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(204)
+    })
+
+    it('기간은 POST 201 · 모르는 월드 404 · 겹침과 순서 400 · 틀린 날짜 400, PUT 과 DELETE 는 204 · 모르면 404 다', async () => {
+      const period = { from: '2025-11-20', until: '2025-12-19' }
+      const send = (method: 'POST' | 'PUT' | 'DELETE', url: string, payload?: object) =>
+        app.inject({ method, url, ...(payload === undefined ? {} : { payload }) })
+
+      worldsRepo.addPeriod.mockResolvedValue({ id: ROW })
+      const added = await send('POST', '/admin/worlds/special/periods', period)
+      expect(added.statusCode).toBe(201)
+      expect(added.json()).toEqual({ id: ROW })
+      expect(worldsRepo.addPeriod).toHaveBeenCalledWith('special', period)
+      worldsRepo.addPeriod.mockRejectedValueOnce(new NoWorld('nobody'))
+      expect((await send('POST', '/admin/worlds/nobody/periods', period)).statusCode).toBe(404)
+      worldsRepo.addPeriod.mockRejectedValueOnce(new PeriodOverlap('special'))
+      expect((await send('POST', '/admin/worlds/special/periods', period)).statusCode).toBe(400)
+      worldsRepo.addPeriod.mockRejectedValueOnce(new PeriodNotAfter('2025-11-20'))
+      expect((await send('POST', '/admin/worlds/special/periods', period)).statusCode).toBe(400)
+
+      worldsRepo.addPeriod.mockClear()
+      for (const bad of [
+        { from: '2025-11-20T10:00', until: '2025-12-19' },
+        { from: '2025-13-01', until: '2025-12-19' },
+        { from: '2025-12-19', until: '2025-11-20' },
+        { from: '2025-11-20' },
+      ]) {
+        expect((await send('POST', '/admin/worlds/special/periods', bad)).statusCode).toBe(400)
+      }
+      expect(worldsRepo.addPeriod).not.toHaveBeenCalled()
+
+      worldsRepo.updatePeriod.mockResolvedValue(true)
+      expect((await send('PUT', `/admin/worlds/periods/${ROW}`, period)).statusCode).toBe(204)
+      expect(worldsRepo.updatePeriod).toHaveBeenCalledWith(ROW, period)
+      worldsRepo.updatePeriod.mockResolvedValueOnce(false)
+      expect((await send('PUT', `/admin/worlds/periods/${ROW}`, period)).statusCode).toBe(404)
+      worldsRepo.updatePeriod.mockRejectedValueOnce(new PeriodOverlap('special'))
+      expect((await send('PUT', `/admin/worlds/periods/${ROW}`, period)).statusCode).toBe(400)
+
+      worldsRepo.removePeriod.mockResolvedValue(true)
+      expect((await send('DELETE', `/admin/worlds/periods/${ROW}`)).statusCode).toBe(204)
+      expect(worldsRepo.removePeriod).toHaveBeenCalledWith(ROW)
+      worldsRepo.removePeriod.mockResolvedValueOnce(false)
+      expect((await send('DELETE', `/admin/worlds/periods/${ROW}`)).statusCode).toBe(404)
     })
   })
 

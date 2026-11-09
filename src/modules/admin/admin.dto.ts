@@ -184,6 +184,23 @@ export const worldUpdateBody = worldCreateBody
   .extend({ priceGroup: snakeKey.max(50).nullable().optional() })
 export type WorldUpdateBody = z.infer<typeof worldUpdateBody>
 
+/** 달력에 있는 KST 날짜 글자. 2025-13-01 처럼 형식만 맞는 날은 거른다. */
+const calendarDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine(
+    (text) => {
+      const date = new Date(`${text}T00:00:00Z`)
+      return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === text
+    },
+    { message: '달력에 없는 날이다' },
+  )
+/** 월드가 열린 기간. until 은 닫힌 다음 날이라 from 보다 뒤다. */
+export const worldPeriodBody = z
+  .object({ from: calendarDate, until: calendarDate })
+  .refine((b) => b.until > b.from, { message: 'until 은 from 보다 뒤다' })
+export type WorldPeriodBody = z.infer<typeof worldPeriodBody>
+
 /* ── 지출 카탈로그 ── */
 
 /** 관세율(%)과 세라자르 주화 판매가. game_rules 의 줄 둘이다. */

@@ -526,6 +526,24 @@ export const worlds = pgTable('worlds', {
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
+/**
+ * 월드가 열린 기간. 이벤트 · 챌린저스 월드는 시즌마다 같은 이름으로 다시 열려 한 월드에 여러 줄이다.
+ * from 은 연 날, until 은 닫힌 다음 날인 KST 글자(YYYY-MM-DD)이고 보스 기간과 경계의 뜻이 같다. 같은 월드의 기간은 안 겹친다.
+ */
+export const worldPeriods = pgTable(
+  'world_periods',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    worldId: uuid('world_id')
+      .notNull()
+      .references(() => worlds.id, { onDelete: 'cascade' }),
+    from: text('from').notNull(),
+    until: text('until').notNull(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [unique('world_periods_world_from_unique').on(t.worldId, t.from)],
+)
+
 /** 가계부 기록이 수입인지 지출인지. */
 export const cashbookEntryTypeEnum = pgEnum('cashbook_entry_type', ['income', 'spend'])
 

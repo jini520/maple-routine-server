@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -38,6 +39,7 @@ export const BOSSES_HTML = layout(
   <header><h2>보스</h2><p id="bosses-count"></p><span class="grow"></span><button id="b-new" class="btn" type="button">새 보스</button></header>
   <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>주기</th><th>초상화</th><th>난이도 · 요구 레벨</th><th></th></tr></thead><tbody id="bosses-rows"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var DIFFS = ['easy', 'normal', 'hard', 'chaos', 'extreme'];
   var CYCLES = [['weekly', 'weekly'], ['event_weekly', 'event_weekly (시즌)'], ['monthly', 'monthly']];
@@ -149,7 +151,7 @@ export const BOSSES_HTML = layout(
     var grid = el('div', undefined, 'grid2');
     grid.appendChild(field('key', 'snake_case · 앱 기록이 드는 값', key)); grid.appendChild(field('주기', '', cycle));
     grid.appendChild(field('이름', '넥슨 API content_name 표기', name)); grid.appendChild(field('별칭', '좁은 자리의 이름. 비우면 이름 그대로', alias));
-    grid.appendChild(field('초상화 파일명', '앱 src/assets/bosses/*.webp 의 이름', slug));
+    grid.appendChild(field('초상화 파일명', '앱 src/assets/bosses/*.webp 의 이름', inline(slug, assetPickButton(slug, 'bossPortrait'))));
     box.appendChild(grid);
     var tbody = el('tbody');
     function addDiffRow(difficulty) {

@@ -11,6 +11,7 @@ const MENU: readonly MenuItem[] = [
     items: [
       ['/admin/items', '아이템'],
       ['/admin/assets', '그림'],
+      ['/admin/app-images', '앱 그림'],
       {
         label: '보스',
         items: [

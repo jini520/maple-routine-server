@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -27,7 +28,7 @@ export const HUNTING_GROUNDS_HTML = layout(
     <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="geardrak"></div>
     <div class="field"><label for="n-name">이름</label><input id="n-name" placeholder="기어드락"></div>
     <div class="field w-md"><label for="n-force">힘 종류</label><select id="n-force"></select></div>
-    <div class="field"><label for="n-map">지역 아이콘 (maps/icons)</label><input id="n-map" class="mono" placeholder="geardrak"></div>
+    <div class="field"><label for="n-map">지역 아이콘 (maps/icons)</label><input id="n-map" class="mono" placeholder="geardrak" data-asset="mapIcon"></div>
     <button id="n-add" class="btn" type="button">지역 추가</button>
   </div></div>
 </section>
@@ -35,6 +36,7 @@ export const HUNTING_GROUNDS_HTML = layout(
   <header><h2>지역</h2><p id="count"></p></header>
   <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>힘</th><th>지역 아이콘</th><th class="num">사냥터</th><th></th></tr></thead><tbody id="regions"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var FORCES = [['arcane', '아케인'], ['authentic', '어센틱']];
   var state = { data: null, open: null, editingRegion: null, editingGround: null };
@@ -58,7 +60,7 @@ export const HUNTING_GROUNDS_HTML = layout(
       cell(tr, inline(up, down, edit, toggle), 'act'); return tr;
     }
     var name = input('text'); name.value = r.name; var force = select(FORCES, r.forceType); var iconMap = input('text', 'mono'); iconMap.value = r.iconMap || '';
-    cell(tr, name); cell(tr, force); cell(tr, iconMap); cell(tr, groundsOf(r.key).length, 'num');
+    cell(tr, name); cell(tr, force); cell(tr, inline(iconMap, assetPickButton(iconMap, 'mapIcon'))); cell(tr, groundsOf(r.key).length, 'num');
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var x = await call('PUT', '/admin/hunting-grounds/regions/' + r.key, { name: name.value.trim(), forceType: force.value, iconMap: orNull(iconMap.value) });
@@ -147,5 +149,6 @@ export const HUNTING_GROUNDS_HTML = layout(
     render();
   }
   load();
+  attachAssetPickers();
 </script>`,
 )

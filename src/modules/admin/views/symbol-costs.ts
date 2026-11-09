@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -31,7 +32,7 @@ export const SYMBOL_COSTS_HTML = layout(
     <div class="field w-md"><label for="s-group">묶음</label><select id="s-group"></select></div>
     <div class="field"><label for="s-name">이름 <small>넥슨 응답의 심볼 이름이 이것으로 끝난다</small></label><input id="s-name" placeholder="탈라하트"></div>
     <div class="field w-sm"><label for="s-level">착용 레벨</label><input id="s-level" type="number" min="1"></div>
-    <div class="field"><label for="s-icon">그림 파일 <small>src/assets/items/</small></label><input id="s-icon" class="mono" placeholder="grand_authentic_symbol_tallahart.webp"></div>
+    <div class="field"><label for="s-icon">그림 파일 <small>src/assets/items/</small></label><input id="s-icon" class="mono" placeholder="grand_authentic_symbol_tallahart.webp" data-asset="itemIcon"></div>
     <button id="s-add" class="btn" type="button">심볼 추가</button>
   </div></div>
 </section>
@@ -46,6 +47,7 @@ export const SYMBOL_COSTS_HTML = layout(
     <button id="n-add" class="btn" type="button">묶음 추가</button>
   </div></div>
 </section>
+${ASSET_PICKER}
 <script>
   var state = { data: null, open: null, editingGroup: null };
   function current(level) { return level.costs.filter(function (c) { return c.until === null; })[0] || null; }
@@ -101,7 +103,7 @@ export const SYMBOL_COSTS_HTML = layout(
       var r = await call('PUT', '/admin/symbol-costs/symbols/' + s.key, { name: name.value.trim(), requiredLevel: Number(level.value), iconFile: icon.value.trim() });
       show(r.ok ? s.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); load();
     });
-    var meta = el('div', undefined, 'row'); meta.appendChild(field('이름', undefined, name)); meta.appendChild(field('착용 레벨', undefined, level)); meta.appendChild(field('그림 파일', undefined, icon)); meta.appendChild(saveMeta); box.appendChild(meta);
+    var meta = el('div', undefined, 'row'); meta.appendChild(field('이름', undefined, name)); meta.appendChild(field('착용 레벨', undefined, level)); meta.appendChild(field('그림 파일', undefined, inline(icon, assetPickButton(icon, 'itemIcon')))); meta.appendChild(saveMeta); box.appendChild(meta);
 
     var inputs = []; var tbody = el('tbody');
     s.levels.forEach(function (l) {
@@ -164,5 +166,6 @@ export const SYMBOL_COSTS_HTML = layout(
     render();
   }
   load();
+  attachAssetPickers();
 </script>`,
 )

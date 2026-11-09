@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -54,12 +55,13 @@ export const SPEND_CATALOG_HTML = layout(
   <div class="body"><div class="row">
     <div class="field"><label for="t-key">key</label><input id="t-key" class="mono" placeholder="high_mountain"></div>
     <div class="field"><label for="t-name">이름</label><input id="t-name" placeholder="하이마운틴"></div>
-    <div class="field"><label for="t-file">그림 파일 <small>src/assets/items/</small></label><input id="t-file" class="mono" placeholder="monster_park_ticket.webp"></div>
-    <div class="field"><label for="t-map">지역 아이콘 <small>src/assets/maps/icons/</small></label><input id="t-map" class="mono" placeholder="highMountain"></div>
+    <div class="field"><label for="t-file">그림 파일 <small>src/assets/items/</small></label><input id="t-file" class="mono" placeholder="monster_park_ticket.webp" data-asset="itemIcon"></div>
+    <div class="field"><label for="t-map">지역 아이콘 <small>src/assets/maps/icons/</small></label><input id="t-map" class="mono" placeholder="highMountain" data-asset="mapIcon"></div>
     <button id="t-add" class="btn" type="button">타일 추가</button>
   </div></div>
   <div class="table"><table><thead><tr><th>key</th><th>이름</th><th>그림 파일</th><th>지역 아이콘</th><th class="num">항목</th><th></th></tr></thead><tbody id="tiles"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var CATEGORIES = [];
   var CURRENCIES = [['point', '메포'], ['meso', '메소']];
@@ -210,7 +212,7 @@ export const SPEND_CATALOG_HTML = layout(
       return tr;
     }
     var name = input('text'); name.value = t.name; var iconFile = input('text', 'mono'); iconFile.value = t.iconFile || ''; var iconMap = input('text', 'mono'); iconMap.value = t.iconMap || '';
-    cell(tr, name); cell(tr, iconFile); cell(tr, iconMap); cell(tr, used, 'num');
+    cell(tr, name); cell(tr, inline(iconFile, assetPickButton(iconFile, 'itemIcon'))); cell(tr, inline(iconMap, assetPickButton(iconMap, 'mapIcon'))); cell(tr, used, 'num');
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/spend-catalog/tiles/' + t.key, { name: name.value.trim(), iconFile: orNull(iconFile.value), iconMap: orNull(iconMap.value) });
@@ -287,5 +289,6 @@ export const SPEND_CATALOG_HTML = layout(
     render();
   }
   load();
+  attachAssetPickers();
 </script>`,
 )

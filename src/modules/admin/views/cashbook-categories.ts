@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -27,7 +28,7 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
     <div class="field"><label for="c-key">key</label><input id="c-key" class="mono" placeholder="hexa_skill"></div>
     <div class="field"><label for="c-name">이름</label><input id="c-name" placeholder="헥사 스킬 강화"></div>
     <div class="field"><label for="c-title">카드 제목</label><input id="c-title" placeholder="헥사강화"></div>
-    <div class="field"><label for="c-icon">그림 파일 <small>src/assets/items/</small></label><input id="c-icon" class="mono" placeholder="sol_erda_fragment.webp"></div>
+    <div class="field"><label for="c-icon">그림 파일 <small>src/assets/items/</small></label><input id="c-icon" class="mono" placeholder="sol_erda_fragment.webp" data-asset="itemIcon"></div>
     <div class="field"><label for="c-desc">설명</label><input id="c-desc" placeholder="갈래 카드 한 줄"></div>
     <div class="field w-sm"><label for="c-unit">단위</label><input id="c-unit" placeholder="개"></div>
     <button id="c-add" class="btn" type="button">갈래 추가</button>
@@ -45,6 +46,7 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
   <header><h2>아이템 종류</h2><p>게임 인벤토리 탭 이름. 단위가 비면 수량 칸이 없고, 관세는 월드 간 거래가 되는 종류에만 붙는다</p></header>
   <div class="table"><table><thead><tr><th>key</th><th>이름</th><th>단위</th><th>관세</th><th></th></tr></thead><tbody id="kinds"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var state = { data: null, editing: null, editingKind: null };
 
@@ -67,7 +69,7 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
     var icon = input('text', 'mono'); icon.value = c.iconFile;
     var desc = input('text'); desc.value = c.description;
     var unit = input('text'); unit.value = c.unit || '';
-    cell(tr, name); cell(tr, title); cell(tr, icon); cell(tr, desc); cell(tr, unit);
+    cell(tr, name); cell(tr, title); cell(tr, inline(icon, assetPickButton(icon, 'itemIcon'))); cell(tr, desc); cell(tr, unit);
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/cashbook-categories/' + c.entryType + '/' + c.key, {
@@ -138,5 +140,6 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
     render();
   }
   load();
+  attachAssetPickers();
 </script>`,
 )

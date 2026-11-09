@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -35,6 +36,7 @@ export const CONTENTS_HTML = layout(
   <header><h2>주간</h2><p id="weekly-count"></p><span class="grow"></span><button id="weekly-new" class="btn ghost sm" type="button">새 컨텐츠</button></header>
   <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>API 이름</th><th>갈래</th><th>종류</th><th class="num">상한</th><th class="num">레벨</th><th>공유</th><th>기간</th><th></th></tr></thead><tbody id="weekly"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var TYPES = [['contents', '카운트'], ['quest', '퀘스트']];
   var SCOPES = [['character', '캐릭터'], ['world', '월드'], ['account', '계정']];
@@ -120,8 +122,8 @@ export const CONTENTS_HTML = layout(
     grid.appendChild(field('갈래', undefined, category));
     grid.appendChild(field('이름', '카드 · 관리 화면', displayName));
     grid.appendChild(field('짧은 이름', '좁은 자리', shortName));
-    grid.appendChild(field('지도 배경', 'src/assets/maps/ 의 slug. 초상과 함께 못 든다', backgroundMap));
-    grid.appendChild(field('보스 초상', '에픽던전. 지도와 함께 못 든다', backgroundPortrait));
+    grid.appendChild(field('지도 배경', 'src/assets/maps/ 의 slug. 초상과 함께 못 든다', inline(backgroundMap, assetPickButton(backgroundMap, 'mapBackground'))));
+    grid.appendChild(field('보스 초상', '에픽던전. 지도와 함께 못 든다', inline(backgroundPortrait, assetPickButton(backgroundPortrait, 'bossPortrait'))));
     grid.appendChild(field('참고 태그', '갈래의 태그를 이 줄만 덮는다', countTag));
     grid.appendChild(field('종류', '카운트형은 상한으로, 퀘스트형은 상태로 완료를 본다', type));
     grid.appendChild(field('상한', '수동 모드 기본값', maxCount));

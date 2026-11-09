@@ -8,7 +8,7 @@ import { Test } from '@nestjs/testing'
 import { registerImageBody } from '../../common/image-body'
 import { AssetStore } from '../assets/asset-store'
 import { AssetNotFound } from '../assets/asset-refs'
-import { AssetsRepository } from '../assets/assets.repository'
+import { AssetInUse, AssetsRepository } from '../assets/assets.repository'
 import { ImageCropsRepository } from '../assets/image-crops.repository'
 import { AdminAssetsController } from './admin-assets.controller'
 
@@ -20,7 +20,13 @@ const PNG = Buffer.concat([
 
 describe('AdminAssetsController', () => {
   let app: NestFastifyApplication
-  const assets = { section: jest.fn(), put: jest.fn() }
+  const assets = {
+    section: jest.fn(),
+    put: jest.fn(),
+    adminRows: jest.fn(),
+    rename: jest.fn(),
+    remove: jest.fn(),
+  }
   const crops = { section: jest.fn(), put: jest.fn(), remove: jest.fn() }
   const store = { write: jest.fn() }
 
@@ -137,5 +143,55 @@ describe('AdminAssetsController', () => {
     })
     expect(res.statusCode).toBe(400)
     expect(res.json()).toMatchObject({ message: '그림 표에 없는 그림이다: nope' })
+  })
+
+  it('GET /admin/assets/list 는 분류 트리 · 그림 줄 · 크롭이다', async () => {
+    assets.section.mockResolvedValue({ updatedAt: '2026-11-09T00:00:00.000Z', files: [] })
+    assets.adminRows.mockResolvedValue([{ id: 'a', label: '벨로나' }])
+    crops.section.mockResolvedValue({ updatedAt: null, crops: [] })
+    const body = (await app.inject({ method: 'GET', url: '/admin/assets/list' })).json<{
+      updatedAt: string
+      rows: unknown[]
+      crops: unknown[]
+      categories: { key: string }[]
+    }>()
+    expect(body.updatedAt).toBe('2026-11-09T00:00:00.000Z')
+    expect(body.rows).toEqual([{ id: 'a', label: '벨로나' }])
+    expect(body.crops).toEqual([])
+    expect(body.categories.map((k) => k.key)).toContain('accessory')
+  })
+
+  it('PUT /admin/assets/:id/name 은 이름을 적거나 비우고, 모르는 그림은 404 다', async () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    assets.rename.mockResolvedValue(true)
+    const put = (name: string | null) =>
+      app.inject({ method: 'PUT', url: `/admin/assets/${id}/name`, payload: { name } })
+    expect((await put('  벨로나 초상 ')).statusCode).toBe(204)
+    expect(assets.rename).toHaveBeenLastCalledWith(id, '벨로나 초상')
+    expect((await put('')).statusCode).toBe(204)
+    expect(assets.rename).toHaveBeenLastCalledWith(id, null)
+    assets.rename.mockResolvedValue(false)
+    expect((await put('x')).statusCode).toBe(404)
+  })
+
+  it('DELETE /admin/assets/:id 는 쓰는 곳이 있으면 409 로 그 목록을 알리고, 모르는 그림은 404 다', async () => {
+    const id = '11111111-1111-4111-8111-111111111111'
+    assets.remove.mockResolvedValue(true)
+    expect((await app.inject({ method: 'DELETE', url: `/admin/assets/${id}` })).statusCode).toBe(
+      204,
+    )
+    assets.remove.mockRejectedValue(
+      new AssetInUse([{ kind: '아이템', name: '그린 펜던트', itemCategory: 'pendant' }]),
+    )
+    const used = await app.inject({ method: 'DELETE', url: `/admin/assets/${id}` })
+    expect(used.statusCode).toBe(409)
+    expect(used.json<{ message: string }>().message).toContain('아이템 그린 펜던트')
+    assets.remove.mockResolvedValue(false)
+    expect((await app.inject({ method: 'DELETE', url: `/admin/assets/${id}` })).statusCode).toBe(
+      404,
+    )
+    expect(
+      (await app.inject({ method: 'DELETE', url: '/admin/assets/not-a-uuid' })).statusCode,
+    ).toBe(400)
   })
 })

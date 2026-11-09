@@ -95,7 +95,9 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   관리 화면 API 는 지금처럼 파일 이름 · slug 글자를 받아 그림 id 로 푼다(없으면 400). 앱에 내는 게임 데이터는 그림 경로에서 그 글자를
   다시 만들어 예전과 같다. 처음 채울 때는 맥에서
   `npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://mapleroutine.store ~/Developments/maple-routine` 이다.
-  이미 있는 경로와 크롭은 건너뛴다. nginx 는 이렇게 둔다.
+  이미 있는 경로와 크롭은 건너뛴다. 분류 확인을 마친 아이템의 분류 · 그림 · 새 아이템은
+  `ADMIN_AUTH=아이디:비밀번호 node dist/cli/apply-item-catalog.js https://mapleroutine.store <폴더> --apply` 로 넣는다. 폴더에는
+  `plan.json` 과 `items/` 그림이 있다. `--apply` 를 빼면 할 일만 보인다. 이미 붙은 그림은 바꾸지 않는다. nginx 는 이렇게 둔다.
 
   ```
   location /assets/ {

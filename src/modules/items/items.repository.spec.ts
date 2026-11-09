@@ -157,7 +157,7 @@ describeDb('ItemsRepository', () => {
     await repo.update('reindeer_milk', {
       ...base,
       name: '순록의 우유!',
-      category: 'potion_elixir_coupon',
+      category: 'potion',
       valuable: false,
       level: null,
       isDrop: false,

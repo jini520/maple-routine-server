@@ -49,9 +49,10 @@ export const ITEM_CATEGORIES = [
     name: '소비',
     groups: [
       { key: 'boss_enhancement_material', name: '보스 강화 재료' },
-      { key: 'core_gemstone_symbol_coupon', name: '코어 젬스톤과 심볼 교환권' },
-      { key: 'cube_scroll_flame', name: '큐브와 주문서와 불꽃' },
-      { key: 'potion_elixir_coupon', name: '물약과 비약과 쿠폰' },
+      { key: 'core_gemstone', name: '코어 젬스톤' },
+      { key: 'symbol_coupon', name: '심볼 교환권' },
+      { key: 'scroll', name: '주문서' },
+      { key: 'potion', name: '물약' },
       { key: 'soul', name: '소울' },
       { key: 'box', name: '상자' },
       { key: 'hunt_loot', name: '사냥 전리품' },

@@ -239,6 +239,13 @@
       "when": 1794197606663,
       "tag": "0033_asset_names",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794234590130,
+      "tag": "0034_world_periods",
+      "breakpoints": true
     }
   ]
 }

@@ -56,6 +56,7 @@ const TABLES = [
   'app_images',
   'assets',
   'image_crops',
+  'world_periods',
   'worlds',
   'cashbook_entry_items',
   'cashbook_entries',

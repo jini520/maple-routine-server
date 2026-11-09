@@ -1,11 +1,17 @@
-import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  describeDb,
+  insertAssets,
+  insertItems,
+  openTestDb,
+  type TestDb,
+} from '../../database/test-db'
 import {
   ContentExists,
   DropBoxesRepository,
   DropBoxExists,
   NoDropItem,
 } from './drop-boxes.repository'
-import { DropItemExists, DropItemsRepository } from './drop-items.repository'
+import { DropItemsRepository } from './drop-items.repository'
 
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
 const SPEC_ASSETS = ['items/Restraint_Ring.png']
@@ -29,58 +35,25 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
   })
   afterAll(() => close())
 
-  // 소비 여부는 시세만 쓴다. 앱의 게임 데이터에 실리면 번들 사본까지 바뀐다.
-  it('소비 여부는 adminSection 에만 보이고 안 주면 장비, 고칠 때 안 주면 그대로다', async () => {
-    await items.create({
-      key: 'life_whetstone',
-      name: '생명의 연마석',
-      iconFile: null,
-      valuable: false,
-      worldBound: true,
-    })
-    await items.create({ key: 'dreamy_belt', name: '몽환의 벨트', iconFile: null, valuable: true })
-    await items.update('life_whetstone', { name: '생명의 연마석', iconFile: null, valuable: false })
-
-    expect((await items.section()).items.every((i) => !('worldBound' in i))).toBe(true)
-    expect((await items.adminSection()).items.map((i) => [i.key, i.worldBound])).toEqual([
-      ['dreamy_belt', false],
-      ['life_whetstone', true],
-    ])
-  })
-
-  it('아이템을 더하고 고치고 key 차례로 낸다. 같은 key 는 DropItemExists 다', async () => {
+  // 소비 여부는 시세만 쓴다. 앱의 게임 데이터에 실리면 기기 사본까지 바뀐다.
+  it('드롭 아이템만 key 차례로 내고, 소비 여부는 adminSection 에만 보인다', async () => {
     expect(await items.section()).toEqual({ updatedAt: null, items: [] })
-    await items.create({
-      key: 'restraint_ring',
-      name: '리스트레인트 링',
-      iconFile: 'Restraint_Ring.png',
-      valuable: false,
-    })
-    await items.create({
-      key: 'green_boss_ring_box',
-      name: '녹옥의 보스 반지 상자',
-      iconFile: null,
-      valuable: false,
-    })
-    await expect(
-      items.create({ key: 'restraint_ring', name: 'x', iconFile: null, valuable: false }),
-    ).rejects.toBeInstanceOf(DropItemExists)
-
-    expect(
-      await items.update('restraint_ring', {
-        name: '리스트레인트 링',
-        iconFile: 'Restraint_Ring.png',
-        valuable: true,
-      }),
-    ).toBe(true)
-    expect(await items.update('nobody', { name: 'x', iconFile: null, valuable: false })).toBe(false)
-
-    const section = await items.section()
-    expect(section.updatedAt).not.toBeNull()
-    expect(section.items).toEqual([
+    await insertItems(db, [
       {
-        key: 'green_boss_ring_box',
-        name: '녹옥의 보스 반지 상자',
+        key: 'restraint_ring',
+        name: '리스트레인트 링',
+        iconAssetId: assetIds['items/Restraint_Ring.png'],
+        valuable: true,
+        isDrop: true,
+      },
+      { key: 'life_whetstone', name: '생명의 연마석', worldBound: true, isDrop: true },
+      { key: 'absolab_bow', name: '앱솔랩스 슈팅보우', level: 160, isEquipment: true },
+    ])
+
+    expect((await items.section()).items).toEqual([
+      {
+        key: 'life_whetstone',
+        name: '생명의 연마석',
         iconFile: null,
         iconAssetId: null,
         valuable: false,
@@ -93,27 +66,18 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
         valuable: true,
       },
     ])
+    expect((await items.adminSection()).items.map((i) => [i.key, i.worldBound])).toEqual([
+      ['life_whetstone', true],
+      ['restraint_ring', false],
+    ])
   })
 
   it('상자는 아이템을 가리키고 내용물은 더한 차례로 서며 옮기고 뺄 수 있다', async () => {
-    await items.create({
-      key: 'green_boss_ring_box',
-      name: '녹옥의 보스 반지 상자',
-      iconFile: null,
-      valuable: false,
-    })
-    await items.create({
-      key: 'restraint_ring',
-      name: '리스트레인트 링',
-      iconFile: null,
-      valuable: false,
-    })
-    await items.create({
-      key: 'continuous_ring',
-      name: '컨티뉴어스 링',
-      iconFile: null,
-      valuable: false,
-    })
+    await insertItems(db, [
+      { key: 'green_boss_ring_box', name: '녹옥의 보스 반지 상자', isDrop: true },
+      { key: 'restraint_ring', name: '리스트레인트 링', isDrop: true },
+      { key: 'continuous_ring', name: '컨티뉴어스 링', isDrop: true },
+    ])
 
     await expect(boxes.create({ item: 'nobody', levelMin: 1, levelMax: 3 })).rejects.toBeInstanceOf(
       NoDropItem,
@@ -166,12 +130,9 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
   })
 
   it('레벨 범위가 한쪽만 있으면 DB 가 거절한다', async () => {
-    await items.create({
-      key: 'green_boss_ring_box',
-      name: '녹옥의 보스 반지 상자',
-      iconFile: null,
-      valuable: false,
-    })
+    await insertItems(db, [
+      { key: 'green_boss_ring_box', name: '녹옥의 보스 반지 상자', isDrop: true },
+    ])
     await expect(
       boxes.create({ item: 'green_boss_ring_box', levelMin: 1, levelMax: null }),
     ).rejects.toThrow()

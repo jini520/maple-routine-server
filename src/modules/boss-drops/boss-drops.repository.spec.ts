@@ -1,6 +1,11 @@
-import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  describeDb,
+  insertAssets,
+  insertItems,
+  openTestDb,
+  type TestDb,
+} from '../../database/test-db'
 import { BossesRepository } from '../bosses/bosses.repository'
-import { DropItemsRepository } from '../drop-items/drop-items.repository'
 import {
   BossDropsRepository,
   NoBossDifficulty,
@@ -35,20 +40,16 @@ describeDb('BossDropsRepository', () => {
         { difficulty: 'extreme', requiredLevel: 190, maxPartySize: null },
       ],
     })
-    const items = new DropItemsRepository(db)
-    await items.create({
-      key: 'loose_control_machine_mark',
-      name: '루즈 컨트롤 머신 마크',
-      iconFile: null,
-      valuable: true,
-    })
-    await items.create({
-      key: 'red_boss_ring_box',
-      name: '홍옥의 보스 반지 상자',
-      iconFile: null,
-      valuable: false,
-    })
-    await items.create({ key: 'spell_trace', name: '주문의 흔적', iconFile: null, valuable: false })
+    await insertItems(db, [
+      {
+        key: 'loose_control_machine_mark',
+        name: '루즈 컨트롤 머신 마크',
+        valuable: true,
+        isDrop: true,
+      },
+      { key: 'red_boss_ring_box', name: '홍옥의 보스 반지 상자', isDrop: true },
+      { key: 'spell_trace', name: '주문의 흔적', isDrop: true },
+    ])
   })
   afterAll(() => close())
 

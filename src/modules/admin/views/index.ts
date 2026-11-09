@@ -13,10 +13,13 @@ export const INDEX_HTML = layout(
   <a class="card" href="/admin/faqs"><h3>FAQ</h3><p>앱 화면의 물음표가 여는 시트. 묶음을 더하고 문항을 쓰고 고친다</p></a>
 </div>
 <h2 class="section">게임데이터</h2>
+<div class="links">
+  <a class="card" href="/admin/items"><h3>아이템</h3><p>드롭 아이템 · 강화 장비 · 사냥 전리품을 한 표에서. 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할을 고친다</p></a>
+  <a class="card" href="/admin/assets"><h3>그림</h3><p>앱이 받는 그림을 올리고 바꾸며, 보스 초상 · 지역 지도의 크롭을 고친다</p></a>
+</div>
 <h3 class="subsection">보스</h3>
 <div class="links">
   <a class="card" href="/admin/bosses"><h3>보스 목록</h3><p>보스와 난이도, 주간 한도 둘을 폼으로 고친다</p></a>
-  <a class="card" href="/admin/drop-items"><h3>드롭 아이템</h3><p>아이템 마스터 표. 이름 · 그림 · 고가를 고친다</p></a>
   <a class="card" href="/admin/drop-boxes"><h3>상자</h3><p>반지 상자 · 장신구 상자의 레벨 범위와 내용물</p></a>
   <a class="card" href="/admin/boss-drops"><h3>드롭 표</h3><p>보스 한 난이도의 보상 줄을 더하고 빼고 차례를 옮긴다</p></a>
   <a class="card" href="/admin/crystal-prices"><h3>결정석 가격</h3><p>패치마다 새 가격 줄을 열고 파티 인원 상한을 적는다</p></a>
@@ -35,9 +38,7 @@ export const INDEX_HTML = layout(
 <h3 class="subsection">기타</h3>
 <div class="links">
   <a class="card" href="/admin/worlds"><h3>월드</h3><p>새 챌린저스 시즌 월드를 더하고 챌린저스 · 이벤트를 켠다</p></a>
-  <a class="card" href="/admin/equipment-items"><h3>장비</h3><p>강화 비용을 매길 장비 표. 이름 · 착용 레벨을 고치고 새 장비를 더한다</p></a>
   <a class="card" href="/admin/hunting-grounds"><h3>사냥터</h3><p>사냥 계산기의 지역 · 사냥터 · 몬스터 레벨</p></a>
-  <a class="card" href="/admin/assets"><h3>그림</h3><p>앱이 받는 그림을 올리고 바꾸며, 보스 초상 · 지역 지도의 크롭을 고친다</p></a>
 </div>
 <h2 class="section">로그</h2>
 <div class="links">

@@ -124,20 +124,6 @@ const levelRange = <T extends { levelMin?: number | null; levelMax?: number | nu
   (b.levelMin == null || b.levelMin <= (b.levelMax ?? 0))
 const LEVEL_MESSAGE = '레벨 범위는 둘 다 있거나 둘 다 없고, min 이 max 를 안 넘는다'
 
-export const dropItemCreateBody = z.object({
-  key: snakeKey,
-  name: z.string().min(1).max(100),
-  iconFile: z.string().min(1).max(200).nullish(),
-  valuable: z.boolean().default(false),
-  worldBound: z.boolean().default(false),
-})
-export type DropItemCreateBody = z.infer<typeof dropItemCreateBody>
-// 고칠 때 기본값을 두면 이 칸을 안 보낸 요청이 소비 아이템을 장비로 되돌린다.
-export const dropItemUpdateBody = dropItemCreateBody
-  .omit({ key: true })
-  .extend({ worldBound: z.boolean().optional() })
-export type DropItemUpdateBody = z.infer<typeof dropItemUpdateBody>
-
 export const dropBoxCreateBody = z
   .object({
     item: snakeKey,
@@ -496,16 +482,7 @@ export type ContentCreateBody = z.infer<typeof contentCreateBody>
 export const contentUpdateBody = contentRules(contentBase.omit({ key: true, section: true }))
 export type ContentUpdateBody = z.infer<typeof contentUpdateBody>
 
-/* ── 장비 · 강화 비용 · MVP 등급 ── */
-
-export const equipmentItemCreateBody = z.object({
-  key: snakeKey,
-  name: z.string().min(1).max(100),
-  level: z.number().int().min(1).max(300).nullish(),
-})
-export type EquipmentItemCreateBody = z.infer<typeof equipmentItemCreateBody>
-export const equipmentItemUpdateBody = equipmentItemCreateBody.omit({ key: true })
-export type EquipmentItemUpdateBody = z.infer<typeof equipmentItemUpdateBody>
+/* ── 강화 비용 · MVP 등급 ── */
 
 /** 규칙 셋. 감정비용 무료 상한 · 감정비용 계수 · 파괴 방지 추가분(%). game_rules 의 줄 셋이다. */
 export const enhancementRulesBody = z.object({

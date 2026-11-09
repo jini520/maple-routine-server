@@ -59,11 +59,7 @@ import {
   DropBoxExists,
   NoDropItem as NoDropItemForBox,
 } from '../drop-items/drop-boxes.repository'
-import {
-  DropItemExists,
-  DropItemNameTaken,
-  DropItemsRepository,
-} from '../drop-items/drop-items.repository'
+import { DropItemsRepository } from '../drop-items/drop-items.repository'
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
@@ -104,12 +100,6 @@ import {
   type PotentialGrade,
   type PotentialResetType,
 } from '../enhancement-costs/enhancement-costs.repository'
-import {
-  DropItemKeyMismatch,
-  EquipmentItemExists,
-  EquipmentItemsRepository,
-  EquipmentNameTaken,
-} from '../equipment-items/equipment-items.repository'
 import {
   GroundExists,
   GroundKeyPrefix,
@@ -156,10 +146,6 @@ import {
   dropBoxCreateBody,
   type DropBoxLevelsBody,
   dropBoxLevelsBody,
-  type DropItemCreateBody,
-  dropItemCreateBody,
-  type DropItemUpdateBody,
-  dropItemUpdateBody,
   type DropMarketItemQuery,
   type DropMarketQuery,
   type DropPriceQuery,
@@ -243,10 +229,6 @@ import {
   costBody,
   type EnhancementRulesBody,
   enhancementRulesBody,
-  type EquipmentItemCreateBody,
-  equipmentItemCreateBody,
-  type EquipmentItemUpdateBody,
-  equipmentItemUpdateBody,
   fromStarParam,
   minLevelParam,
   mvpGradeParam,
@@ -291,7 +273,6 @@ import { BOSSES_HTML } from './views/bosses'
 import { CASHBOOK_CATEGORIES_HTML } from './views/cashbook-categories'
 import { CRYSTAL_PRICES_HTML } from './views/crystal-prices'
 import { DROP_BOXES_HTML } from './views/drop-boxes'
-import { DROP_ITEMS_HTML } from './views/drop-items'
 import { DROP_MARKET_HTML } from './views/drop-market'
 import { DROP_MARKET_ITEM_HTML } from './views/drop-market-item'
 import { DROP_PRICES_HTML } from './views/drop-prices'
@@ -302,7 +283,6 @@ import { SPEND_CATALOG_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
 import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
-import { EQUIPMENT_ITEMS_HTML } from './views/equipment-items'
 import { FAQ_SHEET_HTML, FAQS_HTML } from './views/faqs'
 import { HEXA_MATRIX_HTML } from './views/hexa-matrix'
 import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
@@ -338,7 +318,6 @@ export class AdminController {
     private readonly spend: SpendCatalogRepository,
     private readonly symbolCosts: SymbolCostsRepository,
     private readonly contents: ContentsRepository,
-    private readonly equipment: EquipmentItemsRepository,
     private readonly enhancement: EnhancementCostsRepository,
     private readonly mvp: MvpGradesRepository,
     private readonly hunting: HuntingGroundsRepository,
@@ -1446,51 +1425,13 @@ export class AdminController {
     if (!found) throw new NotFoundException(`모르는 스탯이다: ${key}`)
   }
 
-  /* ── 드롭 아이템 ── */
+  /* ── 드롭 아이템 목록 ── */
 
-  @Get('drop-items')
-  @Header('content-type', 'text/html; charset=utf-8')
-  @Header('cache-control', 'no-store')
-  dropItemsPage(): string {
-    return DROP_ITEMS_HTML
-  }
-
-  /** 화면이 부른다. 앱이 받는 칸에 월드 간 거래 불가를 더했다. */
+  /** 드롭 표 화면이 아이템을 고를 때 부른다. 앱이 받는 칸에 월드 간 거래 불가를 더했다. 아이템은 아이템 화면이 고친다. */
   @Get('drop-items/rows')
   @Header('cache-control', 'no-store')
   dropItemRows() {
     return this.items.adminSection()
-  }
-
-  /** 아이템을 더한다. 같은 key 와 이름이 같은 다른 key 의 아이템은 409 다. */
-  @Post('drop-items')
-  @HttpCode(201)
-  async createDropItem(@Body(new ZodValidationPipe(dropItemCreateBody)) body: DropItemCreateBody) {
-    await this.requireAssets([['itemIcon', body.iconFile]])
-    try {
-      return await this.items.create({ ...body, iconFile: body.iconFile ?? null })
-    } catch (error) {
-      if (error instanceof DropItemExists)
-        throw new ConflictException(`이미 있는 아이템이다: ${body.key}`)
-      throw nameTakenError(error)
-    }
-  }
-
-  /** 이름 · 그림 · 고가 · 월드 간 거래 불가를 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 404 다. */
-  @Put('drop-items/:key')
-  @HttpCode(204)
-  async updateDropItem(
-    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
-    @Body(new ZodValidationPipe(dropItemUpdateBody)) body: DropItemUpdateBody,
-  ): Promise<void> {
-    await this.requireAssets([['itemIcon', body.iconFile]])
-    let found: boolean
-    try {
-      found = await this.items.update(key, { ...body, iconFile: body.iconFile ?? null })
-    } catch (error) {
-      throw nameTakenError(error)
-    }
-    if (!found) throw new NotFoundException(`모르는 아이템이다: ${key}`)
   }
 
   /* ── 상자 ── */
@@ -1834,53 +1775,6 @@ export class AdminController {
       throw new NotFoundException(`모르는 컨텐츠다: ${key}`)
   }
 
-  /* ── 장비 ── */
-
-  @Get('equipment-items')
-  @Header('content-type', 'text/html; charset=utf-8')
-  @Header('cache-control', 'no-store')
-  equipmentItemsPage(): string {
-    return EQUIPMENT_ITEMS_HTML
-  }
-
-  @Get('equipment-items/rows')
-  @Header('cache-control', 'no-store')
-  equipmentItemRows() {
-    return this.equipment.section()
-  }
-
-  /** 장비를 더한다. 같은 key · 공백만 다른 이름 · 드롭 표와 어긋난 key 는 409 다. */
-  @Post('equipment-items')
-  @HttpCode(201)
-  async createEquipmentItem(
-    @Body(new ZodValidationPipe(equipmentItemCreateBody)) body: EquipmentItemCreateBody,
-  ) {
-    try {
-      return await this.equipment.create({
-        key: body.key,
-        name: body.name,
-        level: body.level ?? null,
-      })
-    } catch (error) {
-      throw equipmentError(error, body.key)
-    }
-  }
-
-  /** 이름 · 레벨을 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 404 다. */
-  @Put('equipment-items/:key')
-  @HttpCode(204)
-  async updateEquipmentItem(
-    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
-    @Body(new ZodValidationPipe(equipmentItemUpdateBody)) body: EquipmentItemUpdateBody,
-  ): Promise<void> {
-    try {
-      if (!(await this.equipment.update(key, { name: body.name, level: body.level ?? null })))
-        throw new NotFoundException(`모르는 장비다: ${key}`)
-    } catch (error) {
-      throw equipmentError(error, key)
-    }
-  }
-
   /* ── 강화 비용 ── */
 
   @Get('enhancement-costs')
@@ -2126,19 +2020,9 @@ function huntingGroundError(error: unknown, key: string): unknown {
   return error
 }
 
-/** 장비 쓰기의 실패를 HTTP 로 옮긴다. 같은 key · 겹치는 이름 · 드롭 표와 어긋난 key 는 409 다. */
-function equipmentError(error: unknown, key: string): unknown {
-  if (error instanceof EquipmentItemExists) return new ConflictException(`이미 있는 장비다: ${key}`)
-  if (error instanceof EquipmentNameTaken)
-    return new ConflictException(`공백만 다른 이름이 이미 있다: ${error.message}`)
-  if (error instanceof DropItemKeyMismatch)
-    return new ConflictException(`이름이 같은 아이템이 다른 key 로 있다: ${error.message}`)
-  return error
-}
-
-/** 드롭 아이템 · 사냥 전리품 쓰기에서 이름이 같은 다른 key 의 아이템을 409 로 옮긴다. 한 물건이 두 key 로 서면 기록이 갈린다. */
+/** 사냥 전리품 쓰기에서 이름이 같은 다른 key 의 아이템을 409 로 옮긴다. 한 물건이 두 key 로 서면 기록이 갈린다. */
 function nameTakenError(error: unknown): unknown {
-  if (error instanceof DropItemNameTaken || error instanceof HuntLootNameTaken)
+  if (error instanceof HuntLootNameTaken)
     return new ConflictException(`이름이 같은 아이템이 다른 key 로 있다: ${error.message}`)
   return error
 }

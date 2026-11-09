@@ -350,6 +350,8 @@ export const assets = pgTable('assets', {
   /** 픽셀. 앱이 크롭 · 연출 배치를 원래 크기로 계산한다. 내려받은 파일은 그 자리에서 크기를 모른다. */
   width: integer('width').notNull(),
   height: integer('height').notNull(),
+  /** 관리 화면에서 보이는 이름. 비면 그 그림을 쓰는 곳의 이름을 보인다. 앱에는 내지 않는다. */
+  name: text('name'),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 

@@ -232,6 +232,13 @@
       "when": 1794189044046,
       "tag": "0032_item_names_kms",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794197606663,
+      "tag": "0033_asset_names",
+      "breakpoints": true
     }
   ]
 }

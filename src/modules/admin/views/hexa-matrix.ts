@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -32,7 +33,7 @@ export const HEXA_MATRIX_HTML = layout(
     <div class="field"><label for="k-name">이름</label><input id="k-name" placeholder="3rd 스킬 코어"></div>
     <div class="field"><label for="k-api">API 타입 <small>hexa_core_type</small></label><input id="k-api" placeholder="스킬 코어"></div>
     <div class="field w-sm"><label for="k-max">만렙</label><input id="k-max" type="number" min="1" value="30"></div>
-    <div class="field"><label for="k-icon">그림 파일 <small>src/assets/items/</small></label><input id="k-icon" class="mono" placeholder="hexa_core_skill.webp"></div>
+    <div class="field"><label for="k-icon">그림 파일 <small>src/assets/items/</small></label><input id="k-icon" class="mono" placeholder="hexa_core_skill.webp" data-asset="itemIcon"></div>
     <label class="check"><input id="k-default" type="checkbox"> 기본 종류</label>
     <button id="k-add" class="btn" type="button">종류 추가</button>
   </div></div>
@@ -56,7 +57,7 @@ export const HEXA_MATRIX_HTML = layout(
     <div class="field"><label for="j-job">직업 <small>character_class</small></label><input id="j-job" list="j-jobs" placeholder="아크메이지(불,독)"><datalist id="j-jobs"></datalist></div>
     <div class="field"><label for="j-name">코어 이름</label><input id="j-name" placeholder="인페르날 웨이브"></div>
     <div class="field"><label for="j-api">API 타입</label><input id="j-api" list="api-types" placeholder="스킬 코어"><datalist id="api-types"></datalist></div>
-    <div class="field"><label for="j-icon">그림 파일 <small>src/assets/skills/</small></label><input id="j-icon" class="mono" placeholder="KFPDKDPEMA.webp"></div>
+    <div class="field"><label for="j-icon">그림 파일 <small>src/assets/skills/</small></label><input id="j-icon" class="mono" placeholder="KFPDKDPEMA.webp" data-asset="skillIcon"></div>
     <button id="j-add" class="btn" type="button">코어 추가</button>
   </div></div>
   <div class="table"><table><thead><tr><th>#</th><th>코어 이름</th><th>API 타입</th><th>그림 파일</th><th></th></tr></thead><tbody id="cores"></tbody></table></div>
@@ -72,6 +73,7 @@ export const HEXA_MATRIX_HTML = layout(
     <button id="s-add" class="btn" type="button">스탯 추가</button>
   </div></div>
 </section>
+${ASSET_PICKER}
 <script>
   var state = { data: null, openKind: null, editingCore: null, editingStat: null, job: null };
   function numOrNull(v) { v = (v || '').trim(); return v === '' ? null : Number(v); }
@@ -101,7 +103,7 @@ export const HEXA_MATRIX_HTML = layout(
       var r = await call('PUT', '/admin/hexa-matrix/kinds/' + k.key, { name: name.value.trim(), apiType: api.value.trim(), isDefault: def.checked, maxLevel: Number(max.value), iconFile: icon.value.trim() });
       after(r, k.key + ' 를 적었다', '못 적었다'); load();
     });
-    var meta = el('div', undefined, 'row'); meta.appendChild(field('이름', undefined, name)); meta.appendChild(field('API 타입', undefined, api)); meta.appendChild(field('만렙', '비용 줄 아래로는 못 내린다', max)); meta.appendChild(field('그림 파일', undefined, icon)); meta.appendChild(defLabel); meta.appendChild(saveMeta); box.appendChild(meta);
+    var meta = el('div', undefined, 'row'); meta.appendChild(field('이름', undefined, name)); meta.appendChild(field('API 타입', undefined, api)); meta.appendChild(field('만렙', '비용 줄 아래로는 못 내린다', max)); meta.appendChild(field('그림 파일', undefined, inline(icon, assetPickButton(icon, 'itemIcon')))); meta.appendChild(defLabel); meta.appendChild(saveMeta); box.appendChild(meta);
 
     var current = {}; costsOf(k.key).forEach(function (c) { current[c.level] = c; });
     var inputs = []; var tbody = el('tbody');
@@ -154,7 +156,7 @@ export const HEXA_MATRIX_HTML = layout(
     }
     var name = input('text'); name.value = c.name; var api = input('text'); api.value = c.apiType; api.setAttribute('list', 'api-types');
     var icon = input('text', 'mono'); icon.value = c.iconFile;
-    cell(tr, name); cell(tr, api); cell(tr, icon);
+    cell(tr, name); cell(tr, api); cell(tr, inline(icon, assetPickButton(icon, 'skillIcon')));
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/hexa-matrix/job-cores/' + c.id, { name: name.value.trim(), apiType: api.value.trim(), iconFile: icon.value.trim() });
@@ -256,5 +258,6 @@ export const HEXA_MATRIX_HTML = layout(
     render();
   }
   load();
+  attachAssetPickers();
 </script>`,
 )

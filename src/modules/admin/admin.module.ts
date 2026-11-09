@@ -25,6 +25,8 @@ import { UsageEventsModule } from '../usage-events/usage-events.module'
 import { UsersModule } from '../users/users.module'
 import { WorldsModule } from '../worlds/worlds.module'
 import { AdminAssetsController } from './admin-assets.controller'
+import { AppImagesModule } from '../app-images/app-images.module'
+import { AdminAppImagesController } from './admin-app-images.controller'
 import { AdminItemsController } from './admin-items.controller'
 import { AdminController } from './admin.controller'
 import { UsageDashboardService } from './usage-dashboard.service'
@@ -54,10 +56,16 @@ import { UsageDashboardService } from './usage-dashboard.service'
     HuntingGroundsModule,
     AssetsModule,
     ItemsModule,
+    AppImagesModule,
     UsageEventsModule,
     UsersModule,
   ],
-  controllers: [AdminController, AdminAssetsController, AdminItemsController],
+  controllers: [
+    AdminController,
+    AdminAssetsController,
+    AdminItemsController,
+    AdminAppImagesController,
+  ],
   providers: [UsageDashboardService],
 })
 export class AdminModule {}

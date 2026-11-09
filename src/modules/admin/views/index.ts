@@ -15,7 +15,8 @@ export const INDEX_HTML = layout(
 <h2 class="section">게임데이터</h2>
 <div class="links">
   <a class="card" href="/admin/items"><h3>아이템</h3><p>드롭 아이템 · 강화 장비 · 사냥 전리품을 한 표에서. 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할을 고친다</p></a>
-  <a class="card" href="/admin/assets"><h3>그림</h3><p>앱이 받는 그림을 올리고 바꾸며, 보스 초상 · 지역 지도의 크롭을 고친다</p></a>
+  <a class="card" href="/admin/assets"><h3>그림</h3><p>앱이 받는 그림을 분류로 훑고 올리고 바꾸며, 이름을 붙이고 안 쓰는 그림을 지운다. 보스 초상 · 지역 지도의 크롭도 고친다</p></a>
+  <a class="card" href="/admin/app-images"><h3>앱 그림</h3><p>앱 코드가 key 로 찾는 그림(메소 주머니 · 포스 · 드롭 연출 프레임 등)을 바꾼다</p></a>
 </div>
 <h3 class="subsection">보스</h3>
 <div class="links">

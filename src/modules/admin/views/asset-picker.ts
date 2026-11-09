@@ -1,11 +1,16 @@
+import { ASSET_REFS } from '../../assets/asset-paths'
+
 /**
- * 그림 고르개. 그림 칸에서 글자 대신 그림을 눌러 고르고, 고른 그림의 id 를 돌려준다(앱 저장소 ADR-187 결정 6).
+ * 그림 고르개. 그림 칸에서 글자 대신 그림을 눌러 고르고, 고른 그림을 돌려준다(앱 저장소 ADR-187 결정 6).
  *
- * 페이지 본문에 이 조각을 넣으면 `openAssetPicker(options)` 가 생긴다. 그림 목록은 `/admin/assets/rows` 에서 읽고, 새 그림은
- * 그 칸이 받는 폴더에 올린 뒤 바로 고른다. 미리보기는 nginx 가 내는 `/assets/<해시>.<확장자>` 다.
+ * 페이지 본문에 이 조각을 넣으면 `openAssetPicker(options)` 와 `assetPickButton(input, rule)` 이 생긴다. 그림 목록은
+ * `/admin/assets/list` 에서 읽어 보이는 이름으로 보이고, 새 그림은 그 칸이 받는 폴더에 올린 뒤 바로 고른다. 미리보기는 nginx 가
+ * 내는 `/assets/<해시>.<확장자>` 다. 글자 칸 옆 버튼은 고른 그림을 그 칸이 받는 글자(확장자를 뗀 이름 · 파일 이름)로 넣는다.
+ * 관리 API 는 지금처럼 그 글자를 그림 id 로 푼다. 규칙은 서버 ASSET_REFS 를 그대로 싣는다.
  *
  * @example
  * openAssetPicker({ dirs: ['items', 'items/rings'], uploadDir: 'items', current: it.icon && it.icon.id, onPick: function (file) { ... } })
+ * cell(tr, inline(emblem, assetPickButton(emblem, 'worldEmblem')))
  */
 export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-labelledby="picker-title">
   <header>
@@ -13,7 +18,7 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
     <button type="button" class="btn ghost sm" id="picker-close">닫기</button>
   </header>
   <div class="picker-bar">
-    <input id="picker-q" placeholder="파일 이름으로 찾는다" class="w-md">
+    <input id="picker-q" placeholder="이름 · 파일 이름으로 찾는다" class="w-md">
     <span class="grow"></span>
     <button type="button" class="btn ghost sm" id="picker-none">그림 없음</button>
   </div>
@@ -37,16 +42,36 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
   .picker-grid button:hover { background: var(--fill) }
   .picker-grid button[aria-selected="true"] { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent-ink) }
   .picker-grid img { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated }
+  .picker-grid button b { font: 500 12px/1.3 var(--font); color: var(--text) }
+  .picker-grid button[aria-selected="true"] b { color: var(--accent-ink) }
   .picker footer { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 14px 20px; background: var(--surface-2) }
 </style>
 <script>
   var pickerState = { options: null, files: [] };
+  var ASSET_RULES = ${JSON.stringify(ASSET_REFS)};
+  function assetValueOf(rule, path) { var base = path.slice(path.lastIndexOf('/') + 1); return ASSET_RULES[rule].key === 'fileName' ? base : base.slice(0, base.lastIndexOf('.')); }
+  /** 글자 칸 옆에 붙일 고르기 버튼. 고르면 칸 값을 바꾸고 input 사건을 낸다. 지금 값과 같은 그림이 골라져 열린다. */
+  function assetPickButton(field, rule) {
+    var b = button('고르기', 'btn ghost sm');
+    b.addEventListener('click', function () {
+      var r = ASSET_RULES[rule];
+      openAssetPicker({ dirs: r.dirs, uploadDir: r.dirs[0], isCurrent: function (f) { return field.value.trim() !== '' && assetValueOf(rule, f.path) === field.value.trim(); }, onPick: function (f) { field.value = f ? assetValueOf(rule, f.path) : ''; field.dispatchEvent(new Event('input', { bubbles: true })); } });
+    });
+    return b;
+  }
+  /** data-asset 이 붙은 글자 칸마다 고르기 버튼을 붙인다. 화면의 고정 HTML 칸(새로 넣기 줄)에 쓴다. */
+  function attachAssetPickers() {
+    document.querySelectorAll('input[data-asset]').forEach(function (i) {
+      if (i.dataset.assetBound) return; i.dataset.assetBound = '1';
+      var row = el('div', undefined, 'inline'); i.parentNode.insertBefore(row, i); row.appendChild(i); row.appendChild(assetPickButton(i, i.dataset.asset));
+    });
+  }
   function pickerFileUrl(f) { return '/assets/' + f.file; }
   function pickerBase(path) { return path.slice(path.lastIndexOf('/') + 1); }
   async function pickerLoad() {
-    var r = await call('GET', '/admin/assets/rows');
+    var r = await call('GET', '/admin/assets/list');
     if (!r.ok) { show(fail('그림 목록을 못 읽었다', r), true); return; }
-    pickerState.files = r.json.assets.files;
+    pickerState.files = r.json.rows;
   }
   function pickerRender() {
     var o = pickerState.options; if (o === null) return;
@@ -54,12 +79,12 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
     var grid = document.getElementById('picker-grid'); grid.innerHTML = '';
     var shown = pickerState.files.filter(function (f) {
       var dir = f.path.slice(0, f.path.lastIndexOf('/'));
-      return o.dirs.indexOf(dir) >= 0 && (!q || f.path.toLowerCase().indexOf(q) >= 0);
+      return o.dirs.indexOf(dir) >= 0 && (!q || f.path.toLowerCase().indexOf(q) >= 0 || f.label.toLowerCase().indexOf(q) >= 0);
     });
     shown.forEach(function (f) {
-      var b = button(''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(f.id === o.current)); b.title = f.path;
+      var b = button(''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(o.isCurrent ? o.isCurrent(f) : f.id === o.current)); b.title = f.path;
       var img = el('img'); img.src = pickerFileUrl(f); img.alt = ''; img.loading = 'lazy';
-      b.appendChild(img); b.appendChild(span(pickerBase(f.path)));
+      b.appendChild(img); b.appendChild(el('b', f.label)); b.appendChild(span(pickerBase(f.path)));
       b.addEventListener('click', function () { pickerDone(f); });
       grid.appendChild(b);
     });

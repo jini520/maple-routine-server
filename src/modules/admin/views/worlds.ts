@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -28,7 +29,7 @@ export const WORLDS_HTML = layout(
   <div class="body"><div class="row">
     <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="challengers_5"></div>
     <div class="field"><label for="n-name">이름 <small>API world_name 표기</small></label><input id="n-name" placeholder="챌린저스5"></div>
-    <div class="field"><label for="n-emblem">엠블럼 <small>src/assets/worlds/ 의 파일 basename</small></label><input id="n-emblem" class="mono" placeholder="challengers"></div>
+    <div class="field"><label for="n-emblem">엠블럼 <small>src/assets/worlds/ 의 파일 basename</small></label><input id="n-emblem" class="mono" placeholder="challengers" data-asset="worldEmblem"></div>
     <div class="field"><label for="n-price-group">거래권 <small>general · helios_eos, 비우면 시세 제외</small></label><input id="n-price-group" class="mono" value="general"></div>
     <label class="check"><input id="n-challengers" type="checkbox"> 챌린저스</label>
     <label class="check"><input id="n-event" type="checkbox"> 이벤트 월드</label>
@@ -39,6 +40,7 @@ export const WORLDS_HTML = layout(
   <header><h2>월드</h2><p id="count"></p></header>
   <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>엠블럼</th><th>챌린저스</th><th>이벤트</th><th>거래권</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var state = { worlds: [], editing: null };
 
@@ -59,7 +61,7 @@ export const WORLDS_HTML = layout(
     var name = input('text'); name.value = w.name; var emblem = input('text', 'mono'); emblem.value = w.emblem || '';
     var challengers = input('checkbox'); challengers.checked = w.challengers; var event = input('checkbox'); event.checked = w.event;
     var priceGroup = input('text', 'mono'); priceGroup.value = w.priceGroup || '';
-    cell(tr, name); cell(tr, emblem); cell(tr, challengers); cell(tr, event); cell(tr, priceGroup);
+    cell(tr, name); cell(tr, inline(emblem, assetPickButton(emblem, 'worldEmblem'))); cell(tr, challengers); cell(tr, event); cell(tr, priceGroup);
     var save = button('저장', 'btn sm'); var close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/worlds/' + w.key, { name: name.value.trim(), emblem: orNull(emblem.value), challengers: challengers.checked, event: event.checked, priceGroup: orNull(priceGroup.value) });
@@ -95,5 +97,6 @@ export const WORLDS_HTML = layout(
     render();
   }
   load();
+  attachAssetPickers();
 </script>`,
 )

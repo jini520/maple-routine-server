@@ -11,10 +11,13 @@ export const ITEM_CATEGORIES = [
     key: 'equipment',
     name: '장비',
     groups: [
+      { key: 'rootabyss_weapon', name: '루타비스 무기' },
+      { key: 'rootabyss_armor', name: '루타비스 방어구' },
       { key: 'absolab_weapon', name: '앱솔랩스 무기' },
       { key: 'absolab_armor', name: '앱솔랩스 방어구' },
       { key: 'arcane_weapon', name: '아케인셰이드 무기' },
       { key: 'arcane_armor', name: '아케인셰이드 방어구' },
+      { key: 'eternel_armor', name: '에테르넬 방어구' },
       { key: 'armor_weapon_set', name: '방어구와 무기 세트' },
       { key: 'other_armor', name: '기타 방어구' },
       { key: 'secondary_weapon', name: '보조무기' },

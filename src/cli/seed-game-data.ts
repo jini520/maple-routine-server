@@ -26,6 +26,7 @@ import {
   CONTENT_CATEGORIES,
   CONTENT_SECTIONS,
   CONTENT_TYPES,
+  regionIconOf,
   SHARE_SCOPES,
 } from '../modules/contents/contents.repository'
 import {
@@ -49,6 +50,7 @@ import {
 } from '../modules/spend-catalog/spend-catalog.repository'
 
 const {
+  appImages,
   bossCrystalPrices,
   bossDifficulties,
   bossDropRewards,
@@ -439,6 +441,8 @@ const mvpGradesSeed = z.object({
         name: z.string().min(1),
         auctionFeePercent: z.number().int().min(0).max(100),
         starforceDiscountPercent: z.number().int().min(0).max(100),
+        /** 명패 그림 경로. 일반 등급은 명패가 없다 */
+        plate: z.string().min(1).nullable(),
       }),
     )
     .min(1),
@@ -561,6 +565,15 @@ export function parseFaqsSeed(value: unknown): FaqsSeed {
   return faqsSeed.parse(value)
 }
 
+/** 붙일 게임 데이터 표가 없는 앱 그림. key 는 앱 코드가 그림을 찾는 이름이고 path 는 그림 경로다. */
+const appImagesSeed = z.object({
+  images: z.array(z.object({ key: z.string().min(1), path: z.string().min(1) })).min(1),
+})
+export type AppImagesSeed = z.infer<typeof appImagesSeed>
+export function parseAppImagesSeed(value: unknown): AppImagesSeed {
+  return appImagesSeed.parse(value)
+}
+
 export interface GameDataSeeds {
   bosses?: BossesSeed
   dropItems?: DropItemsSeed
@@ -579,6 +592,7 @@ export interface GameDataSeeds {
   huntLoot?: HuntLootSeed
   hexaMatrix?: HexaMatrixSeed
   faqs?: FaqsSeed
+  appImages?: AppImagesSeed
 }
 
 export type SeedOutcome = 'seeded' | 'skipped'
@@ -613,6 +627,7 @@ export async function seedGameData(
   if (seeds.huntLoot !== undefined) result.huntLoot = await seedHuntLoot(db, seeds.huntLoot)
   if (seeds.hexaMatrix !== undefined) result.hexaMatrix = await seedHexaMatrix(db, seeds.hexaMatrix)
   if (seeds.faqs !== undefined) result.faqs = await seedFaqs(db, seeds.faqs)
+  if (seeds.appImages !== undefined) result.appImages = await seedAppImages(db, seeds.appImages)
   return result
 }
 
@@ -654,7 +669,8 @@ async function isEmpty(
     | typeof huntLootItems
     | typeof hexaCoreKinds
     | typeof faqSheets
-    | typeof huntingRegions,
+    | typeof huntingRegions
+    | typeof appImages,
 ): Promise<boolean> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(table)
   return (row?.n ?? 0) === 0
@@ -991,19 +1007,20 @@ async function seedContents(db: Db, seed: ContentsSeed): Promise<SeedOutcome> {
     const categoryIds = new Map(categoryRows.map((r) => [r.key, r.id]))
     const counters = new Map<string, number>()
     const asset = await assetResolver(tx)
-    await tx.insert(contents).values(
-      seed.contents.map(({ category, backgroundMap, backgroundPortrait, ...c }) => {
-        const sortOrder = counters.get(c.section) ?? 0
-        counters.set(c.section, sortOrder + 1)
-        return {
-          ...c,
-          backgroundMapAssetId: asset.optional('mapBackground', backgroundMap),
-          backgroundPortraitAssetId: asset.optional('bossPortrait', backgroundPortrait),
-          categoryId: must(categoryIds, category, '갈래'),
-          sortOrder,
-        }
-      }),
-    )
+    const rows = []
+    for (const { category, backgroundMap, backgroundPortrait, ...c } of seed.contents) {
+      const sortOrder = counters.get(c.section) ?? 0
+      counters.set(c.section, sortOrder + 1)
+      rows.push({
+        ...c,
+        backgroundMapAssetId: asset.optional('mapBackground', backgroundMap),
+        backgroundPortraitAssetId: asset.optional('bossPortrait', backgroundPortrait),
+        regionIconAssetId: await regionIconOf(tx, backgroundMap),
+        categoryId: must(categoryIds, category, '갈래'),
+        sortOrder,
+      })
+    }
+    await tx.insert(contents).values(rows)
     await touchSection(tx, 'contents')
   })
   return 'seeded'
@@ -1064,8 +1081,28 @@ async function seedMvpGrades(db: Db, seed: MvpGradesSeed): Promise<SeedOutcome> 
   if (missing.length > 0)
     throw new Error(`씨앗의 MVP 등급이 ENUM 을 다 안 든다: ${missing.join(', ')}`)
   await db.transaction(async (tx) => {
-    await tx.insert(mvpGrades).values(seed.grades.map((g, sortOrder) => ({ ...g, sortOrder })))
+    const asset = await assetResolver(tx)
+    await tx.insert(mvpGrades).values(
+      seed.grades.map(({ plate, ...g }, sortOrder) => ({
+        ...g,
+        plateAssetId: plate === null ? null : asset.path(plate),
+        sortOrder,
+      })),
+    )
     await touchSection(tx, 'mvpGrades')
+  })
+  return 'seeded'
+}
+
+/** 표가 비어 있을 때만 채운다. 경로가 그림 표에 없으면 던지고 아무것도 안 넣는다. */
+async function seedAppImages(db: Db, seed: AppImagesSeed): Promise<SeedOutcome> {
+  if (!(await isEmpty(db, appImages))) return 'skipped'
+  await db.transaction(async (tx) => {
+    const asset = await assetResolver(tx)
+    await tx
+      .insert(appImages)
+      .values(seed.images.map((i) => ({ key: i.key, assetId: asset.path(i.path) })))
+    await touchSection(tx, 'appImages')
   })
   return 'seeded'
 }
@@ -1258,6 +1295,7 @@ async function main(): Promise<void> {
       huntLoot: parseHuntLootSeed(readSeed('hunt-loot')),
       hexaMatrix: parseHexaMatrixSeed(readSeed('hexa-matrix')),
       faqs: parseFaqsSeed(readSeed('faqs')),
+      appImages: parseAppImagesSeed(readSeed('app-images')),
     })
     for (const [table, outcome] of Object.entries(result)) {
       console.log(`${table}: ${outcome === 'seeded' ? '채웠다' : '줄이 있어 건너뛰었다'}`)

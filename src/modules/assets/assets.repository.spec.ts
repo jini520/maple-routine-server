@@ -1,3 +1,4 @@
+import { assets } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { AssetsRepository } from './assets.repository'
 
@@ -23,8 +24,15 @@ describeDb('AssetsRepository', () => {
     await repo.put('bosses/bellona.webp', SHA_A, { size: 20, width: 10, height: 20 })
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
+    const idOf = new Map(
+      (await db.select({ id: assets.id, path: assets.path }).from(assets)).map((r) => [
+        r.path,
+        r.id,
+      ]),
+    )
     expect(section.files).toEqual([
       {
+        id: idOf.get('bosses/bellona.webp'),
         path: 'bosses/bellona.webp',
         file: `${SHA_A}.webp`,
         sha256: SHA_A,
@@ -33,6 +41,7 @@ describeDb('AssetsRepository', () => {
         height: 20,
       },
       {
+        id: idOf.get('worlds/reboot.png'),
         path: 'worlds/reboot.png',
         file: `${SHA_B}.png`,
         sha256: SHA_B,

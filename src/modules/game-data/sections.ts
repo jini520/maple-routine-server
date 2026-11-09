@@ -23,6 +23,7 @@ export const SECTION_KEYS = [
   'faqs',
   'assets',
   'imageCrops',
+  'appImages',
 ] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 

@@ -57,6 +57,7 @@ export class CashbookCategoriesRepository {
           name: cashbookCategories.name,
           cardTitle: cashbookCategories.cardTitle,
           iconPath: assets.path,
+          iconAssetId: cashbookCategories.iconAssetId,
           description: cashbookCategories.description,
           unit: cashbookCategories.unit,
         })
@@ -84,6 +85,7 @@ export class CashbookCategoriesRepository {
       name: r.name,
       cardTitle: r.cardTitle,
       iconFile: refValueOf('itemIcon', r.iconPath),
+      iconAssetId: r.iconAssetId,
       description: r.description,
       unit: r.unit,
     }))

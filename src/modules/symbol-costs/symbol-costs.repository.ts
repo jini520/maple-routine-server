@@ -36,7 +36,8 @@ export interface SymbolLevelCostView {
 export interface SymbolCostsSection {
   updatedAt: string | null
   groups: SymbolGroupView[]
-  symbols: SymbolView[]
+  /** iconFile 은 옛 앱이 읽는 그림 이름이다 */
+  symbols: (SymbolView & { iconAssetId: string })[]
   levelCosts: SymbolLevelCostView[]
 }
 
@@ -116,6 +117,7 @@ export class SymbolCostsRepository {
         name: s.name,
         requiredLevel: s.requiredLevel,
         iconFile: s.iconFile,
+        iconAssetId: s.iconAssetId,
       })),
       levelCosts: costs,
     }
@@ -380,6 +382,7 @@ export class SymbolCostsRepository {
         name: symbols.name,
         requiredLevel: symbols.requiredLevel,
         iconPath: assets.path,
+        iconAssetId: symbols.iconAssetId,
       })
       .from(symbols)
       .innerJoin(symbolGroups, eq(symbols.groupId, symbolGroups.id))
@@ -392,6 +395,7 @@ export class SymbolCostsRepository {
       name: r.name,
       requiredLevel: r.requiredLevel,
       iconFile: refValueOf('itemIcon', r.iconPath),
+      iconAssetId: r.iconAssetId,
     }))
   }
 

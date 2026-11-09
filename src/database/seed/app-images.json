@@ -1,0 +1,292 @@
+{
+  "images": [
+    {
+      "key": "boss_crystal_weekly",
+      "path": "items/intense_power_crystal_weekly.webp"
+    },
+    {
+      "key": "boss_crystal_monthly",
+      "path": "items/intense_power_crystal_monthly.webp"
+    },
+    {
+      "key": "enhancement_cube_reset",
+      "path": "items/cube_gold.png"
+    },
+    {
+      "key": "enhancement_starforce",
+      "path": "items/equipment_enhancement_scroll.png"
+    },
+    {
+      "key": "enhancement_potential",
+      "path": "items/potential_reset.png"
+    },
+    {
+      "key": "enhancement_additional_potential",
+      "path": "items/additional_potential_reset.png"
+    },
+    {
+      "key": "enhancement_soul_potential",
+      "path": "items/soul_weapon_potential.webp"
+    },
+    {
+      "key": "meso_pouch",
+      "path": "items/meso_pouch.webp"
+    },
+    {
+      "key": "union_wealth",
+      "path": "items/union_wealth.webp"
+    },
+    {
+      "key": "selazar_coin",
+      "path": "items/selazar_coin.webp"
+    },
+    {
+      "key": "sol_erda_energy_1000",
+      "path": "items/sole_1000.webp"
+    },
+    {
+      "key": "sol_erda_energy_500",
+      "path": "items/sole_500.webp"
+    },
+    {
+      "key": "sol_erda_energy_200",
+      "path": "items/sole_200.png"
+    },
+    {
+      "key": "sol_erda_energy_10",
+      "path": "items/sole_10.png"
+    },
+    {
+      "key": "arcane_force",
+      "path": "force/arcane-force.png"
+    },
+    {
+      "key": "authentic_force",
+      "path": "force/authentic-force.png"
+    },
+    {
+      "key": "unknown_character",
+      "path": "characters/unknown.webp"
+    },
+    {
+      "key": "drop_effect_screen_0",
+      "path": "drop-effect/screen/0.webp"
+    },
+    {
+      "key": "drop_effect_screen_1",
+      "path": "drop-effect/screen/1.webp"
+    },
+    {
+      "key": "drop_effect_screen_2",
+      "path": "drop-effect/screen/2.webp"
+    },
+    {
+      "key": "drop_effect_screen_3",
+      "path": "drop-effect/screen/3.webp"
+    },
+    {
+      "key": "drop_effect_screen_4",
+      "path": "drop-effect/screen/4.webp"
+    },
+    {
+      "key": "drop_effect_screen_5",
+      "path": "drop-effect/screen/5.webp"
+    },
+    {
+      "key": "drop_effect_screen_6",
+      "path": "drop-effect/screen/6.webp"
+    },
+    {
+      "key": "drop_effect_screen_7",
+      "path": "drop-effect/screen/7.webp"
+    },
+    {
+      "key": "drop_effect_screen_8",
+      "path": "drop-effect/screen/8.webp"
+    },
+    {
+      "key": "drop_effect_screen_9",
+      "path": "drop-effect/screen/9.webp"
+    },
+    {
+      "key": "drop_effect_screen_10",
+      "path": "drop-effect/screen/10.webp"
+    },
+    {
+      "key": "drop_effect_screen_11",
+      "path": "drop-effect/screen/11.webp"
+    },
+    {
+      "key": "drop_effect_screen_12",
+      "path": "drop-effect/screen/12.webp"
+    },
+    {
+      "key": "drop_effect_screen_13",
+      "path": "drop-effect/screen/13.webp"
+    },
+    {
+      "key": "drop_effect_screen_14",
+      "path": "drop-effect/screen/14.webp"
+    },
+    {
+      "key": "drop_effect_screen_15",
+      "path": "drop-effect/screen/15.webp"
+    },
+    {
+      "key": "drop_effect_pre_0",
+      "path": "drop-effect/pre/0.webp"
+    },
+    {
+      "key": "drop_effect_pre_1",
+      "path": "drop-effect/pre/1.webp"
+    },
+    {
+      "key": "drop_effect_pre_2",
+      "path": "drop-effect/pre/2.webp"
+    },
+    {
+      "key": "drop_effect_pre_3",
+      "path": "drop-effect/pre/3.webp"
+    },
+    {
+      "key": "drop_effect_pre_4",
+      "path": "drop-effect/pre/4.webp"
+    },
+    {
+      "key": "drop_effect_pre_5",
+      "path": "drop-effect/pre/5.webp"
+    },
+    {
+      "key": "drop_effect_pre_6",
+      "path": "drop-effect/pre/6.webp"
+    },
+    {
+      "key": "drop_effect_pre_7",
+      "path": "drop-effect/pre/7.webp"
+    },
+    {
+      "key": "drop_effect_loop_0",
+      "path": "drop-effect/loop/0.webp"
+    },
+    {
+      "key": "drop_effect_loop_1",
+      "path": "drop-effect/loop/1.webp"
+    },
+    {
+      "key": "drop_effect_loop_2",
+      "path": "drop-effect/loop/2.webp"
+    },
+    {
+      "key": "drop_effect_loop_3",
+      "path": "drop-effect/loop/3.webp"
+    },
+    {
+      "key": "drop_effect_loop_4",
+      "path": "drop-effect/loop/4.webp"
+    },
+    {
+      "key": "drop_effect_loop_5",
+      "path": "drop-effect/loop/5.webp"
+    },
+    {
+      "key": "drop_effect_loop_6",
+      "path": "drop-effect/loop/6.webp"
+    },
+    {
+      "key": "drop_effect_loop_7",
+      "path": "drop-effect/loop/7.webp"
+    },
+    {
+      "key": "drop_effect_loop_8",
+      "path": "drop-effect/loop/8.webp"
+    },
+    {
+      "key": "drop_effect_loop_9",
+      "path": "drop-effect/loop/9.webp"
+    },
+    {
+      "key": "drop_effect_loop_10",
+      "path": "drop-effect/loop/10.webp"
+    },
+    {
+      "key": "drop_effect_loop_11",
+      "path": "drop-effect/loop/11.webp"
+    },
+    {
+      "key": "drop_effect_loop_12",
+      "path": "drop-effect/loop/12.webp"
+    },
+    {
+      "key": "drop_effect_loop_13",
+      "path": "drop-effect/loop/13.webp"
+    },
+    {
+      "key": "drop_effect_loop_14",
+      "path": "drop-effect/loop/14.webp"
+    },
+    {
+      "key": "drop_effect_loop_15",
+      "path": "drop-effect/loop/15.webp"
+    },
+    {
+      "key": "drop_effect_loop_16",
+      "path": "drop-effect/loop/16.webp"
+    },
+    {
+      "key": "drop_effect_loop_17",
+      "path": "drop-effect/loop/17.webp"
+    },
+    {
+      "key": "drop_effect_loop_18",
+      "path": "drop-effect/loop/18.webp"
+    },
+    {
+      "key": "drop_effect_loop_19",
+      "path": "drop-effect/loop/19.webp"
+    },
+    {
+      "key": "drop_effect_loop_20",
+      "path": "drop-effect/loop/20.webp"
+    },
+    {
+      "key": "drop_effect_loop_21",
+      "path": "drop-effect/loop/21.webp"
+    },
+    {
+      "key": "drop_effect_loop_22",
+      "path": "drop-effect/loop/22.webp"
+    },
+    {
+      "key": "drop_effect_loop_23",
+      "path": "drop-effect/loop/23.webp"
+    },
+    {
+      "key": "drop_effect_end_0",
+      "path": "drop-effect/end/0.webp"
+    },
+    {
+      "key": "drop_effect_end_1",
+      "path": "drop-effect/end/1.webp"
+    },
+    {
+      "key": "drop_effect_end_2",
+      "path": "drop-effect/end/2.webp"
+    },
+    {
+      "key": "drop_effect_end_3",
+      "path": "drop-effect/end/3.webp"
+    },
+    {
+      "key": "drop_effect_end_4",
+      "path": "drop-effect/end/4.webp"
+    },
+    {
+      "key": "drop_effect_end_5",
+      "path": "drop-effect/end/5.webp"
+    },
+    {
+      "key": "drop_effect_end_6",
+      "path": "drop-effect/end/6.webp"
+    }
+  ]
+}

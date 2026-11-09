@@ -25,7 +25,8 @@ export interface HuntLootView {
 /** GET /v1/game-data 의 huntLoot 칸. 차례가 폼의 차례다. */
 export interface HuntLootSection {
   updatedAt: string | null
-  items: HuntLootView[]
+  /** iconFile 은 옛 앱이 읽는 그림 이름이다 */
+  items: (HuntLootView & { iconAssetId: string })[]
 }
 
 export type HuntLootInput = HuntLootView
@@ -53,6 +54,7 @@ export class HuntLootRepository {
           kind: huntLootItems.kind,
           name: items.name,
           iconPath: assets.path,
+          iconAssetId: items.iconAssetId,
           npcPriceMeso: huntLootItems.npcPriceMeso,
           from: huntLootItems.from,
           until: huntLootItems.until,
@@ -70,6 +72,7 @@ export class HuntLootRepository {
         kind: r.kind,
         name: r.name,
         iconFile: refValueOf('itemIcon', r.iconPath),
+        iconAssetId: r.iconAssetId as string,
         npcPriceMeso: r.npcPriceMeso,
         from: r.from,
         until: r.until,

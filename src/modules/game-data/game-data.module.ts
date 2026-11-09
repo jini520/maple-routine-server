@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 
+import { AppImagesModule } from '../app-images/app-images.module'
 import { AssetsModule } from '../assets/assets.module'
 import { BossDropsModule } from '../boss-drops/boss-drops.module'
 import { BossesModule } from '../bosses/bosses.module'
@@ -40,6 +41,7 @@ import { GameDataService } from './game-data.service'
     FaqsModule,
     CashbookCategoriesModule,
     AssetsModule,
+    AppImagesModule,
   ],
   controllers: [GameDataController],
   providers: [GameDataService],

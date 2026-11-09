@@ -17,7 +17,9 @@ export interface ImageCrop {
 
 export interface ImageCropView extends ImageCrop {
   kind: ImageCropKind
+  /** 옛 앱이 읽는 그림 이름 */
   slug: string
+  assetId: string
 }
 
 /** GET /v1/game-data 의 imageCrops 칸. 줄이 없는 그림은 앱이 기본 크롭(cover · 가운데)으로 그린다. */
@@ -43,6 +45,7 @@ export class ImageCropsRepository {
       .select({
         kind: imageCrops.kind,
         path: assets.path,
+        assetId: imageCrops.assetId,
         size: imageCrops.size,
         position: imageCrops.position,
       })
@@ -54,6 +57,7 @@ export class ImageCropsRepository {
       crops: rows.map((r) => ({
         kind: r.kind,
         slug: refValueOf(refOf(r.kind), r.path),
+        assetId: r.assetId,
         size: r.size,
         position: r.position,
       })),

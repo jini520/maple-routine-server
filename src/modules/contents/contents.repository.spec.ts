@@ -10,7 +10,12 @@ import {
 } from './contents.repository'
 
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
-const SPEC_ASSETS = ['bosses/ancientGodMitra.webp', 'bosses/lesa.webp', 'maps/monsterPark.webp']
+const SPEC_ASSETS = [
+  'bosses/ancientGodMitra.webp',
+  'bosses/lesa.webp',
+  'maps/monsterPark.webp',
+  'maps/icons/monsterPark.png',
+]
 
 describe('comparableApiName', () => {
   it('NFC 로 맞추고 공백을 모두 지운다. 앱이 key 를 얻는 모양이다', () => {
@@ -24,6 +29,7 @@ describeDb('ContentsRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: ContentsRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -31,7 +37,7 @@ describeDb('ContentsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
     // 갈래 줄은 ENUM 과 일대일이라 리포지토리가 더하지 않는다. 씨앗이 넣는 모양 그대로 둘만 둔다.
     await db.insert(contentCategories).values([
       {
@@ -114,7 +120,43 @@ describeDb('ContentsRepository', () => {
       weeklyLimit: 3,
       sharedOrder: 2,
     })
-    expect(section.contents).toEqual([base, highMountain, aurumRegis])
+    expect(section.contents).toEqual([
+      {
+        ...base,
+        backgroundMapAssetId: assetIds['maps/monsterPark.webp'],
+        backgroundPortraitAssetId: null,
+        regionIconAssetId: assetIds['maps/icons/monsterPark.png'],
+      },
+      {
+        ...highMountain,
+        backgroundMapAssetId: null,
+        backgroundPortraitAssetId: assetIds['bosses/ancientGodMitra.webp'],
+        regionIconAssetId: null,
+      },
+      {
+        ...aurumRegis,
+        backgroundMapAssetId: null,
+        backgroundPortraitAssetId: assetIds['bosses/lesa.webp'],
+        regionIconAssetId: null,
+      },
+    ])
+  })
+
+  // 지역 아이콘을 고르는 칸은 아직 관리 화면에 없다. 이관 전 앱처럼 지도 배경과 같은 이름의 아이콘이 따라간다.
+  it('지역 아이콘은 지도 배경과 같은 이름의 maps/icons 그림이고, 배경을 바꾸면 따라간다', async () => {
+    await repo.createContent(base)
+    const iconOf = async () =>
+      (await repo.section()).contents.find((c) => c.key === base.key)?.regionIconAssetId
+    expect(await iconOf()).toBe(assetIds['maps/icons/monsterPark.png'])
+    const fields = { ...base }
+    delete (fields as { key?: string }).key
+    delete (fields as { section?: string }).section
+    await repo.updateContent(base.key, {
+      ...fields,
+      backgroundMap: null,
+      backgroundPortrait: 'lesa',
+    })
+    expect(await iconOf()).toBeNull()
   })
 
   it('모르는 갈래는 NoContentCategory, 같은 key 는 ContentExists, 공백만 다른 API 이름은 ApiNameTaken 이다', async () => {

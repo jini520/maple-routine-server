@@ -14,6 +14,7 @@ describeDb('아이템 표의 역할', () => {
   let drops: DropItemsRepository
   let equipment: EquipmentItemsRepository
   let loot: HuntLootRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -23,7 +24,7 @@ describeDb('아이템 표의 역할', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, ['items/dark_boss_ring.png', 'items/sol_erda_fragment.webp'])
+    assetIds = await insertAssets(db, ['items/dark_boss_ring.png', 'items/sol_erda_fragment.webp'])
   })
   afterAll(() => close())
 
@@ -114,6 +115,7 @@ describeDb('아이템 표의 역할', () => {
         key: 'sol_erda_fragment',
         name: '솔 에르다 조각',
         iconFile: 'sol_erda_fragment.webp',
+        iconAssetId: assetIds['items/sol_erda_fragment.webp'],
         valuable: false,
       },
     ])

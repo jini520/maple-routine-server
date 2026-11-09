@@ -84,7 +84,8 @@ export interface SpendCatalogSection {
   updatedAt: string | null
   rules: Record<SpendRuleField, number | null>
   groups: SpendGroupView[]
-  tiles: SpendTileView[]
+  /** iconFile · iconMap 은 옛 앱이 읽는 그림 이름이고, iconAssetId 는 둘 중 있는 그림이다 */
+  tiles: (SpendTileView & { iconAssetId: string | null })[]
   items: SpendItemView[]
   itemOptions: SpendItemOptionView[]
   itemForms: SpendItemFormView[]
@@ -305,7 +306,7 @@ export class SpendCatalogRepository {
   }
 
   /** 타일은 아이템 그림이나 지역 아이콘 중 하나를 든다. 칸마다 그림 표를 따로 붙인다. */
-  private async tileRows(): Promise<SpendTileView[]> {
+  private async tileRows(): Promise<(SpendTileView & { iconAssetId: string | null })[]> {
     const iconAsset = alias(assets, 'icon_asset')
     const mapAsset = alias(assets, 'icon_map_asset')
     const rows = await this.db
@@ -314,6 +315,8 @@ export class SpendCatalogRepository {
         name: spendTiles.name,
         iconPath: iconAsset.path,
         iconMapPath: mapAsset.path,
+        iconAssetId: spendTiles.iconAssetId,
+        iconMapAssetId: spendTiles.iconMapAssetId,
       })
       .from(spendTiles)
       .leftJoin(iconAsset, eq(iconAsset.id, spendTiles.iconAssetId))
@@ -324,6 +327,7 @@ export class SpendCatalogRepository {
       name: r.name,
       iconFile: optionalRefValueOf('itemIcon', r.iconPath),
       iconMap: optionalRefValueOf('mapIcon', r.iconMapPath),
+      iconAssetId: r.iconAssetId ?? r.iconMapAssetId,
     }))
   }
 

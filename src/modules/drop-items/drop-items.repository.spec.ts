@@ -15,6 +15,7 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let items: DropItemsRepository
+  let assetIds: Record<string, string>
   let boxes: DropBoxesRepository
 
   beforeAll(async () => {
@@ -24,7 +25,7 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -81,12 +82,14 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
         key: 'green_boss_ring_box',
         name: '녹옥의 보스 반지 상자',
         iconFile: null,
+        iconAssetId: null,
         valuable: false,
       },
       {
         key: 'restraint_ring',
         name: '리스트레인트 링',
         iconFile: 'Restraint_Ring.png',
+        iconAssetId: assetIds['items/Restraint_Ring.png'],
         valuable: true,
       },
     ])

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq, sql } from 'drizzle-orm'
+import { asc, eq, inArray, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import { isUniqueViolation } from '../../common/pg-errors'
@@ -60,10 +60,18 @@ export interface ContentView {
 }
 
 /** GET /v1/game-data 의 contents 칸. 갈래는 sort_order 차례, 컨텐츠는 일간 뒤 주간이고 섹션 안이 sort_order 차례다. */
+/** 컨텐츠 카드의 그림 셋. 지역 아이콘은 지도 배경이 있는 카드가 그 옆에 세운다. */
+export interface ContentAssetIds {
+  backgroundMapAssetId: string | null
+  backgroundPortraitAssetId: string | null
+  regionIconAssetId: string | null
+}
+
 export interface ContentsSection {
   updatedAt: string | null
   categories: ContentCategoryView[]
-  contents: ContentView[]
+  /** backgroundMap · backgroundPortrait 는 옛 앱이 읽는 그림 이름이다 */
+  contents: (ContentView & ContentAssetIds)[]
 }
 
 export type ContentCategoryInput = Omit<ContentCategoryView, 'key'>
@@ -91,6 +99,9 @@ const CONTENT_COLUMNS = {
   shortName: contents.shortName,
   backgroundMapPath: BACKGROUND_MAP_ASSET.path,
   backgroundPortraitPath: BACKGROUND_PORTRAIT_ASSET.path,
+  backgroundMapAssetId: contents.backgroundMapAssetId,
+  backgroundPortraitAssetId: contents.backgroundPortraitAssetId,
+  regionIconAssetId: contents.regionIconAssetId,
   countTag: contents.countTag,
   type: contents.type,
   maxCount: contents.maxCount,
@@ -103,6 +114,27 @@ const CONTENT_COLUMNS = {
   trustRegistrationFlag: contents.trustRegistrationFlag,
   cumulativeScore: contents.cumulativeScore,
   maxCountOverride: contents.maxCountOverride,
+}
+
+/**
+ * 지도 배경과 같은 이름의 지역 아이콘. 이관 전 앱이 배경 이름으로 `maps/icons/` 를 찾던 차례(webp · png · jpg)다. 없으면
+ * null 이다. 아이콘을 고르는 칸이 관리 화면에 생기기 전까지 배경을 바꾸면 아이콘이 따라가게 쓰기마다 부른다.
+ */
+export async function regionIconOf(
+  db: DbOrTx,
+  backgroundMap: string | null | undefined,
+): Promise<string | null> {
+  if (backgroundMap == null) return null
+  const candidates = ['webp', 'png', 'jpg'].map(
+    (ext) => `maps/icons/${backgroundMap.normalize('NFC')}.${ext}`,
+  )
+  const rows = await db
+    .select({ id: assets.id, path: assets.path })
+    .from(assets)
+    .where(inArray(assets.path, candidates))
+  return (
+    candidates.map((c) => rows.find((r) => r.path === c)?.id).find((id) => id !== undefined) ?? null
+  )
 }
 
 /**
@@ -150,6 +182,9 @@ export class ContentsRepository {
         shortName: r.shortName,
         backgroundMap: optionalRefValueOf('mapBackground', backgroundMapPath),
         backgroundPortrait: optionalRefValueOf('bossPortrait', backgroundPortraitPath),
+        backgroundMapAssetId: r.backgroundMapAssetId,
+        backgroundPortraitAssetId: r.backgroundPortraitAssetId,
+        regionIconAssetId: r.regionIconAssetId,
         countTag: r.countTag,
         type: r.type,
         maxCount: r.maxCount,
@@ -282,6 +317,7 @@ export class ContentsRepository {
         'bossPortrait',
         input.backgroundPortrait,
       ),
+      regionIconAssetId: await regionIconOf(db, input.backgroundMap),
       countTag: input.countTag,
       type: input.type,
       maxCount: input.maxCount,

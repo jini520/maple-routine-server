@@ -51,6 +51,8 @@ export interface AssetResolver {
   id(ref: AssetRef, value: string): string
   /** 비운 칸(null · undefined)은 null 이다. */
   optional(ref: AssetRef, value: string | null | undefined): string | null
+  /** 경로 그대로 찾는다. 표에 없으면 AssetNotFound 다. */
+  path(path: string): string
 }
 
 /** 줄이 많은 시드가 줄마다 그림 표를 묻지 않게 그림 표를 한 번 읽는다. */
@@ -64,5 +66,10 @@ export async function assetResolver(db: DbOrTx): Promise<AssetResolver> {
     if (hit === undefined) throw new AssetNotFound(value)
     return hit
   }
-  return { id, optional: (ref, value) => (value == null ? null : id(ref, value)) }
+  const path = (value: string): string => {
+    const hit = byPath.get(value.normalize('NFC'))
+    if (hit === undefined) throw new AssetNotFound(value)
+    return hit
+  }
+  return { id, optional: (ref, value) => (value == null ? null : id(ref, value)), path }
 }

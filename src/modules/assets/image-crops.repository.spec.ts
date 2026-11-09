@@ -9,6 +9,7 @@ describeDb('ImageCropsRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: ImageCropsRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -16,7 +17,7 @@ describeDb('ImageCropsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -27,8 +28,20 @@ describeDb('ImageCropsRepository', () => {
     await repo.put('daily_quest_region', 'arcana', { size: '200% auto', position: '100% 65%' })
     const section = await repo.section()
     expect(section.crops).toEqual([
-      { kind: 'boss_portrait', slug: 'zakum', size: '120% auto', position: '50% 40%' },
-      { kind: 'daily_quest_region', slug: 'arcana', size: '200% auto', position: '100% 65%' },
+      {
+        kind: 'boss_portrait',
+        slug: 'zakum',
+        assetId: assetIds['bosses/zakum.webp'],
+        size: '120% auto',
+        position: '50% 40%',
+      },
+      {
+        kind: 'daily_quest_region',
+        slug: 'arcana',
+        assetId: assetIds['maps/arcana.webp'],
+        size: '200% auto',
+        position: '100% 65%',
+      },
     ])
     const before = section.updatedAt
     expect(await repo.remove('boss_portrait', 'zakum')).toBe(true)

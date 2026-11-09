@@ -16,6 +16,7 @@ describeDb('HuntingGroundsRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: HuntingGroundsRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -23,7 +24,7 @@ describeDb('HuntingGroundsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -70,7 +71,10 @@ describeDb('HuntingGroundsRepository', () => {
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.regions).toEqual([vanishing, cernium])
+    expect(section.regions).toEqual([
+      { ...vanishing, iconAssetId: assetIds['maps/icons/roadOfVanishing.png'] },
+      { ...cernium, iconAssetId: null },
+    ])
     expect(section.grounds.map((g) => g.key)).toEqual([joy.key, joyAndAnger.key])
     expect(section.grounds[0]).toEqual({
       key: joy.key,

@@ -35,7 +35,8 @@ export interface HuntingGroundLevelView {
 /** GET /v1/game-data 의 huntingGrounds 칸. 줄 표 그대로 납작하다. 셋 다 지역 · 사냥터의 sort_order 차례이고 레벨은 그 안에서 오름차순이다. */
 export interface HuntingGroundsSection {
   updatedAt: string | null
-  regions: HuntingRegionView[]
+  /** iconMap 은 옛 앱이 읽는 그림 이름이다 */
+  regions: (HuntingRegionView & { iconAssetId: string | null })[]
   grounds: HuntingGroundView[]
   groundLevels: HuntingGroundLevelView[]
 }
@@ -67,6 +68,7 @@ export class HuntingGroundsRepository {
           name: huntingRegions.name,
           forceType: huntingRegions.forceType,
           iconPath: assets.path,
+          iconAssetId: huntingRegions.iconMapAssetId,
         })
         .from(huntingRegions)
         .leftJoin(assets, eq(assets.id, huntingRegions.iconMapAssetId))
@@ -106,6 +108,7 @@ export class HuntingGroundsRepository {
       name: r.name,
       forceType: r.forceType,
       iconMap: optionalRefValueOf('mapIcon', r.iconPath),
+      iconAssetId: r.iconAssetId,
     }))
     return { updatedAt, regions, grounds, groundLevels: levels }
   }

@@ -11,6 +11,7 @@ import { FaqsRepository } from '../modules/faqs/faqs.repository'
 import { HexaMatrixRepository } from '../modules/hexa-matrix/hexa-matrix.repository'
 import { HuntingGroundsRepository } from '../modules/hunting-grounds/hunting-grounds.repository'
 import { MvpGradesRepository } from '../modules/mvp-grades/mvp-grades.repository'
+import { AppImagesRepository } from '../modules/app-images/app-images.repository'
 import { HuntLootRepository } from '../modules/hunt-loot/hunt-loot.repository'
 import { SpendCatalogRepository } from '../modules/spend-catalog/spend-catalog.repository'
 import { SymbolCostsRepository } from '../modules/symbol-costs/symbol-costs.repository'
@@ -33,6 +34,7 @@ import {
   parseSymbolCostsSeed,
   parseWorldsSeed,
   seedGameData,
+  parseAppImagesSeed,
 } from './seed-game-data'
 
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
@@ -55,6 +57,10 @@ const SPEC_ASSETS = [
   'maps/icons/highMountain.png',
   'maps/icons/roadOfVanishing.png',
   'maps/monsterPark.webp',
+  'maps/icons/monsterPark.png',
+  'mvp/gold.webp',
+  'items/meso_pouch.webp',
+  'drop-effect/loop/0.webp',
   'skills/KFPDKDPEMA.webp',
   'skills/KFPDKDPEMB.webp',
   'skills/KJPDKDPEMA.webp',
@@ -405,6 +411,7 @@ const grade = (key: string, name: string, fee: number, discount: number) => ({
   name,
   auctionFeePercent: fee,
   starforceDiscountPercent: discount,
+  plate: key === 'gold' ? 'mvp/gold.webp' : null,
 })
 const mvpGradesSeed = {
   // 등급 줄은 ENUM 과 일대일이라 일곱을 다 든다.
@@ -416,6 +423,13 @@ const mvpGradesSeed = {
     grade('diamond', '다이아', 3, 10),
     grade('red', '레드', 3, 10),
     grade('black', '블랙', 3, 10),
+  ],
+}
+
+const appImagesSeed = {
+  images: [
+    { key: 'meso_pouch', path: 'items/meso_pouch.webp' },
+    { key: 'drop_effect_loop_0', path: 'drop-effect/loop/0.webp' },
   ],
 }
 
@@ -667,13 +681,14 @@ describeDb('seedGameData', () => {
   let db: TestDb
   let close: () => Promise<void>
   let truncate: () => Promise<void>
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -720,7 +735,7 @@ describeDb('seedGameData', () => {
     expect(catalog.bosses.map((b) => b.key)).toEqual(['meirin'])
   })
 
-  it('열일곱을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
+  it('열여덟을 차례로 채운다. 가격 줄이 차 있어도 상한과 기본값 규칙은 본다', async () => {
     const result = await seedGameData(db, {
       bosses: parseBossesSeed(bossesSeed),
       dropItems: parseDropItemsSeed(dropItemsSeed),
@@ -739,6 +754,7 @@ describeDb('seedGameData', () => {
       huntLoot: parseHuntLootSeed(huntLootSeed),
       hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed),
       faqs: parseFaqsSeed(faqsSeed),
+      appImages: parseAppImagesSeed(appImagesSeed),
     })
     expect(result).toEqual({
       bosses: 'seeded',
@@ -758,6 +774,7 @@ describeDb('seedGameData', () => {
       huntLoot: 'seeded',
       hexaMatrix: 'seeded',
       faqs: 'seeded',
+      appImages: 'seeded',
     })
 
     const spend = await new SpendCatalogRepository(db).section()
@@ -783,7 +800,20 @@ describeDb('seedGameData', () => {
     expect(symbol.levelCosts.map((c) => c.costMeso)).toEqual([100, 200])
     const content = await new ContentsRepository(db).section()
     expect(content.categories.map((c) => c.key)).toEqual(contentsSeed.categories.map((c) => c.key))
-    expect(content.contents).toEqual([contentsSeed.contents[1], contentsSeed.contents[0]])
+    expect(content.contents).toEqual([
+      {
+        ...contentsSeed.contents[1],
+        backgroundMapAssetId: assetIds['maps/monsterPark.webp'],
+        backgroundPortraitAssetId: null,
+        regionIconAssetId: assetIds['maps/icons/monsterPark.png'],
+      },
+      {
+        ...contentsSeed.contents[0],
+        backgroundMapAssetId: null,
+        backgroundPortraitAssetId: assetIds['bosses/ancientGodMitra.webp'],
+        regionIconAssetId: null,
+      },
+    ])
     expect((await new EquipmentItemsRepository(db).section()).items).toEqual(
       equipmentItemsSeed.items,
     )
@@ -794,12 +824,28 @@ describeDb('seedGameData', () => {
       enhancementCostsSeed.soulPotentialResetCosts,
     )
     expect(enhancement.starforceSteps).toEqual(enhancementCostsSeed.starforceSteps)
-    expect((await new MvpGradesRepository(db).section()).grades).toEqual(mvpGradesSeed.grades)
+    expect((await new MvpGradesRepository(db).section()).grades).toEqual(
+      mvpGradesSeed.grades.map(({ plate, ...g }) => ({
+        ...g,
+        plateAssetId: plate === null ? null : assetIds[plate],
+      })),
+    )
+    expect((await new AppImagesRepository(db).section()).images).toEqual([
+      { key: 'drop_effect_loop_0', assetId: assetIds['drop-effect/loop/0.webp'] },
+      { key: 'meso_pouch', assetId: assetIds['items/meso_pouch.webp'] },
+    ])
     const hunting = await new HuntingGroundsRepository(db).section()
-    expect(hunting.regions).toEqual(huntingGroundsSeed.regions)
+    expect(hunting.regions).toEqual(
+      huntingGroundsSeed.regions.map((r) => ({
+        ...r,
+        iconAssetId: r.iconMap === null ? null : assetIds[`maps/icons/${r.iconMap}.png`],
+      })),
+    )
     expect(hunting.grounds).toEqual(huntingGroundsSeed.grounds)
     expect(hunting.groundLevels).toEqual(huntingGroundsSeed.groundLevels)
-    expect((await new HuntLootRepository(db).section()).items).toEqual(huntLootSeed.items)
+    expect((await new HuntLootRepository(db).section()).items).toEqual(
+      huntLootSeed.items.map((i) => ({ ...i, iconAssetId: assetIds[`items/${i.iconFile}`] })),
+    )
     expect((await new FaqsRepository(db).section()).sheets).toEqual(faqsSeed.sheets)
 
     const catalog = await new BossesRepository(db).catalog()
@@ -821,6 +867,7 @@ describeDb('seedGameData', () => {
       huntLoot: parseHuntLootSeed(huntLootSeed),
       hexaMatrix: parseHexaMatrixSeed(hexaMatrixSeed),
       faqs: parseFaqsSeed(faqsSeed),
+      appImages: parseAppImagesSeed(appImagesSeed),
     })
     expect(again).toEqual({
       dropItems: 'skipped',
@@ -835,6 +882,7 @@ describeDb('seedGameData', () => {
       huntLoot: 'skipped',
       hexaMatrix: 'skipped',
       faqs: 'skipped',
+      appImages: 'skipped',
     })
   })
 
@@ -844,7 +892,12 @@ describeDb('seedGameData', () => {
     })
     const section = await new HexaMatrixRepository(db).section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.kinds).toEqual(hexaMatrixSeed.kinds)
+    expect(section.kinds).toEqual(
+      hexaMatrixSeed.kinds.map((k) => ({
+        ...k,
+        iconAssetId: assetIds[`items/${k.iconFile}`],
+      })),
+    )
     expect(section.levelCosts.map((c) => [c.kind, c.level, c.fragments])).toEqual([
       ['skill', 0, 100],
       ['skill', 1, 30],

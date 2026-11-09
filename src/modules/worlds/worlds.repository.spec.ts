@@ -9,6 +9,7 @@ describeDb('WorldsRepository', () => {
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: WorldsRepository
+  let assetIds: Record<string, string>
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -16,7 +17,7 @@ describeDb('WorldsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    await insertAssets(db, SPEC_ASSETS)
+    assetIds = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
@@ -45,7 +46,11 @@ describeDb('WorldsRepository', () => {
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.worlds).toEqual([scania, challengers5, special])
+    expect(section.worlds).toEqual([
+      { ...scania, emblemAssetId: assetIds['worlds/scania.png'] },
+      { ...challengers5, emblemAssetId: assetIds['worlds/challengers.png'] },
+      { ...special, emblemAssetId: null },
+    ])
   })
 
   it('이름 · 엠블럼 · 챌린저스 · 이벤트를 고치고 차례를 옮긴다. 모르는 key 는 false 다', async () => {

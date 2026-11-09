@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 
+import { AppImagesRepository, type AppImagesSection } from '../app-images/app-images.repository'
 import { AssetsRepository, type AssetsSection } from '../assets/assets.repository'
 import { ImageCropsRepository, type ImageCropsSection } from '../assets/image-crops.repository'
 import { BossDropsRepository, type BossDropsSection } from '../boss-drops/boss-drops.repository'
@@ -66,6 +67,7 @@ export interface GameDataSnapshot {
   faqs: FaqsSection
   assets: AssetsSection
   imageCrops: ImageCropsSection
+  appImages: AppImagesSection
 }
 
 @Injectable()
@@ -90,6 +92,7 @@ export class GameDataService {
     private readonly cashbookCategories: CashbookCategoriesRepository,
     private readonly assets: AssetsRepository,
     private readonly imageCrops: ImageCropsRepository,
+    private readonly appImages: AppImagesRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -113,6 +116,7 @@ export class GameDataService {
       cashbookCategories,
       assets,
       imageCrops,
+      appImages,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -133,6 +137,7 @@ export class GameDataService {
       this.cashbookCategories.section(),
       this.assets.section(),
       this.imageCrops.section(),
+      this.appImages.section(),
     ])
     return {
       bosses,
@@ -154,6 +159,7 @@ export class GameDataService {
       faqs,
       assets,
       imageCrops,
+      appImages,
     }
   }
 }

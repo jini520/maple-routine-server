@@ -49,6 +49,7 @@ export const ITEM_CATEGORIES = [
       { key: 'potion_elixir_coupon', name: '물약과 비약과 쿠폰' },
       { key: 'soul', name: '소울' },
       { key: 'box', name: '상자' },
+      { key: 'hunt_loot', name: '사냥 전리품' },
     ],
   },
   {

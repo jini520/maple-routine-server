@@ -43,7 +43,6 @@ describeDb('EnhancementTotalsRepository', () => {
       .insert(nexonAccounts)
       .values({
         userId: me,
-        identitySource: 'login',
         nexonUid: 'uid',
         referralCode: 'AAAAAAAA',
         accountRecordId: ACCOUNT,

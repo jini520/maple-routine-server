@@ -56,6 +56,16 @@ describe('IdentityGuard', () => {
     expect(users.upsertByApiKeyHash).not.toHaveBeenCalled()
   })
 
+  // 세션은 로그인 콜백이 로그인 계정 줄을 만든 뒤에만 생긴다. 줄이 없으면 그 세션으로 적을 넥슨 계정이 없다.
+  it('세션의 사람에게 로그인 계정 줄이 없으면 401 이다', async () => {
+    const { guard, sessions, users } = build()
+    sessions.findByHash.mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
+    users.findLoginAccount.mockResolvedValue(null)
+    const { context } = contextOf({ authorization: 'Bearer S' })
+
+    await expect(guard.canActivate(context)).rejects.toThrow('Unauthorized')
+  })
+
   it('세션이 죽었으면 키 해시가 함께 와도 401 이다', async () => {
     const { guard, sessions, users } = build()
     sessions.findByHash.mockResolvedValue(null)

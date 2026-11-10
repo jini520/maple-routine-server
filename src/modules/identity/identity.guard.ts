@@ -21,8 +21,8 @@ export type IdentitySource = 'login' | 'key'
 export interface IdentityContext {
   userId: string
   source: IdentitySource
-  /** 이 신원의 넥슨 계정(nexon_accounts.id). 로그인 계정 줄이 없는 옛 사람이면 NULL. */
-  nexonAccountId: string | null
+  /** 이 신원의 넥슨 계정(nexon_accounts.id). 세션이면 그 사람의 로그인 계정, 키면 그 키가 달린 계정이다. */
+  nexonAccountId: string
 }
 
 export type IdentityRequest = FastifyRequest & { identity?: IdentityContext }
@@ -78,10 +78,12 @@ export class IdentityGuard implements CanActivate {
       const row = await this.sessions.findByHash(sha256(bearer))
       if (row === null) throw new UnauthorizedException()
       const account = await this.users.findLoginAccount(row.userId)
+      // 세션은 로그인 콜백이 로그인 계정 줄을 만든 뒤에만 생긴다. 줄이 없으면 이 세션으로 적을 넥슨 계정이 없다.
+      if (account === null) throw new UnauthorizedException()
       request.identity = {
         userId: row.userId,
         source: 'login',
-        nexonAccountId: account?.nexonAccountId ?? null,
+        nexonAccountId: account.nexonAccountId,
       }
       await this.recordAccountId(request, account)
       return

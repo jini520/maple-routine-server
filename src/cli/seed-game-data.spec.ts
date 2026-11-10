@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { eq } from 'drizzle-orm'
+
+import { gameRules } from '../database/schema'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../database/test-db'
 import { BossesRepository } from '../modules/bosses/bosses.repository'
 import { CashbookCategoriesRepository } from '../modules/cashbook-categories/cashbook-categories.repository'
@@ -217,7 +220,7 @@ const cashbookCategoriesSeed = {
 }
 
 const spendCatalogSeed = {
-  rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
+  rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
   groups: [
     {
       key: 'epic_dungeon_bonus_reward',
@@ -778,7 +781,7 @@ describeDb('seedGameData', () => {
     })
 
     const spend = await new SpendCatalogRepository(db).section()
-    expect(spend.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 })
+    expect(spend.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 })
     expect(spend.groups.map((g) => [g.key, g.active])).toEqual([
       ['epic_dungeon_bonus_reward', true],
       ['maple_point_shop', false],
@@ -1048,6 +1051,23 @@ describeDb('seedGameData', () => {
       '씨앗이 가리키는 지출 갈래 줄이 표에 없다: hunting',
     )
     expect((await new SpendCatalogRepository(db).section()).groups).toEqual([])
+  })
+
+  // 운영 DB 는 지출 목록과 규칙 둘이 이미 차 있다. 배포 뒤 씨앗을 돌리면 새 규칙 줄만 채우고 운영자가 고친 값은 둔다.
+  it('지출 목록이 차 있어도 빈 규칙 줄만 채우고, 이미 있는 규칙은 그대로 둔다', async () => {
+    await seedGameData(db, { cashbookCategories: parseCashbookCategoriesSeed(cashbookCategoriesSeed) })
+    await seedGameData(db, { spendCatalog: parseSpendCatalogSeed(spendCatalogSeed) })
+    await db.delete(gameRules).where(eq(gameRules.key, 'meso_market_fee_percent'))
+    await db.update(gameRules).set({ value: 12 }).where(eq(gameRules.key, 'spend_tariff_percent'))
+
+    expect(await seedGameData(db, { spendCatalog: parseSpendCatalogSeed(spendCatalogSeed) })).toEqual({
+      spendCatalog: 'skipped',
+    })
+    expect((await new SpendCatalogRepository(db).section()).rules).toEqual({
+      tariffPercent: 12,
+      rewardCoinPriceMeso: 40_000_000,
+      mesoMarketFeePercent: 1,
+    })
   })
 
   it('씨앗이 표에 없는 조합이나 아이템을 가리키면 던지고 아무것도 안 넣는다', async () => {

@@ -203,10 +203,12 @@ export type WorldPeriodBody = z.infer<typeof worldPeriodBody>
 
 /* ── 지출 카탈로그 ── */
 
-/** 관세율(%)과 세라자르 주화 판매가. game_rules 의 줄 둘이다. */
+/** 관세율(%) · 세라자르 주화 판매가 · 메소마켓 수수료율(%). game_rules 의 줄 셋이다. */
 export const spendRulesBody = z.object({
   tariffPercent: z.number().int().min(0).max(100),
   rewardCoinPriceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  // 100 이면 앱이 메포 지출을 메소로 바꿀 때 0 으로 나눈다.
+  mesoMarketFeePercent: z.number().int().min(0).max(99),
 })
 export type SpendRulesBody = z.infer<typeof spendRulesBody>
 

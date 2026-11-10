@@ -1133,7 +1133,7 @@ describe('AdminController', () => {
     it('rows 는 칸 그대로이고, 규칙은 204 · 범위 밖은 400, 묶음은 201 · 같은 key 409 · 모르면 404 다', async () => {
       const section = {
         updatedAt: null,
-        rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
+        rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
         groups: [],
         tiles: [],
         items: [],
@@ -1150,23 +1150,25 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/spend-catalog/rules',
-            payload: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 },
+            payload: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
           })
         ).statusCode,
       ).toBe(204)
       expect(spendRepo.setRules).toHaveBeenCalledWith({
         tariffPercent: 10,
         rewardCoinPriceMeso: 40_000_000,
+        mesoMarketFeePercent: 1,
       })
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/spend-catalog/rules',
-            payload: { tariffPercent: 101, rewardCoinPriceMeso: 1 },
-          })
-        ).statusCode,
-      ).toBe(400)
+      // 수수료율이 100 이면 앱의 환산이 0 으로 나눈다. 빠진 칸도 앱이 표 전체를 버리므로 막는다.
+      for (const payload of [
+        { tariffPercent: 101, rewardCoinPriceMeso: 1, mesoMarketFeePercent: 1 },
+        { tariffPercent: 10, rewardCoinPriceMeso: 1, mesoMarketFeePercent: 100 },
+        { tariffPercent: 10, rewardCoinPriceMeso: 1 },
+      ]) {
+        expect(
+          (await app.inject({ method: 'PUT', url: '/admin/spend-catalog/rules', payload })).statusCode,
+        ).toBe(400)
+      }
 
       spendRepo.createGroup.mockResolvedValue({ id: ROW })
       const created = await app.inject({

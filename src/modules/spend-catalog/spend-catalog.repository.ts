@@ -28,6 +28,7 @@ export type SpendForm = (typeof SPEND_FORMS)[number]
 export const SPEND_RULE_KEYS = {
   tariffPercent: 'spend_tariff_percent',
   rewardCoinPriceMeso: 'reward_coin_price_meso',
+  mesoMarketFeePercent: 'meso_market_fee_percent',
 } as const
 export type SpendRuleField = keyof typeof SPEND_RULE_KEYS
 
@@ -185,6 +186,7 @@ export class SpendCatalogRepository {
       rules: {
         tariffPercent: ruleOf('tariffPercent'),
         rewardCoinPriceMeso: ruleOf('rewardCoinPriceMeso'),
+        mesoMarketFeePercent: ruleOf('mesoMarketFeePercent'),
       },
       groups,
       tiles,

@@ -25,10 +25,11 @@ export const SPEND_CATALOG_HTML = layout(
 </div>
 <div id="message" class="msg" role="status" hidden></div>
 <section class="card">
-  <header><h2>규칙</h2><p>관세율은 메포 → 메소 환산에 붙고, 주화 판매가는 에픽던전 추가 리워드의 세라자르 주화가 메소로 빠지는 값이다</p></header>
+  <header><h2>규칙</h2><p>관세율은 메포 → 메소 환산에 붙고, 주화 판매가는 에픽던전 추가 리워드의 세라자르 주화가 메소로 빠지는 값이다. 메소마켓 수수료율은 메소를 팔 때 받는 메포에서 떼는 몫이다. 앱은 새 메포 지출에 이 값을 적고, 적힌 기록은 요율을 바꿔도 그대로다</p></header>
   <div class="body"><div class="row">
     <div class="field w-sm"><label for="r-tariff">관세율 <small>%</small></label><input id="r-tariff" type="number" min="0" max="100"></div>
     <div class="field"><label for="r-coin">세라자르 주화 판매가 <small>메소</small></label><input id="r-coin" type="number" min="1"></div>
+    <div class="field w-sm"><label for="r-fee">메소마켓 수수료율 <small>%</small></label><input id="r-fee" type="number" min="0" max="99"></div>
     <button id="r-save" class="btn" type="button">규칙 저장</button>
   </div></div>
 </section>
@@ -251,7 +252,7 @@ ${ASSET_PICKER}
 
   document.getElementById('tile-filter').addEventListener('input', function () { if (state.data) render(); });
   document.getElementById('r-save').addEventListener('click', async function () {
-    var r = await call('PUT', '/admin/spend-catalog/rules', { tariffPercent: Number(document.getElementById('r-tariff').value), rewardCoinPriceMeso: Number(document.getElementById('r-coin').value) });
+    var r = await call('PUT', '/admin/spend-catalog/rules', { tariffPercent: Number(document.getElementById('r-tariff').value), rewardCoinPriceMeso: Number(document.getElementById('r-coin').value), mesoMarketFeePercent: Number(document.getElementById('r-fee').value) });
     show(r.ok ? '규칙을 적었다' : fail('못 적었다', r), !r.ok); load();
   });
   document.getElementById('g-add').addEventListener('click', async function () {
@@ -286,6 +287,7 @@ ${ASSET_PICKER}
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
     document.getElementById('r-tariff').value = r.json.rules.tariffPercent == null ? '' : r.json.rules.tariffPercent;
     document.getElementById('r-coin').value = r.json.rules.rewardCoinPriceMeso == null ? '' : r.json.rules.rewardCoinPriceMeso;
+    document.getElementById('r-fee').value = r.json.rules.mesoMarketFeePercent == null ? '' : r.json.rules.mesoMarketFeePercent;
     render();
   }
   load();

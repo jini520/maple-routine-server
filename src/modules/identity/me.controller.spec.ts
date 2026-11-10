@@ -16,8 +16,7 @@ describe('MeController', () => {
     requestDeletion: jest.fn(),
     cancelDeletion: jest.fn(),
     deletionRequestedAt: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     linkApiKey: jest.fn(),
   }
   const accounts = { reportMapleIds: jest.fn() }
@@ -71,7 +70,6 @@ describe('MeController', () => {
     users.upsertByApiKeyHash.mockResolvedValue({
       id: 'u2',
       nexonAccountId: 'a2',
-      accountRecordId: null,
     })
 
     const res = await app.inject({
@@ -129,7 +127,6 @@ describe('MeController', () => {
       users.upsertByApiKeyHash.mockResolvedValue({
         id: 'u2',
         nexonAccountId: 'a2',
-        accountRecordId: null,
       })
 
       const res = await app.inject({
@@ -192,7 +189,6 @@ describe('MeController', () => {
       users.upsertByApiKeyHash.mockResolvedValue({
         id: 'u2',
         nexonAccountId: 'a2',
-        accountRecordId: null,
       })
 
       await app.inject({

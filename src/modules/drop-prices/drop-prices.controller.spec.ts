@@ -5,6 +5,7 @@ import type { BatchResult } from '../../common/batch'
 import { SessionsRepository } from '../auth/sessions.repository'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { IdentityGuard } from '../identity/identity.guard'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { UsersRepository } from '../users/users.repository'
 import { DropPricesController } from './drop-prices.controller'
 import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
@@ -24,12 +25,11 @@ describe('DropPricesController', () => {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const prices = { upsert: jest.fn(), markDeleted: jest.fn() }
-  const bosses = { findDifficulty: jest.fn() }
+  const bosses = { findDifficulty: jest.fn(), findByKey: jest.fn() }
   const bearer = { authorization: 'Bearer S' }
 
   beforeAll(async () => {
@@ -55,6 +55,7 @@ describe('DropPricesController', () => {
     prices.upsert.mockReset().mockResolvedValue(undefined)
     prices.markDeleted.mockReset().mockResolvedValue(undefined)
     bosses.findDifficulty.mockReset().mockResolvedValue(null)
+    bosses.findByKey.mockReset().mockResolvedValue(null)
   })
 
   it('신원이 없으면 401 이고 저장하지 않는다', async () => {
@@ -76,6 +77,7 @@ describe('DropPricesController', () => {
     expect(res.json()).toEqual({ ok: true })
     expect(prices.upsert).toHaveBeenCalledWith({
       userId: 'u1',
+      nexonAccountId: 'a1',
       identifiedBy: 'login',
       dropRecordId: RECORD,
       itemKey: 'ring',
@@ -84,10 +86,77 @@ describe('DropPricesController', () => {
       worldKey: 'scania',
       ringLevel: 4,
       bossDifficultyId: null,
+      bossId: null,
       periodRecordId: null,
       recordStatus: 'completed',
       pricedAt: null,
+      owner: null,
     })
+  })
+
+  // 1.0.14 앱은 넥슨이 준 값 셋을 싣는다. 같은 드롭을 가리는 데 보스 칸을 따로 쓴다.
+  it('메이플 ID · ocid · 몇 번째를 받으면 그대로 넘기고 보스를 표의 줄로 바꾼다', async () => {
+    bosses.findByKey.mockResolvedValue({ id: 'b-1' })
+
+    await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: {
+        ...body,
+        boss: 'lucid',
+        difficulty: 'hard',
+        mapleId: 'm1',
+        ocid: 'o1',
+        itemOrdinal: 2,
+      },
+    })
+
+    expect(bosses.findByKey).toHaveBeenCalledWith('lucid')
+    expect(prices.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bossId: 'b-1',
+        owner: { mapleId: 'm1', ocid: 'o1', itemOrdinal: 2 },
+      }),
+    )
+  })
+
+  // 셋 중 하나만 오면 같은 드롭을 가릴 수 없다. 1.0.13 앱은 셋 다 안 보낸다.
+  it('메이플 ID · ocid · 몇 번째는 셋 다 오거나 셋 다 없어야 한다', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, mapleId: 'm1', ocid: 'o1' },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(prices.upsert).not.toHaveBeenCalled()
+  })
+
+  // 앱이 메이플 ID 를 알리기 전에 보낸 기록이다. 실패로 답해야 앱 대기 표가 다시 보낸다.
+  it('남의 메이플 ID 면 409 maple_id_not_registered 이고, 묶음에서는 그 건만 실패다', async () => {
+    prices.upsert.mockRejectedValue(new MapleIdNotOwned('m9'))
+    const payload = { ...body, mapleId: 'm9', ocid: 'o1', itemOrdinal: 1 }
+
+    const one = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload,
+    })
+    const batch = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices/batch',
+      headers: bearer,
+      payload: { items: [payload] },
+    })
+
+    expect(one.statusCode).toBe(409)
+    expect(one.json()).toEqual(expect.objectContaining({ code: 'maple_id_not_registered' }))
+    expect(batch.json<{ results: BatchResult[] }>().results).toEqual([
+      { recordId: RECORD, ok: false, reason: '이 계정의 메이플 ID 가 아니다: m9' },
+    ])
   })
 
   // 미입력 · 기록 안함도 줄이 된다. 가격이 없는 기록을 서버가 알아야 먹었는데 안 판 것이 보인다.
@@ -168,7 +237,6 @@ describe('DropPricesController', () => {
     users.upsertByApiKeyHash.mockResolvedValue({
       id: 'u2',
       nexonAccountId: 'a2',
-      accountRecordId: null,
     })
 
     const res = await app.inject({
@@ -227,7 +295,10 @@ describe('DropPricesController', () => {
     })
 
     expect(res.statusCode).toBe(204)
-    expect(prices.markDeleted).toHaveBeenCalledWith('u1', RECORD)
+    expect(prices.markDeleted).toHaveBeenCalledWith(
+      { userId: 'u1', source: 'login', nexonAccountId: 'a1' },
+      RECORD,
+    )
   })
 
   it('DELETE 의 id 가 uuid 모양이 아니면 400 이다', async () => {

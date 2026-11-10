@@ -60,27 +60,11 @@ export class UsersRepository {
   /** 세션 경로의 계정. 세션은 사람만 가리키므로 그 사람의 로그인 계정 줄(`nexon_uid` 가 있는 줄)을 찾는다. */
   async findLoginAccount(userId: string): Promise<Omit<FoundAccount, 'id'> | null> {
     const [row] = await this.db
-      .select({ nexonAccountId: nexonAccounts.id, accountRecordId: nexonAccounts.accountRecordId })
+      .select({ nexonAccountId: nexonAccounts.id })
       .from(nexonAccounts)
       .where(and(eq(nexonAccounts.userId, userId), isNotNull(nexonAccounts.nexonUid)))
       .limit(1)
     return row ?? null
-  }
-
-  /**
-   * 앱이 헤더로 알려 준 기기 계정 id 를 적는다. 같은 사람의 다른 계정이 그 id 를 이미 가졌으면 적지 않는다.
-   *
-   * 던지지 않는 이유는 이것이 쓰기 요청에 얹힌 일이라서다. 여기서 실패하면 멀쩡한 기록까지 거절된다.
-   */
-  async recordAccountId(nexonAccountId: string, accountRecordId: string): Promise<void> {
-    await this.db.execute(sql`
-      UPDATE ${nexonAccounts} SET account_record_id = ${accountRecordId}, updated_at = now()
-       WHERE id = ${nexonAccountId}
-         AND account_record_id IS DISTINCT FROM ${accountRecordId}
-         AND NOT EXISTS (
-           SELECT 1 FROM ${nexonAccounts} other
-            WHERE other.user_id = ${nexonAccounts.userId} AND other.account_record_id = ${accountRecordId}
-              AND other.id <> ${nexonAccountId})`)
   }
 
   /**

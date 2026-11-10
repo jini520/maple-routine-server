@@ -11,6 +11,7 @@ import { CashbookEntriesRepository } from './cashbook-entries.repository'
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
   entryRecordId: RECORD,
+  mapleId: 'm1',
   ocid: 'ocid-1',
   entryType: 'income',
   categoryKey: 'item_sale',
@@ -32,8 +33,7 @@ describe('CashbookEntriesController', () => {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const entries = { upsert: jest.fn(), markDeleted: jest.fn() }
@@ -67,7 +67,7 @@ describe('CashbookEntriesController', () => {
     expect(entries.upsert).not.toHaveBeenCalled()
   })
 
-  it('신원을 더해 그대로 적고, 빠진 계정 칸은 null 이다', async () => {
+  it('신원의 넥슨 계정과 메이플 ID 를 더해 그대로 적는다', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/cashbook-entries',
@@ -78,10 +78,10 @@ describe('CashbookEntriesController', () => {
     expect(res.statusCode).toBe(200)
     expect(entries.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'u1',
+        nexonAccountId: 'a1',
         identifiedBy: 'login',
+        mapleId: 'm1',
         ocid: 'ocid-1',
-        accountRecordId: null,
         categoryKey: 'item_sale',
       }),
     )
@@ -108,6 +108,9 @@ describe('CashbookEntriesController', () => {
     })
 
     expect(res.statusCode).toBe(204)
-    expect(entries.markDeleted).toHaveBeenCalledWith('u1', RECORD)
+    expect(entries.markDeleted).toHaveBeenCalledWith(
+      { userId: 'u1', source: 'login', nexonAccountId: 'a1' },
+      RECORD,
+    )
   })
 })

@@ -6,6 +6,7 @@ import { SessionsRepository } from '../auth/sessions.repository'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { NoWorld } from '../drop-prices/drop-prices.repository'
 import { IdentityGuard } from '../identity/identity.guard'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { UsersRepository } from '../users/users.repository'
 import { BossClearsController } from './boss-clears.controller'
 import { BossClearsRepository } from './boss-clears.repository'
@@ -14,6 +15,7 @@ const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const OTHER = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
   periodRecordId: RECORD,
+  mapleId: 'm1',
   ocid: 'ocid-1',
   boss: 'lucid',
   difficulty: 'hard',
@@ -32,12 +34,11 @@ describe('BossClearsController', () => {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const clears = { upsert: jest.fn(), markDeleted: jest.fn() }
-  const bosses = { findDifficulty: jest.fn() }
+  const bosses = { findDifficulty: jest.fn(), findByKey: jest.fn() }
   const bearer = { authorization: 'Bearer S' }
 
   beforeAll(async () => {
@@ -61,6 +62,7 @@ describe('BossClearsController', () => {
     clears.upsert.mockReset().mockResolvedValue(undefined)
     clears.markDeleted.mockReset().mockResolvedValue(undefined)
     bosses.findDifficulty.mockReset().mockResolvedValue({ id: 'diff-1' })
+    bosses.findByKey.mockReset().mockResolvedValue({ id: 'b-1' })
   })
 
   it('신원이 없으면 401 이고 적지 않는다', async () => {
@@ -82,8 +84,10 @@ describe('BossClearsController', () => {
     expect(bosses.findDifficulty).toHaveBeenCalledWith('lucid', 'hard')
     expect(clears.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'u1',
+        nexonAccountId: 'a1',
         identifiedBy: 'login',
+        mapleId: 'm1',
+        bossId: 'b-1',
         bossDifficultyId: 'diff-1',
         myShare: null,
         sharesTotal: null,
@@ -166,6 +170,30 @@ describe('BossClearsController', () => {
     })
 
     expect(res.statusCode).toBe(204)
-    expect(clears.markDeleted).toHaveBeenCalledWith('u1', RECORD)
+    expect(clears.markDeleted).toHaveBeenCalledWith(
+      { userId: 'u1', source: 'login', nexonAccountId: 'a1' },
+      RECORD,
+    )
+  })
+
+  // 메이플 ID 가 없으면 이 기록이 어느 넥슨 계정의 것인지 가를 수 없다.
+  it('메이플 ID 가 없으면 400 이고, 남의 메이플 ID 면 409 maple_id_not_registered 다', async () => {
+    const missing = await app.inject({
+      method: 'POST',
+      url: '/v1/boss-clears',
+      headers: bearer,
+      payload: { ...body, mapleId: undefined },
+    })
+    clears.upsert.mockRejectedValueOnce(new MapleIdNotOwned('m1'))
+    const notMine = await app.inject({
+      method: 'POST',
+      url: '/v1/boss-clears',
+      headers: bearer,
+      payload: body,
+    })
+
+    expect(missing.statusCode).toBe(400)
+    expect(notMine.statusCode).toBe(409)
+    expect(notMine.json()).toEqual(expect.objectContaining({ code: 'maple_id_not_registered' }))
   })
 })

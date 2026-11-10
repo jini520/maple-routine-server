@@ -2,8 +2,8 @@ import { cashbookEntryBody } from './cashbook-entries.dto'
 
 const ok = {
   entryRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b',
+  mapleId: 'm1',
   ocid: null,
-  accountRecordId: '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b',
   entryType: 'spend',
   categoryKey: 'content',
   entryDate: '2026-10-26',
@@ -19,11 +19,11 @@ const ok = {
 }
 
 describe('cashbookEntryBody', () => {
-  it('앱이 보내는 모양을 받는다. 캐릭터 기록은 계정 없이도 된다', () => {
+  // 캐릭터 없는 기록은 메이플 ID 기록이다. 메이플 ID 가 없으면 어느 넥슨 계정의 기록인지 가를 수 없다.
+  it('앱이 보내는 모양을 받고, 메이플 ID 는 캐릭터 기록에도 반드시 있어야 한다', () => {
     expect(cashbookEntryBody.safeParse(ok).success).toBe(true)
-    expect(
-      cashbookEntryBody.safeParse({ ...ok, ocid: 'ocid-1', accountRecordId: undefined }).success,
-    ).toBe(true)
+    expect(cashbookEntryBody.safeParse({ ...ok, ocid: 'ocid-1' }).success).toBe(true)
+    expect(cashbookEntryBody.safeParse({ ...ok, mapleId: undefined }).success).toBe(false)
   })
 
   it('헥사 강화 품목은 조각 칸 셋과 활성화 여부를 받고, 조각 수나 가격이 음수면 거절한다', () => {

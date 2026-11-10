@@ -1,8 +1,16 @@
 import { eq } from 'drizzle-orm'
 
-import { items, dropPrices, users, worlds } from '../../database/schema'
+import {
+  dropPrices,
+  items,
+  nexonAccountMapleIds,
+  nexonAccounts,
+  users,
+  worlds,
+} from '../../database/schema'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import {
   type DropPriceInput,
   DropPricesRepository,
@@ -22,9 +30,13 @@ describeDb('DropPricesRepository', () => {
   let repo: DropPricesRepository
   let me: string
   let other: string
+  let myAccount: string
+  let otherAccount: string
+  const mine = () => ({ userId: me, nexonAccountId: myAccount })
 
   const input = (over: Partial<DropPriceInput> = {}): DropPriceInput => ({
     userId: me,
+    nexonAccountId: myAccount,
     identifiedBy: 'key',
     dropRecordId: RECORD,
     itemKey: 'ring',
@@ -33,9 +45,11 @@ describeDb('DropPricesRepository', () => {
     worldKey: 'scania',
     ringLevel: 4,
     bossDifficultyId: null,
+    bossId: null,
     periodRecordId: null,
     recordStatus: 'completed',
     pricedAt: null,
+    owner: null,
     ...over,
   })
 
@@ -49,6 +63,16 @@ describeDb('DropPricesRepository', () => {
     const rows = await db.insert(users).values([{}, {}]).returning({ id: users.id })
     me = rows[0].id
     other = rows[1].id
+    const accounts = await db
+      .insert(nexonAccounts)
+      .values([{ userId: me }, { userId: other }])
+      .returning({ id: nexonAccounts.id })
+    myAccount = accounts[0].id
+    otherAccount = accounts[1].id
+    await db.insert(nexonAccountMapleIds).values([
+      { nexonAccountId: myAccount, mapleId: 'm-me' },
+      { nexonAccountId: otherAccount, mapleId: 'm-other' },
+    ])
     // 가격 줄이 아이템 · 월드 표의 줄을 가리킨다. 스펙이 쓰는 key 둘과 월드 하나를 먼저 세운다.
     await db.insert(items).values([
       { key: 'ring', name: '반지', valuable: true, isDrop: true },
@@ -103,7 +127,7 @@ describeDb('DropPricesRepository', () => {
     await repo.upsert(input({ priceMeso: 200 }))
     expect(await pricedAt()).not.toBeNull()
 
-    await repo.markDeleted(me, RECORD)
+    await repo.markDeleted(mine(), RECORD)
     expect(await pricedAt()).toBeNull()
   })
 
@@ -223,11 +247,11 @@ describeDb('DropPricesRepository', () => {
     await repo.upsert(input())
     await repo.upsert(input({ userId: other }))
 
-    await repo.markDeleted(me, RECORD)
+    await repo.markDeleted(mine(), RECORD)
 
-    const mine = await db.select().from(dropPrices).where(eq(dropPrices.userId, me))
+    const minePrices = await db.select().from(dropPrices).where(eq(dropPrices.userId, me))
     const theirs = await db.select().from(dropPrices).where(eq(dropPrices.userId, other))
-    expect([mine[0]?.recordStatus, mine[0]?.priceMeso]).toEqual(['deleted', null])
+    expect([minePrices[0]?.recordStatus, minePrices[0]?.priceMeso]).toEqual(['deleted', null])
     expect([theirs[0]?.recordStatus, theirs[0]?.priceMeso]).toEqual(['completed', 100])
 
     await repo.upsert(input())
@@ -236,7 +260,7 @@ describeDb('DropPricesRepository', () => {
   })
 
   it('markDeleted 는 없는 줄이면 조용하다', async () => {
-    await expect(repo.markDeleted(me, RECORD)).resolves.toBeUndefined()
+    await expect(repo.markDeleted(mine(), RECORD)).resolves.toBeUndefined()
     expect(await db.select().from(dropPrices)).toHaveLength(0)
   })
 
@@ -258,7 +282,7 @@ describeDb('DropPricesRepository', () => {
         periodKey: '2026-10',
       }),
     )
-    await repo.markDeleted(me, '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a51')
+    await repo.markDeleted(mine(), '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a51')
 
     const all = await repo.recent({ itemKey: null, periodKey: null }, 10)
     expect(all).toHaveLength(3)
@@ -295,7 +319,7 @@ describeDb('DropPricesRepository', () => {
     await repo.upsert(
       input({ dropRecordId: ids[4], priceMeso: 50, itemKey: 'cape', periodKey: '2026-10' }),
     )
-    await repo.markDeleted(me, ids[2])
+    await repo.markDeleted(mine(), ids[2])
 
     const summary = await repo.summary({ itemKey: null, periodKey: null })
 
@@ -323,5 +347,169 @@ describeDb('DropPricesRepository', () => {
     expect(await repo.summary({ itemKey: 'ring', periodKey: null })).toHaveLength(1)
     expect(await repo.summary({ itemKey: '반지', periodKey: null })).toHaveLength(1)
     expect(await repo.summary({ itemKey: 'none', periodKey: null })).toEqual([])
+  })
+
+  describe('넥슨이 준 값으로 가린다', () => {
+    const R1 = '1a1a1a1a-0000-4000-8000-00000000001a'
+    const R2 = '2b2b2b2b-0000-4000-8000-00000000002b'
+    let lucid: string
+
+    beforeEach(async () => {
+      const created = await new BossesRepository(db).createBoss({
+        key: 'lucid',
+        name: '루시드',
+        alias: '루시드',
+        cycle: 'weekly',
+        portraitSlug: 'lucid',
+        difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+      })
+      lucid = created.id
+    })
+
+    const drop = (
+      over: Partial<DropPriceInput> = {},
+      owner: Partial<DropPriceInput['owner'] & object> = {},
+    ) =>
+      input({
+        bossId: lucid,
+        owner: { mapleId: 'm-me', ocid: 'o1', itemOrdinal: 1, ...owner },
+        ...over,
+      })
+    const rows = () => db.select().from(dropPrices).orderBy(dropPrices.createdAt)
+
+    // 남의 메이플 ID 를 아는 사람이 그 기록을 덮거나 막으면 안 된다. 실패로 답해 앱 대기 표가 다시 보낸다.
+    it('메이플 ID 가 보낸 계정의 것이 아니면 MapleIdNotOwned 로 거절하고 적지 않는다', async () => {
+      await expect(repo.upsert(drop({}, { mapleId: 'm-other' }))).rejects.toBeInstanceOf(
+        MapleIdNotOwned,
+      )
+      expect(await rows()).toEqual([])
+    })
+
+    // 시세에서 같은 드롭을 두 번 세지 않는다(사용자 지정 2026-11-09). 앱의 기록은 그대로 둔다.
+    it('같은 드롭(ocid · 보스 · 기간 · 아이템 · 몇 번째)이 이미 있으면 누가 보냈든 적지 않는다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 100 }))
+
+      await repo.upsert(
+        drop(
+          { dropRecordId: R2, priceMeso: 999, userId: other, nexonAccountId: otherAccount },
+          { mapleId: 'm-other' },
+        ),
+      )
+
+      expect((await rows()).map((r) => [r.dropRecordId, r.priceMeso, r.mapleId])).toEqual([
+        [R1, 100, 'm-me'],
+      ])
+    })
+
+    // 리프하면 기기가 기록을 새 ocid 로 옮긴다. 메이플 ID 는 그대로라 같은 줄을 찾아 ocid 를 고친다.
+    it('같은 메이플 ID · 같은 기록 id 로 다시 오면 그 줄을 고치고, 리프로 ocid 가 바뀌어도 같은 줄이다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 100 }))
+
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 200 }, { ocid: 'o2' }))
+
+      expect((await rows()).map((r) => [r.ocid, r.priceMeso, r.bossId, r.itemOrdinal])).toEqual([
+        ['o2', 200, lucid, 1],
+      ])
+    })
+
+    it('고친 값이 다른 줄과 같은 드롭이 되면 그 고침을 적지 않는다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1 }))
+      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 300 }, { itemOrdinal: 2 }))
+
+      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 400 }, { itemOrdinal: 1 }))
+
+      expect((await rows()).map((r) => [r.dropRecordId, r.itemOrdinal, r.priceMeso])).toEqual([
+        [R1, 1, 100],
+        [R2, 2, 300],
+      ])
+    })
+
+    // 지운 줄이 자리를 쥐고 있으면 같은 자리에 다시 적은 드롭을 받지 못한다.
+    it('기기에서 지운 줄은 같은 드롭 판정에서 빠진다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1 }))
+      await repo.markDeleted(mine(), R1)
+
+      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 500 }))
+
+      expect((await rows()).map((r) => [r.dropRecordId, r.recordStatus])).toEqual([
+        [R1, 'deleted'],
+        [R2, 'completed'],
+      ])
+    })
+
+    // 1.0.14 앱이 과거 드롭을 처음부터 다시 올려 옛 줄에 넥슨이 준 값을 채운다.
+    it('메이플 ID 가 없는 옛 줄은 같은 사람 · 기록 id 로 찾아 ocid · 메이플 ID 를 채운다', async () => {
+      await repo.upsert(input({ dropRecordId: R1 }))
+
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 150 }))
+
+      expect((await rows()).map((r) => [r.userId, r.mapleId, r.ocid, r.priceMeso])).toEqual([
+        [me, 'm-me', 'o1', 150],
+      ])
+    })
+
+    it('채우다가 다른 줄과 같은 드롭이 되면 먼저 들어온 줄을 남기고 나중 줄을 지운다', async () => {
+      const backdate = (id: string, at: string) =>
+        db
+          .update(dropPrices)
+          .set({ createdAt: new Date(at) })
+          .where(eq(dropPrices.dropRecordId, id))
+      // 옛 줄이 먼저 들어왔다
+      await repo.upsert(input({ dropRecordId: R1, priceMeso: 1 }))
+      await backdate(R1, '2026-10-01T00:00:00Z')
+      await repo.upsert(
+        drop(
+          { dropRecordId: R2, priceMeso: 2, userId: other, nexonAccountId: otherAccount },
+          { mapleId: 'm-other' },
+        ),
+      )
+
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 1 }))
+
+      expect((await rows()).map((r) => [r.dropRecordId, r.mapleId])).toEqual([[R1, 'm-me']])
+
+      // 다른 줄이 먼저 들어왔다
+      await db.delete(dropPrices)
+      await repo.upsert(
+        drop(
+          { dropRecordId: R2, priceMeso: 2, userId: other, nexonAccountId: otherAccount },
+          { mapleId: 'm-other' },
+        ),
+      )
+      await backdate(R2, '2026-10-01T00:00:00Z')
+      await repo.upsert(input({ dropRecordId: R1, priceMeso: 1 }))
+
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 1 }))
+
+      expect((await rows()).map((r) => [r.dropRecordId, r.mapleId])).toEqual([[R2, 'm-other']])
+    })
+
+    // 남긴 ocid 가 있어야 지운 뒤 돌아온 사람이 같은 드롭을 다시 보내도 줄이 늘지 않는다(사용자 지정 2026-11-09).
+    it('계정을 지우면 메이플 ID 는 비고 ocid 는 남아, 돌아와 다시 보내도 줄이 늘지 않는다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1 }))
+      await db.delete(users).where(eq(users.id, me))
+
+      expect((await rows()).map((r) => [r.userId, r.mapleId, r.ocid])).toEqual([[null, null, 'o1']])
+
+      const [back] = await db.insert(users).values({}).returning({ id: users.id })
+      const [account] = await db
+        .insert(nexonAccounts)
+        .values({ userId: back.id })
+        .returning({ id: nexonAccounts.id })
+      await db.insert(nexonAccountMapleIds).values({ nexonAccountId: account.id, mapleId: 'm-me' })
+      await repo.upsert(drop({ dropRecordId: R1, userId: back.id, nexonAccountId: account.id }))
+
+      expect(await rows()).toHaveLength(1)
+    })
+
+    it('markDeleted 는 내 계정의 메이플 ID 줄도 지운다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1 }))
+      const [another] = await db.insert(users).values({}).returning({ id: users.id })
+      await db.update(dropPrices).set({ userId: another.id })
+
+      await repo.markDeleted(mine(), R1)
+
+      expect((await rows()).map((r) => r.recordStatus)).toEqual(['deleted'])
+    })
   })
 })

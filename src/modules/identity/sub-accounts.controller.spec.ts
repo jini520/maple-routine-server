@@ -15,7 +15,6 @@ describe('SubAccountsController', () => {
     upsertByApiKeyHash: jest.fn(),
     deletionRequestedAt: jest.fn(),
     findLoginAccount: jest.fn(),
-    recordAccountId: jest.fn(),
   }
   const accounts = {
     listSubAccounts: jest.fn(),
@@ -43,13 +42,9 @@ describe('SubAccountsController', () => {
   afterAll(() => app.close())
   beforeEach(() => {
     sessions.findByHash.mockReset().mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
-    users.upsertByApiKeyHash
-      .mockReset()
-      .mockResolvedValue({ id: 'u2', nexonAccountId: 'a2', accountRecordId: null })
+    users.upsertByApiKeyHash.mockReset().mockResolvedValue({ id: 'u2', nexonAccountId: 'a2' })
     users.deletionRequestedAt.mockReset().mockResolvedValue(null)
-    users.findLoginAccount
-      .mockReset()
-      .mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null })
+    users.findLoginAccount.mockReset().mockResolvedValue({ nexonAccountId: 'a1' })
     accounts.listSubAccounts
       .mockReset()
       .mockResolvedValue([{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: ['m1'] }])

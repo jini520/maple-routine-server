@@ -52,7 +52,6 @@ describeDb('UsersRepository', () => {
         id: found.nexonAccountId,
         userId: found.id,
         nexonUid: 'uid-1',
-        accountRecordId: null,
       }),
     ])
     expect(await db.select().from(nexonAccountKeys)).toEqual([])
@@ -119,44 +118,8 @@ describeDb('UsersRepository', () => {
     const { id, nexonAccountId } = await repo.upsertByNexonUid('uid-1')
     await repo.linkApiKey(id, sha256('k'.repeat(64)))
 
-    await expect(repo.findLoginAccount(id)).resolves.toEqual({
-      nexonAccountId,
-      accountRecordId: null,
-    })
+    await expect(repo.findLoginAccount(id)).resolves.toEqual({ nexonAccountId })
     await expect(repo.findLoginAccount('00000000-0000-4000-8000-000000000000')).resolves.toBeNull()
-  })
-
-  it('기기 계정 id 를 적고, 바뀌면 덮는다', async () => {
-    const { id, nexonAccountId } = await repo.upsertByNexonUid('uid-1')
-
-    await repo.recordAccountId(nexonAccountId, RECORD_A)
-    await expect(repo.findLoginAccount(id)).resolves.toEqual({
-      nexonAccountId,
-      accountRecordId: RECORD_A,
-    })
-
-    await repo.recordAccountId(nexonAccountId, RECORD_B)
-    await expect(repo.findLoginAccount(id)).resolves.toEqual({
-      nexonAccountId,
-      accountRecordId: RECORD_B,
-    })
-  })
-
-  // 같은 사람의 다른 계정이 이미 그 id 를 가졌다. 사람 안에서 유일해야 하므로 요청을 막지 않고 적지 않는다.
-  it('같은 사람의 다른 계정이 쓰는 id 면 적지 않고 던지지도 않는다', async () => {
-    const login = await repo.upsertByNexonUid('uid-1')
-    const [key] = await db
-      .insert(nexonAccounts)
-      .values({ userId: login.id, accountRecordId: RECORD_A })
-      .returning({ id: nexonAccounts.id })
-
-    await expect(repo.recordAccountId(login.nexonAccountId, RECORD_A)).resolves.toBeUndefined()
-
-    await expect(repo.findLoginAccount(login.id)).resolves.toEqual({
-      nexonAccountId: login.nexonAccountId,
-      accountRecordId: null,
-    })
-    expect(key?.id).toBeDefined()
   })
 
   // 다시 누를 때마다 시각을 덮으면 유예가 끝없이 밀린다.
@@ -360,13 +323,17 @@ describeDb('UsersRepository', () => {
       expect(prices.every((row) => row.userId === login.id)).toBe(true)
     })
 
-    it('옛 표의 줄은 옮기지 않고 키 사람과 함께 지운다', async () => {
+    // 처치 · 가계부 · 강화 합계는 메이플 ID 를 가리킨다. 메이플 ID 가 로그인 줄로 옮겨 가면 기록도 함께 이어진다.
+    it('메이플 ID 를 가리키는 기록은 키 사람을 지워도 남아 로그인 계정으로 이어진다', async () => {
       const key = await repo.upsertByApiKeyHash(KEY)
       const login = await repo.upsertByNexonUid('uid-1')
+      await db
+        .insert(nexonAccountMapleIds)
+        .values({ nexonAccountId: key.nexonAccountId, mapleId: 'm1' })
       await db.insert(bossClears).values({
-        userId: key.id,
         identifiedBy: 'key',
         periodRecordId: RECORD_A,
+        mapleId: 'm1',
         ocid: 'o1',
         cycle: 'weekly',
         periodKey: '2026-11-05',
@@ -379,7 +346,12 @@ describeDb('UsersRepository', () => {
 
       await repo.linkApiKey(login.id, KEY)
 
-      expect(await db.select().from(bossClears)).toEqual([])
+      expect(await db.select().from(bossClears)).toEqual([
+        expect.objectContaining({ mapleId: 'm1' }),
+      ])
+      expect(await db.select().from(nexonAccountMapleIds)).toEqual([
+        expect.objectContaining({ nexonAccountId: login.nexonAccountId, mapleId: 'm1' }),
+      ])
     })
 
     // 넥슨 ID 가 같은 줄은 한 줄이어야 한다. 키 사람의 다른 로그인은 다른 넥슨 ID 라 그대로 둔다.

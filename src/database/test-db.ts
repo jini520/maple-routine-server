@@ -103,6 +103,26 @@ export async function insertAssets(
   return out
 }
 
+/** 사람 · 넥슨 계정 줄을 만들고 메이플 ID 를 단다. 기록 표가 메이플 ID 를 가리키므로 기록보다 먼저 둔다. */
+export async function insertNexonAccount(
+  db: TestDb,
+  mapleIds: readonly string[],
+): Promise<{ userId: string; nexonAccountId: string }> {
+  const [user] = await db.insert(schema.users).values({}).returning({ id: schema.users.id })
+  if (user === undefined) throw new Error('사람을 못 넣었다')
+  const [account] = await db
+    .insert(schema.nexonAccounts)
+    .values({ userId: user.id })
+    .returning({ id: schema.nexonAccounts.id })
+  if (account === undefined) throw new Error('넥슨 계정 줄을 못 넣었다')
+  if (mapleIds.length > 0) {
+    await db
+      .insert(schema.nexonAccountMapleIds)
+      .values(mapleIds.map((mapleId) => ({ nexonAccountId: account.id, mapleId })))
+  }
+  return { userId: user.id, nexonAccountId: account.id }
+}
+
 export async function openTestDb(): Promise<{
   db: TestDb
   truncate: () => Promise<void>

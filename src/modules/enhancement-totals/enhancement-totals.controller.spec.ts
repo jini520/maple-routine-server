@@ -11,10 +11,12 @@ import { EnhancementTotalsRepository } from './enhancement-totals.repository'
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
   totalRecordId: RECORD,
-  accountRecordId: '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b',
+  mapleId: 'm1',
+  ocid: 'ocid-1',
   characterName: '낟낟',
   historyDate: '2026-10-20',
   enhancementCategory: 'starforce',
+  itemGroup: 'key:arcane_umbra_knuckle',
   itemKey: 'arcane_umbra_knuckle',
   itemName: '아케인셰이드 클로',
   attempts: 3,
@@ -27,8 +29,7 @@ describe('EnhancementTotalsController', () => {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const totals = { upsert: jest.fn(), markDeleted: jest.fn() }
@@ -73,9 +74,11 @@ describe('EnhancementTotalsController', () => {
     expect(res.statusCode).toBe(200)
     expect(totals.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'u1',
+        nexonAccountId: 'a1',
         identifiedBy: 'login',
         totalRecordId: RECORD,
+        mapleId: 'm1',
+        ocid: 'ocid-1',
         itemKey: null,
         attemptCostMeso: 1_000_000,
         destroyDefenceCostMeso: 2_000_000,
@@ -105,6 +108,9 @@ describe('EnhancementTotalsController', () => {
     })
 
     expect(res.statusCode).toBe(204)
-    expect(totals.markDeleted).toHaveBeenCalledWith('u1', RECORD)
+    expect(totals.markDeleted).toHaveBeenCalledWith(
+      { userId: 'u1', source: 'login', nexonAccountId: 'a1' },
+      RECORD,
+    )
   })
 })

@@ -3,11 +3,9 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import type { Db } from '../../database/database.module'
 import {
   enhancementAnomalies,
-  enhancementTotals,
   nexonAccountKeys,
   nexonAccountMapleIds,
   nexonAccounts,
-  serverCashbookEntries,
   subAccounts,
   users,
 } from '../../database/schema'
@@ -19,14 +17,11 @@ export interface FoundAccount {
   /** 사람(users.id). */
   id: string
   nexonAccountId: string
-  /** 기기가 만든 계정 id. 앱이 아직 안 알려 줬으면 NULL. */
-  accountRecordId: string | null
 }
 
 export const ACCOUNT_COLUMNS = {
   id: nexonAccounts.userId,
   nexonAccountId: nexonAccounts.id,
-  accountRecordId: nexonAccounts.accountRecordId,
 }
 
 /**
@@ -78,8 +73,9 @@ export async function findOrCreateKeyAccount(tx: Tx, apiKeyHash: Buffer): Promis
 }
 
 /**
- * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 키 · 메이플 ID · 부계정 등록 · 넥슨 계정을 가리키는 기록을 옮기고 from 을
- * 지운다. from 의 사람에게 다른 줄이 없으면 그 사람의 옛 기록을 into 의 사람에게 옮기고 사람도 지운다.
+ * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 키 · 메이플 ID · 부계정 등록 · 강화 이상 보고를 옮기고 from 을 지운다. 기록은
+ * 메이플 ID 를 가리키므로 메이플 ID 를 따라 옮겨진다. from 의 사람에게 다른 줄이 없으면 그 사람의 옛 기록을 into 의 사람에게
+ * 옮기고 사람도 지운다.
  */
 export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Promise<void> {
   const [source] = await tx
@@ -126,14 +122,6 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     .update(enhancementAnomalies)
     .set({ nexonAccountId: into })
     .where(eq(enhancementAnomalies.nexonAccountId, from))
-  await tx
-    .update(serverCashbookEntries)
-    .set({ nexonAccountId: into })
-    .where(eq(serverCashbookEntries.nexonAccountId, from))
-  await tx
-    .update(enhancementTotals)
-    .set({ nexonAccountId: into })
-    .where(eq(enhancementTotals.nexonAccountId, from))
   await tx.delete(nexonAccounts).where(eq(nexonAccounts.id, from))
 
   if (source.userId === target.userId) return
@@ -144,7 +132,6 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     .limit(1)
   if (rest !== undefined) return
   await moveLegacyRecords(tx, source.userId, target.userId)
-  // 옛 표(boss_clears 등)의 줄은 외래키가 함께 지운다.
   await tx.delete(users).where(eq(users.id, source.userId))
 }
 

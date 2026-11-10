@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { uuidLike } from '../drop-prices/drop-prices.dto'
+import { mapleId } from '../identity/me.dto'
 
 const amount = z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER).nullish()
 const key = z.string().min(1).max(200).nullish()
@@ -34,12 +35,12 @@ export const cashbookEntryItemBody = z.object({
 /**
  * 가계부 기록 한 건과 품목. 앱의 CashbookEntryPayload 와 칸이 맞는다.
  *
- * 캐릭터가 없는 기록은 accountRecordId 로 넥슨 계정을 알린다. 서버가 그 사람의 계정 줄로 바꿔 적고 못 찾으면 NULL 이다.
+ * 메이플 ID 는 반드시 있다. 캐릭터 기록은 그 캐릭터의 메이플 ID 이고, 캐릭터가 없는 기록은 메이플 ID 기록이다.
  */
 export const cashbookEntryBody = z.object({
   entryRecordId: uuidLike,
+  mapleId,
   ocid: z.string().min(1).max(100).nullish(),
-  accountRecordId: uuidLike.nullish(),
   entryType: z.enum(['income', 'spend']),
   categoryKey: z.string().min(1).max(100),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

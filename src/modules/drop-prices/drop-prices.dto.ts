@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { mapleId } from '../identity/me.dto'
+
 /** 기기가 만든 v4. 변형 비트까지 따지지 않는다. 멀쩡한 본문을 거절하면 앱이 5회 뒤 그 건을 버린다. */
 export const uuidLike = z
   .string()
@@ -31,9 +33,22 @@ export const dropPriceBody = z
     pricedAt: z.iso.datetime({ offset: true }).nullish(),
     /** 기록의 상태. 이 칸이 생기기 전 OTA 는 가격 있는 기록만 보내므로 없으면 completed 다. */
     status: dropRecordStatusBody.default('completed'),
+    /**
+     * 드롭한 캐릭터의 메이플 ID · ocid 와, 그 캐릭터 · 보스 · 기간에 같은 아이템이 몇 번째인지. 같은 드롭을 가리는 넥슨이 준 값이다.
+     * 1.0.13 앱은 셋 다 안 보낸다.
+     */
+    mapleId: mapleId.nullish(),
+    ocid: z.string().min(1).max(100).nullish(),
+    itemOrdinal: z.number().int().min(1).max(1000).nullish(),
   })
   .refine((body) => (body.status === 'completed') === (body.priceMeso != null), {
     message: 'completed 만 priceMeso 를 갖고 pending · skipped 는 null 이다',
     path: ['priceMeso'],
   })
+  .refine(
+    (body) =>
+      (body.mapleId == null) === (body.ocid == null) &&
+      (body.ocid == null) === (body.itemOrdinal == null),
+    { message: 'mapleId · ocid · itemOrdinal 은 셋 다 오거나 셋 다 없다', path: ['mapleId'] },
+  )
 export type DropPriceBody = z.infer<typeof dropPriceBody>

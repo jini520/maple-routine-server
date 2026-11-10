@@ -1,29 +1,34 @@
-import { enhancementTotals, nexonAccounts, users } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { eq } from 'drizzle-orm'
+
+import { enhancementTotals, users } from '../../database/schema'
+import { describeDb, insertNexonAccount, openTestDb, type TestDb } from '../../database/test-db'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import {
   type EnhancementTotalInput,
   EnhancementTotalsRepository,
 } from './enhancement-totals.repository'
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
-const ACCOUNT = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
+const NEW_RECORD = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 
 describeDb('EnhancementTotalsRepository', () => {
   let db: TestDb
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: EnhancementTotalsRepository
-  let me: string
-  let myAccount: string
+  let me: { userId: string; nexonAccountId: string }
+  let other: { userId: string; nexonAccountId: string }
 
   const input = (over: Partial<EnhancementTotalInput> = {}): EnhancementTotalInput => ({
-    userId: me,
+    nexonAccountId: me.nexonAccountId,
     identifiedBy: 'login',
     totalRecordId: RECORD,
-    accountRecordId: ACCOUNT,
+    mapleId: 'm-me',
+    ocid: 'ocid-1',
     characterName: '낟낟',
     historyDate: '2026-10-20',
     enhancementCategory: 'cube_reset',
+    itemGroup: 'key:arcane_umbra_knuckle',
     itemKey: 'arcane_umbra_knuckle',
     itemName: '아케인셰이드 클로',
     attempts: 2,
@@ -31,6 +36,7 @@ describeDb('EnhancementTotalsRepository', () => {
     destroyDefenceCostMeso: 0,
     ...over,
   })
+  const rows = () => db.select().from(enhancementTotals)
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -38,46 +44,50 @@ describeDb('EnhancementTotalsRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    ;[{ id: me }] = await db.insert(users).values({}).returning({ id: users.id })
-    ;[{ id: myAccount }] = await db
-      .insert(nexonAccounts)
-      .values({
-        userId: me,
-        nexonUid: 'uid',
-        referralCode: 'AAAAAAAA',
-        accountRecordId: ACCOUNT,
-      })
-      .returning({ id: nexonAccounts.id })
+    me = await insertNexonAccount(db, ['m-me'])
+    other = await insertNexonAccount(db, ['m-other'])
   })
   afterAll(() => close())
 
-  // 앱은 오늘 합계를 받을 때마다 다시 보낸다. 줄이 늘면 같은 강화가 여러 번 센다.
-  it('다시 적으면 한 줄을 덮고, 지운 줄도 되살린다', async () => {
+  // 앱은 오늘 합계를 받을 때마다 다시 보낸다. 다시 설치한 기기는 같은 합계에 새 id 를 붙여도 같은 줄이다.
+  it('같은 합계(ocid · 날짜 · 분류 · 장비 묶음)는 기록 id 가 달라도 한 줄을 덮고, 지운 줄도 되살린다', async () => {
     await repo.upsert(input())
     await repo.markDeleted(me, RECORD)
-    await repo.upsert(input({ attempts: 5, attemptCostMeso: 2_250_000 }))
 
-    const rows = await db.select().from(enhancementTotals)
-    expect(rows.map((row) => [row.attempts, row.attemptCostMeso, row.deletedAt])).toEqual([
-      [5, 2_250_000, null],
-    ])
+    await repo.upsert(input({ totalRecordId: NEW_RECORD, attempts: 5, attemptCostMeso: 2_250_000 }))
+
+    expect(
+      (await rows()).map((r) => [r.totalRecordId, r.attempts, r.attemptCostMeso, r.deletedAt]),
+    ).toEqual([[NEW_RECORD, 5, 2_250_000, null]])
   })
 
-  it('기기 계정 id 로 그 사람의 넥슨 계정을 적고, 못 찾으면 비운다', async () => {
+  // 이름을 바꾼 캐릭터도 ocid 가 같아 한 줄이다. 이름으로 가리면 같은 강화가 두 줄이 된다.
+  it('캐릭터 이름이 달라도 ocid 가 같으면 같은 합계다', async () => {
     await repo.upsert(input())
-    expect((await db.select().from(enhancementTotals))[0]?.nexonAccountId).toBe(myAccount)
+    await repo.upsert(input({ characterName: '살름' }))
 
-    await repo.upsert(input({ accountRecordId: '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b' }))
-    expect((await db.select().from(enhancementTotals))[0]?.nexonAccountId).toBeNull()
+    expect((await rows()).map((r) => r.characterName)).toEqual(['살름'])
   })
 
-  // 다른 사람이 같은 합계 id 를 보내도 내 줄을 지우지 못해야 한다.
-  it('지우기는 내 줄에만 시각을 적는다', async () => {
+  it('남의 메이플 ID 면 MapleIdNotOwned 로 거절하고 적지 않는다', async () => {
+    await expect(repo.upsert(input({ mapleId: 'm-other' }))).rejects.toBeInstanceOf(MapleIdNotOwned)
+    expect(await rows()).toEqual([])
+  })
+
+  // 다른 계정이 같은 합계 id 를 보내도 내 줄을 지우지 못해야 한다.
+  it('지우기는 내 계정의 메이플 ID 줄에만 시각을 적는다', async () => {
     await repo.upsert(input())
-    const [{ id: other }] = await db.insert(users).values({}).returning({ id: users.id })
 
     await repo.markDeleted(other, RECORD)
 
-    expect((await db.select().from(enhancementTotals))[0]?.deletedAt).toBeNull()
+    expect((await rows())[0]?.deletedAt).toBeNull()
+  })
+
+  it('계정을 지우면 그 메이플 ID 의 합계도 함께 지워진다', async () => {
+    await repo.upsert(input())
+
+    await db.delete(users).where(eq(users.id, me.userId))
+
+    expect(await rows()).toEqual([])
   })
 })

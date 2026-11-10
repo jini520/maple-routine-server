@@ -2,54 +2,37 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, eq, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import {
-  nexonAccounts,
-  serverCashbookEntries,
-  serverCashbookEntryItems,
-} from '../../database/schema'
-import type { IdentitySource } from '../identity/identity.guard'
+import { serverCashbookEntries, serverCashbookEntryItems } from '../../database/schema'
+import type { IdentityContext, IdentitySource } from '../identity/identity.guard'
+import { assertOwnsMapleId, ownedMapleIds } from '../users/maple-id-ownership'
 import type { CashbookEntryBody } from './cashbook-entries.dto'
 
-/** 전송값 그대로에 사람과 신원을 더한 것. */
-export interface CashbookEntryInput extends Omit<CashbookEntryBody, 'ocid' | 'accountRecordId'> {
-  userId: string
+/** 전송값 그대로에 신원을 더한 것. */
+export interface CashbookEntryInput extends Omit<CashbookEntryBody, 'ocid'> {
+  /** 보낸 신원의 넥슨 계정. 메이플 ID 가 이 계정의 것이어야 적는다. */
+  nexonAccountId: string
   identifiedBy: IdentitySource
   ocid: string | null
-  accountRecordId: string | null
 }
 
-/** 가계부 기록의 사본. 같은 사람의 같은 기록은 한 줄이고, 품목은 다시 받을 때마다 통째로 갈아 끼운다. */
+/**
+ * 가계부 기록의 사본. 같은 메이플 ID 의 같은 기록 id 는 한 줄이고, 품목은 다시 받을 때마다 통째로 갈아 끼운다. 사용자가 직접 적는
+ * 기록이라 내용으로 가리지 않는다.
+ */
 @Injectable()
 export class CashbookEntriesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /**
-   * 사람과 기록 id 로 덮어 적는다. 지운 줄도 다시 적으면 되살아난다.
-   *
-   * 캐릭터 없는 기록만 넥슨 계정을 찾아 적는다. 캐릭터가 있는 기록은 ocid 로 계정을 찾으므로 적지 않는다.
-   */
+  /** 메이플 ID 와 기록 id 로 덮어 적는다. 지운 줄도 다시 적으면 되살아난다. 남의 메이플 ID 는 MapleIdNotOwned 다. */
   async upsert(input: CashbookEntryInput): Promise<void> {
-    const { userId, entryRecordId, accountRecordId, items, ...rest } = input
+    const { nexonAccountId, entryRecordId, mapleId, items, ...values } = input
     await this.db.transaction(async (tx) => {
-      let nexonAccountId: string | null = null
-      if (rest.ocid === null && accountRecordId !== null) {
-        const [account] = await tx
-          .select({ id: nexonAccounts.id })
-          .from(nexonAccounts)
-          .where(
-            and(
-              eq(nexonAccounts.userId, userId),
-              eq(nexonAccounts.accountRecordId, accountRecordId),
-            ),
-          )
-        nexonAccountId = account?.id ?? null
-      }
-      const values = { ...rest, nexonAccountId }
+      await assertOwnsMapleId(tx, nexonAccountId, mapleId)
       const [entry] = await tx
         .insert(serverCashbookEntries)
-        .values({ userId, entryRecordId, ...values })
+        .values({ mapleId, entryRecordId, ...values })
         .onConflictDoUpdate({
-          target: [serverCashbookEntries.userId, serverCashbookEntries.entryRecordId],
+          target: [serverCashbookEntries.mapleId, serverCashbookEntries.entryRecordId],
           set: { ...values, deletedAt: null, updatedAt: sql`now()` },
         })
         .returning({ id: serverCashbookEntries.id })
@@ -84,8 +67,11 @@ export class CashbookEntriesRepository {
     })
   }
 
-  /** 내 줄에 지운 시각을 적는다. 품목은 남긴다. 없는 줄이면 아무 일도 없다. */
-  async markDeleted(userId: string, entryRecordId: string): Promise<void> {
+  /** 내 계정의 메이플 ID 줄에 지운 시각을 적는다. 품목은 남긴다. 없는 줄이면 아무 일도 없다. */
+  async markDeleted(
+    identity: Pick<IdentityContext, 'nexonAccountId'>,
+    entryRecordId: string,
+  ): Promise<void> {
     await this.db
       .update(serverCashbookEntries)
       .set({
@@ -94,8 +80,8 @@ export class CashbookEntriesRepository {
       })
       .where(
         and(
-          eq(serverCashbookEntries.userId, userId),
           eq(serverCashbookEntries.entryRecordId, entryRecordId),
+          sql`${serverCashbookEntries.mapleId} IN ${ownedMapleIds(identity.nexonAccountId)}`,
         ),
       )
   }

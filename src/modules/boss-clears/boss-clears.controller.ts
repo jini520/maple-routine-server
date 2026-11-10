@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Delete,
   HttpCode,
@@ -21,11 +22,15 @@ import { BossesRepository } from '../bosses/bosses.repository'
 import { NoWorld } from '../drop-prices/drop-prices.repository'
 import { uuidLike } from '../drop-prices/drop-prices.dto'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type BossClearBody, bossClearBody } from './boss-clears.dto'
 import { BossClearsRepository } from './boss-clears.repository'
 
-const reasonOf = (error: unknown) =>
-  error instanceof NoWorld ? `모르는 월드 key 다: ${error.message}` : null
+function reasonOf(error: unknown): string | null {
+  if (error instanceof NoWorld) return `모르는 월드 key 다: ${error.message}`
+  if (error instanceof MapleIdNotOwned) return `이 계정의 메이플 ID 가 아니다: ${error.message}`
+  return null
+}
 
 /**
  * 보스 처치 기간 기록. 드롭 가격과 같은 규칙이다. 신원이 있어야 하고, 보스 · 난이도는 표의 줄로 바꿔 적되 못 찾으면 NULL,
@@ -49,6 +54,8 @@ export class BossClearsController {
     try {
       await this.save(identity, body)
     } catch (error) {
+      if (error instanceof MapleIdNotOwned)
+        throw new ConflictException({ code: 'maple_id_not_registered' })
       const reason = reasonOf(error)
       if (reason !== null) throw new BadRequestException(reason)
       throw error
@@ -80,16 +87,19 @@ export class BossClearsController {
     @CurrentIdentity() identity: IdentityContext,
     @Param('periodRecordId', new ZodValidationPipe(uuidLike)) periodRecordId: string,
   ): Promise<void> {
-    await this.clears.markDeleted(identity.userId, periodRecordId)
+    await this.clears.markDeleted(identity, periodRecordId)
   }
 
   private async save(identity: IdentityContext, body: BossClearBody): Promise<void> {
     const difficulty = await this.bosses.findDifficulty(body.boss, body.difficulty)
+    const boss = await this.bosses.findByKey(body.boss)
     await this.clears.upsert({
-      userId: identity.userId,
+      nexonAccountId: identity.nexonAccountId,
       identifiedBy: identity.source,
       periodRecordId: body.periodRecordId,
+      mapleId: body.mapleId,
       ocid: body.ocid,
+      bossId: boss?.id ?? null,
       bossDifficultyId: difficulty?.id ?? null,
       cycle: body.cycle,
       periodKey: body.periodKey,

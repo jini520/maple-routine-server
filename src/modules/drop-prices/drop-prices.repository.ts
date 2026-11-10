@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, or, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, ne, or, type SQL, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import {
@@ -10,7 +10,10 @@ import {
   type dropRecordStatusEnum,
   worlds,
 } from '../../database/schema'
-import type { IdentitySource } from '../identity/identity.guard'
+import { isUniqueViolation } from '../../common/pg-errors'
+import type { IdentityContext, IdentitySource } from '../identity/identity.guard'
+import { assertOwnsMapleId, ownedMapleIds } from '../users/maple-id-ownership'
+import type { Tx } from '../users/nexon-account-store'
 
 /** 가격 줄의 상태 넷. 표의 enum 과 같다. */
 export type DropRecordStatus = (typeof dropRecordStatusEnum.enumValues)[number]
@@ -21,6 +24,8 @@ export type DropRecordStatus = (typeof dropRecordStatusEnum.enumValues)[number]
  */
 export interface DropPriceInput {
   userId: string
+  /** 보낸 신원의 넥슨 계정. 메이플 ID 가 이 계정의 것이어야 적는다. */
+  nexonAccountId: string
   identifiedBy: IdentitySource
   dropRecordId: string
   itemKey: string
@@ -31,11 +36,15 @@ export interface DropPriceInput {
   ringLevel: number | null
   /** 보스 난이도 줄. 표에 없는 쌍이면 null. */
   bossDifficultyId: string | null
+  /** 같은 드롭을 가리는 보스 줄. 표에 없는 보스면 null. */
+  bossId: string | null
   /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 이고 옛 OTA 는 안 보내 null. */
   periodRecordId: string | null
   recordStatus: Exclude<DropRecordStatus, 'deleted'>
   /** 기기가 보낸 거래 시각. 이 칸을 안 보내는 옛 앱은 null 이고 그때는 받은 시각으로 적는다. */
   pricedAt: Date | null
+  /** 넥슨이 준 값 셋. 1.0.13 앱은 안 보내 null 이고, 그때는 사람 · 기록 id 로 가린다. */
+  owner: { mapleId: string; ocid: string; itemOrdinal: number } | null
 }
 
 /** 관리 화면이 보는 줄. completed 가 아닌 줄도 상태를 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
@@ -91,7 +100,10 @@ export class NoDropItem extends Error {}
 /** 월드 표에 없는 key 다. message 가 그 key 다. */
 export class NoWorld extends Error {}
 
-/** 시세 표본. 같은 사람의 같은 기록은 한 줄이고, 기기에서 사라진 기록은 deleted 로 남는다. */
+/**
+ * 시세 표본. 같은 드롭(ocid · 보스 · 기간 · 아이템 · 몇 번째)은 누가 보냈든 한 줄이고, 다시 보낸 기록은 메이플 ID · 기록 id 로
+ * 찾는다. 1.0.13 앱의 줄은 사람 · 기록 id 로 찾는다. 기기에서 사라진 기록은 deleted 로 남는다.
+ */
 @Injectable()
 export class DropPricesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -173,59 +185,204 @@ export class DropPricesRepository {
   }
 
   /**
-   * 사람과 기록 id 로 upsert 한다. 다시 적으면 값과 상태를 덮으므로 deleted 였던 줄도 되살아난다. 아이템 · 월드는 key 로
-   * 표에서 id 를 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null) 줄은 그대로 받는다.
-   * priced_at 은 기기가 보낸 거래 시각이고, 미래면 지금으로 자른다. 거래 시각이 없는 옛 앱의 줄은 completed 가 되거나
-   * 가격이 바뀔 때만 지금으로 움직인다. 옛 앱은 저장하는 그 자리에서 보내 받은 시각이 곧 거래 시각이다.
+   * 한 건을 적는다. 아이템 · 월드는 key 로 표에서 id 를 찾아 적고, 모르는 key 는 NoDropItem · NoWorld 로 거절한다. 월드가 없는(null)
+   * 줄은 그대로 받는다. 다시 적으면 값과 상태를 덮으므로 deleted 였던 줄도 되살아난다.
+   *
+   * priced_at 은 기기가 보낸 거래 시각이고, 미래면 지금으로 자른다. 거래 시각이 없는 옛 앱의 줄은 completed 가 되거나 가격이 바뀔
+   * 때만 지금으로 움직인다. 옛 앱은 저장하는 그 자리에서 보내 받은 시각이 곧 거래 시각이다.
    */
   async upsert(input: DropPriceInput): Promise<void> {
-    const { userId, dropRecordId, itemKey, worldKey, pricedAt: sentPricedAt, ...rest } = input
-    const [item] = await this.db
-      .select({ id: items.id })
-      .from(items)
-      .where(and(eq(items.key, itemKey), eq(items.isDrop, true)))
-    if (item === undefined) throw new NoDropItem(itemKey)
-    let worldId: string | null = null
-    if (worldKey !== null) {
-      const [world] = await this.db
-        .select({ id: worlds.id })
-        .from(worlds)
-        .where(eq(worlds.key, worldKey))
-      if (world === undefined) throw new NoWorld(worldKey)
-      worldId = world.id
+    const { itemId, worldId } = await this.resolve(input)
+    if (input.owner === null) {
+      await this.upsertLegacy(input, itemId, worldId)
+      return
     }
-    const values = { ...rest, itemId: item.id, worldId }
-    const completed = input.recordStatus === 'completed'
-    const sent =
-      sentPricedAt === null ? null : sql`LEAST(${sentPricedAt.toISOString()}::timestamptz, now())`
+    const owner = input.owner
+    try {
+      await this.db.transaction(async (tx) => {
+        await assertOwnsMapleId(tx, input.nexonAccountId, owner.mapleId)
+        const [found] = await tx
+          .select({
+            id: dropPrices.id,
+            mapleId: dropPrices.mapleId,
+            createdAt: dropPrices.createdAt,
+          })
+          .from(dropPrices)
+          .where(
+            or(
+              and(
+                eq(dropPrices.mapleId, owner.mapleId),
+                eq(dropPrices.dropRecordId, input.dropRecordId),
+              ),
+              and(
+                eq(dropPrices.userId, input.userId),
+                eq(dropPrices.dropRecordId, input.dropRecordId),
+                isNull(dropPrices.mapleId),
+              ),
+            ),
+          )
+          .orderBy(sql`${dropPrices.mapleId} IS NULL`)
+          .limit(1)
+          .for('update')
+        const same = await this.sameDrop(tx, input, itemId, found?.id ?? null)
+        if (same !== undefined) {
+          // 옛 줄에 처음 채우다 같은 드롭이 되면 먼저 들어온 줄을 남긴다. 그 밖에는 같은 드롭이 이미 있어 적지 않는다.
+          const filling = found !== undefined && found.mapleId === null
+          if (!filling) return
+          if (same.createdAt <= found.createdAt) {
+            await tx.delete(dropPrices).where(eq(dropPrices.id, found.id))
+            return
+          }
+          await tx.delete(dropPrices).where(eq(dropPrices.id, same.id))
+        }
+        const values = {
+          ...this.valuesOf(input, itemId, worldId),
+          mapleId: owner.mapleId,
+          ocid: owner.ocid,
+          itemOrdinal: owner.itemOrdinal,
+        }
+        if (found !== undefined) {
+          await tx
+            .update(dropPrices)
+            .set({ ...values, pricedAt: this.pricedAtOnUpdate(input), updatedAt: sql`now()` })
+            .where(eq(dropPrices.id, found.id))
+          return
+        }
+        await tx
+          .insert(dropPrices)
+          .values({
+            userId: input.userId,
+            dropRecordId: input.dropRecordId,
+            ...values,
+            pricedAt: this.pricedAtOnInsert(input),
+          })
+          .onConflictDoNothing({ target: [dropPrices.userId, dropPrices.dropRecordId] })
+      })
+    } catch (error) {
+      // 같은 드롭이 동시에 들어와 진 쪽이다. 같은 드롭은 적지 않는다.
+      if (isUniqueViolation(error, 'drop_prices_same_drop_unique')) return
+      throw error
+    }
+  }
+
+  /** 1.0.13 앱의 줄. 사람과 기록 id 로 덮어 적는다. 넥슨이 준 값이 없어 같은 드롭을 가리지 못한다. */
+  private async upsertLegacy(
+    input: DropPriceInput,
+    itemId: string,
+    worldId: string | null,
+  ): Promise<void> {
+    const values = this.valuesOf(input, itemId, worldId)
     await this.db
       .insert(dropPrices)
       .values({
-        userId,
-        dropRecordId,
+        userId: input.userId,
+        dropRecordId: input.dropRecordId,
         ...values,
-        pricedAt: completed ? (sent ?? sql`now()`) : null,
+        pricedAt: this.pricedAtOnInsert(input),
       })
       .onConflictDoUpdate({
         target: [dropPrices.userId, dropPrices.dropRecordId],
-        set: {
-          ...values,
-          // 거래 시각이 없는 옛 앱이 같은 값을 다시 보내도 그대로다. 움직이면 시세 차트의 날이 틀어진다.
-          pricedAt: !completed
-            ? null
-            : sent !== null
-              ? sent
-              : sql`CASE WHEN ${dropPrices.recordStatus} = 'completed' AND ${dropPrices.priceMeso} = ${input.priceMeso} THEN ${dropPrices.pricedAt} ELSE now() END`,
-          updatedAt: sql`now()`,
-        },
+        set: { ...values, pricedAt: this.pricedAtOnUpdate(input), updatedAt: sql`now()` },
       })
   }
 
-  /** 내 줄을 deleted 로 표시하고 가격을 비운다. 없는 줄이면 아무 일도 없다. 지운 것도 고친 것이라 updated_at 이 움직인다. */
-  async markDeleted(userId: string, dropRecordId: string): Promise<void> {
+  private async resolve(
+    input: DropPriceInput,
+  ): Promise<{ itemId: string; worldId: string | null }> {
+    const [item] = await this.db
+      .select({ id: items.id })
+      .from(items)
+      .where(and(eq(items.key, input.itemKey), eq(items.isDrop, true)))
+    if (item === undefined) throw new NoDropItem(input.itemKey)
+    if (input.worldKey === null) return { itemId: item.id, worldId: null }
+    const [world] = await this.db
+      .select({ id: worlds.id })
+      .from(worlds)
+      .where(eq(worlds.key, input.worldKey))
+    if (world === undefined) throw new NoWorld(input.worldKey)
+    return { itemId: item.id, worldId: world.id }
+  }
+
+  private valuesOf(input: DropPriceInput, itemId: string, worldId: string | null) {
+    return {
+      identifiedBy: input.identifiedBy,
+      itemId,
+      worldId,
+      priceMeso: input.priceMeso,
+      periodKey: input.periodKey,
+      ringLevel: input.ringLevel,
+      bossDifficultyId: input.bossDifficultyId,
+      bossId: input.bossId,
+      periodRecordId: input.periodRecordId,
+      recordStatus: input.recordStatus,
+    }
+  }
+
+  private sentPricedAt(input: DropPriceInput): SQL | null {
+    return input.pricedAt === null
+      ? null
+      : sql`LEAST(${input.pricedAt.toISOString()}::timestamptz, now())`
+  }
+
+  private pricedAtOnInsert(input: DropPriceInput): SQL | null {
+    if (input.recordStatus !== 'completed') return null
+    return this.sentPricedAt(input) ?? sql`now()`
+  }
+
+  /** 거래 시각이 없는 옛 앱이 같은 값을 다시 보내도 그대로다. 움직이면 시세 차트의 날이 틀어진다. */
+  private pricedAtOnUpdate(input: DropPriceInput): SQL | null {
+    if (input.recordStatus !== 'completed') return null
+    return (
+      this.sentPricedAt(input) ??
+      sql`CASE WHEN ${dropPrices.recordStatus} = 'completed' AND ${dropPrices.priceMeso} = ${input.priceMeso} THEN ${dropPrices.pricedAt} ELSE now() END`
+    )
+  }
+
+  /** 같은 드롭인 다른 줄. 지운 줄은 빼고, 보스를 모르면 가릴 수 없어 없는 것으로 본다. */
+  private async sameDrop(
+    tx: Tx,
+    input: DropPriceInput,
+    itemId: string,
+    self: string | null,
+  ): Promise<{ id: string; createdAt: Date } | undefined> {
+    if (input.owner === null || input.bossId === null) return undefined
+    const [row] = await tx
+      .select({ id: dropPrices.id, createdAt: dropPrices.createdAt })
+      .from(dropPrices)
+      .where(
+        and(
+          eq(dropPrices.ocid, input.owner.ocid),
+          eq(dropPrices.bossId, input.bossId),
+          eq(dropPrices.periodKey, input.periodKey),
+          eq(dropPrices.itemId, itemId),
+          eq(dropPrices.itemOrdinal, input.owner.itemOrdinal),
+          ne(dropPrices.recordStatus, 'deleted'),
+          self === null ? undefined : ne(dropPrices.id, self),
+        ),
+      )
+      .for('update')
+    return row
+  }
+
+  /**
+   * 내 줄을 deleted 로 표시하고 가격을 비운다. 내 줄은 내 계정의 메이플 ID 줄과, 메이플 ID 가 없는 옛 줄 가운데 내 사람의 줄이다.
+   * 없는 줄이면 아무 일도 없다. 지운 것도 고친 것이라 updated_at 이 움직인다.
+   */
+  async markDeleted(
+    identity: Pick<IdentityContext, 'userId' | 'nexonAccountId'>,
+    dropRecordId: string,
+  ): Promise<void> {
     await this.db
       .update(dropPrices)
       .set({ recordStatus: 'deleted', priceMeso: null, pricedAt: null, updatedAt: sql`now()` })
-      .where(and(eq(dropPrices.userId, userId), eq(dropPrices.dropRecordId, dropRecordId)))
+      .where(
+        and(
+          eq(dropPrices.dropRecordId, dropRecordId),
+          or(
+            sql`${dropPrices.mapleId} IN ${ownedMapleIds(identity.nexonAccountId)}`,
+            and(isNull(dropPrices.mapleId), eq(dropPrices.userId, identity.userId)),
+          ),
+        ),
+      )
   }
 }

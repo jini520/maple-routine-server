@@ -12,8 +12,7 @@ function build() {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn().mockResolvedValue(undefined),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const guard = new IdentityGuard(
@@ -91,7 +90,6 @@ describe('IdentityGuard', () => {
     users.upsertByApiKeyHash.mockResolvedValue({
       id: 'u2',
       nexonAccountId: 'a2',
-      accountRecordId: null,
     })
     const { context, request } = contextOf({ 'x-api-key-hash': HEX })
 
@@ -120,57 +118,6 @@ describe('IdentityGuard', () => {
   })
 
   // 앱이 메인 계정의 기기 id 를 쓰기마다 싣는다. 따로 등록하는 호출이 없어 앱이 등록했는지 기억할 필요가 없다.
-  describe('x-nexon-account-id', () => {
-    const RECORD = '0a0a0a0a-0000-4000-8000-00000000000a'
-
-    it('그 신원의 계정에 기기 계정 id 를 적는다', async () => {
-      const { guard, sessions, users } = build()
-      sessions.findByHash.mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
-
-      await guard.canActivate(
-        contextOf({ authorization: 'Bearer S', 'x-nexon-account-id': RECORD }).context,
-      )
-
-      expect(users.recordAccountId).toHaveBeenCalledWith('a1', RECORD)
-    })
-
-    it('이미 같은 id 면 적지 않는다', async () => {
-      const { guard, users } = build()
-      users.upsertByApiKeyHash.mockResolvedValue({
-        id: 'u2',
-        nexonAccountId: 'a2',
-        accountRecordId: RECORD,
-      })
-
-      await guard.canActivate(
-        contextOf({ 'x-api-key-hash': HEX, 'x-nexon-account-id': RECORD }).context,
-      )
-
-      expect(users.recordAccountId).not.toHaveBeenCalled()
-    })
-
-    // 헤더가 없는 옛 OTA 의 요청과 모양이 틀린 값은 신원만 세우고 받는다. 기록까지 거절하면 안 된다.
-    it('없거나 uuid 가 아니면 적지 않고 신원은 선다', async () => {
-      const { guard, users } = build()
-      users.upsertByApiKeyHash.mockResolvedValue({
-        id: 'u2',
-        nexonAccountId: 'a2',
-        accountRecordId: null,
-      })
-
-      await expect(guard.canActivate(contextOf({ 'x-api-key-hash': HEX }).context)).resolves.toBe(
-        true,
-      )
-      await expect(
-        guard.canActivate(
-          contextOf({ 'x-api-key-hash': HEX, 'x-nexon-account-id': 'not-a-uuid' }).context,
-        ),
-      ).resolves.toBe(true)
-
-      expect(users.recordAccountId).not.toHaveBeenCalled()
-    })
-  })
-
   describe('삭제 예약', () => {
     // 지울 사람에게 새 기록이 붙으면 30일 뒤 익명 표본에 섞여 남는다.
     it('예약된 사람의 쓰기는 403 account_deletion_pending 이다', async () => {

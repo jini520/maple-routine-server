@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Delete,
   HttpCode,
@@ -19,18 +20,20 @@ import {
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type DropPriceBody, dropPriceBody, uuidLike } from './drop-prices.dto'
 import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
 
 function reasonOf(error: unknown): string | null {
   if (error instanceof NoDropItem) return `모르는 아이템 key 다: ${error.message}`
   if (error instanceof NoWorld) return `모르는 월드 key 다: ${error.message}`
+  if (error instanceof MapleIdNotOwned) return `이 계정의 메이플 ID 가 아니다: ${error.message}`
   return null
 }
 
 /**
- * 드롭 가격 기록 둘. 신원이 있어야 하고, 4xx 는 본문이 틀릴 때만이다. 표에 없는 아이템 · 월드 key 도 틀린 본문이다.
- * 가격이 없는 기록(pending · skipped)도 줄이 되고, DELETE 는 기기에서 기록이 사라진 때다.
+ * 드롭 가격 기록 둘. 신원이 있어야 하고, 4xx 는 본문이 틀리거나 남의 메이플 ID 일 때만이다. 표에 없는 아이템 · 월드 key 도 틀린
+ * 본문이다. 가격이 없는 기록(pending · skipped)도 줄이 되고, DELETE 는 기기에서 기록이 사라진 때다.
  */
 @Controller()
 @UseGuards(IdentityGuard)
@@ -53,6 +56,8 @@ export class DropPricesController {
     try {
       await this.save(identity, body)
     } catch (error) {
+      if (error instanceof MapleIdNotOwned)
+        throw new ConflictException({ code: 'maple_id_not_registered' })
       const reason = reasonOf(error)
       if (reason !== null) throw new BadRequestException(reason)
       throw error
@@ -84,7 +89,7 @@ export class DropPricesController {
     @CurrentIdentity() identity: IdentityContext,
     @Param('dropRecordId', new ZodValidationPipe(uuidLike)) dropRecordId: string,
   ): Promise<void> {
-    await this.prices.markDeleted(identity.userId, dropRecordId)
+    await this.prices.markDeleted(identity, dropRecordId)
   }
 
   private async save(identity: IdentityContext, body: DropPriceBody): Promise<void> {
@@ -92,8 +97,10 @@ export class DropPricesController {
       body.boss != null && body.difficulty != null
         ? await this.bosses.findDifficulty(body.boss, body.difficulty)
         : null
+    const bossRow = body.boss != null ? await this.bosses.findByKey(body.boss) : null
     await this.prices.upsert({
       userId: identity.userId,
+      nexonAccountId: identity.nexonAccountId,
       identifiedBy: identity.source,
       dropRecordId: body.dropRecordId,
       itemKey: body.itemKey,
@@ -102,9 +109,14 @@ export class DropPricesController {
       worldKey: body.worldKey ?? null,
       ringLevel: body.ringLevel ?? null,
       bossDifficultyId: difficultyRow?.id ?? null,
+      bossId: bossRow?.id ?? null,
       periodRecordId: body.periodRecordId ?? null,
       recordStatus: body.status,
       pricedAt: body.pricedAt == null ? null : new Date(body.pricedAt),
+      owner:
+        body.mapleId != null && body.ocid != null && body.itemOrdinal != null
+          ? { mapleId: body.mapleId, ocid: body.ocid, itemOrdinal: body.itemOrdinal }
+          : null,
     })
   }
 }

@@ -21,8 +21,7 @@ describe('EnhancementAnomaliesController', () => {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
   const anomalies = { upsert: jest.fn() }
@@ -68,7 +67,10 @@ describe('EnhancementAnomaliesController', () => {
     })
 
     expect(res.statusCode).toBe(200)
-    expect(anomalies.upsert).toHaveBeenCalledWith('u1', 'login', [expect.objectContaining(item)])
+    expect(anomalies.upsert).toHaveBeenCalledWith(
+      { userId: 'u1', source: 'login', nexonAccountId: 'a1' },
+      [expect.objectContaining(item)],
+    )
   })
 
   // 모르는 이유를 받으면 운영자가 뜻을 모르는 줄이 쌓인다. 앱은 실패를 버리므로 이 건만 사라진다.

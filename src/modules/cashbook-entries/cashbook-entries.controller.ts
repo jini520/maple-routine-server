@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Delete,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common'
 
 import {
   type BatchBody,
@@ -10,6 +19,7 @@ import {
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { uuidLike } from '../drop-prices/drop-prices.dto'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type CashbookEntryBody, cashbookEntryBody } from './cashbook-entries.dto'
 import { CashbookEntriesRepository } from './cashbook-entries.repository'
 
@@ -29,7 +39,13 @@ export class CashbookEntriesController {
     @CurrentIdentity() identity: IdentityContext,
     @Body(new ZodValidationPipe(cashbookEntryBody)) body: CashbookEntryBody,
   ): Promise<{ ok: true }> {
-    await this.save(identity, body)
+    try {
+      await this.save(identity, body)
+    } catch (error) {
+      if (error instanceof MapleIdNotOwned)
+        throw new ConflictException({ code: 'maple_id_not_registered' })
+      throw error
+    }
     return { ok: true }
   }
 
@@ -45,7 +61,8 @@ export class CashbookEntriesController {
       cashbookEntryBody,
       (raw) => recordIdOf(raw, 'entryRecordId'),
       (item) => this.save(identity, item),
-      () => null,
+      (error) =>
+        error instanceof MapleIdNotOwned ? `이 계정의 메이플 ID 가 아니다: ${error.message}` : null,
     )
     return { results }
   }
@@ -57,16 +74,15 @@ export class CashbookEntriesController {
     @CurrentIdentity() identity: IdentityContext,
     @Param('entryRecordId', new ZodValidationPipe(uuidLike)) entryRecordId: string,
   ): Promise<void> {
-    await this.entries.markDeleted(identity.userId, entryRecordId)
+    await this.entries.markDeleted(identity, entryRecordId)
   }
 
   private save(identity: IdentityContext, body: CashbookEntryBody): Promise<void> {
     return this.entries.upsert({
       ...body,
-      userId: identity.userId,
+      nexonAccountId: identity.nexonAccountId,
       identifiedBy: identity.source,
       ocid: body.ocid ?? null,
-      accountRecordId: body.accountRecordId ?? null,
     })
   }
 }

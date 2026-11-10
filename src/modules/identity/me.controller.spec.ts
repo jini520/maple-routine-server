@@ -3,6 +3,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing'
 
 import { SessionsRepository } from '../auth/sessions.repository'
+import { NexonAccountsRepository } from '../users/nexon-accounts.repository'
 import { UsersRepository } from '../users/users.repository'
 import { IdentityGuard } from './identity.guard'
 import { MeController } from './me.controller'
@@ -15,10 +16,10 @@ describe('MeController', () => {
     requestDeletion: jest.fn(),
     cancelDeletion: jest.fn(),
     deletionRequestedAt: jest.fn(),
-    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1', accountRecordId: null }),
-    recordAccountId: jest.fn(),
+    findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     linkApiKey: jest.fn(),
   }
+  const accounts = { reportMapleIds: jest.fn() }
   const bearer = { authorization: 'Bearer S' }
 
   beforeAll(async () => {
@@ -28,6 +29,7 @@ describe('MeController', () => {
         IdentityGuard,
         { provide: SessionsRepository, useValue: sessions },
         { provide: UsersRepository, useValue: users },
+        { provide: NexonAccountsRepository, useValue: accounts },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -43,6 +45,7 @@ describe('MeController', () => {
     users.cancelDeletion.mockReset().mockResolvedValue(undefined)
     users.deletionRequestedAt.mockReset().mockResolvedValue(null)
     users.linkApiKey.mockReset().mockResolvedValue(undefined)
+    accounts.reportMapleIds.mockReset().mockResolvedValue(['m1', 'm2'])
   })
 
   it('신원이 없으면 401 이고 아무것도 안 적는다', async () => {
@@ -67,7 +70,6 @@ describe('MeController', () => {
     users.upsertByApiKeyHash.mockResolvedValue({
       id: 'u2',
       nexonAccountId: 'a2',
-      accountRecordId: null,
     })
 
     const res = await app.inject({
@@ -125,7 +127,6 @@ describe('MeController', () => {
       users.upsertByApiKeyHash.mockResolvedValue({
         id: 'u2',
         nexonAccountId: 'a2',
-        accountRecordId: null,
       })
 
       const res = await app.inject({
@@ -165,6 +166,52 @@ describe('MeController', () => {
 
       expect(res.statusCode).toBe(403)
       expect(users.linkApiKey).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('PUT /v1/me/maple-ids', () => {
+    // 앱은 이 답을 마지막으로 알린 목록으로 적고, 자기 목록이 그 안에 다 없으면 다음에 다시 보낸다.
+    it('그 신원의 넥슨 계정에 메이플 ID 를 알리고, 계정이 가진 메이플 ID 전부를 돌려준다', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/v1/me/maple-ids',
+        headers: bearer,
+        payload: { mapleIds: ['m1', 'm2'] },
+      })
+
+      expect(res.statusCode).toBe(200)
+      expect(res.json()).toEqual({ mapleIds: ['m1', 'm2'] })
+      expect(accounts.reportMapleIds).toHaveBeenCalledWith('a1', ['m1', 'm2'])
+    })
+
+    // 부계정의 메이플 ID 는 그 키의 신원으로 알린다. 계정마다 자기 줄에 적어야 같은 넥슨 ID 를 알아본다.
+    it('키 해시로 오면 그 키의 넥슨 계정에 적는다', async () => {
+      users.upsertByApiKeyHash.mockResolvedValue({
+        id: 'u2',
+        nexonAccountId: 'a2',
+      })
+
+      await app.inject({
+        method: 'PUT',
+        url: '/v1/me/maple-ids',
+        headers: { 'x-api-key-hash': 'cd'.repeat(32) },
+        payload: { mapleIds: ['m3'] },
+      })
+
+      expect(accounts.reportMapleIds).toHaveBeenCalledWith('a2', ['m3'])
+    })
+
+    it('목록이 아니거나 빈 글자 · 너무 긴 값이 들면 400 이다', async () => {
+      for (const mapleIds of ['m1', [''], ['a'.repeat(65)], ['m 1']]) {
+        const res = await app.inject({
+          method: 'PUT',
+          url: '/v1/me/maple-ids',
+          headers: bearer,
+          payload: { mapleIds },
+        })
+        expect(res.statusCode).toBe(400)
+      }
+      expect(accounts.reportMapleIds).not.toHaveBeenCalled()
     })
   })
 })

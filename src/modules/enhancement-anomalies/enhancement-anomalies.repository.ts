@@ -3,10 +3,10 @@ import { sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { enhancementAnomalies } from '../../database/schema'
-import type { IdentitySource } from '../identity/identity.guard'
+import type { IdentityContext } from '../identity/identity.guard'
 import type { EnhancementAnomalyBody } from './enhancement-anomalies.dto'
 
-/** 같은 사람의 같은 날 · 종류 · 이유 · 장비는 한 줄이다. */
+/** 같은 넥슨 계정의 같은 날 · 종류 · 이유 · 장비는 한 줄이다. 강화 내역은 넥슨 계정마다 받는다. */
 const keyOf = (item: EnhancementAnomalyBody) =>
   [item.historyDate, item.enhancementType, item.anomalyType, item.itemName].join('|')
 
@@ -18,18 +18,15 @@ export class EnhancementAnomaliesRepository {
    * 상황들을 덮어 적는다. 앱은 굳지 않은 날을 받을 때마다 그 날을 다시 세므로, 쌓지 않고 받은 수로 덮는다.
    * 한 문장에 같은 열쇠가 둘이면 Postgres 가 거절해, 나중 것만 남긴다.
    */
-  async upsert(
-    userId: string,
-    identifiedBy: IdentitySource,
-    items: readonly EnhancementAnomalyBody[],
-  ): Promise<void> {
+  async upsert(identity: IdentityContext, items: readonly EnhancementAnomalyBody[]): Promise<void> {
     const unique = [...new Map(items.map((item) => [keyOf(item), item])).values()]
     await this.db
       .insert(enhancementAnomalies)
       .values(
         unique.map((item) => ({
-          userId,
-          identifiedBy,
+          userId: identity.userId,
+          nexonAccountId: identity.nexonAccountId,
+          identifiedBy: identity.source,
           historyDate: item.historyDate,
           enhancementType: item.enhancementType,
           anomalyType: item.anomalyType,
@@ -41,7 +38,7 @@ export class EnhancementAnomaliesRepository {
       )
       .onConflictDoUpdate({
         target: [
-          enhancementAnomalies.userId,
+          enhancementAnomalies.nexonAccountId,
           enhancementAnomalies.historyDate,
           enhancementAnomalies.enhancementType,
           enhancementAnomalies.anomalyType,

@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Delete,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common'
 
 import {
   type BatchBody,
@@ -10,6 +19,7 @@ import {
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { uuidLike } from '../drop-prices/drop-prices.dto'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type EnhancementTotalBody, enhancementTotalBody } from './enhancement-totals.dto'
 import { EnhancementTotalsRepository } from './enhancement-totals.repository'
 
@@ -29,7 +39,13 @@ export class EnhancementTotalsController {
     @CurrentIdentity() identity: IdentityContext,
     @Body(new ZodValidationPipe(enhancementTotalBody)) body: EnhancementTotalBody,
   ): Promise<{ ok: true }> {
-    await this.save(identity, body)
+    try {
+      await this.save(identity, body)
+    } catch (error) {
+      if (error instanceof MapleIdNotOwned)
+        throw new ConflictException({ code: 'maple_id_not_registered' })
+      throw error
+    }
     return { ok: true }
   }
 
@@ -45,7 +61,8 @@ export class EnhancementTotalsController {
       enhancementTotalBody,
       (raw) => recordIdOf(raw, 'totalRecordId'),
       (item) => this.save(identity, item),
-      () => null,
+      (error) =>
+        error instanceof MapleIdNotOwned ? `이 계정의 메이플 ID 가 아니다: ${error.message}` : null,
     )
     return { results }
   }
@@ -57,15 +74,14 @@ export class EnhancementTotalsController {
     @CurrentIdentity() identity: IdentityContext,
     @Param('totalRecordId', new ZodValidationPipe(uuidLike)) totalRecordId: string,
   ): Promise<void> {
-    await this.totals.markDeleted(identity.userId, totalRecordId)
+    await this.totals.markDeleted(identity, totalRecordId)
   }
 
   private async save(identity: IdentityContext, body: EnhancementTotalBody): Promise<void> {
     await this.totals.upsert({
       ...body,
-      userId: identity.userId,
+      nexonAccountId: identity.nexonAccountId,
       identifiedBy: identity.source,
-      accountRecordId: body.accountRecordId ?? null,
       itemKey: body.itemKey ?? null,
     })
   }

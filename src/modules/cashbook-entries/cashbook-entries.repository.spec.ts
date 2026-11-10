@@ -1,31 +1,25 @@
-import { asc } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 
-import {
-  nexonAccounts,
-  serverCashbookEntries,
-  serverCashbookEntryItems,
-  users,
-} from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { serverCashbookEntries, serverCashbookEntryItems, users } from '../../database/schema'
+import { describeDb, insertNexonAccount, openTestDb, type TestDb } from '../../database/test-db'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type CashbookEntryInput, CashbookEntriesRepository } from './cashbook-entries.repository'
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
-const ACCOUNT = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 
 describeDb('CashbookEntriesRepository', () => {
   let db: TestDb
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: CashbookEntriesRepository
-  let me: string
-  let myAccount: string
+  let me: { userId: string; nexonAccountId: string }
 
   const input = (over: Partial<CashbookEntryInput> = {}): CashbookEntryInput => ({
-    userId: me,
+    nexonAccountId: me.nexonAccountId,
     identifiedBy: 'login',
     entryRecordId: RECORD,
+    mapleId: 'm-me',
     ocid: null,
-    accountRecordId: ACCOUNT,
     entryType: 'spend',
     categoryKey: 'content',
     entryDate: '2026-10-26',
@@ -42,17 +36,8 @@ describeDb('CashbookEntriesRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    ;[{ id: me }] = await db.insert(users).values({}).returning({ id: users.id })
-    ;[{ id: myAccount }] = await db
-      .insert(nexonAccounts)
-      .values({
-        userId: me,
-        identitySource: 'login',
-        nexonUid: 'uid',
-        referralCode: 'AAAAAAAA',
-        accountRecordId: ACCOUNT,
-      })
-      .returning({ id: nexonAccounts.id })
+    me = await insertNexonAccount(db, ['m-me', 'm-me-2'])
+    await insertNexonAccount(db, ['m-other'])
   })
   afterAll(() => close())
 
@@ -118,15 +103,27 @@ describeDb('CashbookEntriesRepository', () => {
     ])
   })
 
-  it('캐릭터 없는 기록은 기기 계정 id 로 그 사람의 넥슨 계정을 적고, 캐릭터가 있거나 못 찾으면 비운다', async () => {
+  // 같은 날 같은 물건을 두 번 산 기록은 내용이 같아도 둘 다 맞는 기록이라, 내용으로 가리면 하나가 사라진다.
+  it('메이플 ID 안에서 기록 id 로 가리고, 내용이 같아도 기록 id 가 다르면 따로 적는다', async () => {
     await repo.upsert(input())
-    expect((await db.select().from(serverCashbookEntries))[0]?.nexonAccountId).toBe(myAccount)
+    await repo.upsert(input({ entryRecordId: '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b' }))
+    await repo.upsert(input({ mapleId: 'm-me-2' }))
 
-    await repo.upsert(input({ ocid: 'ocid-1' }))
-    expect((await db.select().from(serverCashbookEntries))[0]?.nexonAccountId).toBeNull()
+    expect(await db.select().from(serverCashbookEntries)).toHaveLength(3)
+  })
 
-    await repo.upsert(input({ accountRecordId: '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b' }))
-    expect((await db.select().from(serverCashbookEntries))[0]?.nexonAccountId).toBeNull()
+  it('남의 메이플 ID 면 MapleIdNotOwned 로 거절하고 적지 않는다', async () => {
+    await expect(repo.upsert(input({ mapleId: 'm-other' }))).rejects.toBeInstanceOf(MapleIdNotOwned)
+    expect(await db.select().from(serverCashbookEntries)).toEqual([])
+  })
+
+  it('계정을 지우면 그 메이플 ID 의 기록과 품목도 함께 지워진다', async () => {
+    await repo.upsert(input())
+
+    await db.delete(users).where(eq(users.id, me.userId))
+
+    expect(await db.select().from(serverCashbookEntries)).toEqual([])
+    expect(await db.select().from(serverCashbookEntryItems)).toEqual([])
   })
 
   it('지우면 줄을 남기고 지운 시각을 적으며, 다시 적으면 되살아난다', async () => {

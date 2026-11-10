@@ -246,6 +246,20 @@
       "when": 1794234590130,
       "tag": "0034_world_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794301241398,
+      "tag": "0035_nexon_account_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794302155211,
+      "tag": "0036_record_natural_keys",
+      "breakpoints": true
     }
   ]
 }

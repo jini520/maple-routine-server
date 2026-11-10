@@ -23,7 +23,7 @@ export class EnhancementAnomaliesController {
     @CurrentIdentity() identity: IdentityContext,
     @Body(new ZodValidationPipe(enhancementAnomaliesBody)) body: EnhancementAnomaliesBody,
   ): Promise<{ ok: true }> {
-    await this.anomalies.upsert(identity.userId, identity.source, body.items)
+    await this.anomalies.upsert(identity, body.items)
     return { ok: true }
   }
 }

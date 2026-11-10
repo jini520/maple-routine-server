@@ -35,7 +35,7 @@ describeDb('SpendCatalogRepository', () => {
 
   const empty = {
     updatedAt: null,
-    rules: { tariffPercent: null, rewardCoinPriceMeso: null },
+    rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
     groups: [],
     tiles: [],
     items: [],
@@ -124,15 +124,16 @@ describeDb('SpendCatalogRepository', () => {
     await repo.createTile(magical)
   }
 
-  it('빈 표는 칸 전부가 비고 규칙 둘이 null 이다', async () => {
+  it('빈 표는 칸 전부가 비고 규칙 셋이 null 이다', async () => {
     expect(await repo.section()).toEqual(empty)
   })
 
-  it('규칙 둘을 적으면 칸이 들고 보스 표의 updatedAt 은 안 움직인다', async () => {
-    await repo.setRules({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 })
+  // 앱은 규칙 셋 중 하나라도 비면 지출 표 전체를 받지 않는다. 메소마켓 수수료율도 같은 줄로 적고 낸다.
+  it('규칙 셋을 적으면 칸이 들고 보스 표의 updatedAt 은 안 움직인다', async () => {
+    await repo.setRules({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 })
 
     const section = await repo.section()
-    expect(section.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000 })
+    expect(section.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 })
     expect(section.updatedAt).not.toBeNull()
     expect((await new BossesRepository(db).catalog()).updatedAt).toBeNull()
   })

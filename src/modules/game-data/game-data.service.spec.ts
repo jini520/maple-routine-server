@@ -32,7 +32,7 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
     empty({ prices: [] }) as unknown as CrystalPricesRepository,
     empty({ worlds: [] }) as unknown as WorldsRepository,
     empty({
-      rules: { tariffPercent: null, rewardCoinPriceMeso: null },
+      rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
       groups: [],
       tiles: [],
       items: [],
@@ -90,7 +90,7 @@ describe('GameDataService', () => {
       worlds: { updatedAt: null, worlds: [] },
       spendCatalog: {
         updatedAt: null,
-        rules: { tariffPercent: null, rewardCoinPriceMeso: null },
+        rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
         groups: [],
         tiles: [],
         items: [],

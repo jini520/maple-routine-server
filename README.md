@@ -53,7 +53,9 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
 ```
 
 ```
-# 맥에서. 이미지는 맥에서 빌드한다. 앱 박스에서 docker compose build 를 돌리지 않는다(아래 배포 규칙)
+# 맥에서. 배포는 main 에서만 한다(아래 배포 규칙). 본 체크아웃을 main 으로 옮기고, 끝나면 develop 으로 돌아온다
+git switch main && git pull --ff-only
+# 이미지는 맥에서 빌드한다. 앱 박스에서 docker compose build 를 돌리지 않는다(아래 배포 규칙)
 colima start
 git archive --format=tar HEAD | docker build --platform linux/amd64 -t maple-routine-server:prod -
 docker save maple-routine-server:prod | gzip > ~/maple-routine-server-image.tar.gz
@@ -77,6 +79,9 @@ docker tag maple-routine-server:prev maple-routine-server:prod && docker compose
 docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16-alpine sh -c 'psql "$DATABASE_URL"'
 ```
 
+- **배포는 main 에서만 한다**(2026-11-09 사용자 지정, 앱 저장소 `ADR-188` 결정 9). main 은 운영 박스에 배포된 것만 담는다. develop 의
+  작업은 develop 을 head, main 을 base 로 PR 해 merge commit 으로 머지한 뒤 배포한다. `git archive HEAD` 와 rsync 는 서 있는 체크아웃을
+  그대로 보내므로, develop 에 선 채로 돌리면 검토하지 않은 작업이 박스에 올라간다.
 - **배포 규칙. 빌드는 맥에서, 재시작은 한국 시각 3 ~ 7시에 한다**(2026-11-06 사용자 지정). 배포하는 동안 사용자가 기능을 못 쓸 수 있어서다.
   - 앱 박스는 메모리 952MB · CPU 2 다. 2026-11-06 에 박스에서 `docker compose build` 를 돌리자 10분 넘게 부하가 5.4 까지 오르고
     남은 메모리가 66MB 로 줄어 스왑을 썼다. 그동안 사용 중인 요청이 느려진다. 그래서 박스에서는 이미지를 받기만 한다.

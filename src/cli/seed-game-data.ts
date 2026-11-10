@@ -248,6 +248,7 @@ const spendCatalogSeed = z.object({
   rules: z.object({
     tariffPercent: z.number().int().min(0).max(100),
     rewardCoinPriceMeso: z.number().int().min(1),
+    mesoMarketFeePercent: z.number().int().min(0).max(99),
   }),
   groups: z
     .array(
@@ -845,7 +846,7 @@ async function seedCashbookCategories(db: Db, seed: CashbookCategoriesSeed): Pro
 }
 
 /**
- * 규칙 둘은 없을 때만 넣고 늘 본다. 표 셋(묶음 · 타일 · 항목)은 전부 비어 있을 때만 채운다. 하나라도 줄이 있으면
+ * 규칙 셋은 없을 때만 넣고 늘 본다. 표 셋(묶음 · 타일 · 항목)은 전부 비어 있을 때만 채운다. 하나라도 줄이 있으면
  * 운영자가 손댄 것이라 건너뛴다.
  */
 async function seedSpendCatalog(db: Db, seed: SpendCatalogSeed): Promise<SeedOutcome> {

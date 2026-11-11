@@ -1,3 +1,4 @@
+import { sha256Hex } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -8,11 +9,14 @@ import { UsersRepository } from '../users/users.repository'
 import { CashbookEntriesController } from './cashbook-entries.controller'
 import { CashbookEntriesRepository } from './cashbook-entries.repository'
 
+const M1 = sha256Hex('m1')
+const OCID1 = sha256Hex('ocid-1')
+
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
   entryRecordId: RECORD,
-  mapleId: 'm1',
-  ocid: 'ocid-1',
+  mapleId: M1,
+  ocid: OCID1,
   entryType: 'income',
   categoryKey: 'item_sale',
   entryDate: '2026-10-26',
@@ -80,8 +84,8 @@ describe('CashbookEntriesController', () => {
       expect.objectContaining({
         nexonAccountId: 'a1',
         identifiedBy: 'login',
-        mapleId: 'm1',
-        ocid: 'ocid-1',
+        mapleId: M1,
+        ocid: OCID1,
         categoryKey: 'item_sale',
       }),
     )

@@ -40,7 +40,7 @@ export const envSchema = z.object({
     .int()
     .positive()
     .default(16 * 1024 * 1024),
-  FRIENDS_NEXON_RPS: z.coerce.number().int().positive().default(400),
+  FRIENDS_NEXON_RPS: z.coerce.number().int().positive().max(1000).default(900),
 })
 
 export type Env = z.infer<typeof envSchema>

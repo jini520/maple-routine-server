@@ -81,6 +81,67 @@ describeDb('NoticesRepository', () => {
     expect(await repo.knownKeys([])).toEqual(new Set())
   })
 
+  describe('넥슨 공지의 30일 갱신', () => {
+    const T0 = new Date('2026-10-01T00:00:00Z')
+    const T1 = new Date('2026-10-20T00:00:00Z')
+
+    it('refresh 는 목록 값과 받은 시각을 고치고, 알림 시각은 건드리지 않는다', async () => {
+      const { id } = await repo.insert(
+        notice({ noticeKey: 'game-1', title: '옛 제목', link: 'https://old', fetchedAt: T0 }),
+      )
+      await repo.markSent(id, T0)
+
+      await repo.refresh(
+        [{ noticeKey: 'game-1', title: '새 제목', link: 'https://new', publishedAt: T1 }],
+        T1,
+      )
+
+      const row = await repo.findByKey('game-1')
+      expect(row).toEqual(
+        expect.objectContaining({
+          title: '새 제목',
+          link: 'https://new',
+          publishedAt: T1,
+          sentAt: T0,
+        }),
+      )
+      expect(await repo.staleDetailKeys(['game-1'], T1)).toEqual(new Set())
+    })
+
+    it('purgeStale 은 받은 시각이 기준보다 앞선 넥슨 공지만 지우고 운영자 공지는 남긴다', async () => {
+      await repo.insert(notice({ noticeKey: 'game-old', fetchedAt: T0 }))
+      await repo.insert(notice({ noticeKey: 'game-new', fetchedAt: T1 }))
+      await repo.insert(notice({ noticeKey: 'notice-1', kind: 'app' }))
+
+      expect(await repo.purgeStale(new Date('2026-10-10T00:00:00Z'))).toBe(1)
+
+      expect(await repo.knownKeys(['game-old', 'game-new', 'notice-1'])).toEqual(
+        new Set(['game-new', 'notice-1']),
+      )
+    })
+
+    it('staleDetailKeys 는 상세를 받은 시각이 기준보다 앞선 열쇠만 주고, updateDetail 이 그것을 고친다', async () => {
+      const blocks = [{ type: 'text' as const, text: 'x' }]
+      await repo.insert(
+        notice({ noticeKey: 'event-1', kind: 'event', blocks, fetchedAt: T0, detailFetchedAt: T0 }),
+      )
+      await repo.insert(
+        notice({ noticeKey: 'event-2', kind: 'event', blocks, fetchedAt: T1, detailFetchedAt: T1 }),
+      )
+      const before = new Date('2026-10-10T00:00:00Z')
+
+      expect(await repo.staleDetailKeys(['event-1', 'event-2'], before)).toEqual(
+        new Set(['event-1']),
+      )
+
+      const fresh = [{ type: 'text' as const, text: 'y' }]
+      await repo.updateDetail('event-1', { blocks: fresh, startsAt: T1, endsAt: null }, T1)
+
+      expect(await repo.staleDetailKeys(['event-1', 'event-2'], before)).toEqual(new Set())
+      expect((await repo.findByKey('event-1'))?.blocks).toEqual(fresh)
+    })
+  })
+
   it('같은 열쇠를 두 번 넣으면 던진다', async () => {
     await repo.insert(notice({ noticeKey: 'game-1' }))
 

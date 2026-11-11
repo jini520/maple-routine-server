@@ -41,6 +41,18 @@ export interface NewNotice {
   scheduledAt?: Date | null
   pushTitle?: string | null
   pushBody?: string | null
+  /** 넥슨 공지를 받은 시각. 운영자 공지는 비운다. */
+  fetchedAt?: Date | null
+  /** 썬데이 메이플 상세를 받은 시각. */
+  detailFetchedAt?: Date | null
+}
+
+/** 목록에 다시 보인 넥슨 공지의 값. 회차마다 이것으로 고친다. */
+export interface ListedNotice {
+  noticeKey: string
+  title: string
+  link: string
+  publishedAt: Date
 }
 
 const ROW_COLUMNS = {
@@ -123,10 +135,61 @@ export class NoticesRepository {
         scheduledAt: input.scheduledAt ?? null,
         pushTitle: input.pushTitle ?? null,
         pushBody: input.pushBody ?? null,
+        fetchedAt: input.fetchedAt ?? null,
+        detailFetchedAt: input.detailFetchedAt ?? null,
       })
       .returning({ id: notices.id })
     if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
     return row
+  }
+
+  /** 목록에 다시 보인 넥슨 공지를 그 값과 받은 시각으로 고친다. 알림 시각은 두어 다시 알리지 않는다. */
+  async refresh(listed: readonly ListedNotice[], at: Date): Promise<void> {
+    if (listed.length === 0) return
+    await this.db.transaction(async (tx) => {
+      for (const row of listed) {
+        await tx
+          .update(notices)
+          .set({ title: row.title, link: row.link, publishedAt: row.publishedAt, fetchedAt: at })
+          .where(and(eq(notices.noticeKey, row.noticeKey), sql`${notices.kind} <> 'app'`))
+      }
+    })
+  }
+
+  /** 받은 시각이 before 보다 앞선 넥슨 공지를 지우고 지운 수를 준다. 운영자 공지는 받은 시각이 없어 걸리지 않는다. */
+  async purgeStale(before: Date): Promise<number> {
+    const rows = await this.db
+      .delete(notices)
+      .where(and(sql`${notices.kind} <> 'app'`, lt(notices.fetchedAt, before)))
+      .returning({ id: notices.id })
+    return rows.length
+  }
+
+  /** 주어진 열쇠 가운데 상세를 받은 시각이 before 보다 앞선 것. */
+  async staleDetailKeys(keys: readonly string[], before: Date): Promise<Set<string>> {
+    if (keys.length === 0) return new Set()
+    const rows = await this.db
+      .select({ noticeKey: notices.noticeKey })
+      .from(notices)
+      .where(and(inArray(notices.noticeKey, [...keys]), lt(notices.detailFetchedAt, before)))
+    return new Set(rows.map((row) => row.noticeKey))
+  }
+
+  /** 다시 받은 썬데이 상세로 blocks 와 기간을 고친다. */
+  async updateDetail(
+    noticeKey: string,
+    detail: Pick<NewNotice, 'blocks' | 'startsAt' | 'endsAt'>,
+    at: Date,
+  ): Promise<void> {
+    await this.db
+      .update(notices)
+      .set({
+        blocks: detail.blocks ?? null,
+        startsAt: detail.startsAt ?? null,
+        endsAt: detail.endsAt ?? null,
+        detailFetchedAt: at,
+      })
+      .where(eq(notices.noticeKey, noticeKey))
   }
 
   async markSent(id: string, at: Date): Promise<void> {

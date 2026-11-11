@@ -11,7 +11,7 @@ const never = new AbortController().signal
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe('NexonBucket', () => {
-  it('같은 플랫폼은 버킷 하나이고 초당 수를 넘는 몫은 다음 초까지 기다린다', async () => {
+  it('같은 플랫폼은 버킷 하나이고, 요청 사이에 1초 ÷ 초당 수의 간격을 둔다', async () => {
     const bucket = bucketOf(2)
     const t0 = Date.now()
     const started: number[] = []
@@ -23,9 +23,27 @@ describe('NexonBucket', () => {
       ),
     )
     expect(started[0]).toBeLessThan(200)
-    expect(started[1]).toBeLessThan(200)
+    expect(started[1]).toBeGreaterThanOrEqual(450)
     expect(started[2]).toBeGreaterThanOrEqual(900)
   })
+
+  // 1초마다 한꺼번에 채우기만 하면 한 초의 끝과 다음 초의 처음에 몰려, 경계를 낀 1초에 초당 수의 두 배가 나간다.
+  // 간격이 1초 ÷ 초당 수보다 좁아지지 않으면 어느 1초를 잘라 봐도 초당 수 남짓이다.
+  it('토큰이 남아 있어도 요청 사이 간격을 1초 ÷ 초당 수보다 좁히지 않는다', async () => {
+    const rps = 10
+    const bucket = bucketOf(rps)
+    const started: number[] = []
+    await Promise.all(
+      Array.from({ length: rps + 5 }, () =>
+        bucket.run('ios', never, async () => {
+          started.push(Date.now())
+        }),
+      ),
+    )
+    const gaps = started.slice(1).map((t, i) => t - (started[i] ?? t))
+    // 타이머와 Date.now 의 1ms 반올림만 봐준다.
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(1000 / rps - 2)
+  }, 10_000)
 
   it('플랫폼이 다르면 버킷이 다르다', async () => {
     const bucket = bucketOf(1)

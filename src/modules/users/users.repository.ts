@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, eq, gte, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 
+import { sha256Hex } from '../../common/hash'
 import { DB, type Db } from '../../database/database.module'
 import { nexonAccountKeys, nexonAccounts, users } from '../../database/schema'
 import {
@@ -28,7 +29,9 @@ export class UsersRepository {
    * 같은 uid 가 동시에 오면 둘 다 사람을 만들 수 있다. uid 의 UNIQUE 에 진 쪽은 만든 사람을 지우고 이긴 쪽을 다시 읽는다.
    * 이긴 쪽이 없으면 겹친 것은 추천인 코드라서 코드를 다시 뽑는다.
    */
-  upsertByNexonUid(nexonUid: string): Promise<FoundAccount> {
+  upsertByNexonUid(uid: string): Promise<FoundAccount> {
+    // 원문은 받은 자리에서 버린다. 서버는 uid 로 줄을 찾기만 하고 넥슨에 uid 를 보내지 않는다.
+    const nexonUid = sha256Hex(uid)
     const match = eq(nexonAccounts.nexonUid, nexonUid)
     return this.db.transaction(async (tx) => {
       const [found] = await tx.select(ACCOUNT_COLUMNS).from(nexonAccounts).where(match)

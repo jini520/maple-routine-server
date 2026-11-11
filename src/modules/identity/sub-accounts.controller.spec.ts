@@ -1,12 +1,15 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
-import { sha256 } from '../../common/hash'
+import { sha256, sha256Hex } from '../../common/hash'
 import { SessionsRepository } from '../auth/sessions.repository'
 import { NexonAccountsRepository } from '../users/nexon-accounts.repository'
 import { UsersRepository } from '../users/users.repository'
 import { IdentityGuard } from './identity.guard'
 import { SubAccountsController } from './sub-accounts.controller'
+
+const M1 = sha256Hex('m1')
+const M2 = sha256Hex('m2')
 
 describe('SubAccountsController', () => {
   let app: NestFastifyApplication
@@ -47,7 +50,7 @@ describe('SubAccountsController', () => {
     users.findLoginAccount.mockReset().mockResolvedValue({ nexonAccountId: 'a1' })
     accounts.listSubAccounts
       .mockReset()
-      .mockResolvedValue([{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: ['m1'] }])
+      .mockResolvedValue([{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: [M1] }])
     accounts.registerSubAccount.mockReset().mockResolvedValue('registered')
     accounts.unregisterSubAccount.mockReset().mockResolvedValue(undefined)
   })
@@ -57,7 +60,7 @@ describe('SubAccountsController', () => {
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual({
-      subAccounts: [{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: ['m1'] }],
+      subAccounts: [{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: [M1] }],
     })
     expect(accounts.listSubAccounts).toHaveBeenCalledWith('a1')
   })
@@ -67,11 +70,11 @@ describe('SubAccountsController', () => {
       method: 'POST',
       url: '/v1/me/sub-accounts',
       headers: bearer,
-      payload: { apiKeyHash: hash, mapleIds: ['m1', 'm2'] },
+      payload: { apiKeyHash: hash, mapleIds: [M1, M2] },
     })
 
     expect(res.statusCode).toBe(204)
-    expect(accounts.registerSubAccount).toHaveBeenCalledWith('a1', sha256(hash), ['m1', 'm2'])
+    expect(accounts.registerSubAccount).toHaveBeenCalledWith('a1', sha256(hash), [M1, M2])
   })
 
   it('같은 넥슨 ID 면 409 same_account, 다섯째면 409 sub_account_limit 이다', async () => {
@@ -81,7 +84,7 @@ describe('SubAccountsController', () => {
         method: 'POST',
         url: '/v1/me/sub-accounts',
         headers: bearer,
-        payload: { apiKeyHash: hash, mapleIds: ['m1'] },
+        payload: { apiKeyHash: hash, mapleIds: [M1] },
       })
 
     const same = await send()
@@ -96,7 +99,7 @@ describe('SubAccountsController', () => {
   // 메이플 ID 가 없으면 같은 넥슨 계정인지 가를 수 없다. 앱도 그런 키는 등록하지 않는다.
   it('키 해시 모양이 틀리거나 메이플 ID 가 없으면 400 이다', async () => {
     for (const payload of [
-      { apiKeyHash: 'test_' + 'a'.repeat(40), mapleIds: ['m1'] },
+      { apiKeyHash: 'test_' + 'a'.repeat(40), mapleIds: [M1] },
       { apiKeyHash: hash, mapleIds: [] },
     ]) {
       const res = await app.inject({
@@ -113,12 +116,12 @@ describe('SubAccountsController', () => {
   it('지우기는 메이플 ID 로 이 로그인의 등록을 지운다. 204 다', async () => {
     const res = await app.inject({
       method: 'DELETE',
-      url: '/v1/me/sub-accounts/m1',
+      url: `/v1/me/sub-accounts/${M1}`,
       headers: bearer,
     })
 
     expect(res.statusCode).toBe(204)
-    expect(accounts.unregisterSubAccount).toHaveBeenCalledWith('a1', 'm1')
+    expect(accounts.unregisterSubAccount).toHaveBeenCalledWith('a1', M1)
   })
 
   // 키 사용자에게는 부계정이 없다. 어느 로그인에 붙일지는 세션이 정한다.
@@ -129,9 +132,9 @@ describe('SubAccountsController', () => {
         method: 'POST',
         url: '/v1/me/sub-accounts',
         headers: keyHeader,
-        payload: { apiKeyHash: hash, mapleIds: ['m1'] },
+        payload: { apiKeyHash: hash, mapleIds: [M1] },
       }),
-      app.inject({ method: 'DELETE', url: '/v1/me/sub-accounts/m1', headers: keyHeader }),
+      app.inject({ method: 'DELETE', url: `/v1/me/sub-accounts/${M1}`, headers: keyHeader }),
     ])
 
     for (const res of results) {

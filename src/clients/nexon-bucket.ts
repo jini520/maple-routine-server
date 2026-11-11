@@ -9,8 +9,8 @@ import type { Platform } from './nexon-open-id.client'
 /**
  * 자격 쌍마다 하나씩 두는 초당 토큰 버킷. 넥슨 fetch 는 여기서 토큰을 집어야 나간다.
  *
- * 동시 회차 상한만으로는 넥슨의 초당 한도가 안 지켜진다. 작은 쪽은 왕복 30ms 로 돌아 소켓 160개가
- * 초당 5,000건을 넘긴다. 공지 폴러는 개발자 키라 할당량이 달라 이 버킷을 안 거친다.
+ * 동시 회차 상한만으로는 넥슨의 초당 한도(프렌즈 API, 애플리케이션마다 1,000)가 안 지켜진다. 작은 쪽은 왕복 30ms 로
+ * 돌아 소켓 160개가 초당 5,000건을 넘긴다. 공지 폴러는 API 키라 한도가 달라 이 버킷을 안 거친다.
  */
 @Injectable()
 export class NexonBucket {
@@ -49,6 +49,8 @@ export class NexonBucket {
         reservoir: this.rps,
         reservoirRefreshAmount: this.rps,
         reservoirRefreshInterval: 1000,
+        // 토큰만으로는 한 초의 끝과 다음 초의 처음에 몰려, 경계를 낀 1초에 초당 수의 두 배가 나간다.
+        minTime: 1000 / this.rps,
       })
       this.limiters.set(platform, limiter)
     }

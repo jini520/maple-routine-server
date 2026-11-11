@@ -66,7 +66,8 @@ export class NexonOpenApiClient {
     const { path, key } = NOTICE_PATH[kind]
     const body = (await this.getJson(path)) as Record<string, unknown>
     const raw = body[key]
-    if (!Array.isArray(raw)) return []
+    // 결과가 0건이면 넥슨은 빈 배열을 준다. 배열이 아니면 잘못 온 응답이라 빈 목록으로 삼키지 않는다.
+    if (!Array.isArray(raw)) throw new Error(`${kind} 목록의 ${key} 가 배열이 아니다`)
     return raw.flatMap((item) => {
       const parsed = toItem(item)
       return parsed === null ? [] : [parsed]

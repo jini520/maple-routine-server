@@ -25,7 +25,6 @@ describeDb('EnhancementTotalsRepository', () => {
     totalRecordId: RECORD,
     mapleId: 'm-me',
     ocid: 'ocid-1',
-    characterName: '낟낟',
     historyDate: '2026-10-20',
     enhancementCategory: 'cube_reset',
     itemGroup: 'key:arcane_umbra_knuckle',
@@ -59,14 +58,6 @@ describeDb('EnhancementTotalsRepository', () => {
     expect(
       (await rows()).map((r) => [r.totalRecordId, r.attempts, r.attemptCostMeso, r.deletedAt]),
     ).toEqual([[NEW_RECORD, 5, 2_250_000, null]])
-  })
-
-  // 이름을 바꾼 캐릭터도 ocid 가 같아 한 줄이다. 이름으로 가리면 같은 강화가 두 줄이 된다.
-  it('캐릭터 이름이 달라도 ocid 가 같으면 같은 합계다', async () => {
-    await repo.upsert(input())
-    await repo.upsert(input({ characterName: '살름' }))
-
-    expect((await rows()).map((r) => r.characterName)).toEqual(['살름'])
   })
 
   it('남의 메이플 ID 면 MapleIdNotOwned 로 거절하고 적지 않는다', async () => {

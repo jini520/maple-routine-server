@@ -1,3 +1,4 @@
+import { sha256Hex } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -9,6 +10,10 @@ import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { UsersRepository } from '../users/users.repository'
 import { DropPricesController } from './drop-prices.controller'
 import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
+
+const M1 = sha256Hex('m1')
+const M9 = sha256Hex('m9')
+const OCID1 = sha256Hex('ocid-1')
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
@@ -106,8 +111,8 @@ describe('DropPricesController', () => {
         ...body,
         boss: 'lucid',
         difficulty: 'hard',
-        mapleId: 'm1',
-        ocid: 'o1',
+        mapleId: M1,
+        ocid: OCID1,
         itemOrdinal: 2,
       },
     })
@@ -116,7 +121,7 @@ describe('DropPricesController', () => {
     expect(prices.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         bossId: 'b-1',
-        owner: { mapleId: 'm1', ocid: 'o1', itemOrdinal: 2 },
+        owner: { mapleId: M1, ocid: OCID1, itemOrdinal: 2 },
       }),
     )
   })
@@ -127,7 +132,7 @@ describe('DropPricesController', () => {
       method: 'POST',
       url: '/v1/drop-prices',
       headers: bearer,
-      payload: { ...body, mapleId: 'm1', ocid: 'o1' },
+      payload: { ...body, mapleId: M1, ocid: OCID1 },
     })
 
     expect(res.statusCode).toBe(400)
@@ -136,8 +141,8 @@ describe('DropPricesController', () => {
 
   // 앱이 메이플 ID 를 알리기 전에 보낸 기록이다. 실패로 답해야 앱 대기 표가 다시 보낸다.
   it('남의 메이플 ID 면 409 maple_id_not_registered 이고, 묶음에서는 그 건만 실패다', async () => {
-    prices.upsert.mockRejectedValue(new MapleIdNotOwned('m9'))
-    const payload = { ...body, mapleId: 'm9', ocid: 'o1', itemOrdinal: 1 }
+    prices.upsert.mockRejectedValue(new MapleIdNotOwned(M9))
+    const payload = { ...body, mapleId: M9, ocid: OCID1, itemOrdinal: 1 }
 
     const one = await app.inject({
       method: 'POST',
@@ -155,7 +160,7 @@ describe('DropPricesController', () => {
     expect(one.statusCode).toBe(409)
     expect(one.json()).toEqual(expect.objectContaining({ code: 'maple_id_not_registered' }))
     expect(batch.json<{ results: BatchResult[] }>().results).toEqual([
-      { recordId: RECORD, ok: false, reason: '이 계정의 메이플 ID 가 아니다: m9' },
+      { recordId: RECORD, ok: false, reason: `이 계정의 메이플 ID 가 아니다: ${M9}` },
     ])
   })
 

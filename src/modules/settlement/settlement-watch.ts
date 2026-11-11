@@ -1,7 +1,8 @@
 /**
  * 결산 판정의 순수한 부분. 시계를 받아 밤 · 타점 · 응답을 판정으로 바꾼다.
  *
- * 밤은 00:00 ~ 06:00 KST 다. 그 밤에 결산 중을 본 뒤 200 을 보면 끝이고, 못 본 채 200 이면 시작 전이다.
+ * 밤은 00:00 ~ 06:00 KST 다. 확인은 00:00:01 부터 06:00:01 까지 10분마다다. 그 밤에 결산 중을 본 뒤 200 을 보면 끝이고,
+ * 못 본 채 200 이면 시작 전이다.
  * 실패는 판정을 안 바꾼다. 실패를 결산 아님으로 읽으면 넥슨이 잠깐 죽을 때 띠가 내려갔다 올라온다.
  */
 
@@ -51,9 +52,16 @@ export function startedAtOf(nightDate: string): string {
   return new Date(`${nightDate}T00:00:00+09:00`).toISOString()
 }
 
-/** 지금 넥슨을 불러야 하면 그 밤의 날짜, 아니면 null. 창 밖이거나 그 밤의 끝을 이미 봤으면 안 부른다. */
+/**
+ * 지금 넥슨을 불러야 하면 그 밤의 날짜, 아니면 null. 창 밖이거나 그 밤의 끝을 이미 봤으면 안 부른다.
+ *
+ * 06:00 분은 창 밖이지만 그 밤의 마지막 확인으로 부른다. 결과는 판정을 바꾸지 않고(6시가 지나면 결산 아님) 로그로만 남아,
+ * 결산이 6시를 넘긴 밤이 있는지 볼 수 있다.
+ */
 export function probeNight(state: WatchState, now: Date): string | null {
-  const night = nightOf(now)
+  const kst = kstOf(now)
+  const lastCheck = kst.getUTCHours() === WINDOW_END_HOUR && kst.getUTCMinutes() === 0
+  const night = lastCheck ? kst.toISOString().slice(0, 10) : nightOf(now)
   if (night === null) return null
   if (state.nightDate === night && state.finished) return null
   return night

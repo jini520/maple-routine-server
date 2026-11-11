@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { mapleId } from '../identity/me.dto'
+import { mapleId, nexonIdHash } from '../identity/me.dto'
 
 /** 기기가 만든 v4. 변형 비트까지 따지지 않는다. 멀쩡한 본문을 거절하면 앱이 5회 뒤 그 건을 버린다. */
 export const uuidLike = z
@@ -38,7 +38,7 @@ export const dropPriceBody = z
      * 1.0.13 앱은 셋 다 안 보낸다.
      */
     mapleId: mapleId.nullish(),
-    ocid: z.string().min(1).max(100).nullish(),
+    ocid: nexonIdHash.nullish(),
     itemOrdinal: z.number().int().min(1).max(1000).nullish(),
   })
   .refine((body) => (body.status === 'completed') === (body.priceMeso != null), {

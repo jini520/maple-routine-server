@@ -22,6 +22,12 @@ import { isSundayMaple } from './sunday'
 /** 올라온 지 이보다 오래된 글은 저장만 한다. 씨 뿌리기가 중간에 죽거나 서버가 하루 죽었다 살아날 때 밀린 알림이 터지는 것을 막는다. */
 export const STALE_MS = 6 * 60 * 60 * 1000
 
+const DAY_MS = 24 * 60 * 60 * 1000
+/** 넥슨 공지 줄을 받은 뒤 남겨 두는 기간. 넥슨 AI 에이전트 가이드의 30일 갱신 의무다. 목록에서 내려간 글은 다시 받을 수 없어 지운다. */
+export const RETAIN_MS = 30 * DAY_MS
+/** 목록에 있는 썬데이 글의 상세를 다시 받는 간격. 30일보다 짧으면 되고, 서버가 며칠 멈춰도 30일을 넘기지 않게 넉넉히 둔다. */
+export const DETAIL_REFRESH_MS = 7 * DAY_MS
+
 const INTERVAL_NAME = 'notice-poll'
 const NEXON_KINDS: readonly NexonNoticeKind[] = ['game', 'update', 'event', 'cashshop']
 
@@ -89,6 +95,7 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
           }
         }
       }
+      await this.purgeStale()
       await this.sendScheduled(summary)
       if (summary.stored > 0 || summary.notified > 0 || summary.scheduled > 0) {
         this.logger.log(
@@ -102,17 +109,34 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
   }
 
   private async collect(kind: NexonNoticeKind, summary: TickSummary): Promise<void> {
-    const items = await this.nexon.noticeList(kind)
+    const items = (await this.nexon.noticeList(kind)).filter((item) => this.usable(kind, item))
     const keys = items.map((item) => keyOf(kind, item))
     const known = await this.repo.knownKeys(keys)
+    const now = this.clock()
+
+    const seen = items.filter((_, i) => known.has(keys[i]))
+    if (seen.length > 0) await this.refresh(kind, seen, now)
+
     const fresh = items.filter((_, i) => !known.has(keys[i]))
     if (fresh.length === 0) return
 
     // 표가 빈 분류의 첫 회차는 저장만 한다. 안 그러면 첫 배포가 알림 수십 개를 쏜다.
     const seeding = !(await this.repo.hasAny(kind))
-    const now = this.clock()
     for (const item of fresh) {
-      const row = await this.rowOf(kind, item)
+      // 글 하나의 상세가 실패해도 그 글만 다음 회차로 미룬다. 회차를 끊으면 뒤의 새 글이 저장도 알림도 안 된다.
+      let row: NewNotice | null
+      try {
+        row = await this.rowOf(kind, item, now)
+      } catch (error) {
+        this.logger.warn(
+          `${keyOf(kind, item)} 상세를 못 받아 다음 회차에 다시 받는다: ${String(error)}`,
+        )
+        continue
+      }
+      if (row === null) {
+        this.logger.warn(`${keyOf(kind, item)} 상세의 본문이 비어 다음 회차에 다시 받는다`)
+        continue
+      }
       const { id } = await this.repo.insert(row)
       summary.stored += 1
 
@@ -137,8 +161,64 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
     }
   }
 
-  /** 썬데이 메이플만 상세를 받아 blocks 와 기간을 둔다. 나머지는 목록 값만이다. */
-  private async rowOf(kind: NexonNoticeKind, item: NexonNoticeItem): Promise<NewNotice> {
+  /**
+   * 제목이나 날짜가 빈 글은 이번 회차에 건너뛴다. 제목이 빈 글을 저장하면 제목 없는 알림이 나가고, 날짜를 못 읽으면 저장이
+   * 터진다. 다음 회차에 채워져 오면 그때 새 글이다.
+   */
+  private usable(kind: NexonNoticeKind, item: NexonNoticeItem): boolean {
+    if (item.title.trim() !== '' && !Number.isNaN(new Date(item.date).getTime())) return true
+    this.logger.warn(`${keyOf(kind, item)} 의 제목이나 날짜가 비어 이번 회차에 건너뛴다`)
+    return false
+  }
+
+  /** 목록에 있는 아는 글을 다시 받은 것으로 고친다. 이미 있는 글이라 알림은 다시 나가지 않는다. */
+  private async refresh(kind: NexonNoticeKind, seen: NexonNoticeItem[], now: Date): Promise<void> {
+    await this.repo.refresh(
+      seen.map((item) => ({
+        noticeKey: keyOf(kind, item),
+        title: item.title,
+        link: item.url,
+        publishedAt: new Date(item.date),
+      })),
+      now,
+    )
+    if (kind !== 'event') return
+    const sundayKeys = seen
+      .filter((item) => isSundayMaple(item.title))
+      .map((item) => keyOf(kind, item))
+    if (sundayKeys.length === 0) return
+    const stale = await this.repo.staleDetailKeys(
+      sundayKeys,
+      new Date(now.getTime() - DETAIL_REFRESH_MS),
+    )
+    for (const item of seen) {
+      const noticeKey = keyOf(kind, item)
+      if (!stale.has(noticeKey)) continue
+      try {
+        const detail = await this.detailOf(kind, item)
+        if (detail === null) continue
+        await this.repo.updateDetail(noticeKey, detail, now)
+      } catch (error) {
+        this.logger.warn(`${noticeKey} 상세를 다시 받지 못했다: ${String(error)}`)
+      }
+    }
+  }
+
+  /** 받은 지 30일이 지난 넥슨 공지 줄을 지운다. 목록에 있는 글은 회차마다 고쳐져 여기에 걸리지 않는다. */
+  private async purgeStale(): Promise<void> {
+    try {
+      await this.repo.purgeStale(new Date(this.clock().getTime() - RETAIN_MS))
+    } catch (error) {
+      this.logger.warn(`오래된 넥슨 공지를 지우지 못했다: ${String(error)}`)
+    }
+  }
+
+  /** 썬데이 메이플만 상세를 받아 blocks 와 기간을 둔다. 나머지는 목록 값만이다. 상세의 본문이 비면 null 이다. */
+  private async rowOf(
+    kind: NexonNoticeKind,
+    item: NexonNoticeItem,
+    now: Date,
+  ): Promise<NewNotice | null> {
     const base: NewNotice = {
       noticeKey: keyOf(kind, item),
       kind,
@@ -147,15 +227,22 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
       sourceId: item.noticeId,
       publishedAt: new Date(item.date),
       blocks: null,
+      fetchedAt: now,
     }
     if (kind !== 'event' || !isSundayMaple(item.title)) return base
+    const detail = await this.detailOf(kind, item)
+    if (detail === null) return null
+    return { ...base, ...detail, detailFetchedAt: now }
+  }
+
+  private async detailOf(
+    kind: NexonNoticeKind,
+    item: NexonNoticeItem,
+  ): Promise<Pick<NewNotice, 'blocks' | 'startsAt' | 'endsAt'> | null> {
     const detail = await this.nexon.noticeDetail(kind, item.noticeId)
-    return {
-      ...base,
-      blocks: parseContents(detail.contents),
-      startsAt: dateOrNull(detail.eventStart),
-      endsAt: dateOrNull(detail.eventEnd),
-    }
+    const blocks = parseContents(detail.contents)
+    if (blocks.length === 0) return null
+    return { blocks, startsAt: dateOrNull(detail.eventStart), endsAt: dateOrNull(detail.eventEnd) }
   }
 
   private async sendScheduled(summary: TickSummary): Promise<void> {

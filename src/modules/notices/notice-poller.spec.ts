@@ -4,7 +4,7 @@ import type { SchedulerRegistry } from '@nestjs/schedule'
 import type { NexonNoticeItem, NexonOpenApiClient } from '../../clients/nexon-open-api.client'
 import type { Env } from '../../config/env.schema'
 import type { PushService } from '../push/push.service'
-import { NoticePoller, shouldNotify, STALE_MS } from './notice-poller'
+import { DETAIL_REFRESH_MS, NoticePoller, RETAIN_MS, shouldNotify, STALE_MS } from './notice-poller'
 import type { NewNotice, NoticeRow, NoticesRepository } from './notices.repository'
 
 const NOW = new Date('2026-10-14T12:00:00Z')
@@ -37,6 +37,12 @@ function build() {
     }),
     markSent: jest.fn().mockResolvedValue(undefined),
     dueScheduled: jest.fn<Promise<NoticeRow[]>, [Date]>().mockResolvedValue([]),
+    refresh: jest.fn().mockResolvedValue(undefined),
+    purgeStale: jest.fn().mockResolvedValue(0),
+    staleDetailKeys: jest
+      .fn<Promise<Set<string>>, [readonly string[], Date]>()
+      .mockResolvedValue(new Set()),
+    updateDetail: jest.fn().mockResolvedValue(undefined),
   }
   const push = { sendNotice: jest.fn().mockResolvedValue('msg-1') }
   const config = { get: () => 60_000 } as unknown as ConfigService<Env, true>
@@ -141,6 +147,149 @@ describe('NoticePoller', () => {
     )
     expect(push.sendNotice).toHaveBeenCalledTimes(1)
     expect(push.sendNotice).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-2' }))
+  })
+
+  const sunday = (contents: string) => ({
+    title: '스페셜 썬데이 메이플',
+    url: 'https://n/1',
+    contents,
+    date: '2026-10-14T20:00+09:00',
+    eventStart: '2026-10-18T00:00+09:00',
+    eventEnd: '2026-10-18T23:59+09:00',
+  })
+
+  // 제목이 빈 글은 제목 없는 알림이 되고, 날짜를 못 읽으면 저장이 터져 그 분류의 남은 새 글까지 그 회차에 빠진다.
+  it('제목이나 날짜가 빈 글은 그 회차에 건너뛰고 나머지 새 글은 저장하고 알린다', async () => {
+    const { poller, repo, push, stored, lists } = build()
+    stored.push({ noticeKey: 'game-0', kind: 'game', title: '씨', publishedAt: NOW })
+    lists.game = [
+      { ...item(3, ''), title: '' },
+      { ...item(4, '날짜 없음'), date: '' },
+      item(5, '새 점검'),
+    ]
+
+    const summary = await poller.tick()
+
+    expect(repo.insert).toHaveBeenCalledTimes(1)
+    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'game-5' }))
+    expect(push.sendNotice).toHaveBeenCalledTimes(1)
+    expect(summary).toEqual({ stored: 1, notified: 1, scheduled: 0 })
+  })
+
+  it('빈 값이던 글이 다음 회차에 채워져 오면 새 글로 저장하고 알린다', async () => {
+    const { poller, repo, push, stored, lists } = build()
+    stored.push({ noticeKey: 'game-0', kind: 'game', title: '씨', publishedAt: NOW })
+    lists.game = [{ ...item(3, ''), title: '' }]
+    await poller.tick()
+
+    lists.game = [item(3, '채워진 제목')]
+    await poller.tick()
+
+    expect(repo.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ noticeKey: 'game-3', title: '채워진 제목' }),
+    )
+    expect(push.sendNotice).toHaveBeenCalledTimes(1)
+  })
+
+  it('썬데이 상세가 실패하면 그 글만 건너뛰고, 다른 새 글은 저장하며, 다음 회차에 다시 받는다', async () => {
+    const { poller, nexon, repo, stored, lists } = build()
+    stored.push({ noticeKey: 'event-0', kind: 'event', title: '씨', publishedAt: NOW })
+    lists.event = [item(1, '스페셜 썬데이 메이플'), item(2, '가을 이벤트')]
+    nexon.noticeDetail.mockRejectedValueOnce(new Error('timeout'))
+
+    await poller.tick()
+
+    expect(repo.insert).toHaveBeenCalledTimes(1)
+    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-2' }))
+
+    nexon.noticeDetail.mockResolvedValue(sunday('<div><img src="https://img/x.png"></div>'))
+    await poller.tick()
+
+    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-1' }))
+  })
+
+  it('썬데이 상세의 본문이 비면 저장하지 않고 다음 회차에 다시 받는다', async () => {
+    const { poller, nexon, repo, stored, lists } = build()
+    stored.push({ noticeKey: 'event-0', kind: 'event', title: '씨', publishedAt: NOW })
+    lists.event = [item(1, '스페셜 썬데이 메이플')]
+    nexon.noticeDetail.mockResolvedValueOnce(sunday(''))
+
+    await poller.tick()
+    expect(repo.insert).not.toHaveBeenCalled()
+
+    nexon.noticeDetail.mockResolvedValue(sunday('<div><img src="https://img/x.png"></div>'))
+    await poller.tick()
+    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-1' }))
+  })
+
+  it('새 글은 받은 시각을 함께 저장한다', async () => {
+    const { poller, repo, stored, lists } = build()
+    stored.push({ noticeKey: 'game-0', kind: 'game', title: '씨', publishedAt: NOW })
+    lists.game = [item(1, '새 글')]
+
+    await poller.tick()
+
+    expect(repo.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ noticeKey: 'game-1', fetchedAt: NOW }),
+    )
+  })
+
+  // 넥슨 AI 에이전트 가이드의 30일 갱신. 목록에 있는 글은 회차마다 다시 받은 것으로 고친다.
+  it('목록에 있는 아는 글은 제목 · 링크 · 날짜와 받은 시각을 고치고, 다시 알리지 않는다', async () => {
+    const { poller, repo, push, stored, lists } = build()
+    stored.push({ noticeKey: 'game-1', kind: 'game', title: '옛 제목', publishedAt: NOW })
+    lists.game = [item(1, '고친 제목')]
+
+    await poller.tick()
+
+    expect(repo.refresh).toHaveBeenCalledWith(
+      [
+        {
+          noticeKey: 'game-1',
+          title: '고친 제목',
+          link: 'https://n/1',
+          publishedAt: new Date(item(1, '').date),
+        },
+      ],
+      NOW,
+    )
+    expect(repo.insert).not.toHaveBeenCalled()
+    expect(push.sendNotice).not.toHaveBeenCalled()
+  })
+
+  it('목록에 있는 썬데이 글은 상세를 받은 지 오래되면 다시 받는다', async () => {
+    const { poller, nexon, repo, stored, lists } = build()
+    stored.push({
+      noticeKey: 'event-1',
+      kind: 'event',
+      title: '스페셜 썬데이 메이플',
+      publishedAt: NOW,
+    })
+    lists.event = [item(1, '스페셜 썬데이 메이플'), item(2, '가을 이벤트')]
+    repo.staleDetailKeys.mockImplementation((keys: readonly string[]) =>
+      Promise.resolve(new Set(keys.filter((k) => k === 'event-1'))),
+    )
+    nexon.noticeDetail.mockResolvedValue(sunday('<div><img src="https://img/y.png"></div>'))
+
+    await poller.tick()
+
+    expect(repo.staleDetailKeys).toHaveBeenCalledWith(
+      ['event-1'],
+      new Date(NOW.getTime() - DETAIL_REFRESH_MS),
+    )
+    expect(repo.updateDetail).toHaveBeenCalledWith(
+      'event-1',
+      expect.objectContaining({ blocks: [{ type: 'image', src: 'https://img/y.png' }] }),
+      NOW,
+    )
+  })
+
+  it('받은 지 30일이 지난 넥슨 공지 줄을 지운다', async () => {
+    const { poller, repo } = build()
+
+    await poller.tick()
+
+    expect(repo.purgeStale).toHaveBeenCalledWith(new Date(NOW.getTime() - RETAIN_MS))
   })
 
   it('알림 실패는 그 회차에서 끝나고 sent_at 은 비어 있다', async () => {

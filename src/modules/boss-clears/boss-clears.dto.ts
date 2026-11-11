@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { uuidLike } from '../drop-prices/drop-prices.dto'
-import { mapleId } from '../identity/me.dto'
+import { mapleId, nexonIdHash } from '../identity/me.dto'
 
 const meso = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 
@@ -15,7 +15,7 @@ export const bossClearBody = z
     periodRecordId: uuidLike,
     /** 잡은 캐릭터의 메이플 ID. 어느 넥슨 계정의 처치인지 가리는 값이라 반드시 있다. */
     mapleId,
-    ocid: z.string().min(1).max(100),
+    ocid: nexonIdHash,
     boss: z.string().min(1).max(100),
     difficulty: z.string().min(1).max(50),
     cycle: z.enum(['weekly', 'monthly']),

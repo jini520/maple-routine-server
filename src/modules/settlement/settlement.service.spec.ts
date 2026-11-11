@@ -104,6 +104,20 @@ describe('SettlementService', () => {
     expect(service.current()).toEqual({ settling: false, startedAt: null })
   })
 
+  // 06:00:01 은 그날 마지막 확인이다. 결산 중으로 두면 다음 날 0시까지 풀 확인이 없어 앱이 하루 종일 어제 날짜를 묻지 않는다.
+  it('06:00:01 의 마지막 확인은 묻되, OPENAPI00009 여도 결산 아님이다', async () => {
+    const { service, nexon } = build()
+    service.clock = () => kst('2026-10-15T00:00:01')
+    nexon.characterState.mockRejectedValue(settlingError())
+    await service.tick()
+
+    service.clock = () => kst('2026-10-15T06:00:01')
+    expect(await service.tick()).toBe('settling')
+
+    expect(nexon.characterState).toHaveBeenLastCalledWith('OCID', '2026-10-14')
+    expect(service.current()).toEqual({ settling: false, startedAt: null })
+  })
+
   it('부팅이 창 안이면 바로 한 번 본다', async () => {
     const { service, nexon } = build()
     service.clock = () => kst('2026-10-15T00:30:00')

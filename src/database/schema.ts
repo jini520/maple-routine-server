@@ -225,6 +225,10 @@ export const notices = pgTable(
     sentAt: timestamptz('sent_at'),
     pushTitle: text('push_title'),
     pushBody: text('push_body'),
+    /** 넥슨 공지를 마지막으로 받은 시각. 30일이 지나면 지운다. 운영자 공지는 NULL. */
+    fetchedAt: timestamptz('fetched_at'),
+    /** 썬데이 메이플 상세를 마지막으로 받은 시각. 목록에 있는 동안 다시 받는다. */
+    detailFetchedAt: timestamptz('detail_fetched_at'),
   },
   (t) => [
     index('notices_published_at_idx').on(t.publishedAt.desc(), t.id.desc()),
@@ -326,6 +330,7 @@ export const dropPrices = pgTable(
     /** 드롭한 캐릭터의 메이플 ID. 계정을 삭제하면 비운다. 1.0.13 앱의 줄은 NULL 이다. */
     mapleId: text('maple_id').references(() => nexonAccountMapleIds.mapleId, {
       onDelete: 'set null',
+      onUpdate: 'cascade',
     }),
     /** 드롭한 캐릭터. 넥슨이 누구에게나 주는 공개 값이라 계정을 삭제해도 남겨, 돌아와 다시 보낸 같은 드롭을 막는다. */
     ocid: text('ocid'),
@@ -1241,7 +1246,7 @@ export const bossClears = pgTable(
     /** 잡은 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade' }),
+      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
     ocid: text('ocid').notNull(),
     /** 같은 처치를 가리는 보스. 표에 없는 보스면 NULL. */
     bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
@@ -1301,7 +1306,7 @@ export const serverCashbookEntries = pgTable(
     /** 기록의 메이플 ID. 캐릭터 기록은 그 캐릭터의 메이플 ID 다. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade' }),
+      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /** NULL 은 메이플 ID 기록이다. */
     ocid: text('ocid'),
     entryType: cashbookEntryTypeEnum('entry_type').notNull(),
@@ -1377,11 +1382,9 @@ export const enhancementTotals = pgTable(
     /** 강화한 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade' }),
+      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /** 그날 그 이름이었던 캐릭터. 이름을 바꿔도 그대로라 이것으로 가린다. */
     ocid: text('ocid').notNull(),
-    /** 응답이 준 그날의 이름. */
-    characterName: text('character_name').notNull(),
     /** 강화한 날(KST YYYY-MM-DD). */
     historyDate: text('history_date').notNull(),
     enhancementCategory: enhancementCategoryEnum('enhancement_category').notNull(),

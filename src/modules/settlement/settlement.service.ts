@@ -20,10 +20,12 @@ import {
 export const SETTLING_ERROR = 'OPENAPI00009'
 
 /**
- * 창 안 10분 간격. 00:01 부터라 자정 경계에서 넥슨과 우리 시계 차이만큼 헛짚지 않는다.
- * 자리는 KST 로 적고 서버 시계가 어디 있든 같다.
+ * 창 안 10분 간격. 00:00:01 부터라 자정 경계에서 넥슨과 우리 시계 차이만큼 헛짚지 않고, 앱이 0시 회차 전에 읽을 판정이 곧바로
+ * 선다. 시각은 KST 로 적고 서버 시계가 어디 있든 같다.
  */
-export const PROBE_CRON = '0 1-59/10 0-5 * * *'
+export const PROBE_CRON = '1 */10 0-5 * * *'
+/** 그 밤의 마지막 확인. 결과는 판정을 바꾸지 않는다(`probeNight`). */
+export const LAST_PROBE_CRON = '1 0 6 * * *'
 
 /**
  * 밤마다 낟낟 캐릭터의 어제 기록을 물어 결산 중인지 든다. 판정은 프로세스 메모리다. 인스턴스가 하나다.
@@ -81,6 +83,11 @@ export class SettlementService implements OnApplicationBootstrap {
     } finally {
       this.running = false
     }
+  }
+
+  @Cron(LAST_PROBE_CRON, { name: 'settlement-last-probe', timeZone: 'Asia/Seoul' })
+  async lastTick(): Promise<Probe | null> {
+    return this.tick()
   }
 
   private async probe(date: string): Promise<Probe> {

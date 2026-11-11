@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import {
+  dropBoxes,
   dropPrices,
   items,
   nexonAccountMapleIds,
@@ -8,12 +9,14 @@ import {
   users,
   worlds,
 } from '../../database/schema'
+import { isUniqueViolation } from '../../common/pg-errors'
 import { BossesRepository } from '../bosses/bosses.repository'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import {
   type DropPriceInput,
   DropPricesRepository,
+  NoDropBox,
   NoDropItem,
   NoWorld,
 } from './drop-prices.repository'
@@ -50,6 +53,7 @@ describeDb('DropPricesRepository', () => {
     recordStatus: 'completed',
     pricedAt: null,
     owner: null,
+    boxOriginKey: null,
     ...over,
   })
 
@@ -353,6 +357,7 @@ describeDb('DropPricesRepository', () => {
     const R1 = '1a1a1a1a-0000-4000-8000-00000000001a'
     const R2 = '2b2b2b2b-0000-4000-8000-00000000002b'
     let lucid: string
+    let ringBox: string
 
     beforeEach(async () => {
       const created = await new BossesRepository(db).createBoss({
@@ -364,6 +369,13 @@ describeDb('DropPricesRepository', () => {
         difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
       })
       lucid = created.id
+      // 반지 상자. 기기는 상자에서 나온 드롭에 상자의 아이템 key 를 단다.
+      const [box] = await db
+        .insert(items)
+        .values({ key: 'ring-box', name: '반지 상자', valuable: false, isDrop: true })
+        .returning({ id: items.id })
+      ringBox = box.id
+      await db.insert(dropBoxes).values({ itemId: ringBox, levelMin: 1, levelMax: 4 })
     })
 
     const drop = (
@@ -372,7 +384,7 @@ describeDb('DropPricesRepository', () => {
     ) =>
       input({
         bossId: lucid,
-        owner: { mapleId: 'm-me', ocid: 'o1', itemOrdinal: 1, ...owner },
+        owner: { mapleId: 'm-me', ocid: 'o1', ...owner },
         ...over,
       })
     const rows = () => db.select().from(dropPrices).orderBy(dropPrices.createdAt)
@@ -386,7 +398,7 @@ describeDb('DropPricesRepository', () => {
     })
 
     // 시세에서 같은 드롭을 두 번 세지 않는다(사용자 지정 2026-11-09). 앱의 기록은 그대로 둔다.
-    it('같은 드롭(ocid · 보스 · 기간 · 아이템 · 몇 번째)이 이미 있으면 누가 보냈든 적지 않는다', async () => {
+    it('같은 드롭(ocid · 보스 · 기간 · 아이템 · 획득처)이 이미 있으면 누가 보냈든 적지 않는다', async () => {
       await repo.upsert(drop({ dropRecordId: R1, priceMeso: 100 }))
 
       await repo.upsert(
@@ -401,26 +413,65 @@ describeDb('DropPricesRepository', () => {
       ])
     })
 
+    // 한 캐릭터는 한 기간에 한 보스에게서 같은 아이템을 둘 얻지 못한다. 같은 아이템이 두 줄이 되는 것은
+    // 직접 떨군 것과 상자에서 나온 것뿐이다(사용자 확인 2026-11-11).
+    it('같은 아이템도 획득처가 다르면 따로 적는다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1, priceMeso: 100 }))
+
+      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 200, boxOriginKey: 'ring-box' }))
+
+      expect((await rows()).map((r) => [r.dropRecordId, r.boxOriginItemId])).toEqual([
+        [R1, null],
+        [R2, ringBox],
+      ])
+    })
+
+    // 동시에 들어온 두 건은 위 판정을 함께 지나칠 수 있어 표가 막는다. 직접 떨군 드롭은 획득처가 비어 있다.
+    it('표도 직접 떨군 같은 드롭을 두 줄로 두지 않는다', async () => {
+      await repo.upsert(drop({ dropRecordId: R1 }))
+      const [first] = await rows()
+
+      const error = await db
+        .insert(dropPrices)
+        .values({ ...first, id: undefined, dropRecordId: R2 })
+        .then(
+          () => null,
+          (e: unknown) => e,
+        )
+
+      expect(isUniqueViolation(error, 'drop_prices_same_drop_unique')).toBe(true)
+    })
+
+    it('표에 없는 상자 key 는 NoDropBox 로 거절하고 적지 않는다', async () => {
+      await expect(
+        repo.upsert(drop({ dropRecordId: R1, boxOriginKey: 'no-box' })),
+      ).rejects.toBeInstanceOf(NoDropBox)
+      await expect(
+        repo.upsert(drop({ dropRecordId: R1, boxOriginKey: 'ring' })),
+      ).rejects.toBeInstanceOf(NoDropBox)
+      expect(await rows()).toEqual([])
+    })
+
     // 리프하면 기기가 기록을 새 ocid 로 옮긴다. 메이플 ID 는 그대로라 같은 줄을 찾아 ocid 를 고친다.
     it('같은 메이플 ID · 같은 기록 id 로 다시 오면 그 줄을 고치고, 리프로 ocid 가 바뀌어도 같은 줄이다', async () => {
       await repo.upsert(drop({ dropRecordId: R1, priceMeso: 100 }))
 
       await repo.upsert(drop({ dropRecordId: R1, priceMeso: 200 }, { ocid: 'o2' }))
 
-      expect((await rows()).map((r) => [r.ocid, r.priceMeso, r.bossId, r.itemOrdinal])).toEqual([
-        ['o2', 200, lucid, 1],
+      expect((await rows()).map((r) => [r.ocid, r.priceMeso, r.bossId])).toEqual([
+        ['o2', 200, lucid],
       ])
     })
 
     it('고친 값이 다른 줄과 같은 드롭이 되면 그 고침을 적지 않는다', async () => {
       await repo.upsert(drop({ dropRecordId: R1 }))
-      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 300 }, { itemOrdinal: 2 }))
+      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 300, boxOriginKey: 'ring-box' }))
 
-      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 400 }, { itemOrdinal: 1 }))
+      await repo.upsert(drop({ dropRecordId: R2, priceMeso: 400 }))
 
-      expect((await rows()).map((r) => [r.dropRecordId, r.itemOrdinal, r.priceMeso])).toEqual([
-        [R1, 1, 100],
-        [R2, 2, 300],
+      expect((await rows()).map((r) => [r.dropRecordId, r.boxOriginItemId, r.priceMeso])).toEqual([
+        [R1, null, 100],
+        [R2, ringBox, 300],
       ])
     })
 

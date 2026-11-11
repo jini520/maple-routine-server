@@ -332,12 +332,15 @@ export const dropPrices = pgTable(
       onDelete: 'set null',
       onUpdate: 'cascade',
     }),
-    /** 드롭한 캐릭터. 넥슨이 누구에게나 주는 공개 값이라 계정을 삭제해도 남겨, 돌아와 다시 보낸 같은 드롭을 막는다. */
+    /** 드롭한 캐릭터의 ocid 해시. 원문이 아니라 계정을 삭제해도 남겨, 돌아와 다시 보낸 같은 드롭을 막는다. */
     ocid: text('ocid'),
     /** 같은 드롭을 가리는 보스. 난이도를 넣으면 난이도만 고친 같은 드롭이 두 줄이 된다. 표에 없는 보스면 NULL. */
     bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
-    /** 그 캐릭터 · 보스 · 기간에 같은 아이템이 몇 번째인가. 1부터다. ocid 와 함께 온다. */
-    itemOrdinal: integer('item_ordinal'),
+    /**
+     * 획득처. 상자에서 나온 드롭이면 그 상자 아이템이고, 보스가 직접 떨군 드롭은 NULL 이다. 한 캐릭터는 한 기간에 한 보스에게서
+     * 같은 아이템을 둘 얻지 못해, 같은 아이템은 획득처로만 갈린다.
+     */
+    boxOriginItemId: uuid('box_origin_item_id').references(() => items.id),
     identifiedBy: identitySourceEnum('identified_by').notNull(),
     /** 어느 아이템의 시세인가. 서버가 전송값의 key 로 찾아 적고, 모르는 key 는 받지 않는다. */
     itemId: uuid('item_id')
@@ -369,10 +372,16 @@ export const dropPrices = pgTable(
     unique('drop_prices_user_record_unique').on(t.userId, t.dropRecordId),
     unique('drop_prices_maple_record_unique').on(t.mapleId, t.dropRecordId),
     // 같은 드롭은 누가 보냈든 한 줄이다. 기기에서 지운 줄이 자리를 쥐면 같은 자리에 다시 적은 드롭을 못 받는다.
+    // 직접 떨군 드롭끼리도 같은 획득처라 NULL 을 한 값으로 묶는다. 그대로 두면 NULL 끼리 달라 두 줄이 된다.
     uniqueIndex('drop_prices_same_drop_unique')
-      .on(t.ocid, t.bossId, t.periodKey, t.itemId, t.itemOrdinal)
+      .on(
+        t.ocid,
+        t.bossId,
+        t.periodKey,
+        t.itemId,
+        sql`coalesce(${t.boxOriginItemId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+      )
       .where(sql`${t.recordStatus} <> 'deleted'`),
-    check('drop_prices_ocid_with_ordinal', sql`(${t.ocid} IS NULL) = (${t.itemOrdinal} IS NULL)`),
     index('drop_prices_item_period_idx')
       .on(t.itemId, t.periodKey)
       .where(sql`${t.recordStatus} = 'completed'`),

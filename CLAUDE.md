@@ -3,6 +3,9 @@
 앱 저장소(`~/Developments/maple-routine`)가 쓰는 서버다. 설계 문서와 ADR 은 앱 저장소 `docs/` 에 있다(서버는
 `docs/foundation/server.md`). 운영과 배포 절차는 이 저장소의 `README.md` 에 있다.
 
+## 넥슨 Open API
+- CRITICAL: **넥슨 Open API 를 부르거나 그 응답을 다루는 코드를 쓰기 전에 앱 저장소의 `docs/foundation/nexon-api/agent-guide.md` 를 읽고 따를 것.** 넥슨이 AI 에이전트용으로 낸 가이드의 원문이다. 재시도하면 안 되는 에러 코드나 식별자(ocid)를 다루는 법처럼, 코드만 봐서는 알 수 없는 넥슨 쪽 규칙이 거기 있다. 가이드가 우선이지만, 메이플스토리 경로를 직접 불러 잰 앱 저장소 `docs/foundation/nexon-api.md` 의 실측이 더 맞을 수 있다. 둘이 다르면 어느 쪽을 따를지 스스로 정하지 말고 사용자에게 물을 것
+
 ## 브랜치 전략 (앱 저장소 ADR-188 결정 9)
 - CRITICAL: **main 은 운영 박스에 배포된 것만 담는다.** main 에 바로 커밋하거나 작업 브랜치를 main 으로 PR 하지 말 것. main 에는 develop 과 `hotfix/<slug>` 만 merge commit 으로 머지한다. main 이 배포된 코드와 같아야 핫픽스를 따자마자 그대로 배포할 수 있기 때문이다
 - CRITICAL: **모든 작업은 develop 에서 따고 develop 으로 PR 할 것.** develop 이 GitHub 기본 브랜치다. 브랜치 이름은 `feat/` · `fix/` · `chore/` · `docs/` · `refactor/` 에 영어 slug 를 붙이고, 이슈가 있으면 끝에 번호를 단다. 본 체크아웃은 develop 에 두고 작업은 `.claude/worktrees/` 의 워크트리에서 한다

@@ -44,7 +44,7 @@ export const USERS_HTML = layout(
 </div>
 ${DASHBOARD_SCRIPT}
 <script>
-  var state = { days: 28, platform: '' };
+  var state = { days: 7, platform: '' };
   var PLATFORM_NAMES = { ios: 'iOS', android: 'Android' };
   var IDENTITY_NAMES = { login: '넥슨 로그인', key: 'API 키' };
 

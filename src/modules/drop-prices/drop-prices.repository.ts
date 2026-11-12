@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, isNull, ne, or, type SQL, sql } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import { DB, type Db } from '../../database/database.module'
 import {
@@ -73,29 +74,72 @@ export interface DropPriceAdminRow {
   bossName: string | null
   difficulty: string | null
   recordStatus: DropRecordStatus
+  source: DropSource
+  /** 상자에서 나온 줄의 상자 아이템 key 와 한글 이름. 아니면 둘 다 null. */
+  boxKey: string | null
+  boxName: string | null
   createdAt: string
   updatedAt: string
 }
 
-/** 아이템 × 기간의 분포. completed 만 센다. */
-export interface DropPriceSummary {
+/**
+ * 획득처. 상자 칸이 있으면 상자, 없고 ocid 가 있으면 보스가 직접 떨군 드롭, 둘 다 없으면 1.0.13 앱이 보냈거나 아직 다시 올리지
+ * 않은 옛 줄이다. 직접 떨군 드롭도 상자 칸이 비어 있어 ocid 로 가른다. 메이플 ID 는 계정을 지우면 비므로 쓰지 않는다.
+ */
+export type DropSource = 'box' | 'direct' | 'unknown'
+
+/** 관리 화면의 아이템 목록 한 줄. 기록 수는 모든 상태로, 값 셋은 completed 로 센다. 가격이 없으면 값 셋은 null. */
+export interface DropPriceItemSummary {
   itemKey: string
   itemName: string
-  periodKey: string
   count: number
-  min: number
-  median: number
-  max: number
+  completed: number
+  min: number | null
+  median: number | null
+  max: number | null
 }
 
-/** itemKey 는 아이템 표의 key 또는 한글 이름 중 하나와 같으면 걸린다. 화면이 이름을 보이므로 이름으로도 거른다. */
+/** 가격 분포 점그림의 점 하나. completed 가 아니면 가격이 null 이고, 화면은 획득처마다 줄 수를 셀 때만 쓴다. */
+export interface DropPricePoint {
+  priceMeso: number | null
+  source: DropSource
+  boxName: string | null
+}
+
+/**
+ * itemKey 는 아이템 표의 key 또는 한글 이름 중 하나와 같으면 걸린다. 화면이 이름을 보이므로 이름으로도 거른다.
+ * source 는 all · box · direct · unknown, 또는 상자 하나의 아이템 key 다.
+ */
 export interface DropPriceFilter {
   itemKey: string | null
   periodKey: string | null
+  source: string
 }
 
 function itemMatches(value: string | null) {
   return value === null ? undefined : or(eq(items.key, value), eq(items.name, value))
+}
+
+/** 상자 칸이 가리키는 아이템. 가격 줄의 아이템과 같은 표라 별칭으로 한 번 더 붙인다. */
+const boxItems = alias(items, 'box_items')
+
+const SOURCE = sql<DropSource>`case when ${dropPrices.boxOriginItemId} is not null then 'box' when ${dropPrices.ocid} is not null then 'direct' else 'unknown' end`
+
+function sourceMatches(source: string) {
+  if (source === 'all') return undefined
+  if (source === 'box') return isNotNull(dropPrices.boxOriginItemId)
+  const noBox = isNull(dropPrices.boxOriginItemId)
+  if (source === 'direct') return and(noBox, isNotNull(dropPrices.ocid))
+  if (source === 'unknown') return and(noBox, isNull(dropPrices.ocid))
+  return eq(boxItems.key, source)
+}
+
+function filterOf(filter: DropPriceFilter) {
+  return and(
+    itemMatches(filter.itemKey),
+    filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
+    sourceMatches(filter.source),
+  )
 }
 
 /** 전송값의 key 를 표에서 찾은 id. 상자는 직접 떨군 드롭이면 null. */
@@ -120,8 +164,8 @@ export class NoDropBox extends Error {}
 export class DropPricesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** 최근 것부터. 필터는 아이템 key 와 기간 key 둘이고 비우면 전부다. */
-  async recent(filter: DropPriceFilter, limit: number): Promise<DropPriceAdminRow[]> {
+  /** 최근 것부터. offset 만큼 건너뛰어 화면의 더 보기를 잇는다. */
+  async recent(filter: DropPriceFilter, limit: number, offset = 0): Promise<DropPriceAdminRow[]> {
     const rows = await this.db
       .select({
         price: dropPrices,
@@ -132,22 +176,34 @@ export class DropPricesRepository {
         boss: bosses.key,
         bossName: bosses.name,
         difficulty: bossDifficulties.difficulty,
+        source: SOURCE,
+        boxKey: boxItems.key,
+        boxName: boxItems.name,
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
+      .leftJoin(boxItems, eq(dropPrices.boxOriginItemId, boxItems.id))
       .leftJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .leftJoin(bossDifficulties, eq(dropPrices.bossDifficultyId, bossDifficulties.id))
       .leftJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
-      .where(
-        and(
-          itemMatches(filter.itemKey),
-          filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
-        ),
-      )
+      .where(filterOf(filter))
       .orderBy(desc(dropPrices.updatedAt), desc(dropPrices.id))
       .limit(limit)
+      .offset(offset)
     return rows.map(
-      ({ price: r, itemKey, itemName, worldKey, worldName, boss, bossName, difficulty }) => ({
+      ({
+        price: r,
+        itemKey,
+        itemName,
+        worldKey,
+        worldName,
+        boss,
+        bossName,
+        difficulty,
+        source,
+        boxKey,
+        boxName,
+      }) => ({
         id: r.id,
         userId: r.userId,
         identifiedBy: r.identifiedBy,
@@ -163,37 +219,55 @@ export class DropPricesRepository {
         bossName,
         difficulty,
         recordStatus: r.recordStatus,
+        source,
+        boxKey,
+        boxName,
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
       }),
     )
   }
 
-  /** 아이템 × 기간마다 개수 · 최소 · 중앙값 · 최대. 최근 기간부터, 같은 기간은 개수 많은 것부터. */
-  async summary(filter: DropPriceFilter): Promise<DropPriceSummary[]> {
-    // bigint 집계는 문자열로 오므로 float8 로 받는다. 시세는 안전한 정수 안이다.
-    const rows = await this.db
+  /** 아이템마다 한 줄. 기록이 많은 것부터다. */
+  async items(filter: DropPriceFilter): Promise<DropPriceItemSummary[]> {
+    // completed 가 아니면 가격이 NULL 이라 집계가 저절로 completed 만 센다. bigint 집계는 문자열로 오므로 float8 로 받는다.
+    return this.db
       .select({
         itemKey: items.key,
         itemName: items.name,
-        periodKey: dropPrices.periodKey,
         count: sql<number>`count(*)::int`,
-        min: sql<number>`min(${dropPrices.priceMeso})::float8`,
-        median: sql<number>`percentile_cont(0.5) within group (order by ${dropPrices.priceMeso})::float8`,
-        max: sql<number>`max(${dropPrices.priceMeso})::float8`,
+        completed: sql<number>`count(${dropPrices.priceMeso})::int`,
+        min: sql<number | null>`min(${dropPrices.priceMeso})::float8`,
+        median: sql<
+          number | null
+        >`percentile_cont(0.5) within group (order by ${dropPrices.priceMeso})::float8`,
+        max: sql<number | null>`max(${dropPrices.priceMeso})::float8`,
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
-      .where(
-        and(
-          eq(dropPrices.recordStatus, 'completed'),
-          itemMatches(filter.itemKey),
-          filter.periodKey === null ? undefined : eq(dropPrices.periodKey, filter.periodKey),
-        ),
-      )
-      .groupBy(items.key, items.name, dropPrices.periodKey)
-      .orderBy(desc(dropPrices.periodKey), desc(sql`count(*)`), items.key)
-    return rows
+      .leftJoin(boxItems, eq(dropPrices.boxOriginItemId, boxItems.id))
+      .where(filterOf(filter))
+      .groupBy(items.key, items.name)
+      .orderBy(desc(sql`count(*)`), items.key)
+  }
+
+  /** 필터에 걸린 줄마다 가격과 획득처. 줄이 많아도 점그림이 다 그리도록 줄 목록과 달리 끊지 않는다. */
+  async points(filter: DropPriceFilter): Promise<DropPricePoint[]> {
+    return this.db
+      .select({ priceMeso: dropPrices.priceMeso, source: SOURCE, boxName: boxItems.name })
+      .from(dropPrices)
+      .innerJoin(items, eq(dropPrices.itemId, items.id))
+      .leftJoin(boxItems, eq(dropPrices.boxOriginItemId, boxItems.id))
+      .where(filterOf(filter))
+  }
+
+  /** 기록이 있는 처치 기간. 문자열 역순이라 최근 것부터다. */
+  async periods(): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ periodKey: dropPrices.periodKey })
+      .from(dropPrices)
+      .orderBy(desc(dropPrices.periodKey))
+    return rows.map((r) => r.periodKey)
   }
 
   /**

@@ -699,6 +699,19 @@ describe('AdminController', () => {
       expect(dashboard.forUsage).not.toHaveBeenCalled()
     })
 
+    it('사용 로그 경로 둘은 기간이 없으면 7일이다', async () => {
+      dashboard.forUsage.mockResolvedValue({ tiles: {} })
+      dashboard.forScreen.mockResolvedValue({ daily: [] })
+
+      const stats = await app.inject({ method: 'GET', url: '/admin/usage/stats' })
+      const screen = await app.inject({ method: 'GET', url: '/admin/usage/screen?name=Boss' })
+
+      expect(stats.statusCode).toBe(200)
+      expect(screen.statusCode).toBe(200)
+      expect(dashboard.forUsage).toHaveBeenCalledWith(7)
+      expect(dashboard.forScreen).toHaveBeenCalledWith('Boss', 7)
+    })
+
     it('GET /admin/usage/screen 은 화면 이름과 기간을 넘긴다', async () => {
       dashboard.forScreen.mockResolvedValue({ daily: [] })
 

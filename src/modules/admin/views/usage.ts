@@ -38,7 +38,7 @@ export const USAGE_HTML = layout(
 </div>
 ${DASHBOARD_SCRIPT}
 <script>
-  var state = { days: 28, tab: 'visits', screen: null, showAll: false, data: null };
+  var state = { days: 7, tab: 'visits', screen: null, showAll: false, data: null };
   var PLATFORM_NAMES = { ios: 'iOS', android: 'Android' };
   var VERSION_COLORS = ['var(--ramp-5)', 'var(--ramp-4)', 'var(--ramp-3)', 'var(--ramp-2)', 'var(--ramp-gray)'];
   var TOP_SCREENS = 10;

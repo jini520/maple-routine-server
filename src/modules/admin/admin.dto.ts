@@ -67,21 +67,27 @@ export const dropPriceQuery = z.object({
 })
 export type DropPriceQuery = z.infer<typeof dropPriceQuery>
 
-/** 대시보드 기간. 보관 기간보다 길게 물으면 비어 있는 날만 늘어난다. 화면의 기본 단추가 28일이다. */
-const dashboardDays = z.coerce.number().int().min(1).max(USAGE_RETENTION_DAYS).default(28)
+/** 대시보드 기간. 보관 기간보다 길게 물으면 비어 있는 날만 늘어난다. 기간을 안 주면 그 화면이 처음 여는 기간이다. */
+const dashboardDays = (initial: number) =>
+  z.coerce.number().int().min(1).max(USAGE_RETENTION_DAYS).default(initial)
+const USERS_DAYS = 28
+const USAGE_DAYS = 7
 
-export const usageQuery = z.object({ days: dashboardDays })
+export const usageQuery = z.object({ days: dashboardDays(USAGE_DAYS) })
 export type UsageQuery = z.infer<typeof usageQuery>
 
 /** 사용자 화면. 플랫폼을 고르면 사건으로 세는 값만 그 플랫폼으로 센다. */
 export const usersQuery = z.object({
-  days: dashboardDays,
+  days: dashboardDays(USERS_DAYS),
   platform: z.enum(platformEnum.enumValues).optional(),
 })
 export type UsersQuery = z.infer<typeof usersQuery>
 
 /** 사용 로그 화면에서 고른 화면 하나. 이름은 앱 라우트 이름이다. */
-export const screenQuery = z.object({ days: dashboardDays, name: z.string().min(1).max(64) })
+export const screenQuery = z.object({
+  days: dashboardDays(USAGE_DAYS),
+  name: z.string().min(1).max(64),
+})
 export type ScreenQuery = z.infer<typeof screenQuery>
 
 /** 난이도 줄 하나의 본문. 난이도는 경로가 든다. 유효 기간은 새 줄을 더할 때 함께 적고, 있는 줄은 period 끝점으로 고친다. */

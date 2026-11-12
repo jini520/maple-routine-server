@@ -50,6 +50,14 @@ describe('NexonOpenApiClient', () => {
     expect((init.headers as Record<string, string>)['x-nxopen-api-key']).toBe('KEY')
   })
 
+  // 빈 목록으로 읽으면 넥슨이 잘못 답한 회차가 로그 없이 지나간다. 결과가 0건이면 넥슨은 빈 배열을 준다.
+  it('목록 칸이 배열이 아니면 빈 목록이 아니라 던진다', async () => {
+    fetchMock.mockImplementation(answer(200, { notice: null }))
+    const client = clientOf('KEY')
+
+    await expect(client.noticeList('game')).rejects.toThrow()
+  })
+
   it('네 분류의 경로와 응답 키가 다르다', async () => {
     fetchMock
       .mockImplementationOnce(answer(200, { notice: [] }))

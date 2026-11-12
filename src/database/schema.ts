@@ -225,6 +225,10 @@ export const notices = pgTable(
     sentAt: timestamptz('sent_at'),
     pushTitle: text('push_title'),
     pushBody: text('push_body'),
+    /** 넥슨 공지를 마지막으로 받은 시각. 30일이 지나면 지운다. 운영자 공지는 NULL. */
+    fetchedAt: timestamptz('fetched_at'),
+    /** 썬데이 메이플 상세를 마지막으로 받은 시각. 목록에 있는 동안 다시 받는다. */
+    detailFetchedAt: timestamptz('detail_fetched_at'),
   },
   (t) => [
     index('notices_published_at_idx').on(t.publishedAt.desc(), t.id.desc()),
@@ -326,13 +330,17 @@ export const dropPrices = pgTable(
     /** 드롭한 캐릭터의 메이플 ID. 계정을 삭제하면 비운다. 1.0.13 앱의 줄은 NULL 이다. */
     mapleId: text('maple_id').references(() => nexonAccountMapleIds.mapleId, {
       onDelete: 'set null',
+      onUpdate: 'cascade',
     }),
-    /** 드롭한 캐릭터. 넥슨이 누구에게나 주는 공개 값이라 계정을 삭제해도 남겨, 돌아와 다시 보낸 같은 드롭을 막는다. */
+    /** 드롭한 캐릭터의 ocid 해시. 원문이 아니라 계정을 삭제해도 남겨, 돌아와 다시 보낸 같은 드롭을 막는다. */
     ocid: text('ocid'),
     /** 같은 드롭을 가리는 보스. 난이도를 넣으면 난이도만 고친 같은 드롭이 두 줄이 된다. 표에 없는 보스면 NULL. */
     bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
-    /** 그 캐릭터 · 보스 · 기간에 같은 아이템이 몇 번째인가. 1부터다. ocid 와 함께 온다. */
-    itemOrdinal: integer('item_ordinal'),
+    /**
+     * 획득처. 상자에서 나온 드롭이면 그 상자 아이템이고, 보스가 직접 떨군 드롭은 NULL 이다. 한 캐릭터는 한 기간에 한 보스에게서
+     * 같은 아이템을 둘 얻지 못해, 같은 아이템은 획득처로만 갈린다.
+     */
+    boxOriginItemId: uuid('box_origin_item_id').references(() => items.id),
     identifiedBy: identitySourceEnum('identified_by').notNull(),
     /** 어느 아이템의 시세인가. 서버가 전송값의 key 로 찾아 적고, 모르는 key 는 받지 않는다. */
     itemId: uuid('item_id')
@@ -364,10 +372,16 @@ export const dropPrices = pgTable(
     unique('drop_prices_user_record_unique').on(t.userId, t.dropRecordId),
     unique('drop_prices_maple_record_unique').on(t.mapleId, t.dropRecordId),
     // 같은 드롭은 누가 보냈든 한 줄이다. 기기에서 지운 줄이 자리를 쥐면 같은 자리에 다시 적은 드롭을 못 받는다.
+    // 직접 떨군 드롭끼리도 같은 획득처라 NULL 을 한 값으로 묶는다. 그대로 두면 NULL 끼리 달라 두 줄이 된다.
     uniqueIndex('drop_prices_same_drop_unique')
-      .on(t.ocid, t.bossId, t.periodKey, t.itemId, t.itemOrdinal)
+      .on(
+        t.ocid,
+        t.bossId,
+        t.periodKey,
+        t.itemId,
+        sql`coalesce(${t.boxOriginItemId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+      )
       .where(sql`${t.recordStatus} <> 'deleted'`),
-    check('drop_prices_ocid_with_ordinal', sql`(${t.ocid} IS NULL) = (${t.itemOrdinal} IS NULL)`),
     index('drop_prices_item_period_idx')
       .on(t.itemId, t.periodKey)
       .where(sql`${t.recordStatus} = 'completed'`),
@@ -1198,6 +1212,8 @@ export const huntingGrounds = pgTable(
     mobs: integer('mobs').notNull(),
     /** 지역 안의 차례. 레벨 차이 · 마릿수가 동률일 때의 차례다. */
     sortOrder: integer('sort_order').notNull(),
+    /** 인기 사냥터 여부. 사용자가 고르는 값이라 모두 false 로 시작하고 관리 화면 목록 줄에서 고른다. */
+    popular: boolean('popular').notNull().default(false),
   },
   (t) => [
     check('hunting_grounds_force_nonnegative', sql`${t.force} >= 0`),
@@ -1241,7 +1257,7 @@ export const bossClears = pgTable(
     /** 잡은 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade' }),
+      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
     ocid: text('ocid').notNull(),
     /** 같은 처치를 가리는 보스. 표에 없는 보스면 NULL. */
     bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
@@ -1301,7 +1317,7 @@ export const serverCashbookEntries = pgTable(
     /** 기록의 메이플 ID. 캐릭터 기록은 그 캐릭터의 메이플 ID 다. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade' }),
+      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /** NULL 은 메이플 ID 기록이다. */
     ocid: text('ocid'),
     entryType: cashbookEntryTypeEnum('entry_type').notNull(),
@@ -1377,11 +1393,9 @@ export const enhancementTotals = pgTable(
     /** 강화한 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade' }),
+      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /** 그날 그 이름이었던 캐릭터. 이름을 바꿔도 그대로라 이것으로 가린다. */
     ocid: text('ocid').notNull(),
-    /** 응답이 준 그날의 이름. */
-    characterName: text('character_name').notNull(),
     /** 강화한 날(KST YYYY-MM-DD). */
     historyDate: text('history_date').notNull(),
     enhancementCategory: enhancementCategoryEnum('enhancement_category').notNull(),

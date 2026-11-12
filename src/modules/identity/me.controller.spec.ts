@@ -1,4 +1,4 @@
-import { sha256 } from '../../common/hash'
+import { sha256, sha256Hex } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -7,6 +7,10 @@ import { NexonAccountsRepository } from '../users/nexon-accounts.repository'
 import { UsersRepository } from '../users/users.repository'
 import { IdentityGuard } from './identity.guard'
 import { MeController } from './me.controller'
+
+const M1 = sha256Hex('m1')
+const M2 = sha256Hex('m2')
+const M3 = sha256Hex('m3')
 
 describe('MeController', () => {
   let app: NestFastifyApplication
@@ -45,7 +49,7 @@ describe('MeController', () => {
     users.cancelDeletion.mockReset().mockResolvedValue(undefined)
     users.deletionRequestedAt.mockReset().mockResolvedValue(null)
     users.linkApiKey.mockReset().mockResolvedValue(undefined)
-    accounts.reportMapleIds.mockReset().mockResolvedValue(['m1', 'm2'])
+    accounts.reportMapleIds.mockReset().mockResolvedValue([M1, M2])
   })
 
   it('신원이 없으면 401 이고 아무것도 안 적는다', async () => {
@@ -176,12 +180,12 @@ describe('MeController', () => {
         method: 'PUT',
         url: '/v1/me/maple-ids',
         headers: bearer,
-        payload: { mapleIds: ['m1', 'm2'] },
+        payload: { mapleIds: [M1, M2] },
       })
 
       expect(res.statusCode).toBe(200)
-      expect(res.json()).toEqual({ mapleIds: ['m1', 'm2'] })
-      expect(accounts.reportMapleIds).toHaveBeenCalledWith('a1', ['m1', 'm2'])
+      expect(res.json()).toEqual({ mapleIds: [M1, M2] })
+      expect(accounts.reportMapleIds).toHaveBeenCalledWith('a1', [M1, M2])
     })
 
     // 부계정의 메이플 ID 는 그 키의 신원으로 알린다. 계정마다 자기 줄에 적어야 같은 넥슨 ID 를 알아본다.
@@ -195,10 +199,10 @@ describe('MeController', () => {
         method: 'PUT',
         url: '/v1/me/maple-ids',
         headers: { 'x-api-key-hash': 'cd'.repeat(32) },
-        payload: { mapleIds: ['m3'] },
+        payload: { mapleIds: [M3] },
       })
 
-      expect(accounts.reportMapleIds).toHaveBeenCalledWith('a2', ['m3'])
+      expect(accounts.reportMapleIds).toHaveBeenCalledWith('a2', [M3])
     })
 
     it('목록이 아니거나 빈 글자 · 너무 긴 값이 들면 400 이다', async () => {

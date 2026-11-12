@@ -1,0 +1,1 @@
+ALTER TABLE "hunting_grounds" ADD COLUMN "popular" boolean DEFAULT false NOT NULL;

@@ -47,8 +47,10 @@ describe('probeNight', () => {
     finished,
   })
 
-  it('창 밖이면 안 부른다', () => {
-    expect(probeNight(IDLE, kst('2026-10-15T06:00:00'))).toBeNull()
+  it('06:00 분은 그 밤의 마지막 확인이라 부르고, 그 뒤는 창 밖이라 안 부른다', () => {
+    expect(probeNight(IDLE, kst('2026-10-15T06:00:01'))).toBe('2026-10-15')
+    expect(probeNight(IDLE, kst('2026-10-15T06:01:00'))).toBeNull()
+    expect(probeNight(night(true), kst('2026-10-15T06:00:01'))).toBeNull()
   })
 
   it('창 안이고 끝을 못 봤으면 그 밤을 준다', () => {

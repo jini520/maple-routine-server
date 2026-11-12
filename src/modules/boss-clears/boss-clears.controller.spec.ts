@@ -1,3 +1,4 @@
+import { sha256Hex } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -11,12 +12,15 @@ import { UsersRepository } from '../users/users.repository'
 import { BossClearsController } from './boss-clears.controller'
 import { BossClearsRepository } from './boss-clears.repository'
 
+const M1 = sha256Hex('m1')
+const OCID1 = sha256Hex('ocid-1')
+
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const OTHER = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
   periodRecordId: RECORD,
-  mapleId: 'm1',
-  ocid: 'ocid-1',
+  mapleId: M1,
+  ocid: OCID1,
   boss: 'lucid',
   difficulty: 'hard',
   cycle: 'weekly',
@@ -86,7 +90,7 @@ describe('BossClearsController', () => {
       expect.objectContaining({
         nexonAccountId: 'a1',
         identifiedBy: 'login',
-        mapleId: 'm1',
+        mapleId: M1,
         bossId: 'b-1',
         bossDifficultyId: 'diff-1',
         myShare: null,
@@ -184,7 +188,7 @@ describe('BossClearsController', () => {
       headers: bearer,
       payload: { ...body, mapleId: undefined },
     })
-    clears.upsert.mockRejectedValueOnce(new MapleIdNotOwned('m1'))
+    clears.upsert.mockRejectedValueOnce(new MapleIdNotOwned(M1))
     const notMine = await app.inject({
       method: 'POST',
       url: '/v1/boss-clears',

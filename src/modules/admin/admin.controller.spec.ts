@@ -204,6 +204,7 @@ describe('AdminController', () => {
     createGround: jest.fn(),
     updateGround: jest.fn(),
     moveGround: jest.fn(),
+    setGroundPopular: jest.fn(),
   }
 
   const huntLootRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
@@ -697,6 +698,19 @@ describe('AdminController', () => {
       expect(usage.statusCode).toBe(400)
       expect(dashboard.forUsers).not.toHaveBeenCalled()
       expect(dashboard.forUsage).not.toHaveBeenCalled()
+    })
+
+    it('사용 로그 경로 둘은 기간이 없으면 7일이다', async () => {
+      dashboard.forUsage.mockResolvedValue({ tiles: {} })
+      dashboard.forScreen.mockResolvedValue({ daily: [] })
+
+      const stats = await app.inject({ method: 'GET', url: '/admin/usage/stats' })
+      const screen = await app.inject({ method: 'GET', url: '/admin/usage/screen?name=Boss' })
+
+      expect(stats.statusCode).toBe(200)
+      expect(screen.statusCode).toBe(200)
+      expect(dashboard.forUsage).toHaveBeenCalledWith(7)
+      expect(dashboard.forScreen).toHaveBeenCalledWith('Boss', 7)
     })
 
     it('GET /admin/usage/screen 은 화면 이름과 기간을 넘긴다', async () => {
@@ -2550,6 +2564,41 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(204)
+    })
+
+    it('인기 PUT 은 참 · 거짓만 받아 204, 모르는 사냥터는 404 다', async () => {
+      huntingRepo.setGroundPopular.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
+            payload: { popular: true },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(huntingRepo.setGroundPopular).toHaveBeenCalledWith(joy.key, true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
+            payload: { popular: 'true' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(huntingRepo.setGroundPopular).toHaveBeenCalledTimes(1)
+
+      huntingRepo.setGroundPopular.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/nobody/popular',
+            payload: { popular: false },
+          })
+        ).statusCode,
+      ).toBe(404)
     })
   })
 })

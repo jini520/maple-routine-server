@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { uuidLike } from '../drop-prices/drop-prices.dto'
-import { mapleId } from '../identity/me.dto'
+import { mapleId, nexonIdHash } from '../identity/me.dto'
 
 const amount = z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER).nullish()
 const key = z.string().min(1).max(200).nullish()
@@ -40,7 +40,7 @@ export const cashbookEntryItemBody = z.object({
 export const cashbookEntryBody = z.object({
   entryRecordId: uuidLike,
   mapleId,
-  ocid: z.string().min(1).max(100).nullish(),
+  ocid: nexonIdHash.nullish(),
   entryType: z.enum(['income', 'spend']),
   categoryKey: z.string().min(1).max(100),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

@@ -1,3 +1,4 @@
+import { sha256Hex } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -8,12 +9,14 @@ import { UsersRepository } from '../users/users.repository'
 import { EnhancementTotalsController } from './enhancement-totals.controller'
 import { EnhancementTotalsRepository } from './enhancement-totals.repository'
 
+const M1 = sha256Hex('m1')
+const OCID1 = sha256Hex('ocid-1')
+
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
   totalRecordId: RECORD,
-  mapleId: 'm1',
-  ocid: 'ocid-1',
-  characterName: '낟낟',
+  mapleId: M1,
+  ocid: OCID1,
   historyDate: '2026-10-20',
   enhancementCategory: 'starforce',
   itemGroup: 'key:arcane_umbra_knuckle',
@@ -77,8 +80,8 @@ describe('EnhancementTotalsController', () => {
         nexonAccountId: 'a1',
         identifiedBy: 'login',
         totalRecordId: RECORD,
-        mapleId: 'm1',
-        ocid: 'ocid-1',
+        mapleId: M1,
+        ocid: OCID1,
         itemKey: null,
         attemptCostMeso: 1_000_000,
         destroyDefenceCostMeso: 2_000_000,

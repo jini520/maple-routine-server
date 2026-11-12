@@ -22,11 +22,12 @@ import { BossesRepository } from '../bosses/bosses.repository'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
 import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type DropPriceBody, dropPriceBody, uuidLike } from './drop-prices.dto'
-import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
+import { DropPricesRepository, NoDropBox, NoDropItem, NoWorld } from './drop-prices.repository'
 
 function reasonOf(error: unknown): string | null {
   if (error instanceof NoDropItem) return `모르는 아이템 key 다: ${error.message}`
   if (error instanceof NoWorld) return `모르는 월드 key 다: ${error.message}`
+  if (error instanceof NoDropBox) return `모르는 상자 key 다: ${error.message}`
   if (error instanceof MapleIdNotOwned) return `이 계정의 메이플 ID 가 아니다: ${error.message}`
   return null
 }
@@ -114,9 +115,10 @@ export class DropPricesController {
       recordStatus: body.status,
       pricedAt: body.pricedAt == null ? null : new Date(body.pricedAt),
       owner:
-        body.mapleId != null && body.ocid != null && body.itemOrdinal != null
-          ? { mapleId: body.mapleId, ocid: body.ocid, itemOrdinal: body.itemOrdinal }
+        body.mapleId != null && body.ocid != null
+          ? { mapleId: body.mapleId, ocid: body.ocid }
           : null,
+      boxOriginKey: body.boxOriginKey ?? null,
     })
   }
 }

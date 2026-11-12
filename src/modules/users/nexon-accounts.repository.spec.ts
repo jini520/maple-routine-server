@@ -53,6 +53,23 @@ describeDb('NexonAccountsRepository', () => {
     return row?.id
   }
 
+  /** 그 로그인에 붙은 부계정의 넥슨 계정 줄. */
+  async function registrationsOf(loginAccountId: string): Promise<string[]> {
+    const rows = await db
+      .select({ id: subAccounts.subAccountId })
+      .from(subAccounts)
+      .where(eq(subAccounts.loginAccountId, loginAccountId))
+    return rows.map((row) => row.id)
+  }
+
+  async function mapleIdsOfAccount(nexonAccountId: string): Promise<string[]> {
+    const rows = await db
+      .select({ mapleId: nexonAccountMapleIds.mapleId })
+      .from(nexonAccountMapleIds)
+      .where(eq(nexonAccountMapleIds.nexonAccountId, nexonAccountId))
+    return rows.map((row) => row.mapleId).sort()
+  }
+
   async function accountIds(): Promise<string[]> {
     return (await db.select({ id: nexonAccounts.id }).from(nexonAccounts)).map((r) => r.id).sort()
   }
@@ -233,31 +250,28 @@ describeDb('NexonAccountsRepository', () => {
   })
 
   describe('부계정', () => {
-    it('처음 보는 키는 사람 · 계정 줄을 만들어 로그인에 잇고, 목록은 키 해시와 메이플 ID 를 준다', async () => {
+    it('처음 보는 키는 사람 · 계정 줄을 만들어 메이플 ID 를 적고 로그인에 잇는다', async () => {
       const login = await users$.upsertByNexonUid('uid-1')
 
       await expect(
         repo.registerSubAccount(login.nexonAccountId, KEY_OLD, ['m2', 'm1']),
       ).resolves.toBe('registered')
 
-      expect(await repo.listSubAccounts(login.nexonAccountId)).toEqual([
-        { apiKeyHashes: [KEY_OLD.toString('hex')], mapleIds: ['m1', 'm2'] },
-      ])
+      const sub = await holderOf(KEY_OLD)
+      expect(await registrationsOf(login.nexonAccountId)).toEqual([sub])
+      expect(await mapleIdsOfAccount(sub!)).toEqual(['m1', 'm2'])
       expect(await db.select().from(users)).toHaveLength(2)
     })
 
-    // 키를 다시 받은 부계정은 키가 여럿이다. 앱은 기기에 있는 키로 어느 하나와 맞춘다.
+    // 키를 다시 받은 부계정은 키가 여럿이다. 메이플 ID 가 같아 같은 넥슨 계정 줄에 단다.
     it('키를 다시 받아 등록하면 같은 부계정에 키가 하나 더 달린다', async () => {
       const login = await users$.upsertByNexonUid('uid-1')
       await repo.registerSubAccount(login.nexonAccountId, KEY_OLD, ['m1'])
 
       await repo.registerSubAccount(login.nexonAccountId, KEY_NEW, ['m1'])
 
-      const [entry] = await repo.listSubAccounts(login.nexonAccountId)
-      expect(entry?.apiKeyHashes.sort()).toEqual(
-        [KEY_OLD.toString('hex'), KEY_NEW.toString('hex')].sort(),
-      )
-      expect(await repo.listSubAccounts(login.nexonAccountId)).toHaveLength(1)
+      expect(await holderOf(KEY_NEW)).toBe(await holderOf(KEY_OLD))
+      expect(await registrationsOf(login.nexonAccountId)).toHaveLength(1)
     })
 
     // 같은 넥슨 ID 를 부계정으로 등록하면 자기 자신의 부계정이 된다. 거절하면서 키 줄도 남기지 않는다.
@@ -278,21 +292,16 @@ describeDb('NexonAccountsRepository', () => {
       expect(await db.select().from(subAccounts)).toEqual([])
     })
 
-    // 계정은 로그인을 포함해 다섯까지라 부계정은 넷까지다.
-    it('다섯째 부계정은 거절하고, 이미 등록한 계정을 다시 보내는 것은 받는다', async () => {
+    // 앱은 부계정을 기기마다 따로 관리하고 상한도 기기에서 센다. 서버에는 여러 기기의 부계정과 기기에서 지운 부계정이 모인다.
+    it('부계정 수를 세지 않는다', async () => {
       const login = await users$.upsertByNexonUid('uid-1')
-      for (const n of [1, 2, 3, 4]) {
-        await repo.registerSubAccount(login.nexonAccountId, sha256(`k${n}`), [`m${n}`])
+      for (const n of [1, 2, 3, 4, 5, 6]) {
+        await expect(
+          repo.registerSubAccount(login.nexonAccountId, sha256(`k${n}`), [`m${n}`]),
+        ).resolves.toBe('registered')
       }
 
-      await expect(
-        repo.registerSubAccount(login.nexonAccountId, sha256('k5'), ['m5']),
-      ).resolves.toBe('limit')
-      expect(await holderOf(sha256('k5'))).toBeUndefined()
-      await expect(
-        repo.registerSubAccount(login.nexonAccountId, sha256('k4'), ['m4']),
-      ).resolves.toBe('registered')
-      expect(await repo.listSubAccounts(login.nexonAccountId)).toHaveLength(4)
+      expect(await registrationsOf(login.nexonAccountId)).toHaveLength(6)
     })
 
     // 기기에서 키의 귀속은 하나라, 연동으로 다른 로그인에 옮긴 키의 등록도 따라 옮긴다.
@@ -303,20 +312,8 @@ describeDb('NexonAccountsRepository', () => {
 
       await repo.registerSubAccount(second.nexonAccountId, KEY_OLD, ['m1'])
 
-      expect(await repo.listSubAccounts(first.nexonAccountId)).toEqual([])
-      expect(await repo.listSubAccounts(second.nexonAccountId)).toHaveLength(1)
-    })
-
-    // 그 키를 다른 기기에서 메인으로 쓰고 있을 수 있어, 등록만 지운다.
-    it('지우기는 메이플 ID 로 찾아 등록만 지우고 부계정의 줄과 사람은 남긴다', async () => {
-      const login = await users$.upsertByNexonUid('uid-1')
-      await repo.registerSubAccount(login.nexonAccountId, KEY_OLD, ['m1', 'm2'])
-
-      await repo.unregisterSubAccount(login.nexonAccountId, 'm2')
-
-      expect(await repo.listSubAccounts(login.nexonAccountId)).toEqual([])
-      expect(await holderOf(KEY_OLD)).toBeDefined()
-      expect(await db.select().from(users)).toHaveLength(2)
+      expect(await registrationsOf(first.nexonAccountId)).toEqual([])
+      expect(await registrationsOf(second.nexonAccountId)).toHaveLength(1)
     })
 
     // 등록 정보는 유예 30일이 지나 로그인 줄이 지워질 때 함께 지워진다(사용자 선택 2026-11-10).

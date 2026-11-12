@@ -1,8 +1,12 @@
+import { sha256Hex } from '../../common/hash'
 import { cashbookEntryBody } from './cashbook-entries.dto'
+
+const M1 = sha256Hex('m1')
+const OCID1 = sha256Hex('ocid-1')
 
 const ok = {
   entryRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b',
-  mapleId: 'm1',
+  mapleId: M1,
   ocid: null,
   entryType: 'spend',
   categoryKey: 'content',
@@ -22,7 +26,7 @@ describe('cashbookEntryBody', () => {
   // 캐릭터 없는 기록은 메이플 ID 기록이다. 메이플 ID 가 없으면 어느 넥슨 계정의 기록인지 가를 수 없다.
   it('앱이 보내는 모양을 받고, 메이플 ID 는 캐릭터 기록에도 반드시 있어야 한다', () => {
     expect(cashbookEntryBody.safeParse(ok).success).toBe(true)
-    expect(cashbookEntryBody.safeParse({ ...ok, ocid: 'ocid-1' }).success).toBe(true)
+    expect(cashbookEntryBody.safeParse({ ...ok, ocid: OCID1 }).success).toBe(true)
     expect(cashbookEntryBody.safeParse({ ...ok, mapleId: undefined }).success).toBe(false)
   })
 

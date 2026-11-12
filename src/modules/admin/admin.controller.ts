@@ -248,6 +248,8 @@ import {
   starforceStepBody,
   type HuntingGroundCreateBody,
   huntingGroundCreateBody,
+  type HuntingGroundPopularBody,
+  huntingGroundPopularBody,
   type HuntingGroundUpdateBody,
   huntingGroundUpdateBody,
   type HuntingRegionCreateBody,
@@ -2051,6 +2053,17 @@ export class AdminController {
     @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
   ): Promise<void> {
     if (!(await this.hunting.moveGround(key, body.direction)))
+      throw new NotFoundException(`모르는 사냥터다: ${key}`)
+  }
+
+  /** 목록 줄의 인기 체크박스가 부른다. 모르면 404 다. */
+  @Put('hunting-grounds/grounds/:key/popular')
+  @HttpCode(204)
+  async setHuntingGroundPopular(
+    @Param('key', new ZodValidationPipe(snakeKey)) key: string,
+    @Body(new ZodValidationPipe(huntingGroundPopularBody)) body: HuntingGroundPopularBody,
+  ): Promise<void> {
+    if (!(await this.hunting.setGroundPopular(key, body.popular)))
       throw new NotFoundException(`모르는 사냥터다: ${key}`)
   }
 }

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 
-import { sha256 } from '../../common/hash'
+import { sha256, sha256Hex } from '../../common/hash'
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
   bossClears,
@@ -43,7 +43,7 @@ describeDb('UsersRepository', () => {
   beforeEach(() => truncate())
   afterAll(() => close())
 
-  it('처음 보는 uid 는 사람과 로그인 계정을 함께 만든다', async () => {
+  it('처음 보는 uid 는 사람과 로그인 계정을 함께 만들고, uid 는 원문이 아니라 해시로 둔다', async () => {
     const found = await repo.upsertByNexonUid('uid-1')
 
     expect(await db.select().from(users)).toEqual([expect.objectContaining({ id: found.id })])
@@ -51,7 +51,7 @@ describeDb('UsersRepository', () => {
       expect.objectContaining({
         id: found.nexonAccountId,
         userId: found.id,
-        nexonUid: 'uid-1',
+        nexonUid: sha256Hex('uid-1'),
       }),
     ])
     expect(await db.select().from(nexonAccountKeys)).toEqual([])

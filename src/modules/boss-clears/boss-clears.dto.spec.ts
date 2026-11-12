@@ -1,9 +1,13 @@
+import { sha256Hex } from '../../common/hash'
 import { bossClearBody } from './boss-clears.dto'
+
+const M1 = sha256Hex('m1')
+const OCID1 = sha256Hex('ocid-1')
 
 const ok = {
   periodRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b',
-  mapleId: 'm1',
-  ocid: 'ocid-1',
+  mapleId: M1,
+  ocid: OCID1,
   boss: 'lucid',
   difficulty: 'hard',
   cycle: 'weekly',

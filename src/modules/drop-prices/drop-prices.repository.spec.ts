@@ -26,6 +26,9 @@ const SPEC_ASSETS = ['bosses/lucid.webp']
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 
+/** 관리 화면 필터의 빈 값. 아이템 · 기간을 안 고르고 모든 획득처다. */
+const ALL = { itemKey: null, periodKey: null, source: 'all' }
+
 describeDb('DropPricesRepository', () => {
   let db: TestDb
   let close: () => Promise<void>
@@ -169,7 +172,7 @@ describeDb('DropPricesRepository', () => {
     expect(await db.select().from(dropPrices)).toHaveLength(0)
 
     await repo.upsert(input({ worldKey: null }))
-    const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    const rows = await repo.recent(ALL, 10)
     expect(rows.map((r) => [r.itemKey, r.worldKey])).toEqual([['ring', null]])
   })
 
@@ -205,7 +208,7 @@ describeDb('DropPricesRepository', () => {
     await repo.upsert(input({ bossDifficultyId: found?.id ?? null }))
     await repo.upsert(input({ dropRecordId: '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a52', priceMeso: 5 }))
 
-    const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    const rows = await repo.recent(ALL, 10)
     expect(rows.map((r) => [r.priceMeso, r.boss, r.bossName, r.difficulty])).toEqual([
       [5, null, null, null],
       [100, 'lucid', '루시드', 'hard'],
@@ -213,26 +216,26 @@ describeDb('DropPricesRepository', () => {
   })
 
   // 미입력 · 기록 안함도 줄이 된다. 가격은 completed 만 갖고, 분포는 completed 만 센다.
-  it('pending · skipped 는 가격 없이 그 상태로 서고 분포에 안 든다', async () => {
+  it('pending · skipped 는 가격 없이 그 상태로 서고, 아이템 목록의 기록 수에는 들지만 값에는 안 든다', async () => {
     const pendingId = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a61'
     const skippedId = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a62'
     await repo.upsert(input({ dropRecordId: pendingId, priceMeso: null, recordStatus: 'pending' }))
     await repo.upsert(input({ dropRecordId: skippedId, priceMeso: null, recordStatus: 'skipped' }))
     await repo.upsert(input({ priceMeso: 300 }))
 
-    const rows = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    const rows = await repo.recent(ALL, 10)
     expect(rows.map((r) => [r.dropRecordId, r.recordStatus, r.priceMeso])).toEqual([
       [RECORD, 'completed', 300],
       [skippedId, 'skipped', null],
       [pendingId, 'pending', null],
     ])
-    expect(await repo.summary({ itemKey: null, periodKey: null })).toEqual([
-      expect.objectContaining({ itemKey: 'ring', count: 1, min: 300, max: 300 }),
+    expect(await repo.items(ALL)).toEqual([
+      expect.objectContaining({ itemKey: 'ring', count: 3, completed: 1, min: 300, max: 300 }),
     ])
 
     // 가격이 들어오면 같은 줄이 completed 로 바뀐다
     await repo.upsert(input({ dropRecordId: pendingId, priceMeso: 500 }))
-    const [priced] = await repo.recent({ itemKey: null, periodKey: null }, 1)
+    const [priced] = await repo.recent(ALL, 1)
     expect([priced?.dropRecordId, priced?.recordStatus, priced?.priceMeso]).toEqual([
       pendingId,
       'completed',
@@ -288,7 +291,7 @@ describeDb('DropPricesRepository', () => {
     )
     await repo.markDeleted(mine(), '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a51')
 
-    const all = await repo.recent({ itemKey: null, periodKey: null }, 10)
+    const all = await repo.recent(ALL, 10)
     expect(all).toHaveLength(3)
     expect(all.map((r) => r.priceMeso)).toEqual([null, 30, 20])
     expect(all.map((r) => r.recordStatus)).toEqual(['deleted', 'completed', 'completed'])
@@ -301,56 +304,20 @@ describeDb('DropPricesRepository', () => {
       worldName: '스카니아',
     })
 
-    expect(
-      (await repo.recent({ itemKey: 'ring', periodKey: null }, 10)).map((r) => r.priceMeso),
-    ).toEqual([null, 30])
-    // 화면이 이름을 보이므로 이름으로도 거른다
-    expect(
-      (await repo.recent({ itemKey: '망토', periodKey: null }, 10)).map((r) => r.priceMeso),
-    ).toEqual([20])
-    expect(
-      (await repo.recent({ itemKey: 'ring', periodKey: '2026-10' }, 10)).map((r) => r.priceMeso),
-    ).toEqual([30])
-    expect(await repo.recent({ itemKey: null, periodKey: null }, 1)).toHaveLength(1)
-  })
-
-  it('summary 는 아이템 × 기간의 개수 · 최소 · 중앙값 · 최대이고 지운 줄은 안 센다', async () => {
-    const ids = ['51', '52', '53', '54', '55'].map((t) => `0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a${t}`)
-    await repo.upsert(input({ dropRecordId: ids[0], priceMeso: 100 }))
-    await repo.upsert(input({ dropRecordId: ids[1], priceMeso: 300 }))
-    await repo.upsert(input({ dropRecordId: ids[2], priceMeso: 1_000_000 }))
-    await repo.upsert(input({ dropRecordId: ids[3], priceMeso: 7, userId: other }))
-    await repo.upsert(
-      input({ dropRecordId: ids[4], priceMeso: 50, itemKey: 'cape', periodKey: '2026-10' }),
-    )
-    await repo.markDeleted(mine(), ids[2])
-
-    const summary = await repo.summary({ itemKey: null, periodKey: null })
-
-    // 기간 key 는 문자열 역순이라 '2026-10-08' 이 '2026-10' 앞이다
-    expect(summary).toEqual([
-      {
-        itemKey: 'ring',
-        itemName: '반지',
-        periodKey: '2026-10-08',
-        count: 3,
-        min: 7,
-        median: 100,
-        max: 300,
-      },
-      {
-        itemKey: 'cape',
-        itemName: '망토',
-        periodKey: '2026-10',
-        count: 1,
-        min: 50,
-        median: 50,
-        max: 50,
-      },
+    expect((await repo.recent({ ...ALL, itemKey: 'ring' }, 10)).map((r) => r.priceMeso)).toEqual([
+      null,
+      30,
     ])
-    expect(await repo.summary({ itemKey: 'ring', periodKey: null })).toHaveLength(1)
-    expect(await repo.summary({ itemKey: '반지', periodKey: null })).toHaveLength(1)
-    expect(await repo.summary({ itemKey: 'none', periodKey: null })).toEqual([])
+    // 화면이 이름을 보이므로 이름으로도 거른다
+    expect((await repo.recent({ ...ALL, itemKey: '망토' }, 10)).map((r) => r.priceMeso)).toEqual([
+      20,
+    ])
+    expect(
+      (await repo.recent({ ...ALL, itemKey: 'ring', periodKey: '2026-10' }, 10)).map(
+        (r) => r.priceMeso,
+      ),
+    ).toEqual([30])
+    expect(await repo.recent(ALL, 1)).toHaveLength(1)
   })
 
   describe('넥슨이 준 값으로 가린다', () => {
@@ -561,6 +528,112 @@ describeDb('DropPricesRepository', () => {
       await repo.markDeleted(mine(), R1)
 
       expect((await rows()).map((r) => r.recordStatus)).toEqual(['deleted'])
+    })
+  })
+
+  describe('관리 화면이 읽는 값', () => {
+    const R = ['31', '32', '33', '34', '35'].map((t) => `3c3c3c3c-0000-4000-8000-0000000000${t}`)
+
+    beforeEach(async () => {
+      const created = await new BossesRepository(db).createBoss({
+        key: 'lucid',
+        name: '루시드',
+        alias: '루시드',
+        cycle: 'weekly',
+        portraitSlug: 'lucid',
+        difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+      })
+      const [box] = await db
+        .insert(items)
+        .values({ key: 'ring-box', name: '반지 상자', valuable: false, isDrop: true })
+        .returning({ id: items.id })
+      await db.insert(dropBoxes).values({ itemId: box.id, levelMin: 1, levelMax: 4 })
+      const owned = (ocid: string) => ({ bossId: created.id, owner: { mapleId: 'm-me', ocid } })
+      // 차례대로 옛 줄 · 직접 드롭 · 상자 · 직접 드롭 대기 · 다른 기간의 망토다.
+      await repo.upsert(input({ dropRecordId: R[0], priceMeso: 7 }))
+      await repo.upsert(input({ dropRecordId: R[1], priceMeso: 100, ...owned('o1') }))
+      await repo.upsert(
+        input({ dropRecordId: R[2], priceMeso: 300, boxOriginKey: 'ring-box', ...owned('o1') }),
+      )
+      await repo.upsert(
+        input({ dropRecordId: R[3], priceMeso: null, recordStatus: 'pending', ...owned('o2') }),
+      )
+      await repo.upsert(
+        input({
+          dropRecordId: R[4],
+          priceMeso: 50,
+          itemKey: 'cape',
+          periodKey: '2026-10',
+          ...owned('o1'),
+        }),
+      )
+    })
+
+    it('items 는 아이템마다 기록 수를 모든 상태로, 중앙값 · 최소 · 최대를 completed 로 세고 기간 · 획득처로 거른다', async () => {
+      expect(await repo.items(ALL)).toEqual([
+        {
+          itemKey: 'ring',
+          itemName: '반지',
+          count: 4,
+          completed: 3,
+          min: 7,
+          median: 100,
+          max: 300,
+        },
+        { itemKey: 'cape', itemName: '망토', count: 1, completed: 1, min: 50, median: 50, max: 50 },
+      ])
+      expect(await repo.items({ ...ALL, periodKey: '2026-10' })).toEqual([
+        expect.objectContaining({ itemKey: 'cape' }),
+      ])
+      const ring = async (source: string) =>
+        (await repo.items({ ...ALL, periodKey: '2026-10-08', source }))[0]
+      expect(await ring('direct')).toMatchObject({ count: 2, completed: 1, min: 100, max: 100 })
+      expect(await ring('box')).toMatchObject({ count: 1, min: 300 })
+      expect(await ring('ring-box')).toMatchObject({ count: 1, min: 300 })
+      expect(await ring('unknown')).toMatchObject({ count: 1, min: 7 })
+      // 가격이 하나도 없는 아이템은 값 셋이 빈다
+      await db.update(dropPrices).set({ recordStatus: 'pending', priceMeso: null, pricedAt: null })
+      expect((await repo.items(ALL))[0]).toMatchObject({
+        completed: 0,
+        min: null,
+        median: null,
+        max: null,
+      })
+    })
+
+    // 직접 떨군 드롭도 상자 칸이 비어 있다. 넥슨이 준 값이 없는 옛 줄을 직접 드롭으로 보이면 틀린 정보가 된다.
+    it('recent · points 는 획득처를 상자 · 직접 드롭 · 모름으로 가르고, 계정을 지워 메이플 ID 가 빈 줄도 ocid 가 있으면 직접 드롭이다', async () => {
+      await db.update(dropPrices).set({ mapleId: null }).where(eq(dropPrices.dropRecordId, R[1]))
+
+      const rows = await repo.recent({ ...ALL, itemKey: 'ring' }, 10)
+      expect(rows.map((r) => [r.dropRecordId, r.source, r.boxKey, r.boxName])).toEqual([
+        [R[3], 'direct', null, null],
+        [R[2], 'box', 'ring-box', '반지 상자'],
+        [R[1], 'direct', null, null],
+        [R[0], 'unknown', null, null],
+      ])
+      expect(
+        (await repo.recent({ ...ALL, source: 'unknown' }, 10)).map((r) => r.dropRecordId),
+      ).toEqual([R[0]])
+
+      const points = await repo.points({ ...ALL, itemKey: 'ring' })
+      // 점그림은 차례를 쓰지 않는다
+      expect(points).toHaveLength(4)
+      expect(points.map((p) => [p.priceMeso, p.source, p.boxName])).toEqual(
+        expect.arrayContaining([
+          [100, 'direct', null],
+          [300, 'box', '반지 상자'],
+          [7, 'unknown', null],
+          [null, 'direct', null],
+        ]),
+      )
+    })
+
+    it('recent 는 offset 만큼 건너뛰어 더 보기를 잇는다', async () => {
+      const first = await repo.recent({ ...ALL, itemKey: 'ring' }, 2)
+      const next = await repo.recent({ ...ALL, itemKey: 'ring' }, 2, 2)
+
+      expect([...first, ...next].map((r) => r.dropRecordId)).toEqual([R[3], R[2], R[1], R[0]])
     })
   })
 })

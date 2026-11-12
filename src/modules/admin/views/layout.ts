@@ -1,3 +1,5 @@
+import { MONEY_JS } from './price-format'
+
 type MenuItem =
   readonly [href: string, label: string] | { label: string; items: readonly MenuItem[] }
 
@@ -101,7 +103,7 @@ export function layout(path: string, title: string, body: string): string {
     --accent: #2F5BEA; --accent-hover: #2449C7; --accent-ink: #1E40AF; --accent-tint: #E9EEFF; --on-accent: #FFFFFF;
     --ok-ink: #15803D; --ok-tint: #DCFCE7; --danger-ink: #B91C1C; --danger-tint: #FEE2E2;
     --rise: #D92D20; --rise-ink: #B42318; --fall: #2F5BEA; --fall-ink: #1E40AF; --bar: #9DB1F2; --band: #EEF2FD; --grid: #EEF0F3;
-    --part-1: #2F5BEA; --part-2: #0E9384;
+    --part-1: #2F5BEA; --part-2: #0E9384; --part-2-ink: #0B7468;
     --ramp-0: #EEF2FD; --ramp-1: #D3DDFA; --ramp-2: #A9BBF3; --ramp-3: #7D97EE; --ramp-4: #2F5BEA; --ramp-5: #1A3BA8; --ramp-gray: #D2D6DC;
     --r-card: 10px; --r-input: 8px; --r-btn: 8px;
     --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
@@ -179,7 +181,7 @@ export function layout(path: string, title: string, body: string): string {
   textarea { min-height: 120px; resize: vertical }
   input.mono { font-family: var(--mono); font-size: 13px }
   input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0 }
-  select.on-bg { background-color: var(--surface); box-shadow: var(--shadow) }
+  select.on-bg, input.on-bg { background-color: var(--surface); box-shadow: var(--shadow) }
   input::placeholder { color: var(--text-3) }
   select { appearance: none; padding-right: 30px; background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%), linear-gradient(135deg, var(--text-3) 50%, transparent 50%); background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat }
   input[type=number] { font-variant-numeric: tabular-nums }
@@ -225,6 +227,7 @@ export function layout(path: string, title: string, body: string): string {
   .tag.accent { background: var(--accent-tint); color: var(--accent-ink) }
   .tag.ok { background: var(--ok-tint); color: var(--ok-ink) }
   .tag.mono { font-family: var(--mono); font-weight: 500 }
+  .tag.danger { background: var(--danger-tint); color: var(--danger-ink) }
   .tags { display: flex; gap: 4px; flex-wrap: wrap }
 
   .item { background: var(--surface); padding: 16px 20px; display: grid; gap: 8px; border-radius: 8px }
@@ -369,7 +372,43 @@ export function layout(path: string, title: string, body: string): string {
   .detail .facts span { font-size: 11.5px; color: var(--text-3) }
   .detail .facts b { font-size: 16px; font-weight: 600 }
   .detail .well { background: var(--surface); border-radius: 8px; padding: 12px }
+  .detail .block { display: grid; gap: 8px }
+  .detail .mini th, .detail .mini td { padding-left: 8px; padding-right: 8px }
+  .split-view.even > .table { flex: 1 1 560px }
+  .split-view.even > .detail { flex: 1 1 440px }
   .more { font: 500 12.5px/1 var(--font); color: var(--accent-ink); background: none; border: 0; padding: 12px 16px; cursor: pointer }
+
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px }
+  .toolbar > select { width: auto }
+  .search { position: relative; flex: 0 1 300px; min-width: 200px }
+  .search svg { position: absolute; left: 11px; top: 50%; margin-top: -7px; color: var(--text-3); pointer-events: none }
+  .search input { padding-left: 34px }
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--fill-hover) }
+  .seg button { font: 500 13px/1 var(--font); border: 0; background: transparent; color: var(--text-2); padding: 8px 14px; border-radius: 7px; cursor: pointer }
+  .seg button:hover { color: var(--text) }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600 }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+  .sort { font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; background: none; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 4px }
+  .sort:hover, th[aria-sort] .sort { color: var(--text) }
+  .sort .arr { font-size: 11px; width: 9px; text-align: center; opacity: 0 }
+  .sort:hover .arr { opacity: .5 }
+  th[aria-sort] .sort .arr { opacity: 1 }
+  .sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+  td.price { font-weight: 600 }
+  .lv { display: inline-block; font-size: 11px; font-weight: 600; color: var(--accent-ink); background: var(--accent-tint); border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px }
+  .diff { color: var(--text-3); font-size: 12px; margin-left: 4px }
+  .src { display: block; font-size: 11.5px; line-height: 1.35; color: var(--text-3) }
+  .src.box { color: var(--part-2-ink) }
+  .strip { position: relative; height: 36px; background: var(--surface); border-radius: 8px; box-shadow: var(--shadow) }
+  .strip .track { position: absolute; left: 16px; right: 16px; top: 17px; height: 2px; border-radius: 1px; background: var(--fill-hover) }
+  .strip .lane { position: absolute; left: 16px; right: 16px; top: 0; bottom: 0 }
+  .strip .dot { position: absolute; top: 13px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--part-1); opacity: .55 }
+  .strip .dot.box { background: var(--part-2) }
+  .strip .dot.unknown { background: var(--text-3) }
+  .strip .median { position: absolute; top: 8px; width: 2px; height: 20px; margin-left: -1px; border-radius: 1px; background: var(--text) }
+  .strip-axis { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; padding: 0 4px }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--text-3); padding: 0 4px }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px }
 
   @media (prefers-reduced-motion: no-preference) { .btn, .nav a, .links a { transition: background-color .12s ease, color .12s ease } }
 </style>
@@ -414,6 +453,33 @@ export function layout(path: string, title: string, body: string): string {
   function fail(what, r) { return what + ' ' + r.status + '\\n' + r.text; }
   function orNull(v) { v = (v || '').trim(); return v === '' ? null : v; }
   function meso(n) { return Number(n).toLocaleString('ko-KR'); }
+  ${MONEY_JS}
+  // 표 머리를 정렬 단추로 채운다. 같은 칸을 다시 누르면 방향이 바뀌고, 처음 누르면 글자 칸은 가나다 차례, 숫자 칸은 큰 것부터다.
+  // cols 의 한 칸은 { label, key, num, text } 이고 key 가 없으면 정렬하지 않는 칸이다. sort 는 { key, dir } 이고 dir 은 1 · -1 이다.
+  function sortHeader(tr, cols, sort, onSort) {
+    tr.innerHTML = '';
+    cols.forEach(function (c) {
+      var th = el('th', undefined, c.num ? 'num' : '');
+      tr.appendChild(th);
+      if (!c.key) { th.textContent = c.label; return; }
+      var on = sort.key === c.key;
+      if (on) th.setAttribute('aria-sort', sort.dir > 0 ? 'ascending' : 'descending');
+      var b = button(c.label, 'sort');
+      b.appendChild(el('span', on ? (sort.dir > 0 ? '↑' : '↓') : '↕', 'arr'));
+      b.addEventListener('click', function () { onSort({ key: c.key, dir: on ? -sort.dir : c.text ? 1 : -1 }); });
+      th.appendChild(b);
+    });
+  }
+  // 정렬 비교. 값이 없는 줄은 방향과 상관없이 맨 뒤다.
+  function byKey(get, dir) {
+    return function (a, b) {
+      var x = get(a), y = get(b);
+      if (x === y) return 0;
+      if (x === null || x === undefined) return 1;
+      if (y === null || y === undefined) return -1;
+      return (typeof x === 'string' ? x.localeCompare(y, 'ko') : x - y) * dir;
+    };
+  }
   async function call(method, url, body) {
     var res = await fetch(url, {
       method: method,

@@ -56,14 +56,22 @@ export const noticeUpdateBody = z.object({
 })
 export type NoticeUpdateBody = z.infer<typeof noticeUpdateBody>
 
-/** 드롭 가격 보기의 필터. 비우면 전부다. limit 은 줄 목록에만 쓴다. */
+/** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
+export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)
+
+/**
+ * 드롭 가격 보기의 필터. 비우면 전부다. limit · offset 은 줄 목록에만 쓴다.
+ * source 는 all · box · direct · unknown, 또는 상자 하나의 아이템 key 다. 넷 다 key 모양이라 key 하나로 받는다.
+ */
 export const dropPriceQuery = z.object({
   itemKey: z.string().min(1).max(200).optional(),
   periodKey: z
     .string()
     .regex(/^\d{4}-\d{2}(-\d{2})?$/)
     .optional(),
-  limit: z.coerce.number().int().min(1).max(1000).default(200),
+  source: snakeKey.max(100).default('all'),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
 })
 export type DropPriceQuery = z.infer<typeof dropPriceQuery>
 
@@ -100,9 +108,6 @@ export type RequiredLevelBody = z.infer<typeof requiredLevelBody>
 /** 보스 별칭 하나의 본문. 앞뒤 공백은 걷는다. 빈 별칭은 앱이 표 전체를 거절한다. */
 export const aliasBody = z.object({ alias: z.string().trim().min(1).max(100) })
 export type AliasBody = z.infer<typeof aliasBody>
-
-/** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
-export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)
 
 /** 드롭 시세의 범위. 장비는 거래권(worlds.price_group), 소비는 월드 key 다. */
 export const dropMarketQuery = z.object({

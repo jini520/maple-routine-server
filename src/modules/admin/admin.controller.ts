@@ -61,7 +61,7 @@ import {
 } from '../drop-items/drop-boxes.repository'
 import { DropItemsRepository } from '../drop-items/drop-items.repository'
 import { DropMarketService } from '../drop-market/drop-market.service'
-import { DropPricesRepository } from '../drop-prices/drop-prices.repository'
+import { type DropPriceFilter, DropPricesRepository } from '../drop-prices/drop-prices.repository'
 import {
   NoSpendCategory,
   NoSpendGroup,
@@ -300,6 +300,15 @@ import { WORLDS_HTML } from './views/worlds'
 import { INDEX_HTML } from './views/index'
 import { MANUAL_COMPLETION_HTML } from './views/manual-completion'
 import { NOTICES_HTML } from './views/notices'
+
+/** 화면의 필터를 저장소 필터로. 빈 칸은 null 이다. */
+function dropPriceFilter(query: DropPriceQuery): DropPriceFilter {
+  return {
+    itemKey: query.itemKey ?? null,
+    periodKey: query.periodKey ?? null,
+    source: query.source,
+  }
+}
 
 /**
  * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 장비 ·
@@ -684,16 +693,33 @@ export class AdminController {
     return DROP_PRICES_HTML
   }
 
-  /** 화면이 부른다. 아이템 × 기간의 분포와 최근 줄. 노이즈를 보는 자리라 뺀 가격도 줄에는 보인다. */
+  /** 화면이 부른다. 고른 아이템의 기록. 한 줄 더 읽어 더 보기가 남았는지 안다. */
   @Get('drop-prices/rows')
   @Header('cache-control', 'no-store')
   async dropPriceRows(@Query(new ZodValidationPipe(dropPriceQuery)) query: DropPriceQuery) {
-    const filter = { itemKey: query.itemKey ?? null, periodKey: query.periodKey ?? null }
-    const [summary, rows] = await Promise.all([
-      this.prices.summary(filter),
-      this.prices.recent(filter, query.limit),
-    ])
-    return { summary, rows }
+    const rows = await this.prices.recent(dropPriceFilter(query), query.limit + 1, query.offset)
+    return { rows: rows.slice(0, query.limit), hasMore: rows.length > query.limit }
+  }
+
+  /** 화면이 부른다. 왼쪽 아이템 목록. */
+  @Get('drop-prices/items')
+  @Header('cache-control', 'no-store')
+  dropPriceItems(@Query(new ZodValidationPipe(dropPriceQuery)) query: DropPriceQuery) {
+    return this.prices.items(dropPriceFilter(query))
+  }
+
+  /** 화면이 부른다. 고른 아이템의 가격 분포 점그림. */
+  @Get('drop-prices/points')
+  @Header('cache-control', 'no-store')
+  dropPricePoints(@Query(new ZodValidationPipe(dropPriceQuery)) query: DropPriceQuery) {
+    return this.prices.points(dropPriceFilter(query))
+  }
+
+  /** 화면이 부른다. 기간 고르기의 목록. */
+  @Get('drop-prices/periods')
+  @Header('cache-control', 'no-store')
+  dropPricePeriods() {
+    return this.prices.periods()
   }
 
   @Get('users')

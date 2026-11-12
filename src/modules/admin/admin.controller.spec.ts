@@ -134,7 +134,7 @@ describe('AdminController', () => {
     remove: jest.fn(),
     cancelSchedule: jest.fn(),
   }
-  const prices = { summary: jest.fn(), recent: jest.fn() }
+  const prices = { items: jest.fn(), points: jest.fn(), periods: jest.fn(), recent: jest.fn() }
   const market = { scopes: jest.fn(), overview: jest.fn(), detail: jest.fn() }
 
   const worldsRepo = {
@@ -710,40 +710,57 @@ describe('AdminController', () => {
   })
 
   describe('드롭 가격', () => {
-    it('GET /admin/drop-prices/rows 는 필터를 둘에 다 넘기고 분포와 줄을 함께 낸다', async () => {
-      prices.summary.mockResolvedValue([
-        { itemKey: 'ring', periodKey: '2026-10-08', count: 1, min: 1, median: 1, max: 1 },
-      ])
-      prices.recent.mockResolvedValue([{ id: ROW, itemKey: 'ring' }])
+    const FILTER = { itemKey: 'ring', periodKey: '2026-10-08', source: 'ring_box' }
+    const QUERY = 'itemKey=ring&periodKey=2026-10-08&source=ring_box'
+
+    // 한 줄 더 읽어 다음 쪽이 있는지 안다. 줄 수를 따로 세지 않는다.
+    it('GET /admin/drop-prices/rows 는 필터와 쪽을 넘기고, 한 줄 더 읽어 더 있는지 알린다', async () => {
+      prices.recent.mockResolvedValue([1, 2, 3].map((n) => ({ id: `r${n}` })))
 
       const res = await app.inject({
         method: 'GET',
-        url: '/admin/drop-prices/rows?itemKey=ring&periodKey=2026-10-08&limit=5',
+        url: `/admin/drop-prices/rows?${QUERY}&limit=2&offset=4`,
       })
 
       expect(res.statusCode).toBe(200)
-      expect(res.json()).toEqual({
-        summary: [
-          { itemKey: 'ring', periodKey: '2026-10-08', count: 1, min: 1, median: 1, max: 1 },
-        ],
-        rows: [{ id: ROW, itemKey: 'ring' }],
-      })
-      expect(prices.summary).toHaveBeenCalledWith({ itemKey: 'ring', periodKey: '2026-10-08' })
-      expect(prices.recent).toHaveBeenCalledWith({ itemKey: 'ring', periodKey: '2026-10-08' }, 5)
+      expect(res.json()).toEqual({ rows: [{ id: 'r1' }, { id: 'r2' }], hasMore: true })
+      expect(prices.recent).toHaveBeenCalledWith(FILTER, 3, 4)
     })
 
-    it('필터가 없으면 null 둘과 기본 200 이고, 기간 모양이 틀리거나 줄 수가 넘치면 400 이다', async () => {
-      prices.summary.mockResolvedValue([])
+    it('필터가 없으면 null 둘 · 모든 획득처 · 50줄이고, 기간 모양 · 줄 수 · 획득처가 틀리면 400 이다', async () => {
       prices.recent.mockResolvedValue([])
 
       const res = await app.inject({ method: 'GET', url: '/admin/drop-prices/rows' })
       expect(res.statusCode).toBe(200)
-      expect(prices.recent).toHaveBeenCalledWith({ itemKey: null, periodKey: null }, 200)
+      expect(res.json()).toEqual({ rows: [], hasMore: false })
+      expect(prices.recent).toHaveBeenCalledWith(
+        { itemKey: null, periodKey: null, source: 'all' },
+        51,
+        0,
+      )
 
-      const bad = await app.inject({ method: 'GET', url: '/admin/drop-prices/rows?periodKey=oct' })
-      expect(bad.statusCode).toBe(400)
-      const tooMany = await app.inject({ method: 'GET', url: '/admin/drop-prices/rows?limit=5000' })
-      expect(tooMany.statusCode).toBe(400)
+      for (const bad of ['periodKey=oct', 'limit=5000', 'source=Ring-Box']) {
+        const r = await app.inject({ method: 'GET', url: `/admin/drop-prices/rows?${bad}` })
+        expect(r.statusCode).toBe(400)
+      }
+    })
+
+    it('아이템 목록과 점그림은 같은 필터로 읽고, 기간 목록을 따로 낸다', async () => {
+      prices.items.mockResolvedValue([{ itemKey: 'ring' }])
+      prices.points.mockResolvedValue([{ priceMeso: 1 }])
+      prices.periods.mockResolvedValue(['2026-10-08'])
+
+      const items = await app.inject({ method: 'GET', url: `/admin/drop-prices/items?${QUERY}` })
+      const points = await app.inject({ method: 'GET', url: `/admin/drop-prices/points?${QUERY}` })
+      const periods = await app.inject({ method: 'GET', url: '/admin/drop-prices/periods' })
+
+      expect([items.json(), points.json(), periods.json()]).toEqual([
+        [{ itemKey: 'ring' }],
+        [{ priceMeso: 1 }],
+        ['2026-10-08'],
+      ])
+      expect(prices.items).toHaveBeenCalledWith(FILTER)
+      expect(prices.points).toHaveBeenCalledWith(FILTER)
     })
   })
 

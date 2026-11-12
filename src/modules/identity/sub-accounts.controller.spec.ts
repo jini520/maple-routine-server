@@ -19,11 +19,7 @@ describe('SubAccountsController', () => {
     deletionRequestedAt: jest.fn(),
     findLoginAccount: jest.fn(),
   }
-  const accounts = {
-    listSubAccounts: jest.fn(),
-    registerSubAccount: jest.fn(),
-    unregisterSubAccount: jest.fn(),
-  }
+  const accounts = { registerSubAccount: jest.fn() }
   const bearer = { authorization: 'Bearer S' }
   const keyHeader = { 'x-api-key-hash': 'cd'.repeat(32) }
   const hash = 'ab'.repeat(32)
@@ -48,21 +44,7 @@ describe('SubAccountsController', () => {
     users.upsertByApiKeyHash.mockReset().mockResolvedValue({ id: 'u2', nexonAccountId: 'a2' })
     users.deletionRequestedAt.mockReset().mockResolvedValue(null)
     users.findLoginAccount.mockReset().mockResolvedValue({ nexonAccountId: 'a1' })
-    accounts.listSubAccounts
-      .mockReset()
-      .mockResolvedValue([{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: [M1] }])
     accounts.registerSubAccount.mockReset().mockResolvedValue('registered')
-    accounts.unregisterSubAccount.mockReset().mockResolvedValue(undefined)
-  })
-
-  it('목록은 이 로그인의 부계정마다 키 해시들과 메이플 ID 들이다', async () => {
-    const res = await app.inject({ method: 'GET', url: '/v1/me/sub-accounts', headers: bearer })
-
-    expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({
-      subAccounts: [{ apiKeyHashes: ['ef'.repeat(32)], mapleIds: [M1] }],
-    })
-    expect(accounts.listSubAccounts).toHaveBeenCalledWith('a1')
   })
 
   it('등록은 받은 키 해시를 한 번 더 해시해 로그인 계정에 잇는다. 204 다', async () => {
@@ -77,23 +59,18 @@ describe('SubAccountsController', () => {
     expect(accounts.registerSubAccount).toHaveBeenCalledWith('a1', sha256(hash), [M1, M2])
   })
 
-  it('같은 넥슨 ID 면 409 same_account, 다섯째면 409 sub_account_limit 이다', async () => {
-    accounts.registerSubAccount.mockResolvedValueOnce('same_account').mockResolvedValueOnce('limit')
-    const send = () =>
-      app.inject({
-        method: 'POST',
-        url: '/v1/me/sub-accounts',
-        headers: bearer,
-        payload: { apiKeyHash: hash, mapleIds: [M1] },
-      })
+  it('같은 넥슨 ID 면 409 same_account 다', async () => {
+    accounts.registerSubAccount.mockResolvedValueOnce('same_account')
 
-    const same = await send()
-    const limit = await send()
+    const same = await app.inject({
+      method: 'POST',
+      url: '/v1/me/sub-accounts',
+      headers: bearer,
+      payload: { apiKeyHash: hash, mapleIds: [M1] },
+    })
 
     expect(same.statusCode).toBe(409)
     expect(same.json()).toEqual(expect.objectContaining({ code: 'same_account' }))
-    expect(limit.statusCode).toBe(409)
-    expect(limit.json()).toEqual(expect.objectContaining({ code: 'sub_account_limit' }))
   })
 
   // 메이플 ID 가 없으면 같은 넥슨 계정인지 가를 수 없다. 앱도 그런 키는 등록하지 않는다.
@@ -113,36 +90,30 @@ describe('SubAccountsController', () => {
     expect(accounts.registerSubAccount).not.toHaveBeenCalled()
   })
 
-  it('지우기는 메이플 ID 로 이 로그인의 등록을 지운다. 204 다', async () => {
+  // 키 사용자에게는 부계정이 없다. 어느 로그인에 붙일지는 세션이 정한다.
+  it('키 해시로 오면 403 login_required 다', async () => {
     const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/sub-accounts',
+      headers: keyHeader,
+      payload: { apiKeyHash: hash, mapleIds: [M1] },
+    })
+
+    expect(res.statusCode).toBe(403)
+    expect(res.json()).toEqual(expect.objectContaining({ code: 'login_required' }))
+    expect(accounts.registerSubAccount).not.toHaveBeenCalled()
+  })
+
+  // 앱은 부계정을 기기마다 따로 관리해 목록을 받지도, 서버에서 지우지도 않는다.
+  it('목록 · 지우기 경로는 없다', async () => {
+    const list = await app.inject({ method: 'GET', url: '/v1/me/sub-accounts', headers: bearer })
+    const remove = await app.inject({
       method: 'DELETE',
       url: `/v1/me/sub-accounts/${M1}`,
       headers: bearer,
     })
 
-    expect(res.statusCode).toBe(204)
-    expect(accounts.unregisterSubAccount).toHaveBeenCalledWith('a1', M1)
-  })
-
-  // 키 사용자에게는 부계정이 없다. 어느 로그인에 붙일지는 세션이 정한다.
-  it('키 해시로 오면 세 경로 모두 403 login_required 다', async () => {
-    const results = await Promise.all([
-      app.inject({ method: 'GET', url: '/v1/me/sub-accounts', headers: keyHeader }),
-      app.inject({
-        method: 'POST',
-        url: '/v1/me/sub-accounts',
-        headers: keyHeader,
-        payload: { apiKeyHash: hash, mapleIds: [M1] },
-      }),
-      app.inject({ method: 'DELETE', url: `/v1/me/sub-accounts/${M1}`, headers: keyHeader }),
-    ])
-
-    for (const res of results) {
-      expect(res.statusCode).toBe(403)
-      expect(res.json()).toEqual(expect.objectContaining({ code: 'login_required' }))
-    }
-    expect(accounts.listSubAccounts).not.toHaveBeenCalled()
-    expect(accounts.registerSubAccount).not.toHaveBeenCalled()
-    expect(accounts.unregisterSubAccount).not.toHaveBeenCalled()
+    expect(list.statusCode).toBe(404)
+    expect(remove.statusCode).toBe(404)
   })
 })

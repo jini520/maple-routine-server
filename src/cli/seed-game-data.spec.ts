@@ -844,7 +844,9 @@ describeDb('seedGameData', () => {
         iconAssetId: r.iconMap === null ? null : assetIds[`maps/icons/${r.iconMap}.png`],
       })),
     )
-    expect(hunting.grounds).toEqual(huntingGroundsSeed.grounds)
+    expect(hunting.grounds).toEqual(
+      huntingGroundsSeed.grounds.map((g) => ({ ...g, popular: false })),
+    )
     expect(hunting.groundLevels).toEqual(huntingGroundsSeed.groundLevels)
     expect((await new HuntLootRepository(db).section()).items).toEqual(
       huntLootSeed.items.map((i) => ({ ...i, iconAssetId: assetIds[`items/${i.iconFile}`] })),

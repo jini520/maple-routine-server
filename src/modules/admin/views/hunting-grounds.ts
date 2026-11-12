@@ -78,6 +78,13 @@ ${ASSET_PICKER}
       var row = el('tr', undefined, state.editingGround === g.key ? 'open' : '');
       cell(row, i + 1, 'n'); cell(row, g.key.slice(r.key.length + 1), 'mono'); cell(row, g.name);
       cell(row, g.force, 'num'); cell(row, g.mobs, 'num'); cell(row, 'lv.' + levelsOf(g.key).join('-'), 'mono');
+      var popular = input('checkbox'); popular.checked = g.popular; popular.setAttribute('aria-label', g.name + ' 인기');
+      var popularLabel = el('label', undefined, 'check'); popularLabel.appendChild(popular);
+      popular.addEventListener('change', async function () {
+        var x = await call('PUT', '/admin/hunting-grounds/grounds/' + g.key + '/popular', { popular: popular.checked });
+        show(x.ok ? g.key + (popular.checked ? ' 를 인기로 적었다' : ' 를 인기에서 뺐다') : fail('못 적었다', x), !x.ok); load();
+      });
+      cell(row, popularLabel);
       var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), edit = button('수정', 'btn ghost sm');
       up.addEventListener('click', async function () { var x = await call('POST', '/admin/hunting-grounds/grounds/' + g.key + '/move', { direction: 'up' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
       down.addEventListener('click', async function () { var x = await call('POST', '/admin/hunting-grounds/grounds/' + g.key + '/move', { direction: 'down' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
@@ -85,7 +92,7 @@ ${ASSET_PICKER}
       cell(row, inline(up, down, edit), 'act');
       tbody.appendChild(row);
     });
-    box.appendChild(mini(['#', 'key (지역 접두 뒤)', '이름', '포스', '마릿수', '레벨', ''], tbody));
+    box.appendChild(mini(['#', 'key (지역 접두 뒤)', '이름', '포스', '마릿수', '레벨', '인기', ''], tbody));
     var editing = groundsOf(r.key).filter(function (g) { return g.key === state.editingGround; })[0] || null;
     box.appendChild(groundForm(r, editing));
     td.appendChild(box); tr.appendChild(td); return tr;

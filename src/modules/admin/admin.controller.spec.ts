@@ -204,6 +204,7 @@ describe('AdminController', () => {
     createGround: jest.fn(),
     updateGround: jest.fn(),
     moveGround: jest.fn(),
+    setGroundPopular: jest.fn(),
   }
 
   const huntLootRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
@@ -2563,6 +2564,41 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(204)
+    })
+
+    it('인기 PUT 은 참 · 거짓만 받아 204, 모르는 사냥터는 404 다', async () => {
+      huntingRepo.setGroundPopular.mockResolvedValue(true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
+            payload: { popular: true },
+          })
+        ).statusCode,
+      ).toBe(204)
+      expect(huntingRepo.setGroundPopular).toHaveBeenCalledWith(joy.key, true)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
+            payload: { popular: 'true' },
+          })
+        ).statusCode,
+      ).toBe(400)
+      expect(huntingRepo.setGroundPopular).toHaveBeenCalledTimes(1)
+
+      huntingRepo.setGroundPopular.mockResolvedValue(false)
+      expect(
+        (
+          await app.inject({
+            method: 'PUT',
+            url: '/admin/hunting-grounds/grounds/nobody/popular',
+            payload: { popular: false },
+          })
+        ).statusCode,
+      ).toBe(404)
     })
   })
 })

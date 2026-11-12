@@ -37,7 +37,8 @@ export interface HuntingGroundsSection {
   updatedAt: string | null
   /** iconMap 은 옛 앱이 읽는 그림 이름이다 */
   regions: (HuntingRegionView & { iconAssetId: string | null })[]
-  grounds: HuntingGroundView[]
+  /** popular 는 관리 화면 목록 줄에서만 바뀌어 사냥터 쓰기 입력에는 없다 */
+  grounds: (HuntingGroundView & { popular: boolean })[]
   groundLevels: HuntingGroundLevelView[]
 }
 
@@ -80,6 +81,7 @@ export class HuntingGroundsRepository {
           name: huntingGrounds.name,
           force: huntingGrounds.force,
           mobs: huntingGrounds.mobs,
+          popular: huntingGrounds.popular,
         })
         .from(huntingGrounds)
         .innerJoin(huntingRegions, eq(huntingGrounds.regionId, huntingRegions.id))
@@ -230,6 +232,20 @@ export class HuntingGroundsRepository {
         .where(eq(huntingGrounds.id, row.id))
       await tx.delete(huntingGroundLevels).where(eq(huntingGroundLevels.groundId, row.id))
       await this.writeLevels(tx, row.id, input.levels)
+      await touchSection(tx, 'huntingGrounds')
+      return true
+    })
+  }
+
+  /** 사냥터의 인기 여부를 바꾼다. 모르면 false 다. */
+  async setGroundPopular(key: string, popular: boolean): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(huntingGrounds)
+        .set({ popular })
+        .where(eq(huntingGrounds.key, key))
+        .returning({ id: huntingGrounds.id })
+      if (rows.length === 0) return false
       await touchSection(tx, 'huntingGrounds')
       return true
     })

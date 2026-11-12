@@ -679,7 +679,7 @@ describe('AdminController', () => {
   })
 
   describe('사용자 · 사용 로그 대시보드', () => {
-    it('GET /admin/users/stats 는 기간과 플랫폼을 넘기고, 기간이 없으면 28일이다', async () => {
+    it('GET /admin/users/stats 는 기간과 플랫폼을 넘기고, 기간이 없으면 7일이다', async () => {
       dashboard.forUsers.mockResolvedValue({ tiles: {} })
 
       const res = await app.inject({ method: 'GET', url: '/admin/users/stats?platform=ios' })
@@ -687,7 +687,7 @@ describe('AdminController', () => {
       expect(res.statusCode).toBe(200)
       expect(res.headers['cache-control']).toBe('no-store')
       expect(res.json()).toEqual({ tiles: {} })
-      expect(dashboard.forUsers).toHaveBeenCalledWith(28, 'ios')
+      expect(dashboard.forUsers).toHaveBeenCalledWith(7, 'ios')
     })
 
     it('모르는 플랫폼이나 보관 기간을 넘는 기간은 400 이다', async () => {

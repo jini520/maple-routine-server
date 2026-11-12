@@ -78,7 +78,7 @@ export type DropPriceQuery = z.infer<typeof dropPriceQuery>
 /** 대시보드 기간. 보관 기간보다 길게 물으면 비어 있는 날만 늘어난다. 기간을 안 주면 그 화면이 처음 여는 기간이다. */
 const dashboardDays = (initial: number) =>
   z.coerce.number().int().min(1).max(USAGE_RETENTION_DAYS).default(initial)
-const USERS_DAYS = 28
+const USERS_DAYS = 7
 const USAGE_DAYS = 7
 
 export const usageQuery = z.object({ days: dashboardDays(USAGE_DAYS) })

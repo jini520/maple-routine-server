@@ -573,6 +573,8 @@ export const huntingGroundUpdateBody = huntingGroundBase
   .omit({ key: true, region: true })
   .refine(distinctLevels, LEVELS_MESSAGE)
 export type HuntingGroundUpdateBody = z.infer<typeof huntingGroundUpdateBody>
+export const huntingGroundPopularBody = z.object({ popular: z.boolean() })
+export type HuntingGroundPopularBody = z.infer<typeof huntingGroundPopularBody>
 
 /* ── FAQ ── */
 

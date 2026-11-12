@@ -1212,6 +1212,8 @@ export const huntingGrounds = pgTable(
     mobs: integer('mobs').notNull(),
     /** 지역 안의 차례. 레벨 차이 · 마릿수가 동률일 때의 차례다. */
     sortOrder: integer('sort_order').notNull(),
+    /** 인기 사냥터 여부. 사용자가 고르는 값이라 모두 false 로 시작하고 관리 화면 목록 줄에서 고른다. */
+    popular: boolean('popular').notNull().default(false),
   },
   (t) => [
     check('hunting_grounds_force_nonnegative', sql`${t.force} >= 0`),

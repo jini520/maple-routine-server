@@ -82,6 +82,7 @@ describeDb('HuntingGroundsRepository', () => {
       name: '풍화된 기쁨의 땅',
       force: 30,
       mobs: 22,
+      popular: false,
     })
     expect(section.groundLevels).toEqual([
       { ground: joy.key, level: 200 },
@@ -159,5 +160,31 @@ describeDb('HuntingGroundsRepository', () => {
     expect(section.groundLevels.filter((l) => l.ground === joy.key).map((l) => l.level)).toEqual([
       200, 201,
     ])
+  })
+
+  it('인기를 바꾸면 응답의 popular 와 updatedAt 이 함께 움직이고, 사냥터를 고쳐도 인기는 그대로다. 모르는 key 는 false 다', async () => {
+    await repo.createRegion(vanishing)
+    await repo.createGround(joy)
+    await repo.createGround(joyAndAnger)
+    const before = await repo.section()
+    expect(before.grounds.map((g) => g.popular)).toEqual([false, false])
+
+    expect(await repo.setGroundPopular(joyAndAnger.key, true)).toBe(true)
+    const after = await repo.section()
+    expect(after.grounds.map((g) => [g.key, g.popular])).toEqual([
+      [joy.key, false],
+      [joyAndAnger.key, true],
+    ])
+    expect(after.updatedAt).not.toBe(before.updatedAt)
+
+    await repo.updateGround(joyAndAnger.key, {
+      name: joyAndAnger.name,
+      force: 30,
+      mobs: 30,
+      levels: [201],
+    })
+    expect((await repo.section()).grounds[1]).toMatchObject({ mobs: 30, popular: true })
+
+    expect(await repo.setGroundPopular('nobody', true)).toBe(false)
   })
 })

@@ -5,6 +5,7 @@ import { DB, type Db } from '../../database/database.module'
 import {
   bossDifficulties,
   bosses,
+  dropBoxes,
   items,
   dropPrices,
   type dropRecordStatusEnum,
@@ -43,8 +44,10 @@ export interface DropPriceInput {
   recordStatus: Exclude<DropRecordStatus, 'deleted'>
   /** 기기가 보낸 거래 시각. 이 칸을 안 보내는 옛 앱은 null 이고 그때는 받은 시각으로 적는다. */
   pricedAt: Date | null
-  /** 넥슨이 준 값 셋. 1.0.13 앱은 안 보내 null 이고, 그때는 사람 · 기록 id 로 가린다. */
-  owner: { mapleId: string; ocid: string; itemOrdinal: number } | null
+  /** 넥슨이 준 값 둘. 1.0.13 앱은 안 보내 null 이고, 그때는 사람 · 기록 id 로 가린다. */
+  owner: { mapleId: string; ocid: string } | null
+  /** 상자에서 나온 드롭이면 그 상자의 아이템 key. 보스가 직접 떨군 드롭은 null. */
+  boxOriginKey: string | null
 }
 
 /** 관리 화면이 보는 줄. completed 가 아닌 줄도 상태를 달고 그대로 보인다. 노이즈를 보는 자리라 숨기지 않는다. */
@@ -95,13 +98,22 @@ function itemMatches(value: string | null) {
   return value === null ? undefined : or(eq(items.key, value), eq(items.name, value))
 }
 
+/** 전송값의 key 를 표에서 찾은 id. 상자는 직접 떨군 드롭이면 null. */
+interface Resolved {
+  itemId: string
+  worldId: string | null
+  boxOriginItemId: string | null
+}
+
 /** 아이템 표에 없는 key 다. message 가 그 key 다. */
 export class NoDropItem extends Error {}
 /** 월드 표에 없는 key 다. message 가 그 key 다. */
 export class NoWorld extends Error {}
+/** 상자 표에 없는 key 다. 상자가 아닌 아이템 key 도 여기다. message 가 그 key 다. */
+export class NoDropBox extends Error {}
 
 /**
- * 시세 표본. 같은 드롭(ocid · 보스 · 기간 · 아이템 · 몇 번째)은 누가 보냈든 한 줄이고, 다시 보낸 기록은 메이플 ID · 기록 id 로
+ * 시세 표본. 같은 드롭(ocid · 보스 · 기간 · 아이템 · 획득처)은 누가 보냈든 한 줄이고, 다시 보낸 기록은 메이플 ID · 기록 id 로
  * 찾는다. 1.0.13 앱의 줄은 사람 · 기록 id 로 찾는다. 기기에서 사라진 기록은 deleted 로 남는다.
  */
 @Injectable()
@@ -192,9 +204,9 @@ export class DropPricesRepository {
    * 때만 지금으로 움직인다. 옛 앱은 저장하는 그 자리에서 보내 받은 시각이 곧 거래 시각이다.
    */
   async upsert(input: DropPriceInput): Promise<void> {
-    const { itemId, worldId } = await this.resolve(input)
+    const resolved = await this.resolve(input)
     if (input.owner === null) {
-      await this.upsertLegacy(input, itemId, worldId)
+      await this.upsertLegacy(input, resolved)
       return
     }
     const owner = input.owner
@@ -224,7 +236,7 @@ export class DropPricesRepository {
           .orderBy(sql`${dropPrices.mapleId} IS NULL`)
           .limit(1)
           .for('update')
-        const same = await this.sameDrop(tx, input, itemId, found?.id ?? null)
+        const same = await this.sameDrop(tx, input, resolved, found?.id ?? null)
         if (same !== undefined) {
           // 옛 줄에 처음 채우다 같은 드롭이 되면 먼저 들어온 줄을 남긴다. 그 밖에는 같은 드롭이 이미 있어 적지 않는다.
           const filling = found !== undefined && found.mapleId === null
@@ -236,10 +248,9 @@ export class DropPricesRepository {
           await tx.delete(dropPrices).where(eq(dropPrices.id, same.id))
         }
         const values = {
-          ...this.valuesOf(input, itemId, worldId),
+          ...this.valuesOf(input, resolved),
           mapleId: owner.mapleId,
           ocid: owner.ocid,
-          itemOrdinal: owner.itemOrdinal,
         }
         if (found !== undefined) {
           await tx
@@ -266,12 +277,8 @@ export class DropPricesRepository {
   }
 
   /** 1.0.13 앱의 줄. 사람과 기록 id 로 덮어 적는다. 넥슨이 준 값이 없어 같은 드롭을 가리지 못한다. */
-  private async upsertLegacy(
-    input: DropPriceInput,
-    itemId: string,
-    worldId: string | null,
-  ): Promise<void> {
-    const values = this.valuesOf(input, itemId, worldId)
+  private async upsertLegacy(input: DropPriceInput, resolved: Resolved): Promise<void> {
+    const values = this.valuesOf(input, resolved)
     await this.db
       .insert(dropPrices)
       .values({
@@ -286,28 +293,40 @@ export class DropPricesRepository {
       })
   }
 
-  private async resolve(
-    input: DropPriceInput,
-  ): Promise<{ itemId: string; worldId: string | null }> {
+  private async resolve(input: DropPriceInput): Promise<Resolved> {
     const [item] = await this.db
       .select({ id: items.id })
       .from(items)
       .where(and(eq(items.key, input.itemKey), eq(items.isDrop, true)))
     if (item === undefined) throw new NoDropItem(input.itemKey)
-    if (input.worldKey === null) return { itemId: item.id, worldId: null }
-    const [world] = await this.db
-      .select({ id: worlds.id })
-      .from(worlds)
-      .where(eq(worlds.key, input.worldKey))
-    if (world === undefined) throw new NoWorld(input.worldKey)
-    return { itemId: item.id, worldId: world.id }
+    let worldId: string | null = null
+    if (input.worldKey !== null) {
+      const [world] = await this.db
+        .select({ id: worlds.id })
+        .from(worlds)
+        .where(eq(worlds.key, input.worldKey))
+      if (world === undefined) throw new NoWorld(input.worldKey)
+      worldId = world.id
+    }
+    let boxOriginItemId: string | null = null
+    if (input.boxOriginKey !== null) {
+      const [box] = await this.db
+        .select({ itemId: dropBoxes.itemId })
+        .from(dropBoxes)
+        .innerJoin(items, eq(dropBoxes.itemId, items.id))
+        .where(eq(items.key, input.boxOriginKey))
+      if (box === undefined) throw new NoDropBox(input.boxOriginKey)
+      boxOriginItemId = box.itemId
+    }
+    return { itemId: item.id, worldId, boxOriginItemId }
   }
 
-  private valuesOf(input: DropPriceInput, itemId: string, worldId: string | null) {
+  private valuesOf(input: DropPriceInput, { itemId, worldId, boxOriginItemId }: Resolved) {
     return {
       identifiedBy: input.identifiedBy,
       itemId,
       worldId,
+      boxOriginItemId,
       priceMeso: input.priceMeso,
       periodKey: input.periodKey,
       ringLevel: input.ringLevel,
@@ -342,7 +361,7 @@ export class DropPricesRepository {
   private async sameDrop(
     tx: Tx,
     input: DropPriceInput,
-    itemId: string,
+    { itemId, boxOriginItemId }: Resolved,
     self: string | null,
   ): Promise<{ id: string; createdAt: Date } | undefined> {
     if (input.owner === null || input.bossId === null) return undefined
@@ -355,7 +374,8 @@ export class DropPricesRepository {
           eq(dropPrices.bossId, input.bossId),
           eq(dropPrices.periodKey, input.periodKey),
           eq(dropPrices.itemId, itemId),
-          eq(dropPrices.itemOrdinal, input.owner.itemOrdinal),
+          // 직접 떨군 드롭끼리도 같은 획득처다. = 로 견주면 NULL 끼리 달라 같은 드롭을 놓친다.
+          sql`${dropPrices.boxOriginItemId} IS NOT DISTINCT FROM ${boxOriginItemId}::uuid`,
           ne(dropPrices.recordStatus, 'deleted'),
           self === null ? undefined : ne(dropPrices.id, self),
         ),

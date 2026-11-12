@@ -9,7 +9,7 @@ import { IdentityGuard } from '../identity/identity.guard'
 import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { UsersRepository } from '../users/users.repository'
 import { DropPricesController } from './drop-prices.controller'
-import { DropPricesRepository, NoDropItem, NoWorld } from './drop-prices.repository'
+import { DropPricesRepository, NoDropBox, NoDropItem, NoWorld } from './drop-prices.repository'
 
 const M1 = sha256Hex('m1')
 const M9 = sha256Hex('m9')
@@ -96,11 +96,12 @@ describe('DropPricesController', () => {
       recordStatus: 'completed',
       pricedAt: null,
       owner: null,
+      boxOriginKey: null,
     })
   })
 
-  // 1.0.14 앱은 넥슨이 준 값 셋을 싣는다. 같은 드롭을 가리는 데 보스 칸을 따로 쓴다.
-  it('메이플 ID · ocid · 몇 번째를 받으면 그대로 넘기고 보스를 표의 줄로 바꾼다', async () => {
+  // 1.0.14 앱은 넥슨이 준 값과 획득처를 싣는다. 같은 드롭을 가리는 데 보스 칸을 따로 쓴다.
+  it('메이플 ID · ocid · 상자 key 를 받으면 그대로 넘기고 보스를 표의 줄로 바꾼다', async () => {
     bosses.findByKey.mockResolvedValue({ id: 'b-1' })
 
     await app.inject({
@@ -113,7 +114,7 @@ describe('DropPricesController', () => {
         difficulty: 'hard',
         mapleId: M1,
         ocid: OCID1,
-        itemOrdinal: 2,
+        boxOriginKey: 'ring-box',
       },
     })
 
@@ -121,18 +122,19 @@ describe('DropPricesController', () => {
     expect(prices.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         bossId: 'b-1',
-        owner: { mapleId: M1, ocid: OCID1, itemOrdinal: 2 },
+        owner: { mapleId: M1, ocid: OCID1 },
+        boxOriginKey: 'ring-box',
       }),
     )
   })
 
-  // 셋 중 하나만 오면 같은 드롭을 가릴 수 없다. 1.0.13 앱은 셋 다 안 보낸다.
-  it('메이플 ID · ocid · 몇 번째는 셋 다 오거나 셋 다 없어야 한다', async () => {
+  // 하나만 오면 같은 드롭을 가리지도, 내 기록인지 보지도 못한다. 1.0.13 앱은 둘 다 안 보낸다.
+  it('메이플 ID 와 ocid 는 둘 다 오거나 둘 다 없어야 한다', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/drop-prices',
       headers: bearer,
-      payload: { ...body, mapleId: M1, ocid: OCID1 },
+      payload: { ...body, mapleId: M1 },
     })
 
     expect(res.statusCode).toBe(400)
@@ -142,7 +144,7 @@ describe('DropPricesController', () => {
   // 앱이 메이플 ID 를 알리기 전에 보낸 기록이다. 실패로 답해야 앱 대기 표가 다시 보낸다.
   it('남의 메이플 ID 면 409 maple_id_not_registered 이고, 묶음에서는 그 건만 실패다', async () => {
     prices.upsert.mockRejectedValue(new MapleIdNotOwned(M9))
-    const payload = { ...body, mapleId: M9, ocid: OCID1, itemOrdinal: 1 }
+    const payload = { ...body, mapleId: M9, ocid: OCID1 }
 
     const one = await app.inject({
       method: 'POST',
@@ -270,7 +272,7 @@ describe('DropPricesController', () => {
   })
 
   // 앱은 서버 표를 받아 쓰므로 서버가 모르는 key 는 틀린 본문이다. 거절된 건은 앱이 5회 뒤 버린다.
-  it('표에 없는 아이템 · 월드 key 는 400 이다', async () => {
+  it('표에 없는 아이템 · 월드 · 상자 key 는 400 이다', async () => {
     prices.upsert.mockRejectedValueOnce(new NoDropItem('nobody'))
     const item = await app.inject({
       method: 'POST',
@@ -289,6 +291,16 @@ describe('DropPricesController', () => {
       payload: { ...body, worldKey: 'nowhere' },
     })
     expect(world.statusCode).toBe(400)
+
+    prices.upsert.mockRejectedValueOnce(new NoDropBox('no-box'))
+    const box = await app.inject({
+      method: 'POST',
+      url: '/v1/drop-prices',
+      headers: bearer,
+      payload: { ...body, boxOriginKey: 'no-box' },
+    })
+    expect(box.statusCode).toBe(400)
+    expect(box.json<{ message: string }>().message).toContain('no-box')
   })
 
   // 기기에서 기록이 사라진 때다. 줄은 남고 deleted 로 표시된다.

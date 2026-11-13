@@ -2,89 +2,24 @@ import { items } from '../../database/schema'
 import type { DbOrTx } from '../game-data/sections'
 
 /**
- * 아이템 분류 트리. 첫 단은 종류, 둘째 단은 묶음이고 아이템 줄은 묶음 key 하나를 든다(앱 저장소 ADR-187 결정 2). 장신구는
- * 게임 인벤토리 탭이 아니라 관리 화면에서 장비와 갈라 보려고 둔 종류다.
- * 관리 화면에서 더하거나 바꾸지 않는다. 바꾸려면 이 표를 고쳐 서버를 배포한다. DB 칸은 글자라 묶음을 더해도 이관이 없다.
+ * 아이템 분류의 첫 단인 종류. 둘째 단인 묶음은 DB 표(`item_groups`)에 두고 관리 화면에서 더한다. 종류는 앱이 가계부 아이템
+ * 종류를 정하는 key 라 코드에 둔다. 앱이 모르는 종류가 생기지 않게 하려는 것이다. 장신구는 관리 화면에서 장비와 갈라 보려고 둔
+ * 종류이고, 앱은 장비로 옮긴다.
  */
-export const ITEM_CATEGORIES = [
-  {
-    key: 'equipment',
-    name: '장비',
-    groups: [
-      { key: 'rootabyss_weapon', name: '루타비스 무기' },
-      { key: 'rootabyss_armor', name: '루타비스 방어구' },
-      { key: 'absolab_weapon', name: '앱솔랩스 무기' },
-      { key: 'absolab_armor', name: '앱솔랩스 방어구' },
-      { key: 'arcane_weapon', name: '아케인셰이드 무기' },
-      { key: 'arcane_armor', name: '아케인셰이드 방어구' },
-      { key: 'eternel_armor', name: '에테르넬 방어구' },
-      { key: 'armor_weapon_set', name: '방어구와 무기 세트' },
-      { key: 'other_armor', name: '기타 방어구' },
-      { key: 'secondary_weapon', name: '보조무기' },
-      { key: 'genesis_weapon', name: '제네시스 무기' },
-      { key: 'destiny_weapon', name: '데스티니 무기' },
-      { key: 'mechanical_heart', name: '기계 심장' },
-    ],
-  },
-  {
-    key: 'accessory',
-    name: '장신구',
-    groups: [
-      { key: 'ring', name: '반지' },
-      { key: 'pendant', name: '펜던트' },
-      { key: 'earring', name: '귀고리' },
-      { key: 'face_accessory', name: '얼굴 장식' },
-      { key: 'shoulder_accessory', name: '어깨 장식' },
-      { key: 'belt', name: '벨트' },
-      { key: 'badge', name: '뱃지' },
-      { key: 'dark_boss_set', name: '칠흑의 보스 세트' },
-      { key: 'dawn_boss_set', name: '여명의 보스 세트' },
-      { key: 'radiance_boss_set', name: '광휘의 보스 세트' },
-      { key: 'boss_accessory_set', name: '보스 장신구 세트' },
-      { key: 'special_skill_ring', name: '특수스킬반지' },
-    ],
-  },
-  {
-    key: 'consumable',
-    name: '소비',
-    groups: [
-      { key: 'boss_enhancement_material', name: '보스 강화 재료' },
-      { key: 'core_gemstone', name: '코어 젬스톤' },
-      { key: 'symbol_coupon', name: '심볼 교환권' },
-      { key: 'scroll', name: '주문서' },
-      { key: 'potion', name: '물약' },
-      { key: 'soul', name: '소울' },
-      { key: 'box', name: '상자' },
-      { key: 'hunt_loot', name: '사냥 전리품' },
-      { key: 'boss_loot', name: '보스 전리품' },
-    ],
-  },
-  {
-    key: 'etc',
-    name: '기타',
-    groups: [
-      { key: 'growth_material', name: '성장 재료' },
-      { key: 'profession_material_tool', name: '전문기술 재료와 도구' },
-      { key: 'etc_boss_loot', name: '보스 전리품' },
-    ],
-  },
-  { key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] },
+export const ITEM_KINDS = [
+  { key: 'equipment', name: '장비' },
+  { key: 'accessory', name: '장신구' },
+  { key: 'consumable', name: '소비' },
+  { key: 'etc', name: '기타' },
+  { key: 'cash', name: '캐시' },
 ] as const
 
-export type ItemCategory = (typeof ITEM_CATEGORIES)[number]['groups'][number]['key']
-export type ItemKind = (typeof ITEM_CATEGORIES)[number]['key']
+export type ItemKind = (typeof ITEM_KINDS)[number]['key']
 
-const KIND_OF_CATEGORY: ReadonlyMap<string, ItemKind> = new Map(
-  ITEM_CATEGORIES.flatMap((kind) => kind.groups.map((g) => [g.key, kind.key] as const)),
-)
+export const ITEM_KIND_KEYS = ITEM_KINDS.map((k) => k.key) as [ItemKind, ...ItemKind[]]
 
-/** 묶음 key 가 든 종류. 트리에 없는 묶음이면 null 이다. */
-export function kindOfCategory(category: string): ItemKind | null {
-  return KIND_OF_CATEGORY.get(category) ?? null
-}
-
-export function isItemCategory(value: string): value is ItemCategory {
-  return KIND_OF_CATEGORY.has(value)
+export function isItemKind(value: string): value is ItemKind {
+  return (ITEM_KIND_KEYS as readonly string[]).includes(value)
 }
 
 /** 앱이 넥슨 이름에서 key 를 얻는 규칙과 같다. NFC 로 맞추고 공백을 모두 지운다. */

@@ -31,6 +31,7 @@ import {
 } from '../hunting-grounds/hunting-grounds.repository'
 import { HexaMatrixRepository, type HexaMatrixSection } from '../hexa-matrix/hexa-matrix.repository'
 import { HuntLootRepository, type HuntLootSection } from '../hunt-loot/hunt-loot.repository'
+import { ItemsRepository, type ItemsSection } from '../items/items.repository'
 import { MvpGradesRepository, type MvpGradesSection } from '../mvp-grades/mvp-grades.repository'
 import {
   SpendCatalogRepository,
@@ -68,6 +69,7 @@ export interface GameDataSnapshot {
   assets: AssetsSection
   imageCrops: ImageCropsSection
   appImages: AppImagesSection
+  items: ItemsSection
 }
 
 @Injectable()
@@ -93,6 +95,7 @@ export class GameDataService {
     private readonly assets: AssetsRepository,
     private readonly imageCrops: ImageCropsRepository,
     private readonly appImages: AppImagesRepository,
+    private readonly items: ItemsRepository,
   ) {}
 
   async snapshot(): Promise<GameDataSnapshot> {
@@ -117,6 +120,7 @@ export class GameDataService {
       assets,
       imageCrops,
       appImages,
+      items,
     ] = await Promise.all([
       this.bosses.catalog(),
       this.dropItems.section(),
@@ -138,6 +142,7 @@ export class GameDataService {
       this.assets.section(),
       this.imageCrops.section(),
       this.appImages.section(),
+      this.items.section(),
     ])
     return {
       bosses,
@@ -160,6 +165,7 @@ export class GameDataService {
       assets,
       imageCrops,
       appImages,
+      items,
     }
   }
 }

@@ -1,13 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, isNotNull } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { assets, huntLootItems, items } from '../../database/schema'
 import { parseAssetPath, storedFileName } from '../assets/asset-paths'
 import { AssetNotFound } from '../assets/asset-refs'
-import { type DbOrTx, type SectionKey, touchSection } from '../game-data/sections'
+import { type DbOrTx, type SectionKey, sectionUpdatedAt, touchSection } from '../game-data/sections'
 import type { HuntLootKind } from '../hunt-loot/hunt-loot.repository'
-import { isItemCategory, sameNameItem } from './items'
+import { isItemCategory, type ItemKind, kindOfCategory, sameNameItem } from './items'
 
 /** 관리 화면 아이템 줄. 그림은 미리보기 주소(`/assets/<file>`)를 만들 파일 이름까지 든다. */
 export interface ItemAdminRow {
@@ -36,6 +36,26 @@ export interface ItemInput {
   isEquipment: boolean
 }
 
+/** GET /v1/game-data 의 items 칸 줄. 종류는 분류 트리의 첫 단이다. */
+export interface ItemView {
+  key: string
+  name: string
+  kind: ItemKind
+  category: string
+  iconAssetId: string | null
+}
+
+/**
+ * 분류가 있는 아이템 전부. 앱의 아이템 고르기가 여기서 고른다. 상자를 빼고 종류를 가계부 아이템 종류로 옮기는 일은 앱이
+ * 한다. 고르기 규칙이 바뀌어도 서버 배포 없이 앱만 고치면 되게 하려는 것이다.
+ */
+export interface ItemsSection {
+  updatedAt: string | null
+  items: ItemView[]
+}
+
+const KO = new Intl.Collator('ko')
+
 /** 같은 key 의 아이템이 이미 있다. */
 export class ItemExists extends Error {}
 /** 비교 모양의 이름이 같은 아이템이 다른 key 로 있다. message 가 그 아이템의 key 다. */
@@ -52,6 +72,28 @@ export class ItemRoleRemoved extends Error {}
 @Injectable()
 export class ItemsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
+
+  /**
+   * 이름 차례. 앱의 찾기는 맞은 자리가 같으면 받은 차례를 지켜 이 차례가 결과의 차례가 된다. DB 정렬은 로캘마다 달라
+   * 여기서 한국어 차례로 줄 세운다.
+   */
+  async section(): Promise<ItemsSection> {
+    const rows = await this.db
+      .select({
+        key: items.key,
+        name: items.name,
+        category: items.category,
+        iconAssetId: items.iconAssetId,
+      })
+      .from(items)
+      .where(isNotNull(items.category))
+    const views = rows.flatMap(({ category, ...r }) => {
+      const kind = category === null ? null : kindOfCategory(category)
+      return kind === null || category === null ? [] : [{ ...r, kind, category }]
+    })
+    views.sort((a, b) => KO.compare(a.name, b.name) || KO.compare(a.key, b.key))
+    return { updatedAt: await sectionUpdatedAt(this.db, 'items'), items: views }
+  }
 
   async adminRows(): Promise<ItemAdminRow[]> {
     const rows = await this.db
@@ -93,7 +135,10 @@ export class ItemsRepository {
       if (same !== undefined) throw new ItemExists(key)
       await check(tx, key, input)
       await tx.insert(items).values({ key, ...input })
-      await touchAll(tx, sectionsOf(input, false))
+      await touchAll(tx, [
+        ...sectionsOf(input, false),
+        ...(input.category === null ? [] : (['items'] as const)),
+      ])
     })
   }
 
@@ -104,6 +149,7 @@ export class ItemsRepository {
         .select({
           id: items.id,
           name: items.name,
+          category: items.category,
           iconAssetId: items.iconAssetId,
           valuable: items.valuable,
           level: items.level,
@@ -120,21 +166,28 @@ export class ItemsRepository {
         .update(items)
         .set({ ...input, updatedAt: new Date() })
         .where(eq(items.id, current.id))
-      // 분류 · 월드 간 거래 불가는 앱 칸에 안 실린다. 그것만 바꿨으면 칸의 시각을 밀지 않는다.
-      const appVisible =
+      // 칸마다 실리는 값이 다르다. 바뀐 값이 실린 칸의 시각만 민다. 월드 간 거래 불가는 어느 칸에도 안 실린다.
+      const roleVisible =
         current.name !== input.name ||
         current.iconAssetId !== input.iconAssetId ||
         current.valuable !== input.valuable ||
         current.level !== input.level ||
         current.isDrop !== input.isDrop ||
         current.isEquipment !== input.isEquipment
-      if (appVisible) {
+      // 분류를 떼면 items 칸에서 빠지므로 그때도 민다.
+      const catalogVisible =
+        (current.category !== null || input.category !== null) &&
+        (current.name !== input.name ||
+          current.iconAssetId !== input.iconAssetId ||
+          current.category !== input.category)
+      if (roleVisible) {
         const [loot] = await tx
           .select({ id: huntLootItems.id })
           .from(huntLootItems)
           .where(eq(huntLootItems.itemId, current.id))
         await touchAll(tx, sectionsOf(input, loot !== undefined))
       }
+      if (catalogVisible) await touchSection(tx, 'items')
       return true
     })
   }

@@ -468,6 +468,24 @@ export const appImages = pgTable('app_images', {
 })
 
 /**
+ * 아이템 묶음. 분류의 둘째 단이고 관리 화면의 아이템 화면에서 더하고 고친다. 첫 단인 종류(`kind`)는 서버 코드의
+ * ITEM_KINDS 에 있는 key 다. key 는 앱이 고르기 목록을 거르는 데 써서 못 바꾼다.
+ */
+export const itemGroups = pgTable(
+  'item_groups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    kind: text('kind').notNull(),
+    /** 소비 · 기타에 `보스 전리품` 이 하나씩 있어 이름은 종류 안에서만 유일하다. */
+    name: text('name').notNull(),
+    /** 같은 종류 안의 차례. */
+    sortOrder: integer('sort_order').notNull(),
+  },
+  (t) => [unique('item_groups_kind_name_unique').on(t.kind, t.name)],
+)
+
+/**
  * 아이템 표 하나. 드롭 아이템 · 강화 장비 · 사냥 전리품이 모두 여기 한 줄이다(앱 저장소 ADR-187 결정 1). 기기 기록과
  * 강화 합계가 key 를 들어 key 는 못 바꾸고 줄을 지우지 않는다. 드롭 표 · 상자 · 드롭 가격은 id 를 FK 로 든다.
  */
@@ -478,8 +496,8 @@ export const items = pgTable(
     key: text('key').notNull().unique(),
     /** 띄어 쓴 게임 표기. NFC · 공백 제거 뒤에도 표 전체에서 유일하다(쓰기 검사). 앱이 넥슨 이름과 그 모양으로 맞춘다. */
     name: text('name').notNull(),
-    /** 분류. 서버 코드의 ITEM_CATEGORIES 에 있는 묶음 key 다. 아직 안 정했으면 NULL 이다. */
-    category: text('category'),
+    /** 묶음 key. 아직 안 정했으면 NULL 이다. */
+    category: text('category').references(() => itemGroups.key),
     /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. 없으면 앱이 자리 그림을 그린다. */
     iconAssetId: uuid('icon_asset_id').references(() => assets.id),
     /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */

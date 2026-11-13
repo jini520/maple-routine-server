@@ -2,7 +2,12 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing'
 
 import { AssetNotFound } from '../assets/asset-refs'
-import { ITEM_CATEGORIES } from '../items/items'
+import {
+  ItemGroupExists,
+  ItemGroupInUse,
+  ItemGroupNameTaken,
+  ItemGroupsRepository,
+} from '../items/item-groups.repository'
 import {
   InvalidItemCategory,
   ItemExists,
@@ -26,18 +31,31 @@ const body = {
 describe('AdminItemsController', () => {
   let app: NestFastifyApplication
   const items = { adminRows: jest.fn(), create: jest.fn(), update: jest.fn() }
+  const groups = {
+    tree: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    move: jest.fn(),
+    remove: jest.fn(),
+  }
+  const tree = [{ key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] }]
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AdminItemsController],
-      providers: [{ provide: ItemsRepository, useValue: items }],
+      providers: [
+        { provide: ItemsRepository, useValue: items },
+        { provide: ItemGroupsRepository, useValue: groups },
+      ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
     await app.init()
     await app.getHttpAdapter().getInstance().ready()
   })
   afterAll(() => app.close())
-  beforeEach(() => Object.values(items).forEach((m) => m.mockReset()))
+  beforeEach(() =>
+    [...Object.values(items), ...Object.values(groups)].forEach((m) => m.mockReset()),
+  )
 
   it('GET /admin/items 는 화면, /admin/items/rows 는 분류 트리와 아이템이다', async () => {
     const page = await app.inject({ method: 'GET', url: '/admin/items' })
@@ -51,8 +69,9 @@ describe('AdminItemsController', () => {
     expect(page.body).not.toContain('href="/admin/equipment-items"')
 
     items.adminRows.mockResolvedValue([])
+    groups.tree.mockResolvedValue(tree)
     expect((await app.inject({ method: 'GET', url: '/admin/items/rows' })).json()).toEqual({
-      categories: ITEM_CATEGORIES,
+      categories: tree,
       items: [],
     })
   })
@@ -111,5 +130,92 @@ describe('AdminItemsController', () => {
       })
       expect([res.statusCode, res.json<{ message: string }>().message]).toEqual([status, message])
     }
+  })
+
+  it('묶음은 POST 로 더하고 201, PUT 으로 이름 · 종류를 고치고, move 로 차례를 바꾸고, DELETE 로 지운다. 모르는 key 는 404 다', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/admin/item-groups',
+      payload: { key: 'boutique', kind: 'consumable', name: ' 부티크 ' },
+    })
+    expect(created.statusCode).toBe(201)
+    expect(groups.create).toHaveBeenCalledWith({
+      key: 'boutique',
+      kind: 'consumable',
+      name: '부티크',
+    })
+
+    const put = () =>
+      app.inject({
+        method: 'PUT',
+        url: '/admin/item-groups/boutique',
+        payload: { kind: 'cash', name: '부티크' },
+      })
+    groups.update.mockResolvedValue(true)
+    expect((await put()).statusCode).toBe(204)
+    expect(groups.update).toHaveBeenCalledWith('boutique', { kind: 'cash', name: '부티크' })
+    groups.update.mockResolvedValue(false)
+    expect((await put()).statusCode).toBe(404)
+
+    const move = () =>
+      app.inject({
+        method: 'POST',
+        url: '/admin/item-groups/boutique/move',
+        payload: { direction: 'up' },
+      })
+    groups.move.mockResolvedValue(true)
+    expect((await move()).statusCode).toBe(204)
+    expect(groups.move).toHaveBeenCalledWith('boutique', 'up')
+    groups.move.mockResolvedValue(false)
+    expect((await move()).statusCode).toBe(404)
+
+    const remove = () => app.inject({ method: 'DELETE', url: '/admin/item-groups/boutique' })
+    groups.remove.mockResolvedValue(true)
+    expect((await remove()).statusCode).toBe(204)
+    groups.remove.mockResolvedValue(false)
+    expect((await remove()).statusCode).toBe(404)
+  })
+
+  it('묶음 본문 모양이 틀리면 400 이다. key 는 snake_case, 종류는 코드의 다섯 가운데 하나, 이름은 비지 않는다', async () => {
+    for (const payload of [
+      { key: 'Boutique', kind: 'consumable', name: '부티크' },
+      { key: 'boutique', kind: 'weapon', name: '부티크' },
+      { key: 'boutique', kind: 'consumable', name: '  ' },
+    ])
+      expect(
+        (await app.inject({ method: 'POST', url: '/admin/item-groups', payload })).statusCode,
+      ).toBe(400)
+    expect(groups.create).not.toHaveBeenCalled()
+  })
+
+  it('묶음 저장소의 거절을 상태 코드로 옮긴다', async () => {
+    groups.create.mockRejectedValueOnce(new ItemGroupExists('box'))
+    const exists = await app.inject({
+      method: 'POST',
+      url: '/admin/item-groups',
+      payload: { key: 'box', kind: 'consumable', name: '새 상자' },
+    })
+    expect([exists.statusCode, exists.json<{ message: string }>().message]).toEqual([
+      409,
+      '이미 있는 묶음이다: box',
+    ])
+
+    groups.update.mockRejectedValueOnce(new ItemGroupNameTaken('상자'))
+    const taken = await app.inject({
+      method: 'PUT',
+      url: '/admin/item-groups/boxes',
+      payload: { kind: 'consumable', name: '상자' },
+    })
+    expect([taken.statusCode, taken.json<{ message: string }>().message]).toEqual([
+      409,
+      '같은 종류에 이름이 같은 묶음이 있다: 상자',
+    ])
+
+    groups.remove.mockRejectedValueOnce(new ItemGroupInUse('cash'))
+    const inUse = await app.inject({ method: 'DELETE', url: '/admin/item-groups/cash' })
+    expect([inUse.statusCode, inUse.json<{ message: string }>().message]).toEqual([
+      409,
+      '아이템이 든 묶음은 못 지운다: cash',
+    ])
   })
 })

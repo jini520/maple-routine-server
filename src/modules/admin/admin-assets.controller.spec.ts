@@ -10,6 +10,7 @@ import { AssetStore } from '../assets/asset-store'
 import { AssetNotFound } from '../assets/asset-refs'
 import { AssetInUse, AssetsRepository } from '../assets/assets.repository'
 import { ImageCropsRepository } from '../assets/image-crops.repository'
+import { ItemGroupsRepository } from '../items/item-groups.repository'
 import { AdminAssetsController } from './admin-assets.controller'
 
 const WEBP = readFileSync(join(__dirname, '../assets/__fixtures__/vp8.webp'))
@@ -29,6 +30,7 @@ describe('AdminAssetsController', () => {
   }
   const crops = { section: jest.fn(), put: jest.fn(), remove: jest.fn() }
   const store = { write: jest.fn() }
+  const groups = { tree: jest.fn() }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -37,6 +39,7 @@ describe('AdminAssetsController', () => {
         { provide: AssetsRepository, useValue: assets },
         { provide: ImageCropsRepository, useValue: crops },
         { provide: AssetStore, useValue: store },
+        { provide: ItemGroupsRepository, useValue: groups },
       ],
     }).compile()
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -46,7 +49,12 @@ describe('AdminAssetsController', () => {
   })
   afterAll(() => app.close())
   beforeEach(() => {
-    for (const mock of [...Object.values(assets), ...Object.values(crops), store.write])
+    for (const mock of [
+      ...Object.values(assets),
+      ...Object.values(crops),
+      store.write,
+      groups.tree,
+    ])
       mock.mockReset()
   })
 
@@ -149,16 +157,21 @@ describe('AdminAssetsController', () => {
     assets.section.mockResolvedValue({ updatedAt: '2026-11-09T00:00:00.000Z', files: [] })
     assets.adminRows.mockResolvedValue([{ id: 'a', label: '벨로나' }])
     crops.section.mockResolvedValue({ updatedAt: null, crops: [] })
+    groups.tree.mockResolvedValue([
+      { key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] },
+    ])
     const body = (await app.inject({ method: 'GET', url: '/admin/assets/list' })).json<{
       updatedAt: string
       rows: unknown[]
       crops: unknown[]
-      categories: { key: string }[]
+      categories: unknown[]
     }>()
     expect(body.updatedAt).toBe('2026-11-09T00:00:00.000Z')
     expect(body.rows).toEqual([{ id: 'a', label: '벨로나' }])
     expect(body.crops).toEqual([])
-    expect(body.categories.map((k) => k.key)).toContain('accessory')
+    expect(body.categories).toEqual([
+      { key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] },
+    ])
   })
 
   it('PUT /admin/assets/:id/name 은 이름을 적거나 비우고, 모르는 그림은 404 다', async () => {

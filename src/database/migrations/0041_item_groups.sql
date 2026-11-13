@@ -1,0 +1,52 @@
+CREATE TABLE "item_groups" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"key" text NOT NULL,
+	"kind" text NOT NULL,
+	"name" text NOT NULL,
+	"sort_order" integer NOT NULL,
+	CONSTRAINT "item_groups_key_unique" UNIQUE("key"),
+	CONSTRAINT "item_groups_kind_name_unique" UNIQUE("kind","name")
+);
+--> statement-breakpoint
+-- 묶음을 서버 코드의 상수 표에서 이 표로 옮긴다. 이관 전 코드 트리를 같은 차례로 넣어야 아래 FK 가 선다.
+INSERT INTO "item_groups" ("key", "kind", "name", "sort_order") VALUES
+  ('rootabyss_weapon', 'equipment', '루타비스 무기', 1),
+  ('rootabyss_armor', 'equipment', '루타비스 방어구', 2),
+  ('absolab_weapon', 'equipment', '앱솔랩스 무기', 3),
+  ('absolab_armor', 'equipment', '앱솔랩스 방어구', 4),
+  ('arcane_weapon', 'equipment', '아케인셰이드 무기', 5),
+  ('arcane_armor', 'equipment', '아케인셰이드 방어구', 6),
+  ('eternel_armor', 'equipment', '에테르넬 방어구', 7),
+  ('armor_weapon_set', 'equipment', '방어구와 무기 세트', 8),
+  ('other_armor', 'equipment', '기타 방어구', 9),
+  ('secondary_weapon', 'equipment', '보조무기', 10),
+  ('genesis_weapon', 'equipment', '제네시스 무기', 11),
+  ('destiny_weapon', 'equipment', '데스티니 무기', 12),
+  ('mechanical_heart', 'equipment', '기계 심장', 13),
+  ('ring', 'accessory', '반지', 1),
+  ('pendant', 'accessory', '펜던트', 2),
+  ('earring', 'accessory', '귀고리', 3),
+  ('face_accessory', 'accessory', '얼굴 장식', 4),
+  ('shoulder_accessory', 'accessory', '어깨 장식', 5),
+  ('belt', 'accessory', '벨트', 6),
+  ('badge', 'accessory', '뱃지', 7),
+  ('dark_boss_set', 'accessory', '칠흑의 보스 세트', 8),
+  ('dawn_boss_set', 'accessory', '여명의 보스 세트', 9),
+  ('radiance_boss_set', 'accessory', '광휘의 보스 세트', 10),
+  ('boss_accessory_set', 'accessory', '보스 장신구 세트', 11),
+  ('special_skill_ring', 'accessory', '특수스킬반지', 12),
+  ('boss_enhancement_material', 'consumable', '보스 강화 재료', 1),
+  ('core_gemstone', 'consumable', '코어 젬스톤', 2),
+  ('symbol_coupon', 'consumable', '심볼 교환권', 3),
+  ('scroll', 'consumable', '주문서', 4),
+  ('potion', 'consumable', '물약', 5),
+  ('soul', 'consumable', '소울', 6),
+  ('box', 'consumable', '상자', 7),
+  ('hunt_loot', 'consumable', '사냥 전리품', 8),
+  ('boss_loot', 'consumable', '보스 전리품', 9),
+  ('growth_material', 'etc', '성장 재료', 1),
+  ('profession_material_tool', 'etc', '전문기술 재료와 도구', 2),
+  ('etc_boss_loot', 'etc', '보스 전리품', 3),
+  ('cash', 'cash', '캐시', 1);
+--> statement-breakpoint
+ALTER TABLE "items" ADD CONSTRAINT "items_category_item_groups_key_fk" FOREIGN KEY ("category") REFERENCES "public"."item_groups"("key") ON DELETE no action ON UPDATE no action;

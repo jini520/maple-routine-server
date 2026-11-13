@@ -1,15 +1,6 @@
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { items } from '../../database/schema'
-import { ITEM_CATEGORIES, isItemCategory, sameNameItem } from './items'
-
-describe('ITEM_CATEGORIES', () => {
-  it('묶음 key 는 종류를 건너서도 겹치지 않는다. 아이템 줄은 묶음 key 하나만 들어 겹치면 종류를 못 가린다', () => {
-    const keys = ITEM_CATEGORIES.flatMap((kind) => kind.groups.map((g) => g.key))
-    expect(new Set(keys).size).toBe(keys.length)
-    expect(isItemCategory(keys[0] ?? '')).toBe(true)
-    expect(isItemCategory('equipment')).toBe(false)
-  })
-})
+import { sameNameItem } from './items'
 
 describeDb('sameNameItem', () => {
   let db: TestDb

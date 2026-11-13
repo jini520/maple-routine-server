@@ -1,13 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq, isNotNull } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { assets, huntLootItems, items } from '../../database/schema'
+import { assets, huntLootItems, itemGroups, items } from '../../database/schema'
 import { parseAssetPath, storedFileName } from '../assets/asset-paths'
 import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, type SectionKey, sectionUpdatedAt, touchSection } from '../game-data/sections'
 import type { HuntLootKind } from '../hunt-loot/hunt-loot.repository'
-import { isItemCategory, type ItemKind, kindOfCategory, sameNameItem } from './items'
+import { isItemKind, type ItemKind, sameNameItem } from './items'
 
 /** 관리 화면 아이템 줄. 그림은 미리보기 주소(`/assets/<file>`)를 만들 파일 이름까지 든다. */
 export interface ItemAdminRow {
@@ -36,7 +36,7 @@ export interface ItemInput {
   isEquipment: boolean
 }
 
-/** GET /v1/game-data 의 items 칸 줄. 종류는 분류 트리의 첫 단이다. */
+/** GET /v1/game-data 의 items 칸 줄. 종류는 그 묶음의 종류다. */
 export interface ItemView {
   key: string
   name: string
@@ -60,7 +60,7 @@ const KO = new Intl.Collator('ko')
 export class ItemExists extends Error {}
 /** 비교 모양의 이름이 같은 아이템이 다른 key 로 있다. message 가 그 아이템의 key 다. */
 export class ItemNameTaken extends Error {}
-/** 분류 트리에 없는 묶음 key 다. message 가 그 값이다. */
+/** 묶음 표에 없는 묶음 key 다. message 가 그 값이다. */
 export class InvalidItemCategory extends Error {}
 /** 붙은 역할을 빼려 했다. message 가 그 칸(`isDrop` · `isEquipment`)이다. */
 export class ItemRoleRemoved extends Error {}
@@ -82,15 +82,13 @@ export class ItemsRepository {
       .select({
         key: items.key,
         name: items.name,
-        category: items.category,
+        kind: itemGroups.kind,
+        category: itemGroups.key,
         iconAssetId: items.iconAssetId,
       })
       .from(items)
-      .where(isNotNull(items.category))
-    const views = rows.flatMap(({ category, ...r }) => {
-      const kind = category === null ? null : kindOfCategory(category)
-      return kind === null || category === null ? [] : [{ ...r, kind, category }]
-    })
+      .innerJoin(itemGroups, eq(itemGroups.key, items.category))
+    const views = rows.flatMap(({ kind, ...r }) => (isItemKind(kind) ? [{ ...r, kind }] : []))
     views.sort((a, b) => KO.compare(a.name, b.name) || KO.compare(a.key, b.key))
     return { updatedAt: await sectionUpdatedAt(this.db, 'items'), items: views }
   }
@@ -194,8 +192,13 @@ export class ItemsRepository {
 }
 
 async function check(db: DbOrTx, key: string, input: ItemInput): Promise<void> {
-  if (input.category !== null && !isItemCategory(input.category))
-    throw new InvalidItemCategory(input.category)
+  if (input.category !== null) {
+    const [group] = await db
+      .select({ id: itemGroups.id })
+      .from(itemGroups)
+      .where(eq(itemGroups.key, input.category))
+    if (group === undefined) throw new InvalidItemCategory(input.category)
+  }
   const twin = await sameNameItem(db, key, input.name)
   if (twin !== null) throw new ItemNameTaken(twin.key)
   if (input.iconAssetId !== null) {

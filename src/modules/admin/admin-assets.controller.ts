@@ -27,7 +27,7 @@ import {
   type ImageCropKind,
   ImageCropsRepository,
 } from '../assets/image-crops.repository'
-import { ITEM_CATEGORIES } from '../items/items'
+import { ItemGroupsRepository } from '../items/item-groups.repository'
 import { ASSETS_HTML } from './views/assets'
 
 /** 앱의 크롭 계산(`lib/image-crop.ts`)이 읽는 두 문법. 다른 값은 앱이 기본 크롭으로 떨어뜨리므로 쓰기 때 막는다. */
@@ -55,6 +55,7 @@ export class AdminAssetsController {
     private readonly assets: AssetsRepository,
     private readonly crops: ImageCropsRepository,
     private readonly store: AssetStore,
+    private readonly groups: ItemGroupsRepository,
   ) {}
 
   @Get('assets')
@@ -75,12 +76,13 @@ export class AdminAssetsController {
   @Get('assets/list')
   @Header('cache-control', 'no-store')
   async list() {
-    const [section, rows, crops] = await Promise.all([
+    const [section, rows, crops, categories] = await Promise.all([
       this.assets.section(),
       this.assets.adminRows(),
       this.crops.section(),
+      this.groups.tree(),
     ])
-    return { updatedAt: section.updatedAt, categories: ITEM_CATEGORIES, rows, crops: crops.crops }
+    return { updatedAt: section.updatedAt, categories, rows, crops: crops.crops }
   }
 
   @Put('assets/:id/name')

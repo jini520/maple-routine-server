@@ -24,6 +24,7 @@ export const SECTION_KEYS = [
   'assets',
   'imageCrops',
   'appImages',
+  'items',
 ] as const
 export type SectionKey = (typeof SECTION_KEYS)[number]
 

@@ -181,7 +181,12 @@ export class HuntLootRepository {
       iconAssetId: await resolveAssetId(db, 'itemIcon', input.iconFile),
     }
     const [same] = await db
-      .select({ id: items.id, isDrop: items.isDrop, isEquipment: items.isEquipment })
+      .select({
+        id: items.id,
+        category: items.category,
+        isDrop: items.isDrop,
+        isEquipment: items.isEquipment,
+      })
       .from(items)
       .where(eq(items.key, key))
     if (same !== undefined) {
@@ -189,9 +194,10 @@ export class HuntLootRepository {
         .update(items)
         .set({ ...columns, updatedAt: new Date() })
         .where(eq(items.id, same.id))
-      // 드롭 아이템 · 강화 장비를 겸하는 줄이면 그 칸의 이름 · 그림도 바뀐다.
+      // 드롭 아이템 · 강화 장비를 겸하거나 분류가 있는 줄이면 그 칸의 이름 · 그림도 바뀐다.
       if (same.isDrop) await touchSection(db, 'dropItems')
       if (same.isEquipment) await touchSection(db, 'equipmentItems')
+      if (same.category !== null) await touchSection(db, 'items')
       return same.id
     }
     const [row] = await db

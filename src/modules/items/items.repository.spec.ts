@@ -76,7 +76,7 @@ describeDb('ItemsRepository', () => {
       },
     })
     expect(rows[0]?.icon).toBeNull()
-    expect(await touched()).toEqual(['dropItems', 'equipmentItems'])
+    expect(await touched()).toEqual(['dropItems', 'equipmentItems', 'items'])
   })
 
   it('같은 key 는 ItemExists, 이름이 같은 다른 key 는 ItemNameTaken, 모르는 분류는 InvalidItemCategory, 없는 그림은 AssetNotFound 다', async () => {
@@ -119,7 +119,7 @@ describeDb('ItemsRepository', () => {
       .from(items)
       .where(eq(items.key, 'dreamy_belt'))
     expect(row).toEqual({ isEquipment: true, level: 200 })
-    expect(await touched()).toEqual(['dropItems', 'equipmentItems'])
+    expect(await touched()).toEqual(['dropItems', 'equipmentItems', 'items'])
 
     await expect(
       repo.update('dreamy_belt', { ...base, name: '몽환의 벨트', isDrop: false }),
@@ -127,15 +127,54 @@ describeDb('ItemsRepository', () => {
     expect(await repo.update('nobody', base)).toBe(false)
   })
 
-  it('분류만 바꾸면 앱이 받는 칸의 시각을 밀지 않는다. 분류는 앱에 안 실린다', async () => {
+  it('분류만 바꾸면 items 칸의 시각만 민다. 분류는 items 칸에만 실린다', async () => {
     await repo.create('giant_terror', base)
     await db.delete(gameDataSections)
     await repo.update('giant_terror', { ...base, category: 'boss_accessory_set' })
-    expect(await touched()).toEqual([])
+    expect(await touched()).toEqual(['items'])
     expect((await repo.adminRows())[0]?.category).toBe('boss_accessory_set')
   })
 
-  it('사냥 전리품 아이템은 분류를 함께 내고, 이름을 고치면 사냥 전리품 칸의 시각도 민다', async () => {
+  it('월드 간 거래 불가만 바꾸면 어느 칸의 시각도 밀지 않는다. 앱 칸에 안 실린다', async () => {
+    await repo.create('giant_terror', base)
+    await db.delete(gameDataSections)
+    await repo.update('giant_terror', { ...base, worldBound: true })
+    expect(await touched()).toEqual([])
+  })
+
+  it('분류가 없는 아이템은 items 칸에 안 실려, 더하거나 고쳐도 그 칸의 시각을 밀지 않는다. 분류를 떼면 민다', async () => {
+    const loose = { ...base, category: null, isDrop: false, isEquipment: false }
+    await repo.create('reindeer_milk', { ...loose, name: '순록의 우유' })
+    await repo.update('reindeer_milk', { ...loose, name: '순록의 우유!' })
+    expect(await touched()).toEqual([])
+
+    await repo.create('giant_terror', base)
+    await db.delete(gameDataSections)
+    await repo.update('giant_terror', { ...base, category: null })
+    expect(await touched()).toEqual(['items'])
+  })
+
+  it('items 칸은 분류가 있는 아이템을 이름 차례로 내고, 줄마다 종류(분류 트리의 첫 단) · 묶음 · 그림 id 를 든다', async () => {
+    const icon = assetIds['items/giant_terror.png'] ?? null
+    const plain = { ...base, valuable: false, level: null, isDrop: false, isEquipment: false }
+    await repo.create('giant_terror', { ...base, iconAssetId: icon })
+    await repo.create('red_cube', { ...plain, name: '레드 큐브', category: 'cash' })
+    await repo.create('arcane_symbol_box', { ...plain, name: '아케인 심볼 상자', category: 'box' })
+    await repo.create('sol_erda_fragment', { ...plain, name: '솔 에르다 조각', category: 'growth_material' })
+    await repo.create('reindeer_milk', { ...plain, name: '순록의 우유', category: null })
+
+    const section = await repo.section()
+
+    expect(section.updatedAt).not.toBeNull()
+    expect(section.items).toEqual([
+      { key: 'giant_terror', name: '거대한 공포', kind: 'accessory', category: 'dark_boss_set', iconAssetId: icon },
+      { key: 'red_cube', name: '레드 큐브', kind: 'cash', category: 'cash', iconAssetId: null },
+      { key: 'sol_erda_fragment', name: '솔 에르다 조각', kind: 'etc', category: 'growth_material', iconAssetId: null },
+      { key: 'arcane_symbol_box', name: '아케인 심볼 상자', kind: 'consumable', category: 'box', iconAssetId: null },
+    ])
+  })
+
+  it('사냥 전리품 아이템은 분류를 함께 내고, 이름을 고치면 사냥 전리품 칸, 분류를 붙이면 items 칸의 시각도 민다', async () => {
     await repo.create('reindeer_milk', {
       ...base,
       name: '순록의 우유',
@@ -163,7 +202,7 @@ describeDb('ItemsRepository', () => {
       isDrop: false,
       isEquipment: false,
     })
-    expect(await touched()).toEqual(['huntLoot'])
+    expect(await touched()).toEqual(['huntLoot', 'items'])
     const rows = await db.select({ name: items.name }).from(items).orderBy(asc(items.key))
     expect(rows).toEqual([{ name: '순록의 우유!' }])
     expect((await repo.adminRows())[0]?.huntLootKind).toBe('consumable')

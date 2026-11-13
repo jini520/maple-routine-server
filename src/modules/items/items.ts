@@ -72,13 +72,19 @@ export const ITEM_CATEGORIES = [
 ] as const
 
 export type ItemCategory = (typeof ITEM_CATEGORIES)[number]['groups'][number]['key']
+export type ItemKind = (typeof ITEM_CATEGORIES)[number]['key']
 
-const CATEGORY_KEYS: ReadonlySet<string> = new Set(
-  ITEM_CATEGORIES.flatMap((kind) => kind.groups.map((g) => g.key)),
+const KIND_OF_CATEGORY: ReadonlyMap<string, ItemKind> = new Map(
+  ITEM_CATEGORIES.flatMap((kind) => kind.groups.map((g) => [g.key, kind.key] as const)),
 )
 
+/** 묶음 key 가 든 종류. 트리에 없는 묶음이면 null 이다. */
+export function kindOfCategory(category: string): ItemKind | null {
+  return KIND_OF_CATEGORY.get(category) ?? null
+}
+
 export function isItemCategory(value: string): value is ItemCategory {
-  return CATEGORY_KEYS.has(value)
+  return KIND_OF_CATEGORY.has(value)
 }
 
 /** 앱이 넥슨 이름에서 key 를 얻는 규칙과 같다. NFC 로 맞추고 공백을 모두 지운다. */

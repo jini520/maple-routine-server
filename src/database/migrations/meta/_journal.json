@@ -281,6 +281,13 @@
       "when": 1794453792868,
       "tag": "0039_hunting_ground_popular",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794533468535,
+      "tag": "0040_items_section",
+      "breakpoints": true
     }
   ]
 }

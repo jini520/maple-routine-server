@@ -14,6 +14,7 @@ import { FaqsModule } from '../faqs/faqs.module'
 import { HexaMatrixModule } from '../hexa-matrix/hexa-matrix.module'
 import { HuntingGroundsModule } from '../hunting-grounds/hunting-grounds.module'
 import { HuntLootModule } from '../hunt-loot/hunt-loot.module'
+import { ItemsModule } from '../items/items.module'
 import { MvpGradesModule } from '../mvp-grades/mvp-grades.module'
 import { SpendCatalogModule } from '../spend-catalog/spend-catalog.module'
 import { SymbolCostsModule } from '../symbol-costs/symbol-costs.module'
@@ -42,6 +43,7 @@ import { GameDataService } from './game-data.service'
     CashbookCategoriesModule,
     AssetsModule,
     AppImagesModule,
+    ItemsModule,
   ],
   controllers: [GameDataController],
   providers: [GameDataService],

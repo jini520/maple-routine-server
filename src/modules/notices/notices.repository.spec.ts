@@ -205,13 +205,26 @@ describeDb('NoticesRepository', () => {
     expect(await repo.findAppById(gameId)).toBeNull()
     expect((await repo.findAppById(appId))?.noticeKey).toBe('notice-1')
 
-    expect(await repo.updateApp(gameId, { title: 'x', body: 'y', link: null })).toBe(false)
+    expect((await repo.listApp(10))[0]?.markdown).toBeNull()
+
+    const edit = {
+      markdown: '고친 **본문**',
+      blocks: [{ type: 'text' as const, text: '고친 본문' }],
+    }
+    expect(await repo.updateApp(gameId, { title: 'x', body: 'y', link: null, ...edit })).toBe(false)
     expect(
-      await repo.updateApp(appId, { title: '고친 제목', body: '고친 본문', link: 'https://l' }),
+      await repo.updateApp(appId, {
+        title: '고친 제목',
+        body: '고친 본문',
+        link: 'https://l',
+        ...edit,
+      }),
     ).toBe(true)
     const updated = await repo.findAppById(appId)
     expect(updated).toMatchObject({ title: '고친 제목', body: '고친 본문', link: 'https://l' })
     expect(updated?.publishedAt).toEqual(new Date('2026-10-01T00:00:00Z'))
+    expect((await repo.listApp(10))[0]?.markdown).toBe('고친 **본문**')
+    expect((await repo.findByKey('notice-1'))?.blocks).toEqual(edit.blocks)
 
     expect(await repo.cancelSchedule(appId)).toBe(true)
     expect((await repo.findAppById(appId))?.scheduledAt).toBeNull()

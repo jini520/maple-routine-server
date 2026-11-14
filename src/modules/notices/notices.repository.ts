@@ -27,6 +27,11 @@ export interface NoticeDetailRow extends NoticeRow {
   blocks: NoticeBlock[] | null
 }
 
+/** 관리 화면의 운영자 공지 한 줄. 고칠 때 마크다운 원문을 다시 연다. */
+export interface AppNoticeRow extends NoticeRow {
+  markdown: string | null
+}
+
 export interface NewNotice {
   noticeKey: string
   kind: NoticeKind
@@ -38,6 +43,7 @@ export interface NewNotice {
   startsAt?: Date | null
   endsAt?: Date | null
   blocks?: NoticeBlock[] | null
+  markdown?: string | null
   scheduledAt?: Date | null
   pushTitle?: string | null
   pushBody?: string | null
@@ -132,6 +138,7 @@ export class NoticesRepository {
         startsAt: input.startsAt ?? null,
         endsAt: input.endsAt ?? null,
         blocks: input.blocks ?? null,
+        markdown: input.markdown ?? null,
         scheduledAt: input.scheduledAt ?? null,
         pushTitle: input.pushTitle ?? null,
         pushBody: input.pushBody ?? null,
@@ -211,9 +218,9 @@ export class NoticesRepository {
   }
 
   /** 운영자 공지만 최근 것부터. 관리 화면이 읽는다. */
-  listApp(limit: number): Promise<NoticeRow[]> {
+  listApp(limit: number): Promise<AppNoticeRow[]> {
     return this.db
-      .select(ROW_COLUMNS)
+      .select({ ...ROW_COLUMNS, markdown: notices.markdown })
       .from(notices)
       .where(eq(notices.kind, 'app'))
       .orderBy(desc(notices.publishedAt), desc(notices.id))
@@ -231,6 +238,8 @@ export class NoticesRepository {
     id: string,
     patch: {
       title: string
+      markdown: string
+      blocks: NoticeBlock[]
       body: string
       link: string | null
       pushTitle?: string | null

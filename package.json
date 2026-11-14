@@ -54,6 +54,7 @@
     "drizzle-orm": "^0.45.4",
     "firebase-admin": "^14.5.0",
     "lightweight-charts": "4.2.3",
+    "markdown-it": "^15.0.3",
     "nestjs-pino": "^5.3.1",
     "pg": "^8.23.1",
     "pino": "^10.4.0",

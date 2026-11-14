@@ -213,6 +213,8 @@ export const notices = pgTable(
     body: text('body'),
     /** 운영자 공지와 썬데이 메이플만. */
     blocks: jsonb('blocks'),
+    /** 운영자가 쓴 마크다운. 고칠 때 이 원문을 다시 연다. 넥슨 공지와 마크다운 이전의 운영자 공지는 NULL. */
+    markdown: text('markdown'),
     link: text('link'),
     /** 넥슨의 notice_id. */
     sourceId: bigint('source_id', { mode: 'number' }),

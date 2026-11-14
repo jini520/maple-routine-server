@@ -38,10 +38,13 @@ const pushText = z.object({
   body: z.string().min(1).max(200).nullish(),
 })
 
+/** 공지 본문 마크다운. 그림 한 줄이 주소만 80자 남짓이라 그림이 많은 설명서가 들어가게 10,000자다. */
+const noticeMarkdown = z.string().min(1).max(10_000)
+
 /** 공지를 쓴다. push 가 null 이면 안 알리고, scheduledAt 이 있으면 그 시각에 알린다. */
 export const noticeCreateBody = z.object({
   title: z.string().min(1).max(200),
-  body: z.string().min(1).max(5000),
+  markdown: noticeMarkdown,
   link: z.url().nullish(),
   push: pushText.extend({ scheduledAt: z.iso.datetime({ offset: true }).nullish() }).nullish(),
 })
@@ -50,11 +53,15 @@ export type NoticeCreateBody = z.infer<typeof noticeCreateBody>
 /** 고친다. 예약은 없다. push 가 있으면 지금 다시 보낸다. */
 export const noticeUpdateBody = z.object({
   title: z.string().min(1).max(200),
-  body: z.string().min(1).max(5000),
+  markdown: noticeMarkdown,
   link: z.url().nullish(),
   push: pushText.nullish(),
 })
 export type NoticeUpdateBody = z.infer<typeof noticeUpdateBody>
+
+/** 저장 전에 마크다운이 어떤 블록이 되는지 본다. */
+export const noticePreviewBody = z.object({ markdown: noticeMarkdown })
+export type NoticePreviewBody = z.infer<typeof noticePreviewBody>
 
 /** 앱의 snake_case key. 아이템 · 보스가 같은 모양이다. */
 export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)

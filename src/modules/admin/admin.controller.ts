@@ -134,7 +134,8 @@ import {
   WorldExists,
   WorldsRepository,
 } from '../worlds/worlds.repository'
-import type { NoticeRow } from '../notices/notices.repository'
+import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
+import type { AppNoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import {
   type AliasBody,
@@ -170,6 +171,8 @@ import {
   moveBody,
   type NoticeCreateBody,
   noticeCreateBody,
+  type NoticePreviewBody,
+  noticePreviewBody,
   type NoticeUpdateBody,
   noticeUpdateBody,
   type OpenBody,
@@ -528,14 +531,25 @@ export class AdminController {
     return { rows: rows.map(toAdminNotice) }
   }
 
-  /** 쓴다. 저장은 그 자리에서 되고 알림은 push 가 정한다. 지난 시각의 예약은 400 이다. */
+  /** 저장하면 곧바로 앱에 보이므로 폼이 저장 전에 부른다. 저장과 같은 변환이다. */
+  @Post('notices/preview')
+  @HttpCode(200)
+  previewNotice(@Body(new ZodValidationPipe(noticePreviewBody)) body: NoticePreviewBody) {
+    try {
+      return markdownToNotice(body.markdown)
+    } catch (error) {
+      throw markdownRejection(error)
+    }
+  }
+
+  /** 쓴다. 저장은 그 자리에서 되고 알림은 push 가 정한다. 지난 시각의 예약 · https 가 아닌 본문 주소는 400 이다. */
   @Post('notices')
   @HttpCode(201)
   async createNotice(@Body(new ZodValidationPipe(noticeCreateBody)) body: NoticeCreateBody) {
     try {
       return await this.notices.create({
         title: body.title,
-        body: body.body,
+        markdown: body.markdown,
         link: body.link ?? null,
         push:
           body.push === null || body.push === undefined
@@ -548,25 +562,30 @@ export class AdminController {
       })
     } catch (error) {
       if (error instanceof SchedulePassed) throw new BadRequestException('예약 시각이 이미 지났다')
-      throw error
+      throw markdownRejection(error)
     }
   }
 
-  /** 고친다. 넥슨 공지나 없는 id 는 404 다. */
+  /** 고친다. 넥슨 공지나 없는 id 는 404, https 가 아닌 본문 주소는 400 이다. */
   @Patch('notices/:id')
   async updateNotice(
     @Param('id', new ZodValidationPipe(rowId)) id: string,
     @Body(new ZodValidationPipe(noticeUpdateBody)) body: NoticeUpdateBody,
   ) {
-    const result = await this.notices.update(id, {
-      title: body.title,
-      body: body.body,
-      link: body.link ?? null,
-      push:
-        body.push === null || body.push === undefined
-          ? null
-          : { title: body.push.title ?? null, body: body.push.body ?? null },
-    })
+    let result: { messageId: string | null } | null
+    try {
+      result = await this.notices.update(id, {
+        title: body.title,
+        markdown: body.markdown,
+        link: body.link ?? null,
+        push:
+          body.push === null || body.push === undefined
+            ? null
+            : { title: body.push.title ?? null, body: body.push.body ?? null },
+      })
+    } catch (error) {
+      throw markdownRejection(error)
+    }
     if (result === null) throw new NotFoundException()
     return result
   }
@@ -2177,12 +2196,13 @@ function spendItemError(error: unknown, key: string): unknown {
   return error
 }
 
-function toAdminNotice(row: NoticeRow) {
+function toAdminNotice(row: AppNoticeRow) {
   return {
     id: row.id,
     noticeKey: row.noticeKey,
     title: row.title,
     body: row.body ?? '',
+    markdown: row.markdown,
     link: row.link,
     publishedAt: row.publishedAt.toISOString(),
     scheduledAt: row.scheduledAt?.toISOString() ?? null,
@@ -2190,6 +2210,11 @@ function toAdminNotice(row: NoticeRow) {
     pushTitle: row.pushTitle,
     pushBody: row.pushBody,
   }
+}
+
+/** 공지 본문의 거절을 400 으로 바꾼 예외. 메시지에 거절한 주소가 들어 있다. 다른 에러는 그대로 돌려준다. */
+function markdownRejection(error: unknown): unknown {
+  return error instanceof MarkdownRejected ? new BadRequestException(error.message) : error
 }
 
 /** 기간 쓰기의 거절을 400 으로 바꾼 예외. 기간 거절이 아니면 받은 것을 그대로 돌려준다. */

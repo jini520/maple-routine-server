@@ -28,6 +28,7 @@ import { AdminAssetsController } from './admin-assets.controller'
 import { AppImagesModule } from '../app-images/app-images.module'
 import { AdminAppImagesController } from './admin-app-images.controller'
 import { AdminItemsController } from './admin-items.controller'
+import { AdminNoticeImagesController } from './admin-notice-images.controller'
 import { AdminController } from './admin.controller'
 import { UsageDashboardService } from './usage-dashboard.service'
 
@@ -65,6 +66,7 @@ import { UsageDashboardService } from './usage-dashboard.service'
     AdminAssetsController,
     AdminItemsController,
     AdminAppImagesController,
+    AdminNoticeImagesController,
   ],
   providers: [UsageDashboardService],
 })

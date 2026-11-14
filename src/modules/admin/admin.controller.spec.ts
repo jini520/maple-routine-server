@@ -70,6 +70,7 @@ import {
   AlreadyOpen,
   ManualCompletionRepository,
 } from '../manual-completion/manual-completion.repository'
+import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { AssetsRepository } from '../assets/assets.repository'
@@ -555,16 +556,17 @@ describe('AdminController', () => {
   })
 
   describe('공지', () => {
-    const body = { title: '점검', body: '밤 10시', link: null, push: null }
+    const body = { title: '점검', markdown: '밤 10시', link: null, push: null }
 
-    it('GET /admin/notices/rows 는 운영자 공지를 ISO 시각으로 낸다', async () => {
+    it('GET /admin/notices/rows 는 운영자 공지를 ISO 시각으로 내고 고칠 마크다운을 싣는다', async () => {
       notices.list.mockResolvedValue([
         {
           id: ROW,
           noticeKey: 'notice-20261015-000000',
           kind: 'app',
           title: '점검',
-          body: null,
+          body: '밤 10시',
+          markdown: '밤 **10시**',
           link: null,
           publishedAt: new Date('2026-10-15T00:00:00Z'),
           scheduledAt: new Date('2026-10-15T12:00:00Z'),
@@ -582,7 +584,8 @@ describe('AdminController', () => {
             id: ROW,
             noticeKey: 'notice-20261015-000000',
             title: '점검',
-            body: '',
+            body: '밤 10시',
+            markdown: '밤 **10시**',
             link: null,
             publishedAt: '2026-10-15T00:00:00.000Z',
             scheduledAt: '2026-10-15T12:00:00.000Z',
@@ -607,13 +610,33 @@ describe('AdminController', () => {
       expect(res.json()).toEqual({ id: ROW, noticeKey: 'k', messageId: 'm' })
       expect(notices.create).toHaveBeenCalledWith({
         title: '점검',
-        body: '밤 10시',
+        markdown: '밤 10시',
         link: null,
         push: { title: '제목', body: null, scheduledAt: new Date('2026-12-01T01:00:00Z') },
       })
     })
 
-    it('지난 예약은 400, 제목이 없거나 링크가 주소가 아니면 400 이다', async () => {
+    it('지난 예약 · https 가 아닌 본문 주소는 400 이고 그 주소를 알린다', async () => {
+      notices.create.mockRejectedValueOnce(
+        new MarkdownRejected('https 가 아닌 주소다: http://x.test'),
+      )
+      const insecure = await app.inject({ method: 'POST', url: '/admin/notices', payload: body })
+      expect(insecure.statusCode).toBe(400)
+      expect(insecure.body).toContain('http://x.test')
+
+      notices.update.mockRejectedValueOnce(
+        new MarkdownRejected('https 가 아닌 주소다: http://y.test'),
+      )
+      const insecureEdit = await app.inject({
+        method: 'PATCH',
+        url: `/admin/notices/${ROW}`,
+        payload: body,
+      })
+      expect(insecureEdit.statusCode).toBe(400)
+      expect(insecureEdit.body).toContain('http://y.test')
+    })
+
+    it('지난 예약은 400, 제목 · 본문이 없거나 본문이 10,000자를 넘거나 링크가 주소가 아니면 400 이다', async () => {
       notices.create.mockRejectedValueOnce(new SchedulePassed())
       const passed = await app.inject({
         method: 'POST',
@@ -628,6 +651,14 @@ describe('AdminController', () => {
         payload: { ...body, title: '' },
       })
       expect(noTitle.statusCode).toBe(400)
+      for (const markdown of ['', 'a'.repeat(10_001)]) {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/admin/notices',
+          payload: { ...body, markdown },
+        })
+        expect(res.statusCode).toBe(400)
+      }
       const badLink = await app.inject({
         method: 'POST',
         url: '/admin/notices',
@@ -644,7 +675,7 @@ describe('AdminController', () => {
       expect(ok.json()).toEqual({ messageId: null })
       expect(notices.update).toHaveBeenCalledWith(ROW, {
         title: '점검',
-        body: '밤 10시',
+        markdown: '밤 10시',
         link: null,
         push: null,
       })
@@ -656,6 +687,27 @@ describe('AdminController', () => {
         payload: body,
       })
       expect(gone.statusCode).toBe(404)
+    })
+
+    it('POST /admin/notices/preview 는 저장과 같은 변환의 블록 · 평문을 내고, https 가 아닌 주소는 400 이다', async () => {
+      const markdown =
+        '## 새 기능\n\n![](https://mapleroutine.store/assets/a.webp)\n\n메모를 붙여요'
+      const ok = await app.inject({
+        method: 'POST',
+        url: '/admin/notices/preview',
+        payload: { markdown },
+      })
+      expect(ok.statusCode).toBe(200)
+      expect(ok.json()).toEqual(markdownToNotice(markdown))
+
+      const insecure = await app.inject({
+        method: 'POST',
+        url: '/admin/notices/preview',
+        payload: { markdown: '[글](http://x.test/a)' },
+      })
+      expect(insecure.statusCode).toBe(400)
+      expect(insecure.body).toContain('http://x.test/a')
+      expect(notices.create).not.toHaveBeenCalled()
     })
 
     it('DELETE 둘은 204 이고 없으면 404 다', async () => {

@@ -2,8 +2,9 @@ import { Injectable } from '@nestjs/common'
 
 import { type PushableNotice } from '../push/push-text'
 import { PushService } from '../push/push.service'
+import { markdownToNotice } from './markdown-blocks'
 import { operatorNoticeKey } from './notice-key'
-import { type NewNotice, type NoticeRow, NoticesRepository } from './notices.repository'
+import { type AppNoticeRow, type NewNotice, NoticesRepository } from './notices.repository'
 
 /** 알림 문구. null 이면 공지 제목과 본문을 그대로 쓴다. */
 export interface PushRequest {
@@ -13,7 +14,8 @@ export interface PushRequest {
 
 export interface CreateInput {
   title: string
-  body: string
+  /** 운영자가 쓴 본문. 저장할 때 블록과 평문 body 로 바꾼다. */
+  markdown: string
   link: string | null
   /** null 이면 알림을 안 보낸다. scheduledAt 이 있으면 그 시각에 폴러가 보낸다. */
   push: (PushRequest & { scheduledAt: Date | null }) | null
@@ -21,7 +23,7 @@ export interface CreateInput {
 
 export interface UpdateInput {
   title: string
-  body: string
+  markdown: string
   link: string | null
   /** null 이면 고치기만 한다. 있으면 지금 다시 보내고 문구를 덮는다. 수정에는 예약이 없다. */
   push: PushRequest | null
@@ -48,7 +50,7 @@ export class OperatorNoticesService {
     private readonly push: PushService,
   ) {}
 
-  list(): Promise<NoticeRow[]> {
+  list(): Promise<AppNoticeRow[]> {
     return this.repo.listApp(LIST_LIMIT)
   }
 
@@ -63,7 +65,8 @@ export class OperatorNoticesService {
       noticeKey: operatorNoticeKey(now),
       kind: 'app',
       title: input.title,
-      body: input.body,
+      markdown: input.markdown,
+      ...markdownToNotice(input.markdown),
       link: input.link,
       publishedAt: now,
       scheduledAt,
@@ -84,7 +87,12 @@ export class OperatorNoticesService {
     const existing = await this.repo.findAppById(id)
     if (existing === null) return null
 
-    const base = { title: input.title, body: input.body, link: input.link }
+    const base = {
+      title: input.title,
+      markdown: input.markdown,
+      ...markdownToNotice(input.markdown),
+      link: input.link,
+    }
     await this.repo.updateApp(
       id,
       input.push === null

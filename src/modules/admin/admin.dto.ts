@@ -547,6 +547,27 @@ export const starforceStepBody = z.object({
   divisor: z.number().int().min(1),
 })
 export type StarforceStepBody = z.infer<typeof starforceStepBody>
+/** 슈페리얼 계열 key. 앱이 장비의 seriesKey 로 가리킨다. */
+export const superiorSeriesKeyParam = z.string().regex(/^[a-z][a-z0-9_]{0,39}$/)
+/** 계열의 이름과 스타포스 1회 비용. 칸이 integer 라 그 상한을 넘지 않는다. */
+const superiorSeriesFields = z.object({
+  name: z.string().trim().min(1).max(40),
+  starforceCostMeso: z.number().int().min(1).max(2_147_483_647),
+})
+export const superiorSeriesBody = superiorSeriesFields.extend({ key: superiorSeriesKeyParam })
+export type SuperiorSeriesBody = z.infer<typeof superiorSeriesBody>
+export const superiorSeriesUpdateBody = superiorSeriesFields
+export type SuperiorSeriesUpdateBody = z.infer<typeof superiorSeriesUpdateBody>
+/** 슈페리얼 장비. 이름은 넥슨 응답의 장비 이름 그대로다. */
+export const superiorItemBody = z.object({
+  name: z.string().trim().min(1).max(100),
+  seriesKey: superiorSeriesKeyParam,
+})
+export type SuperiorItemBody = z.infer<typeof superiorItemBody>
+export const superiorItemNameParam = z.string().trim().min(1).max(100)
+/** 슈페리얼 장비의 그림. 그림 고르개가 고른 그림의 id 다. */
+export const superiorItemIconBody = z.object({ assetId: z.string().uuid() })
+export type SuperiorItemIconBody = z.infer<typeof superiorItemIconBody>
 
 export const mvpGradeParam = z.enum(MVP_GRADES)
 export const mvpGradeUpdateBody = z.object({

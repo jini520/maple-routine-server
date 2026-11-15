@@ -1176,6 +1176,32 @@ export const starforceSteps = pgTable(
   ],
 )
 
+/** 슈페리얼 장비의 계열. 스타포스 1회 비용이 계열마다 하나이고, 성수 · 할인과 상관없다. */
+export const superiorSeries = pgTable(
+  'superior_series',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    key: text('key').notNull().unique(),
+    name: text('name').notNull(),
+    starforceCostMeso: integer('starforce_cost_meso').notNull(),
+  },
+  (t) => [check('superior_series_starforce_cost_positive', sql`${t.starforceCostMeso} >= 1`)],
+)
+
+/**
+ * 슈페리얼 장비. 앱이 넥슨 응답의 장비 이름과 NFC · 공백 제거 뒤 완전 일치로 찾는다. 그 모양으로도 표 전체에서
+ * 유일하다(쓰기 검사).
+ */
+export const superiorItems = pgTable('superior_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seriesId: uuid('series_id')
+    .notNull()
+    .references(() => superiorSeries.id),
+  name: text('name').notNull().unique(),
+  /** 펼친 강화 줄의 장비 그림. 아이템 표에 없는 슈페리얼 장비도 그림이 서게 둔다. */
+  iconAssetId: uuid('icon_asset_id').references(() => assets.id),
+})
+
 /** MVP 등급의 혜택. ENUM 일곱과 일대일이라 줄을 더하고 지우는 것은 마이그레이션이다. 차례가 높낮이다. */
 export const mvpGrades = pgTable(
   'mvp_grades',

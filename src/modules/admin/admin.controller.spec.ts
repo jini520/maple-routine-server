@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
+import { AssetNotFound } from '../assets/asset-refs'
 import { BossDropsRepository } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
 import {
@@ -33,6 +34,9 @@ import {
   BandExists,
   BaseBand,
   EnhancementCostsRepository,
+  NoSuperiorSeries,
+  SuperiorItemNameTaken,
+  SuperiorSeriesExists,
 } from '../enhancement-costs/enhancement-costs.repository'
 import {
   GroundKeyPrefix,
@@ -195,6 +199,11 @@ describe('AdminController', () => {
     setStarforceStep: jest.fn(),
     addStarforceStep: jest.fn(),
     removeLastStarforceStep: jest.fn(),
+    addSuperiorSeries: jest.fn(),
+    setSuperiorSeries: jest.fn(),
+    addSuperiorItem: jest.fn(),
+    removeSuperiorItem: jest.fn(),
+    setSuperiorItemIcon: jest.fn(),
   }
   const mvpRepo = { section: jest.fn(), update: jest.fn(), move: jest.fn() }
   const huntingRepo = {
@@ -2367,6 +2376,80 @@ describe('AdminController', () => {
         (await app.inject({ method: 'DELETE', url: '/admin/enhancement-costs/starforce/last' }))
           .statusCode,
       ).toBe(404)
+    })
+
+    it('슈페리얼 계열 POST 201 · 같은 key 409 · 금액 0 은 400, PUT 204 · 모르면 404, 장비 POST 201 · 없는 계열 404 · 같은 이름 409, DELETE 204 · 모르면 404 다', async () => {
+      const inject = async (method: 'POST' | 'PUT' | 'DELETE', url: string, payload?: object) =>
+        (await app.inject({ method, url, payload })).statusCode
+      const series = { key: 'tyrant', name: '타일런트', starforceCostMeso: 55_382_200 }
+
+      enhancementRepo.addSuperiorSeries.mockResolvedValue(undefined)
+      expect(await inject('POST', '/admin/enhancement-costs/superior-series', series)).toBe(201)
+      expect(enhancementRepo.addSuperiorSeries).toHaveBeenCalledWith(series)
+      enhancementRepo.addSuperiorSeries.mockRejectedValue(new SuperiorSeriesExists('tyrant'))
+      expect(await inject('POST', '/admin/enhancement-costs/superior-series', series)).toBe(409)
+      expect(
+        await inject('POST', '/admin/enhancement-costs/superior-series', {
+          ...series,
+          starforceCostMeso: 0,
+        }),
+      ).toBe(400)
+
+      enhancementRepo.setSuperiorSeries.mockResolvedValue(true)
+      expect(
+        await inject('PUT', '/admin/enhancement-costs/superior-series/tyrant', {
+          name: '타일런트',
+          starforceCostMeso: 55_000_000,
+        }),
+      ).toBe(204)
+      expect(enhancementRepo.setSuperiorSeries).toHaveBeenCalledWith('tyrant', {
+        name: '타일런트',
+        starforceCostMeso: 55_000_000,
+      })
+      enhancementRepo.setSuperiorSeries.mockResolvedValue(false)
+      expect(
+        await inject('PUT', '/admin/enhancement-costs/superior-series/nova', {
+          name: '노바',
+          starforceCostMeso: 1,
+        }),
+      ).toBe(404)
+
+      const item = { name: '타일런트 리카온 벨트', seriesKey: 'tyrant' }
+      enhancementRepo.addSuperiorItem.mockResolvedValue(undefined)
+      expect(await inject('POST', '/admin/enhancement-costs/superior-items', item)).toBe(201)
+      expect(enhancementRepo.addSuperiorItem).toHaveBeenCalledWith('타일런트 리카온 벨트', 'tyrant')
+      enhancementRepo.addSuperiorItem.mockRejectedValue(new NoSuperiorSeries('nova'))
+      expect(await inject('POST', '/admin/enhancement-costs/superior-items', item)).toBe(404)
+      enhancementRepo.addSuperiorItem.mockRejectedValue(
+        new SuperiorItemNameTaken('타일런트 리카온 벨트'),
+      )
+      expect(await inject('POST', '/admin/enhancement-costs/superior-items', item)).toBe(409)
+      expect(
+        await inject('POST', '/admin/enhancement-costs/superior-items', { ...item, name: ' ' }),
+      ).toBe(400)
+
+      const encoded = encodeURIComponent('타일런트 리카온 벨트')
+      enhancementRepo.removeSuperiorItem.mockResolvedValue(true)
+      expect(await inject('DELETE', `/admin/enhancement-costs/superior-items/${encoded}`)).toBe(204)
+      expect(enhancementRepo.removeSuperiorItem).toHaveBeenCalledWith('타일런트 리카온 벨트')
+      enhancementRepo.removeSuperiorItem.mockResolvedValue(false)
+      expect(await inject('DELETE', `/admin/enhancement-costs/superior-items/${encoded}`)).toBe(404)
+    })
+
+    it('슈페리얼 장비 그림 PUT 204 · 모르는 장비 404 · 그림 표에 없는 그림 400 · uuid 가 아니면 400 이다', async () => {
+      const url = `/admin/enhancement-costs/superior-items/${encodeURIComponent('타일런트 리카온 벨트')}/icon`
+      const assetId = '49d165ed-66b2-40f0-9013-753e2d94d3bb'
+      const put = async (payload: object) =>
+        (await app.inject({ method: 'PUT', url, payload })).statusCode
+
+      enhancementRepo.setSuperiorItemIcon.mockResolvedValue(true)
+      expect(await put({ assetId })).toBe(204)
+      expect(enhancementRepo.setSuperiorItemIcon).toHaveBeenCalledWith('타일런트 리카온 벨트', assetId)
+      enhancementRepo.setSuperiorItemIcon.mockResolvedValue(false)
+      expect(await put({ assetId })).toBe(404)
+      enhancementRepo.setSuperiorItemIcon.mockRejectedValue(new AssetNotFound(assetId))
+      expect(await put({ assetId })).toBe(400)
+      expect(await put({ assetId: 'tyrant_lycaon_belt' })).toBe(400)
     })
   })
 

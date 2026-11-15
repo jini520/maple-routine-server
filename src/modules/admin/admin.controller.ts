@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import type { AssetRef } from '../assets/asset-paths'
+import { AssetNotFound } from '../assets/asset-refs'
 import { AssetsRepository } from '../assets/assets.repository'
 import {
   type BossInput,
@@ -97,8 +98,11 @@ import {
   BandExists,
   BaseBand,
   EnhancementCostsRepository,
+  NoSuperiorSeries,
   type PotentialGrade,
   type PotentialResetType,
+  SuperiorItemNameTaken,
+  SuperiorSeriesExists,
 } from '../enhancement-costs/enhancement-costs.repository'
 import {
   GroundExists,
@@ -249,6 +253,16 @@ import {
   potentialTypeParam,
   type StarforceStepBody,
   starforceStepBody,
+  type SuperiorItemBody,
+  superiorItemBody,
+  type SuperiorItemIconBody,
+  superiorItemIconBody,
+  superiorItemNameParam,
+  type SuperiorSeriesBody,
+  superiorSeriesBody,
+  superiorSeriesKeyParam,
+  type SuperiorSeriesUpdateBody,
+  superiorSeriesUpdateBody,
   type HuntingGroundCreateBody,
   huntingGroundCreateBody,
   type HuntingGroundPopularBody,
@@ -1973,6 +1987,77 @@ export class AdminController {
   async removeLastStarforceStep(): Promise<void> {
     if (!(await this.enhancement.removeLastStarforceStep()))
       throw new NotFoundException('단계가 없다')
+  }
+
+  /** 슈페리얼 계열을 더한다. 같은 key 는 409 다. */
+  @Post('enhancement-costs/superior-series')
+  @HttpCode(201)
+  async addSuperiorSeries(
+    @Body(new ZodValidationPipe(superiorSeriesBody)) body: SuperiorSeriesBody,
+  ): Promise<void> {
+    try {
+      await this.enhancement.addSuperiorSeries(body)
+    } catch (error) {
+      if (error instanceof SuperiorSeriesExists)
+        throw new ConflictException(`이미 있는 계열이다: ${error.message}`)
+      throw error
+    }
+  }
+
+  /** 계열의 이름과 스타포스 1회 비용을 고친다. 없는 key 는 404 다. */
+  @Put('enhancement-costs/superior-series/:key')
+  @HttpCode(204)
+  async setSuperiorSeries(
+    @Param('key', new ZodValidationPipe(superiorSeriesKeyParam)) key: string,
+    @Body(new ZodValidationPipe(superiorSeriesUpdateBody)) body: SuperiorSeriesUpdateBody,
+  ): Promise<void> {
+    if (!(await this.enhancement.setSuperiorSeries(key, body)))
+      throw new NotFoundException(`모르는 계열이다: ${key}`)
+  }
+
+  /** 슈페리얼 장비를 더한다. 없는 계열은 404, 공백만 다른 이름은 409 다. */
+  @Post('enhancement-costs/superior-items')
+  @HttpCode(201)
+  async addSuperiorItem(
+    @Body(new ZodValidationPipe(superiorItemBody)) body: SuperiorItemBody,
+  ): Promise<void> {
+    try {
+      await this.enhancement.addSuperiorItem(body.name, body.seriesKey)
+    } catch (error) {
+      if (error instanceof NoSuperiorSeries)
+        throw new NotFoundException(`모르는 계열이다: ${error.message}`)
+      if (error instanceof SuperiorItemNameTaken)
+        throw new ConflictException(`공백만 다른 장비 이름이 이미 있다: ${error.message}`)
+      throw error
+    }
+  }
+
+  /** 슈페리얼 장비의 그림을 바꾼다. 없는 장비는 404, 그림 표에 없는 그림은 400 이다. */
+  @Put('enhancement-costs/superior-items/:name/icon')
+  @HttpCode(204)
+  async setSuperiorItemIcon(
+    @Param('name', new ZodValidationPipe(superiorItemNameParam)) name: string,
+    @Body(new ZodValidationPipe(superiorItemIconBody)) body: SuperiorItemIconBody,
+  ): Promise<void> {
+    let found: boolean
+    try {
+      found = await this.enhancement.setSuperiorItemIcon(name, body.assetId)
+    } catch (error) {
+      if (error instanceof AssetNotFound)
+        throw new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
+      throw error
+    }
+    if (!found) throw new NotFoundException(`모르는 장비다: ${name}`)
+  }
+
+  /** 슈페리얼 장비를 지운다. 없으면 404 다. */
+  @Delete('enhancement-costs/superior-items/:name')
+  @HttpCode(204)
+  async removeSuperiorItem(
+    @Param('name', new ZodValidationPipe(superiorItemNameParam)) name: string,
+  ): Promise<void> {
+    if (!(await this.enhancement.removeSuperiorItem(name)))
+      throw new NotFoundException(`모르는 장비다: ${name}`)
   }
 
   /* ── MVP 등급 ── */

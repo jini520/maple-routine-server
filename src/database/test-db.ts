@@ -25,6 +25,8 @@ const TABLES = [
   'potential_reset_costs',
   'soul_potential_reset_costs',
   'starforce_steps',
+  'superior_items',
+  'superior_series',
   'mvp_grades',
   'contents',
   'content_categories',

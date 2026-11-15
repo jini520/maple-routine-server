@@ -4,12 +4,17 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import {
+  assets,
   gameRules,
   potentialResetCosts,
   soulPotentialResetCosts,
   starforceSteps,
+  superiorItems,
+  superiorSeries,
 } from '../../database/schema'
+import { AssetNotFound } from '../assets/asset-refs'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
+import { comparableItemName } from '../items/items'
 
 /** API 의 '잠재능력 재설정' · '에디셔널 잠재능력 재설정' 과 등급 글자는 앱 상수가 맞춘다. */
 export const POTENTIAL_RESET_TYPES = ['potential', 'additional'] as const
@@ -43,6 +48,21 @@ export interface StarforceStepView {
   divisor: number
 }
 
+/** 슈페리얼 장비의 계열. 스타포스 1회 비용이 계열마다 하나다. */
+export interface SuperiorSeriesView {
+  key: string
+  name: string
+  starforceCostMeso: number
+}
+
+/** 슈페리얼 장비 하나. 앱이 넥슨 응답의 장비 이름과 공백을 지운 뒤 맞춘다. */
+export interface SuperiorItemView {
+  name: string
+  seriesKey: string
+  /** 펼친 강화 줄의 장비 그림. 없으면 null 이고 앱은 이름부터 세운다 */
+  iconAssetId: string | null
+}
+
 /** GET /v1/game-data 의 enhancementCosts 칸. 기간 줄이 없다. 앱이 수집할 때 이 값으로 합계를 매긴다. */
 export interface EnhancementCostsSection {
   updatedAt: string | null
@@ -50,6 +70,8 @@ export interface EnhancementCostsSection {
   potentialResetCosts: PotentialResetCostView[]
   soulPotentialResetCosts: SoulPotentialResetCostView[]
   starforceSteps: StarforceStepView[]
+  superiorSeries: SuperiorSeriesView[]
+  superiorItems: SuperiorItemView[]
 }
 
 export type EnhancementRulesInput = Record<EnhancementRuleField, number>
@@ -60,6 +82,12 @@ export type StarforceStepInput = Omit<StarforceStepView, 'fromStar'>
 export class BandExists extends Error {}
 /** min_level 1 구간은 못 지운다. 어느 레벨이든 한 줄에 걸려야 해서다. */
 export class BaseBand extends Error {}
+/** 그 key 의 슈페리얼 계열이 이미 있다. */
+export class SuperiorSeriesExists extends Error {}
+/** 그 key 의 슈페리얼 계열이 없다. */
+export class NoSuperiorSeries extends Error {}
+/** 공백 · 정규화만 다른 슈페리얼 장비 이름이 이미 있다. message 가 그 이름이다. */
+export class SuperiorItemNameTaken extends Error {}
 
 /**
  * 잠재 · 소울 · 스타포스 비용과 규칙 셋. 칸을 제자리에서 고친다. 고친 값은 앱이 다음에 수집하는 기록부터 쓰고 이미 저장한
@@ -70,7 +98,7 @@ export class EnhancementCostsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<EnhancementCostsSection> {
-    const [rules, potential, soul, steps, updatedAt] = await Promise.all([
+    const [rules, potential, soul, steps, series, items, updatedAt] = await Promise.all([
       this.db
         .select()
         .from(gameRules)
@@ -103,6 +131,23 @@ export class EnhancementCostsRepository {
         })
         .from(starforceSteps)
         .orderBy(asc(starforceSteps.fromStar)),
+      this.db
+        .select({
+          key: superiorSeries.key,
+          name: superiorSeries.name,
+          starforceCostMeso: superiorSeries.starforceCostMeso,
+        })
+        .from(superiorSeries)
+        .orderBy(asc(superiorSeries.key)),
+      this.db
+        .select({
+          name: superiorItems.name,
+          seriesKey: superiorSeries.key,
+          iconAssetId: superiorItems.iconAssetId,
+        })
+        .from(superiorItems)
+        .innerJoin(superiorSeries, eq(superiorItems.seriesId, superiorSeries.id))
+        .orderBy(asc(superiorSeries.key), asc(superiorItems.name)),
       sectionUpdatedAt(this.db, 'enhancementCosts'),
     ])
     const ruleOf = (field: EnhancementRuleField): number | null =>
@@ -117,6 +162,8 @@ export class EnhancementCostsRepository {
       potentialResetCosts: potential,
       soulPotentialResetCosts: soul,
       starforceSteps: steps,
+      superiorSeries: series,
+      superiorItems: items,
     }
   }
 
@@ -247,6 +294,83 @@ export class EnhancementCostsRepository {
         .limit(1)
       if (last === undefined) return false
       await tx.delete(starforceSteps).where(eq(starforceSteps.id, last.id))
+      await touchSection(tx, 'enhancementCosts')
+      return true
+    })
+  }
+
+  /** 슈페리얼 계열을 더한다. 같은 key 는 SuperiorSeriesExists 다. */
+  async addSuperiorSeries(input: SuperiorSeriesView): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      try {
+        await tx.insert(superiorSeries).values(input)
+      } catch (error) {
+        if (isUniqueViolation(error)) throw new SuperiorSeriesExists(input.key)
+        throw error
+      }
+      await touchSection(tx, 'enhancementCosts')
+    })
+  }
+
+  /** 계열의 이름과 금액을 고친다. 없는 key 는 false 다. */
+  async setSuperiorSeries(key: string, input: Omit<SuperiorSeriesView, 'key'>): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .update(superiorSeries)
+        .set(input)
+        .where(eq(superiorSeries.key, key))
+        .returning({ id: superiorSeries.id })
+      if (rows.length === 0) return false
+      await touchSection(tx, 'enhancementCosts')
+      return true
+    })
+  }
+
+  /**
+   * 슈페리얼 장비를 더한다. 없는 계열은 NoSuperiorSeries, 공백 · 정규화만 다른 이름은 SuperiorItemNameTaken 이다. 표가
+   * 수십 줄이라 이름을 모두 읽어 비교한다.
+   */
+  async addSuperiorItem(name: string, seriesKey: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const [series] = await tx
+        .select({ id: superiorSeries.id })
+        .from(superiorSeries)
+        .where(eq(superiorSeries.key, seriesKey))
+      if (series === undefined) throw new NoSuperiorSeries(seriesKey)
+      const wanted = comparableItemName(name)
+      const twin = (await tx.select({ name: superiorItems.name }).from(superiorItems)).find(
+        (row) => comparableItemName(row.name) === wanted,
+      )
+      if (twin !== undefined) throw new SuperiorItemNameTaken(twin.name)
+      await tx.insert(superiorItems).values({ seriesId: series.id, name })
+      await touchSection(tx, 'enhancementCosts')
+    })
+  }
+
+  /** 슈페리얼 장비의 그림을 바꾼다. 없는 장비는 false, 그림 표에 없는 그림은 AssetNotFound 다. */
+  async setSuperiorItemIcon(name: string, assetId: string): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [asset] = await tx.select({ id: assets.id }).from(assets).where(eq(assets.id, assetId))
+      if (asset === undefined) throw new AssetNotFound(assetId)
+      const rows = await tx
+        .update(superiorItems)
+        .set({ iconAssetId: assetId })
+        .where(eq(superiorItems.name, name))
+        .returning({ id: superiorItems.id })
+      if (rows.length === 0) return false
+      await touchSection(tx, 'enhancementCosts')
+      return true
+    })
+  }
+
+  /** 이름이 같은 슈페리얼 장비를 지운다. 없으면 false 다. */
+  async removeSuperiorItem(name: string): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .delete(superiorItems)
+        .where(eq(superiorItems.name, name))
+        .returning({ id: superiorItems.id })
+      if (rows.length === 0) return false
       await touchSection(tx, 'enhancementCosts')
       return true
     })

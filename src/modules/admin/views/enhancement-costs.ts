@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -5,7 +6,8 @@ import { layout } from './layout'
  * 단계 표다. 칸을 제자리에서 고친다. 기간 줄이 없다.
  *
  * 고친 값은 앱이 다음에 수집하는 기록부터 쓰고 이미 저장한 합계는 안 바뀐다. 구간은 등급 넷을 한 번에 더하고 구간째 지우며
- * min_level 1 구간은 못 지운다. 단계는 끝 성수만 더하고 지운다.
+ * min_level 1 구간은 못 지운다. 단계는 끝 성수만 더하고 지운다. 맨 아래 슈페리얼 칸은 계열마다 스타포스 1회 비용과 그 계열의
+ * 장비 이름 · 그림이다. 그림은 아이템 표에 없는 슈페리얼 장비가 펼친 강화 줄에 그림을 세우는 데 쓴다.
  */
 export const ENHANCEMENT_COSTS_HTML = layout(
   '/admin/enhancement-costs',
@@ -55,10 +57,33 @@ export const ENHANCEMENT_COSTS_HTML = layout(
   <header><h2>스타포스 단계</h2><p>시도 전 성수마다 지수와 제수. 0 부터 빠짐없이 있어야 해서 끝 성수만 더하고 지운다</p><span class="grow"></span><button id="s-add" class="btn ghost sm" type="button">끝 성수 더하기</button><button id="s-remove" class="btn danger sm" type="button">끝 성수 지우기</button></header>
   <div class="table"><table><thead><tr><th>성수</th><th class="num">지수</th><th class="num">제수</th><th></th></tr></thead><tbody id="stars"></tbody></table></div>
 </section>
+<section class="card">
+  <header><h2>슈페리얼 장비</h2><p>계열마다 스타포스 1회 비용이 하나다. 성수 · 이벤트 할인 · MVP 할인 · 파괴 방지와 상관없다. 앱은 넥슨 응답의 장비 이름을 공백을 지운 뒤 아래 이름과 통째로 맞춘다</p></header>
+  <div class="table"><table><thead><tr><th>key</th><th>계열</th><th class="num">스타포스 1회 비용</th><th class="num">장비</th><th></th></tr></thead><tbody id="series"></tbody></table></div>
+  <div class="body"><div class="sub">
+    <h3 style="margin:0;font-size:13.5px">새 계열</h3>
+    <div class="row">
+      <div class="field w-sm"><label for="ss-key">key</label><input id="ss-key" type="text" placeholder="tyrant"></div>
+      <div class="field w-md"><label for="ss-name">계열</label><input id="ss-name" type="text" placeholder="타일런트"></div>
+      <div class="field w-md"><label for="ss-cost">스타포스 1회 비용 <small>메소</small></label><input id="ss-cost" type="number" min="1"></div>
+      <button id="ss-add" class="btn" type="button">계열 추가</button>
+    </div>
+  </div></div>
+  <div class="body" id="superior-items"></div>
+  <div class="body"><div class="sub">
+    <h3 style="margin:0;font-size:13.5px">새 장비</h3>
+    <div class="row">
+      <div class="field w-md"><label for="si-name">장비 이름 <small>넥슨 표기</small></label><input id="si-name" type="text" placeholder="타일런트 리카온 벨트"></div>
+      <div class="field w-md"><label for="si-series">계열</label><select id="si-series"></select></div>
+      <button id="si-add" class="btn" type="button">장비 추가</button>
+    </div>
+  </div></div>
+</section>
+${ASSET_PICKER}
 <script>
   var TYPES = [['potential', '잠재능력 재설정'], ['additional', '에디셔널 잠재능력 재설정']];
   var GRADES = [['rare', '레어'], ['epic', '에픽'], ['unique', '유니크'], ['legendary', '레전드리']];
-  var state = { data: null, editingBand: null, editingStar: null };
+  var state = { data: null, assets: {}, editingBand: null, editingStar: null, editingSeries: null };
 
   function nameOf(pairs, key) { for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === key) return pairs[i][1]; return key; }
   function bandsOf(type) {
@@ -151,8 +176,70 @@ export const ENHANCEMENT_COSTS_HTML = layout(
     cell(tr, inline(save, close), 'act'); return tr;
   }
 
+  function seriesRow(s) {
+    var editing = state.editingSeries === s.key;
+    var tr = el('tr', undefined, editing ? 'open' : '');
+    var count = state.data.superiorItems.filter(function (i) { return i.seriesKey === s.key; }).length;
+    cell(tr, s.key, 'mono');
+    if (!editing) {
+      cell(tr, s.name); cell(tr, meso(s.starforceCostMeso), 'num'); cell(tr, count, 'num');
+      var edit = button('수정', 'btn ghost sm'); edit.addEventListener('click', function () { state.editingSeries = s.key; render(); });
+      cell(tr, edit, 'act'); return tr;
+    }
+    var name = input('text'); name.value = s.name;
+    var cost = input('number'); cost.min = '1'; cost.value = s.starforceCostMeso;
+    cell(tr, name); cell(tr, cost, 'num'); cell(tr, count, 'num');
+    var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
+    save.addEventListener('click', async function () {
+      var r = await call('PUT', '/admin/enhancement-costs/superior-series/' + s.key, { name: name.value, starforceCostMeso: Number(cost.value) });
+      show(r.ok ? s.name + ' 계열을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editingSeries = null; load();
+    });
+    close.addEventListener('click', function () { state.editingSeries = null; render(); });
+    cell(tr, inline(save, close), 'act'); return tr;
+  }
+
+  function changeIcon(item) {
+    openAssetPicker({
+      dirs: ['items'], uploadDir: 'items', current: item.iconAssetId,
+      onPick: async function (f) {
+        if (f === null) { show('그림을 비우는 길은 없다. 다른 그림을 고른다', true); return; }
+        var r = await call('PUT', '/admin/enhancement-costs/superior-items/' + encodeURIComponent(item.name) + '/icon', { assetId: f.id });
+        show(r.ok ? item.name + ' 의 그림을 바꿨다' : fail('못 바꿨다', r), !r.ok);
+        if (r.ok) load();
+      },
+    });
+  }
+
+  function renderSuperior() {
+    var tbody = document.getElementById('series'); tbody.innerHTML = '';
+    state.data.superiorSeries.forEach(function (s) { tbody.appendChild(seriesRow(s)); });
+    if (state.data.superiorSeries.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 5; tbody.appendChild(tr); }
+    var select = document.getElementById('si-series'), picked = select.value; select.innerHTML = '';
+    state.data.superiorSeries.forEach(function (s) { var o = document.createElement('option'); o.value = s.key; o.textContent = s.name; select.appendChild(o); });
+    if (picked) select.value = picked;
+    var box = document.getElementById('superior-items'); box.innerHTML = '';
+    state.data.superiorSeries.forEach(function (s) {
+      var items = state.data.superiorItems.filter(function (i) { return i.seriesKey === s.key; });
+      var wrap = el('div', undefined, 'sub'); wrap.appendChild(el('h3', s.name + ' · 장비 ' + items.length, 'editor'));
+      var body = el('tbody');
+      items.forEach(function (i) {
+        var tr = el('tr');
+        var asset = i.iconAssetId ? state.assets[i.iconAssetId] : null;
+        if (asset) { var img = el('img'); img.alt = ''; img.loading = 'lazy'; img.src = '/assets/' + asset.file; cell(tr, img); } else cell(tr, '없음', 'dim');
+        cell(tr, i.name);
+        var icon = button('그림', 'btn ghost sm');
+        icon.addEventListener('click', function () { changeIcon(i); });
+        var remove = button('지우기', 'btn danger sm');
+        remove.addEventListener('click', async function () { var r = await call('DELETE', '/admin/enhancement-costs/superior-items/' + encodeURIComponent(i.name)); show(r.ok ? i.name + ' 을 지웠다' : fail('못 지웠다', r), !r.ok); load(); });
+        cell(tr, inline(icon, remove), 'act'); body.appendChild(tr);
+      });
+      if (items.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 3; body.appendChild(tr); }
+      wrap.appendChild(mini(['그림', '장비 이름', ''], body)); box.appendChild(wrap);
+    });
+  }
+
   function render() {
-    renderPotential(); renderSoul();
+    renderPotential(); renderSoul(); renderSuperior();
     var stars = document.getElementById('stars'); stars.innerHTML = '';
     state.data.starforceSteps.forEach(function (s) { stars.appendChild(starRow(s)); });
     if (state.data.starforceSteps.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 4; stars.appendChild(tr); }
@@ -180,10 +267,27 @@ export const ENHANCEMENT_COSTS_HTML = layout(
     show(r.ok ? '끝 성수를 지웠다' : fail('못 지웠다', r), !r.ok); load();
   });
 
+  document.getElementById('ss-add').addEventListener('click', async function () {
+    var body = { key: document.getElementById('ss-key').value.trim(), name: document.getElementById('ss-name').value, starforceCostMeso: Number(document.getElementById('ss-cost').value) };
+    var r = await call('POST', '/admin/enhancement-costs/superior-series', body);
+    show(r.ok ? body.name + ' 계열을 더했다' : fail('더하지 못했다', r), !r.ok);
+    if (r.ok) ['ss-key', 'ss-name', 'ss-cost'].forEach(function (id) { document.getElementById(id).value = ''; });
+    load();
+  });
+  document.getElementById('si-add').addEventListener('click', async function () {
+    var body = { name: document.getElementById('si-name').value, seriesKey: document.getElementById('si-series').value };
+    var r = await call('POST', '/admin/enhancement-costs/superior-items', body);
+    show(r.ok ? body.name + ' 을 더했다' : fail('더하지 못했다', r), !r.ok);
+    if (r.ok) document.getElementById('si-name').value = '';
+    load();
+  });
+
   async function load() {
     var r = await call('GET', '/admin/enhancement-costs/rows');
-    if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
+    var a = await call('GET', '/admin/assets/list');
+    if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     state.data = r.json;
+    state.assets = {}; a.json.rows.forEach(function (x) { state.assets[x.id] = x; });
     document.getElementById('stat-bands').textContent = bandsOf('potential').length + ' · ' + bandsOf('additional').length;
     document.getElementById('stat-stars').textContent = r.json.starforceSteps.length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';

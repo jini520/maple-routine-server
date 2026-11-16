@@ -7,10 +7,12 @@ import {
   trustWeight,
   votesOf,
   type DayReference,
+  type Judgement,
   type MarketRow,
 } from './daily-reference'
 import { buildBasket, directIndex, linkOf, relativeOf, type BasketItem } from './market-index'
-import { MarketDailyRepository, marketKey, parseMarketKey, type StoredBasket } from './market-daily.repository'
+import { MarketDailyRepository, marketKey, parseMarketKey, type DailyRow, type StoredBasket } from './market-daily.repository'
+import { RANGE_DAYS, rangeOf, type MarketRange, type RangeDay } from './market-range'
 import { fillSeries, gradeOf, isReliable, toResponse, type FilledPoint, type Grade } from './market-view'
 
 /** MASPI 기준 기간. 이 7일을 10,000 으로 둔다. 목요일에 시작해 주간 초기화와 경계가 같다. */
@@ -35,8 +37,9 @@ interface MarketEntry {
   ringLevel: number | null
   price: number
   changePct: number | null
-  low: number
-  high: number
+  /** 범위. 7일 표가 모자라면 `null` 이다 */
+  low: number | null
+  high: number | null
   grade: Grade
 }
 
@@ -52,6 +55,43 @@ function round(value: number, digits: number): number {
 function daysFrom(from: string, to: string): string[] {
   const out: string[] = []
   for (let d = from; d <= to; d = shiftDay(d, 1)) out.push(d)
+  return out
+}
+
+/** 직전 30일 판정으로 정한 사람마다의 표 무게. */
+function weightFrom(judgements: ReadonlyMap<string, Judgement>): (person: string) => number {
+  return (person) => trustWeight(judgements.get(person) ?? { judged: 0, excluded: 0 })
+}
+
+/**
+ * 그날 기준가를 낸 시세마다 범위. 새 기준가 날은 7일 줄로 내고, 유지한 날은 전날의 범위를 그대로 둔다.
+ *
+ * @param stored 시세마다 7일 안의 낸 기준가. 다시 계산할 때는 그날 것도 들어 있다
+ * @param dummies `날짜|사람` 꼴의 더미 입력. 그날 것까지 든다
+ */
+function rangesOf(
+  day: string,
+  references: ReadonlyMap<string, DayReference | null>,
+  rows: DailyRow[],
+  stored: ReadonlyMap<string, DayReference[]>,
+  dummies: ReadonlySet<string>,
+  weightOf: (person: string) => number,
+): Map<string, MarketRange | null> {
+  const yesterday = shiftDay(day, -1)
+  const rowsByMarket = new Map<string, DailyRow[]>()
+  for (const r of rows) rowsByMarket.set(r.market, [...(rowsByMarket.get(r.market) ?? []), r])
+  const out = new Map<string, MarketRange | null>()
+  for (const [market, ref] of references) {
+    if (ref === null) continue
+    const history = (stored.get(market) ?? []).filter((r) => r.day < day)
+    if (ref.source === 'carry') {
+      const prev = history.find((r) => r.day === yesterday)
+      out.set(market, prev?.q1 != null && prev.q3 != null ? { q1: prev.q1, q3: prev.q3 } : null)
+      continue
+    }
+    const days = new Map<string, RangeDay>([...history, ref].map((r) => [r.day, { ref: r.ref, low: r.low, high: r.high }]))
+    out.set(market, rangeOf({ day, rows: rowsByMarket.get(market) ?? [], days, dummies, weightOf }))
+  }
   return out
 }
 
@@ -103,30 +143,67 @@ export class MarketPublishService {
     this.logger.log(`시세를 ${first} ~ ${yesterday} 로 채웠다`)
   }
 
-  /** 그날의 일일 기준가와 판정을 남긴다. 이미 낸 날이면 false */
+  /** 그날의 일일 기준가 · 범위와 판정을 남긴다. 기준가는 3일 줄로, 범위는 7일 줄로 낸다. 이미 낸 날이면 false */
   async computeDay(day: string): Promise<boolean> {
-    const from = shiftDay(day, -2)
+    const from = shiftDay(day, -(RANGE_DAYS - 1))
+    const refFrom = shiftDay(day, -2)
     const yesterday = shiftDay(day, -1)
-    const [rows, dummies, previous, judgements] = await Promise.all([
+    const [rows, dummies, stored, judgements] = await Promise.all([
       this.repo.rowsBetween(from, day),
       this.repo.dummyDays(from, yesterday),
-      this.repo.referencesBetween(yesterday, yesterday),
+      this.repo.referencesBetween(from, yesterday),
       this.repo.judgementSums(shiftDay(day, -30), yesterday),
     ])
     const rowsByMarket = new Map<string, MarketRow[]>()
     for (const r of rows) {
-      if (dummies.has(`${r.day}|${r.person}`)) continue
+      if (r.day < refFrom || dummies.has(`${r.day}|${r.person}`)) continue
       const list = rowsByMarket.get(r.market)
       if (list === undefined) rowsByMarket.set(r.market, [r])
       else list.push(r)
     }
     const prev = new Map<string, DayReference>()
-    for (const [key, list] of previous) {
-      prev.set(key, list[list.length - 1])
+    for (const [key, list] of stored) {
+      const last = list[list.length - 1]
+      if (last.day !== yesterday) continue
+      prev.set(key, last)
       if (!rowsByMarket.has(key)) rowsByMarket.set(key, [])
     }
     const result = runDay({ day, rowsByMarket, previous: prev, judgements })
-    return this.repo.saveDay(day, result.references, result.judged, result.dummies)
+    for (const person of result.dummies) dummies.add(`${day}|${person}`)
+    const ranges = rangesOf(day, result.references, rows, stored, dummies, weightFrom(judgements))
+    const references = new Map<string, DayReference | null>()
+    for (const [key, ref] of result.references) {
+      const range = ranges.get(key) ?? null
+      references.set(key, ref === null ? null : { ...ref, q1: range?.q1 ?? null, q3: range?.q3 ?? null })
+    }
+    return this.repo.saveDay(day, references, result.judged, result.dummies)
+  }
+
+  /**
+   * 낸 날의 범위만 지금 방식으로 다시 낸다. 기준가 · 울타리 · 판정 · MASPI 는 그대로 두고 마지막 날의 응답을 다시 만든다.
+   * 날 차례로 내야 유지한 날이 다시 낸 전날의 범위를 받는다.
+   *
+   * @returns 다시 낸 날 수
+   */
+  async recomputeRanges(): Promise<number> {
+    const ran = await this.repo.ranDays()
+    for (const day of ran) {
+      const from = shiftDay(day, -(RANGE_DAYS - 1))
+      const [rows, dummies, stored, judgements] = await Promise.all([
+        this.repo.rowsBetween(from, day),
+        this.repo.dummyDays(from, day),
+        this.repo.referencesBetween(from, day),
+        this.repo.judgementSums(shiftDay(day, -30), shiftDay(day, -1)),
+      ])
+      const today = new Map<string, DayReference>()
+      for (const [key, list] of stored) {
+        const last = list[list.length - 1]
+        if (last.day === day) today.set(key, last)
+      }
+      await this.repo.updateRanges(day, rangesOf(day, today, rows, stored, dummies, weightFrom(judgements)))
+    }
+    if (ran.length > 0) await this.buildResponses(ran[ran.length - 1])
+    return ran.length
   }
 
   /** 기준 기간의 표로 바스켓을 정한다. 한 번 정하면 그대로 쓴다. */

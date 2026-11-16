@@ -1575,8 +1575,9 @@ export const marketDays = pgTable(
     scope: text('scope').notNull(),
     source: marketReferenceSourceEnum('source').notNull(),
     refMeso: bigint('ref_meso', { mode: 'number' }).notNull(),
-    q1Meso: bigint('q1_meso', { mode: 'number' }).notNull(),
-    q3Meso: bigint('q3_meso', { mode: 'number' }).notNull(),
+    /** 범위의 두 끝. 7일 표가 모자라면 비운다 */
+    q1Meso: bigint('q1_meso', { mode: 'number' }),
+    q3Meso: bigint('q3_meso', { mode: 'number' }),
     /** 그날 줄을 판정한 울타리 */
     fenceLow: doublePrecision('fence_low').notNull(),
     fenceHigh: doublePrecision('fence_high').notNull(),

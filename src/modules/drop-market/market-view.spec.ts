@@ -20,6 +20,7 @@ describe('gradeOf', () => {
 describe('fillSeries', () => {
   const fresh = (day: string, ref: number) => ({ day, ref, q1: ref - 10, q3: ref + 10, fresh: true })
   const stale = (day: string, ref: number | null) => ({ day, ref, q1: ref, q3: ref, fresh: false })
+  const bare = (day: string, ref: number) => ({ day, ref, q1: null, q3: null, fresh: true })
 
   it('새 기준가가 없는 날은 앞뒤 새 기준가 사이를 곧게 잇는다. 유지한 값도 잇는 값으로 바뀐다', () => {
     const out = fillSeries([fresh('2026-11-01', 100), stale('2026-11-02', 100), stale('2026-11-03', null), fresh('2026-11-04', 130)])
@@ -32,6 +33,28 @@ describe('fillSeries', () => {
     const out = fillSeries([stale('2026-11-01', null), fresh('2026-11-02', 50), stale('2026-11-03', 50), stale('2026-11-04', null)])
 
     expect(out.map((p) => [p.date, p.price])).toEqual([['2026-11-02', 50], ['2026-11-03', 50], ['2026-11-04', 50]])
+  })
+
+  it('범위가 없는 새 기준가 날은 띠가 없고, 사이 날은 앞뒤 두 새 기준가 날에 모두 범위가 있을 때만 잇는다', () => {
+    const out = fillSeries([
+      fresh('2026-11-01', 100),
+      stale('2026-11-02', null),
+      bare('2026-11-03', 120),
+      stale('2026-11-04', null),
+      fresh('2026-11-05', 140),
+      stale('2026-11-06', null),
+      fresh('2026-11-07', 160),
+    ])
+
+    expect(out.map((p) => p.price)).toEqual([100, 110, 120, 130, 140, 150, 160])
+    expect(out.map((p) => p.low)).toEqual([90, null, null, null, 130, 140, 150])
+    expect(out.map((p) => p.high)).toEqual([110, null, null, null, 150, 160, 170])
+  })
+
+  it('마지막 새 기준가 날에 범위가 없으면 뒤의 날도 띠가 없다', () => {
+    const out = fillSeries([fresh('2026-11-01', 100), bare('2026-11-02', 100), stale('2026-11-03', 100)])
+
+    expect(out.map((p) => [p.price, p.low, p.high])).toEqual([[100, 90, 110], [100, null, null], [100, null, null]])
   })
 
   it('잇는 값에는 그날 거래가 있었는지 알 수 있는 칸이 없다', () => {

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { items, dropPrices, worlds } from '../../database/schema'
+import { items, dropPrices, nexonAccountMapleIds, worlds } from '../../database/schema'
 
 /** 장비를 서로 거래할 수 있는 월드들. worlds.price_group 이 같은 월드다. */
 export interface PriceGroup {
@@ -28,6 +28,7 @@ export interface MarketScope {
 /** 시세에 쓰는 거래 한 줄. completed 만 온다. */
 export interface MarketRow {
   id: string
+  itemId: string
   itemKey: string
   itemName: string
   ringLevel: number | null
@@ -35,6 +36,8 @@ export interface MarketRow {
   pricedAt: Date
   worldKey: string
   worldName: string
+  /** 넥슨 계정 · 메이플 ID · 사용자 id 중 줄에 있는 것의 앞쪽. 하루 작업과 같은 값이라 더미 입력을 가린다 */
+  person: string
 }
 
 /** 시세 하나. ringLevel null 은 반지가 아닌 아이템이다. */
@@ -84,6 +87,7 @@ export class DropMarketRepository {
     const rows = await this.db
       .select({
         id: dropPrices.id,
+        itemId: dropPrices.itemId,
         itemKey: items.key,
         itemName: items.name,
         ringLevel: dropPrices.ringLevel,
@@ -91,10 +95,12 @@ export class DropMarketRepository {
         pricedAt: dropPrices.pricedAt,
         worldKey: worlds.key,
         worldName: worlds.name,
+        person: sql<string>`coalesce('a:' || ${nexonAccountMapleIds.nexonAccountId}::text, 'm:' || ${dropPrices.mapleId}, 'u:' || ${dropPrices.userId}::text, 'r:' || ${dropPrices.id}::text)`,
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
       .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
+      .leftJoin(nexonAccountMapleIds, eq(nexonAccountMapleIds.mapleId, dropPrices.mapleId))
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),

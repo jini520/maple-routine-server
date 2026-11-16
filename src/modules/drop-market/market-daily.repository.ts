@@ -111,12 +111,16 @@ export class MarketDailyRepository {
     return new Map(rows.map((r) => [r.person, { judged: Number(r.judged), excluded: Number(r.excluded) }]))
   }
 
-  /** from ~ to 의 일일 기준가. 시세 열쇠마다 날짜 차례다. */
-  async referencesBetween(from: string, to: string): Promise<Map<string, DayReference[]>> {
+  /**
+   * from ~ to 의 일일 기준가. 시세 열쇠마다 날짜 차례다.
+   *
+   * @param scope 주면 그 범위(거래권 · 월드)의 시세만 읽는다
+   */
+  async referencesBetween(from: string, to: string, scope?: string): Promise<Map<string, DayReference[]>> {
     const rows = await this.db
       .select()
       .from(marketDays)
-      .where(and(gte(marketDays.day, from), lte(marketDays.day, to)))
+      .where(and(gte(marketDays.day, from), lte(marketDays.day, to), scope === undefined ? undefined : eq(marketDays.scope, scope)))
       .orderBy(asc(marketDays.day))
     const out = new Map<string, DayReference[]>()
     for (const r of rows) {

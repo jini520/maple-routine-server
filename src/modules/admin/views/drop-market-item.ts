@@ -3,7 +3,7 @@ import { layout } from './layout'
 /**
  * 드롭 시세 아이템 화면. 위는 최근 90일 차트(일봉 · 주봉), 아래는 같은 기간의 거래 줄과 판정이다.
  * 봉을 누르면 차트 위에 그 봉의 값이 뜬다. 처음엔 마지막 봉이고, 그 종가가 현재가다. 고른 봉 단위는 주소의 period 에 남는다.
- * 왜 빠졌는지 보이게 줄마다 울타리를 함께 보인다.
+ * 왜 빠졌는지 보이게 줄마다 하루 작업이 남긴 그날 울타리와 그 근거를 함께 보인다. 아직 내지 않은 오늘 줄은 판단 보류다.
  * 시세 하나는 주소의 kind · key · item · ring 이 정한다. 장비는 key 가 거래권, 소비는 월드다. ring 이 없으면 반지가 아닌 아이템이다.
  * 차트는 서버가 내보내는 lightweight-charts 4 의 standalone 파일이 window.LightweightCharts 로 연다.
  */
@@ -26,11 +26,12 @@ export const DROP_MARKET_ITEM_HTML = layout(
 </section>
 <section class="card">
   <header><h2>거래</h2><p id="count"></p></header>
-  <div class="table"><table><thead><tr><th>거래 (KST)</th><th>월드</th><th class="num">가격</th><th>판정</th><th class="num">울타리</th><th class="num">표본</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>거래 (KST)</th><th>월드</th><th class="num">가격</th><th>판정</th><th class="num">울타리</th><th>근거</th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script>
   function eok(n) { return n >= 1e8 ? (n / 1e8).toFixed(2) + '억' : meso(n); }
   var VERDICT = { included: ['포함', 'tag ok'], pending: ['판단 보류', 'tag'], excluded: ['제외', 'tag accent'] };
+  var BASIS = { today: '그날 표', three_day: '3일 표', carry: '유지', dummy: '더미 입력' };
   var params = new URLSearchParams(location.search);
   var PERIODS = [['day', '일봉', 'candles'], ['week', '주봉', 'weeklyCandles']];
   var state = { period: params.get('period') === 'week' ? 'week' : 'day', detail: null, kind: params.get('kind') === 'consumable' ? 'consumable' : 'equipment', key: params.get('key') || 'general', item: params.get('item') || '', ring: params.get('ring') };
@@ -150,7 +151,7 @@ export const DROP_MARKET_ITEM_HTML = layout(
       cell(tr, eok(row.priceMeso), 'num').title = meso(row.priceMeso) + ' 메소';
       var v = VERDICT[row.verdict]; cell(tr, span(v[0], v[1]));
       cell(tr, row.fence ? eok(Math.max(0, row.fence.low)) + ' ~ ' + eok(row.fence.high) : '-', 'num');
-      cell(tr, row.sampleDays ? row.sampleDays + '일' : '-', 'num');
+      cell(tr, row.basis ? BASIS[row.basis] : '-');
       rows.appendChild(tr);
     });
     if (d.rows.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 6; rows.appendChild(tr); }

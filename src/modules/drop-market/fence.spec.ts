@@ -1,97 +1,46 @@
-import { judge, type PricePoint } from './fence'
+import { judgeStored, type StoredPoint } from './fence'
+
+const EOK = 100_000_000
 
 /** KST 날짜와 시각으로 거래 시각을 만든다. */
 function at(day: string, time = '12:00'): Date {
   return new Date(`${day}T${time}:00+09:00`)
 }
 
-function point(id: string, priceMeso: number, pricedAt: Date): PricePoint {
-  return { id, priceMeso, pricedAt }
+function point(id: string, priceMeso: number, day: string, person = 'u:a'): StoredPoint {
+  return { id, priceMeso, pricedAt: at(day), person }
 }
 
-function verdicts(points: PricePoint[]): Record<string, string> {
-  return Object.fromEntries(judge(points).map((j) => [j.id, j.verdict]))
-}
+const fences = new Map([
+  ['2026-11-12', { low: 7 * EOK, high: 9 * EOK, source: 'today' as const }],
+  ['2026-11-13', { low: 7 * EOK, high: 9 * EOK, source: 'carry' as const }],
+])
 
-describe('judge', () => {
-  it('0 을 하나 더 친 값은 빠지고 나머지는 남는다', () => {
-    // 2026-10-20 에오스 몽환의 벨트 실측값.
-    const prices = [3_000_000_000, 3_600_000_000, 3_650_000_000, 3_700_000_000, 3_730_000_000, 3_877_777_777]
-    const points = prices.map((p, i) => point(`ok${i}`, p, at('2026-10-17')))
-    points.push(point('typo', 40_000_000_000, at('2026-10-17')))
+describe('judgeStored', () => {
+  it('그날 하루 작업이 남긴 울타리 안이면 포함, 밖이면 제외다', () => {
+    const judged = judgeStored([point('in', 8 * EOK, '2026-11-12'), point('typo', 80 * EOK, '2026-11-12')], fences, new Set())
 
-    const result = verdicts(points)
-
-    expect(result.typo).toBe('excluded')
-    expect(Object.entries(result).filter(([id]) => id !== 'typo').map(([, v]) => v)).toEqual(
-      Array(6).fill('included'),
-    )
+    expect(judged.map((j) => [j.id, j.verdict, j.basis])).toEqual([
+      ['in', 'included', 'today'],
+      ['typo', 'excluded', 'today'],
+    ])
   })
 
-  it('7일 표본이 4개 미만이면 30일로 넓혀 판정한다', () => {
-    // 7일 안에는 셋뿐이고, 20일 전 줄까지 더하면 넷이 된다.
-    const points = [
-      point('old', 1_000, at('2026-09-30')),
-      point('a', 1_000, at('2026-10-18')),
-      point('b', 1_000, at('2026-10-19')),
-      point('far', 10_000, at('2026-10-20')),
-    ]
+  it('유지한 날은 마지막 새 기준가의 울타리로 판정한다', () => {
+    const [j] = judgeStored([point('late', 1, '2026-11-13')], fences, new Set())
 
-    expect(verdicts(points).far).toBe('excluded')
+    expect(j).toMatchObject({ verdict: 'excluded', basis: 'carry', fence: { low: 7 * EOK, high: 9 * EOK } })
   })
 
-  it('30일로 넓혀도 4개 미만이면 빼지 않고 pending 이다', () => {
-    const points = [
-      point('a', 1_000, at('2026-10-18')),
-      point('b', 1_000, at('2026-10-19')),
-      point('far', 10_000, at('2026-10-20')),
-    ]
+  it('그날 울타리가 아직 없으면(오늘 줄 · 기준가가 빈 날) 판단 보류이고 기준가에 넣지 않는다', () => {
+    const [j] = judgeStored([point('today', 8 * EOK, '2026-11-14')], fences, new Set())
 
-    expect(verdicts(points)).toEqual({ a: 'pending', b: 'pending', far: 'pending' })
+    expect(j).toMatchObject({ verdict: 'pending', fence: null, basis: null })
   })
 
-  it('표본은 그 줄의 거래일까지이고 뒤의 날은 안 본다', () => {
-    // 10-01 줄은 그날까지 표본이 하나뿐이다. 뒤에 같은 값이 많이 와도 판단이 바뀌지 않는다.
-    const points = [
-      point('first', 5_000, at('2026-10-01')),
-      ...[0, 1, 2, 3].map((i) => point(`later${i}`, 1_000, at('2026-10-02'))),
-    ]
+  it('그날 더미 입력을 한 사람의 줄은 울타리 안이어도 제외다', () => {
+    const [j] = judgeStored([point('dummy', 8 * EOK, '2026-11-12', 'u:x')], fences, new Set(['2026-11-12|u:x']))
 
-    expect(verdicts(points).first).toBe('pending')
-  })
-
-  it('같은 값이 몰려 IQR 이 0 이어도 중앙값 ±20% 안은 남는다', () => {
-    const points = [0, 1, 2, 3, 4].map((i) => point(`same${i}`, 3_700_000_000, at('2026-10-17')))
-    points.push(point('near', 3_800_000_000, at('2026-10-17')))
-    points.push(point('far', 5_000_000_000, at('2026-10-17')))
-
-    const result = verdicts(points)
-
-    expect(result.near).toBe('included')
-    expect(result.far).toBe('excluded')
-  })
-
-  it('KST 0시로 날을 가른다', () => {
-    // 10-14 00:30 KST 는 UTC 로 10-13 이다. KST 로 갈라야 10-20 의 7일 표본에 들어 넷이 된다.
-    const points = [
-      point('edge', 1_000, at('2026-10-14', '00:30')),
-      point('a', 1_000, at('2026-10-20')),
-      point('b', 1_000, at('2026-10-20')),
-      point('c', 1_000, at('2026-10-20')),
-    ]
-
-    const judged = judge(points).find((j) => j.id === 'c')
-
-    expect(judged?.sampleDays).toBe(7)
-  })
-
-  it('판정마다 그 줄의 울타리를 함께 돌려준다', () => {
-    const points = [1_000, 1_100, 1_200, 1_300].map((p, i) => point(`p${i}`, p, at('2026-10-17')))
-
-    const judged = judge(points)[0]
-
-    expect(judged?.fence).not.toBeNull()
-    expect(judged?.fence?.low).toBeLessThan(1_000)
-    expect(judged?.fence?.high).toBeGreaterThan(1_300)
+    expect(j).toMatchObject({ verdict: 'excluded', basis: 'dummy' })
   })
 })

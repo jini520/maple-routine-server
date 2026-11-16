@@ -7,7 +7,8 @@ import {
   type MarketRow,
   type MarketScope,
 } from './drop-market.repository'
-import { type Judged, judge, kstDayNumber } from './fence'
+import { type Judged, judgeStored, kstDay, kstDayNumber } from './fence'
+import { MarketDailyRepository, marketKey } from './market-daily.repository'
 
 /** 한눈에 보는 화면의 한 줄. 시세 하나다. */
 export interface MarketOverviewRow extends MarketKey, MarketSummary {
@@ -19,12 +20,10 @@ export interface MarketDetail {
   itemName: string | null
   candles: Candle[]
   weeklyCandles: Candle[]
-  rows: (Judged & Pick<MarketRow, 'worldKey' | 'worldName'>)[]
+  rows: Judged<Pick<MarketRow, 'id' | 'priceMeso' | 'pricedAt' | 'worldKey' | 'worldName'>>[]
 }
 
 const DAY_MS = 86_400_000
-/** 판정의 표본은 그 줄의 거래일까지 최대 30일이다. 보이는 기간 앞으로 이만큼 더 읽어야 첫날의 판정이 선다. */
-const SAMPLE_LOOKBACK_DAYS = 29
 /** 한눈에 보는 화면의 제외 수가 세는 기간. */
 const OVERVIEW_DAYS = 30
 const DETAIL_DAYS = 90
@@ -33,10 +32,16 @@ function daysBefore(now: Date, days: number): Date {
   return new Date(now.getTime() - (days + 1) * DAY_MS)
 }
 
-/** 시세 범위(장비는 거래권, 소비는 월드) 단위로 판정하고 봉 · 요약을 만든다. 판정은 줄을 지우지 않고 읽을 때마다 다시 센다. */
+/**
+ * 시세 범위(장비는 거래권, 소비는 월드) 단위로 판정하고 봉 · 요약을 만든다.
+ * 판정은 하루 작업이 남긴 그날 울타리 · 더미 입력과 줄을 읽을 때마다 비교한다. 줄은 지우지 않는다.
+ */
 @Injectable()
 export class DropMarketService {
-  constructor(private readonly repo: DropMarketRepository) {}
+  constructor(
+    private readonly repo: DropMarketRepository,
+    private readonly daily: MarketDailyRepository,
+  ) {}
 
   scopes() {
     return this.repo.scopes()
@@ -44,27 +49,31 @@ export class DropMarketService {
 
   /** 최근 거래가 늦은 시세부터. */
   async overview(scope: MarketScope, now: Date): Promise<MarketOverviewRow[]> {
-    const rows = await this.repo.rows(scope, daysBefore(now, OVERVIEW_DAYS + SAMPLE_LOOKBACK_DAYS))
+    const since = daysBefore(now, OVERVIEW_DAYS)
+    const [rows, judge] = await Promise.all([this.repo.rows(scope, since), this.judgeOf(scope, since, now)])
     const markets = new Map<string, MarketRow[]>()
     for (const r of rows) {
-      const key = `${r.itemKey}\u0000${r.ringLevel ?? ''}`
+      const key = marketKey(r.itemId, r.ringLevel, scope.key)
       markets.set(key, [...(markets.get(key) ?? []), r])
     }
-    return [...markets.values()]
-      .map((market) => ({
+    return [...markets.entries()]
+      .map(([key, market]) => ({
         itemKey: market[0].itemKey,
         itemName: market[0].itemName,
         ringLevel: market[0].ringLevel,
-        ...summarize(judge(market), now),
+        ...summarize(judge(key, market), now),
       }))
       .sort((a, b) => (b.lastPricedAt?.getTime() ?? 0) - (a.lastPricedAt?.getTime() ?? 0))
   }
 
   async detail(scope: MarketScope, market: MarketKey, now: Date): Promise<MarketDetail> {
-    const rows = await this.repo.rows(scope, daysBefore(now, DETAIL_DAYS + SAMPLE_LOOKBACK_DAYS), market)
+    const since = daysBefore(now, DETAIL_DAYS)
+    const [rows, judge] = await Promise.all([this.repo.rows(scope, since, market), this.judgeOf(scope, since, now)])
     const firstDay = kstDayNumber(now) - DETAIL_DAYS + 1
-    const judged = judge(rows)
-      .map((j, i) => ({ ...j, worldKey: rows[i].worldKey, worldName: rows[i].worldName }))
+    const judged = (rows.length === 0 ? [] : judge(marketKey(rows[0].itemId, rows[0].ringLevel, scope.key), rows))
+      .map(({ id, priceMeso, pricedAt, worldKey, worldName, verdict, fence, basis }) => ({
+        id, priceMeso, pricedAt, worldKey, worldName, verdict, fence, basis,
+      }))
       .filter((j) => kstDayNumber(j.pricedAt) >= firstDay)
     return {
       itemName: rows[0]?.itemName ?? null,
@@ -72,5 +81,17 @@ export class DropMarketService {
       weeklyCandles: weeklyCandles(judged),
       rows: judged,
     }
+  }
+
+  /** 범위 안 시세들의 그날 울타리와 더미 입력을 한 번에 읽고, 시세 하나의 줄을 판정하는 함수를 돌려준다. */
+  private async judgeOf(scope: MarketScope, since: Date, now: Date) {
+    const from = kstDay(since)
+    const to = kstDay(now)
+    const [references, dummies] = await Promise.all([
+      this.daily.referencesBetween(from, to, scope.key),
+      this.daily.dummyDays(from, to),
+    ])
+    return (key: string, rows: MarketRow[]) =>
+      judgeStored(rows, new Map((references.get(key) ?? []).map((r) => [r.day, r])), dummies)
   }
 }

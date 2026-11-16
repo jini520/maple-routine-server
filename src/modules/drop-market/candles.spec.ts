@@ -11,7 +11,7 @@ function judged(
   pricedAt: Date,
   verdict: Judged['verdict'] = 'included',
 ): Judged {
-  return { id, priceMeso, pricedAt, verdict, fence: null, sampleDays: null }
+  return { id, priceMeso, pricedAt, verdict, fence: null, basis: null }
 }
 
 describe('dailyCandles', () => {

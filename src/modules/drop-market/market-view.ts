@@ -4,8 +4,9 @@ import { createHash } from 'node:crypto'
 export interface FilledPoint {
   date: string
   price: number
-  low: number
-  high: number
+  /** 범위. 그날 범위가 없거나, 앞뒤 새 기준가 날 한쪽에 범위가 없어 잇지 않으면 `null` 이다 */
+  low: number | null
+  high: number | null
 }
 
 export type Grade = 'many' | 'normal' | 'few'
@@ -27,26 +28,28 @@ export function gradeOf(persons: number, leader: number): Grade {
 
 /**
  * 날마다의 기준가를 그래프 값으로 잇는다. 새 기준가가 없는 날(유지 · 비움)은 앞뒤 새 기준가 사이를 곧게 잇고, 마지막 새
- * 기준가 뒤는 그 값을 쓴다. 첫 새 기준가 앞의 날은 넣지 않는다.
+ * 기준가 뒤는 그 값을 쓴다. 첫 새 기준가 앞의 날은 넣지 않는다. 범위는 앞뒤 두 날에 모두 범위가 있을 때만 이어, 근거가
+ * 모자란 날에 띠를 그리지 않는다.
  *
  * @param days 날짜 차례. `fresh` 는 그날 새 기준가가 섰는지
  */
 export function fillSeries(
   days: { day: string; ref: number | null; q1: number | null; q3: number | null; fresh: boolean }[],
 ): FilledPoint[] {
-  const anchors = days.map((d, i) => ({ d, i })).filter(({ d }) => d.fresh && d.ref !== null && d.q1 !== null && d.q3 !== null)
+  const anchors = days.map((d, i) => ({ d, i })).filter(({ d }) => d.fresh && d.ref !== null)
   if (anchors.length === 0) return []
   const out: FilledPoint[] = []
   for (let i = anchors[0].i; i < days.length; i++) {
-    const before = [...anchors].reverse().find((a) => a.i <= i)
+    const before = [...anchors].reverse().find((a) => a.i <= i) as (typeof anchors)[number]
     const after = anchors.find((a) => a.i >= i)
-    const at = (key: 'ref' | 'q1' | 'q3'): number => {
-      const a = before?.d[key] as number
-      if (after === undefined || after.i === before?.i) return a
-      const t = (i - (before?.i ?? 0)) / (after.i - (before?.i ?? 0))
-      return Math.round(a + ((after.d[key] as number) - a) * t)
+    const at = (key: 'ref' | 'q1' | 'q3'): number | null => {
+      const a = before.d[key]
+      if (after === undefined || after.i === before.i) return a
+      const b = after.d[key]
+      if (a === null || b === null) return null
+      return Math.round(a + ((b - a) * (i - before.i)) / (after.i - before.i))
     }
-    out.push({ date: days[i].day, price: at('ref'), low: at('q1'), high: at('q3') })
+    out.push({ date: days[i].day, price: at('ref') as number, low: at('q1'), high: at('q3') })
   }
   return out
 }

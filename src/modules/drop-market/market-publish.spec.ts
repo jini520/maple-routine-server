@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { eq, type AnyColumn } from 'drizzle-orm'
 
-import { dropPrices, items, marketDays, maspiDays, users, worlds } from '../../database/schema'
+import { dropPrices, items, marketDays, marketJudgements, marketResponses, maspiDays, users, worlds } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { shiftDay } from './daily-reference'
 import { MarketDailyRepository } from './market-daily.repository'
@@ -43,6 +43,14 @@ describeDb('MarketPublishService', () => {
     }
   }
 
+  /** from ~ to 날마다 여덟 사람이 기준가 둘레에 판다. 7일 표가 8개라 범위가 선다. */
+  async function crowdMarket(from: string, to: string, price: number) {
+    const spread = [0.99, 0.995, 1, 1, 1, 1.005, 1.01, 1.02]
+    for (let d = from; d <= to; d = shiftDay(d, 1)) {
+      for (const [i, who] of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].entries()) await trade(who, d, Math.round(price * spread[i]))
+    }
+  }
+
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
     repo = new MarketDailyRepository(db)
@@ -50,7 +58,7 @@ describeDb('MarketPublishService', () => {
   })
   beforeEach(async () => {
     await truncate()
-    for (const who of ['a', 'b', 'c', 'd', 'e', 'x']) {
+    for (const who of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'x']) {
       ;[{ id: person[who] }] = await db.insert(users).values({}).returning({ id: users.id })
     }
     const itemRows = await db
@@ -102,6 +110,38 @@ describeDb('MarketPublishService', () => {
     expect(after).toEqual(before)
     expect(await repo.ranDays()).toContain('2026-11-06')
     await expect(service.backfill('2026-11-06')).rejects.toThrow()
+  })
+
+  it('7일 표가 8개면 범위가 서고, 유지한 날은 마지막 새 기준가 날의 범위를 그대로 둔다', async () => {
+    await crowdMarket('2026-11-01', '2026-11-05', 30 * EOK)
+
+    // 11/06 · 11/07 은 3일 표로 새 기준가가 서고, 11/08 은 3일 안에 거래가 없어 유지한다.
+    await service.backfill('2026-11-08')
+
+    const [fresh] = await db.select().from(marketDays).where(sqlDay(marketDays.day, '2026-11-07'))
+    const [carry] = await db.select().from(marketDays).where(sqlDay(marketDays.day, '2026-11-08'))
+    expect(fresh.q1Meso).not.toBeNull()
+    expect(carry.source).toBe('carry')
+    expect([carry.q1Meso, carry.q3Meso]).toEqual([fresh.q1Meso, fresh.q3Meso])
+  })
+
+  it('지난 날의 범위를 다시 계산해도 기준가 · 판정 · MASPI 는 그대로이고, 마지막 날의 응답을 다시 만든다', async () => {
+    await crowdMarket('2026-10-22', '2026-11-05', 30 * EOK)
+    await service.backfill('2026-11-05')
+    const days = await db.select().from(marketDays)
+    const judgements = await db.select().from(marketJudgements)
+    const maspi = await db.select().from(maspiDays)
+    const response = await repo.latestResponse('items:scania')
+    // 옛 방식의 범위와 그것으로 만든 응답이 남아 있던 상태.
+    await db.update(marketDays).set({ q1Meso: 1, q3Meso: 1 })
+    await db.update(marketResponses).set({ body: '{}', etag: '"old"' })
+
+    await service.recomputeRanges()
+
+    expect(await db.select().from(marketDays)).toEqual(days)
+    expect(await db.select().from(marketJudgements)).toEqual(judgements)
+    expect(await db.select().from(maspiDays)).toEqual(maspi)
+    expect(await repo.latestResponse('items:scania')).toEqual(response)
   })
 
   it('같은 날 응답을 다시 만들어도 몸과 ETag 가 같다', async () => {

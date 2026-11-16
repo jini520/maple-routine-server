@@ -13,6 +13,7 @@ import {
   worlds,
 } from '../../database/schema'
 import type { DayReference, Judgement, MarketRow } from './daily-reference'
+import type { MarketRange } from './market-range'
 
 /** 시세 하나를 가르는 열쇠. 아이템 · 반지 레벨 · 범위다. */
 export function marketKey(itemId: string, ringLevel: number | null, scope: string): string {
@@ -167,6 +168,26 @@ export class MarketDailyRepository {
     })
   }
 
+  /** 낸 날의 범위만 갈아 끼운다. 기준가 · 울타리 · 판정은 그대로 둔다. */
+  async updateRanges(day: string, ranges: Map<string, MarketRange | null>): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      for (const [key, range] of ranges) {
+        const m = parseMarketKey(key)
+        await tx
+          .update(marketDays)
+          .set({ q1Meso: range?.q1 ?? null, q3Meso: range?.q3 ?? null })
+          .where(
+            and(
+              eq(marketDays.day, day),
+              eq(marketDays.itemId, m.itemId),
+              sql`coalesce(${marketDays.ringLevel}, 0) = ${m.ringLevel ?? 0}`,
+              eq(marketDays.scope, m.scope),
+            ),
+          )
+      }
+    })
+  }
+
   async basket(): Promise<StoredBasket[]> {
     return this.db
       .select({
@@ -195,12 +216,16 @@ export class MarketDailyRepository {
     }
   }
 
+  /** 그날 응답을 넣는다. 같은 날 같은 열쇠가 있으면 새 몸으로 바꾼다. 범위를 다시 계산하면 그날 응답도 다시 만든다. */
   async saveResponses(day: string, responses: { key: string; body: string; etag: string }[]): Promise<void> {
     for (let i = 0; i < responses.length; i += 200) {
       await this.db
         .insert(marketResponses)
         .values(responses.slice(i, i + 200).map((r) => ({ day, ...r })))
-        .onConflictDoNothing()
+        .onConflictDoUpdate({
+          target: [marketResponses.day, marketResponses.key],
+          set: { body: sql`excluded.body`, etag: sql`excluded.etag` },
+        })
     }
   }
 

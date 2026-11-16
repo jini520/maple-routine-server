@@ -21,9 +21,9 @@ export interface DayReference {
   source: ReferenceSource
   /** 기준가. 울타리 안 표의 무게 중앙값 */
   ref: number
-  /** 울타리 안 표의 25% · 75% 지점. 앱의 범위 */
-  q1: number
-  q3: number
+  /** 범위의 두 끝. 7일 표로 따로 낸다(market-range). 모자라면 `null` 이다 */
+  q1: number | null
+  q3: number | null
   /** 울타리. 그날 줄의 판정에 쓴다 */
   low: number
   high: number
@@ -61,14 +61,6 @@ function median(values: number[]): number {
   const s = [...values].sort((a, b) => a - b)
   const m = s.length >> 1
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
-}
-
-/** 정렬된 배열의 분위수. Postgres percentile_cont 와 같은 선형 보간이다. */
-function quantile(sorted: number[], q: number): number {
-  const pos = (sorted.length - 1) * q
-  const lo = Math.floor(pos)
-  const hi = Math.ceil(pos)
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo)
 }
 
 /**
@@ -118,18 +110,17 @@ export function agreed(values: number[], previous: number | null): boolean {
   return previous !== null && m >= 0.8 * previous && m <= 1.2 * previous
 }
 
-/** 표들로 낸 기준가 · 범위 · 울타리. MASPI 의 기준 기간 기준가도 이것으로 낸다. */
+/** 표들로 낸 기준가 · 울타리. 범위는 비워 두고 market-range 가 채운다. MASPI 의 기준 기간 기준가도 이것으로 낸다. */
 export function referenceFromVotes(day: string, source: ReferenceSource, votes: Map<string, Vote>): DayReference {
   const all = [...votes.values()]
   const fence = logFence(all.map((v) => v.value))
   const inside = all.filter((v) => v.value >= fence.low && v.value <= fence.high)
-  const sorted = inside.map((v) => v.value).sort((a, b) => a - b)
   return {
     day,
     source,
     ref: Math.round(weightedMedian(inside)),
-    q1: Math.round(quantile(sorted, 0.25)),
-    q3: Math.round(quantile(sorted, 0.75)),
+    q1: null,
+    q3: null,
     low: fence.low,
     high: fence.high,
     voters: all.length,

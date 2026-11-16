@@ -19,6 +19,12 @@ export const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
 export const describeDb = TEST_DATABASE_URL ? describe : describe.skip
 
 const TABLES = [
+  'market_responses',
+  'maspi_days',
+  'maspi_basket',
+  'market_runs',
+  'market_judgements',
+  'market_days',
   'hunting_ground_levels',
   'hunting_grounds',
   'hunting_regions',

@@ -309,6 +309,13 @@
       "when": 1794735159908,
       "tag": "0043_superior_starforce",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794793559125,
+      "tag": "0044_market_daily",
+      "breakpoints": true
     }
   ]
 }

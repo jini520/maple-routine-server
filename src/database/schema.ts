@@ -9,6 +9,7 @@ import {
   boolean,
   check,
   customType,
+  date,
   doublePrecision,
   index,
   integer,
@@ -1554,4 +1555,105 @@ export const enhancementAnomalies = pgTable(
       t.itemName,
     ),
   ],
+)
+
+/** 일일 기준가의 근거. 응답에는 싣지 않는다. 거래가 적은 날이 드러나기 때문이다. */
+export const marketReferenceSourceEnum = pgEnum('market_reference_source', ['today', 'three_day', 'carry'])
+
+/** 시세(아이템 · 반지 레벨 · 범위)마다 날마다 낸 일일 기준가. 하루 작업이 한 번 넣고 다시 쓰지 않는다. 기준가가 빈 날은 줄이 없다. */
+export const marketDays = pgTable(
+  'market_days',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** KST 날짜 */
+    day: date('day', { mode: 'string' }).notNull(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id),
+    ringLevel: integer('ring_level'),
+    /** 장비는 거래권(`worlds.price_group`), 소비 아이템은 월드 key */
+    scope: text('scope').notNull(),
+    source: marketReferenceSourceEnum('source').notNull(),
+    refMeso: bigint('ref_meso', { mode: 'number' }).notNull(),
+    q1Meso: bigint('q1_meso', { mode: 'number' }).notNull(),
+    q3Meso: bigint('q3_meso', { mode: 'number' }).notNull(),
+    /** 그날 줄을 판정한 울타리 */
+    fenceLow: doublePrecision('fence_low').notNull(),
+    fenceHigh: doublePrecision('fence_high').notNull(),
+    voters: integer('voters').notNull(),
+    /** 마지막 새 기준가의 날. 유지 중이면 그 값을 처음 낸 날이다 */
+    freshDay: date('fresh_day', { mode: 'string' }).notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('market_days_market_day_unique').on(t.day, t.itemId, sql`coalesce(${t.ringLevel}, 0)`, t.scope),
+  ],
+)
+
+/** 사람마다 날마다의 판정 수. 신뢰도가 직전 30일의 이 값을 쓰고, 더미 입력을 한 날은 그 사람의 줄을 뒤 날 계산에서도 뺀다. */
+export const marketJudgements = pgTable(
+  'market_judgements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    day: date('day', { mode: 'string' }).notNull(),
+    /** 넥슨 계정 · 메이플 ID · 사용자 id 중 줄에 있는 것의 앞쪽 */
+    person: text('person').notNull(),
+    judged: integer('judged').notNull(),
+    excluded: integer('excluded').notNull(),
+    dummy: boolean('dummy').notNull().default(false),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [unique('market_judgements_day_person_unique').on(t.day, t.person)],
+)
+
+/** 하루 작업이 끝낸 날. 기준가가 하나도 없는 날도 끝낸 날로 남겨, 다시 계산하지 않게 한다. */
+export const marketRuns = pgTable('market_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  day: date('day', { mode: 'string' }).notNull().unique(),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+})
+
+/** MASPI 바스켓. 처음 채울 때 기준 기간으로 한 번 정한다. 무게는 아이템마다 같은 값이 범위 줄마다 실린다. */
+export const maspiBasket = pgTable(
+  'maspi_basket',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id),
+    ringLevel: integer('ring_level'),
+    scope: text('scope').notNull(),
+    basePriceMeso: doublePrecision('base_price_meso').notNull(),
+    persons: integer('persons').notNull(),
+    weight: doublePrecision('weight').notNull(),
+    /** 이 날부터 지수에 든다 */
+    entersOn: date('enters_on', { mode: 'string' }),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('maspi_basket_unique').on(t.itemId, sql`coalesce(${t.ringLevel}, 0)`, t.scope)],
+)
+
+/** MASPI 날마다의 종가 */
+export const maspiDays = pgTable('maspi_days', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  day: date('day', { mode: 'string' }).notNull().unique(),
+  value: doublePrecision('value').notNull(),
+  /** 전날 종가와의 차이. 첫날은 없다 */
+  change: doublePrecision('change'),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+})
+
+/** 앱에 줄 응답. 하루 작업이 만들어 저장하고, 부르면 그대로 준다. 모든 앱이 같은 바이트를 받는다. */
+export const marketResponses = pgTable(
+  'market_responses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    day: date('day', { mode: 'string' }).notNull(),
+    /** 응답을 찾는 열쇠. `maspi` · `items:<월드 key>` · `item:<아이템 key>:<반지 레벨>:<범위>` */
+    key: text('key').notNull(),
+    body: text('body').notNull(),
+    etag: text('etag').notNull(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [unique('market_responses_day_key_unique').on(t.day, t.key)],
 )

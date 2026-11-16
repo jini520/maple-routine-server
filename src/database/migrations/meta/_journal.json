@@ -316,6 +316,13 @@
       "when": 1794793559125,
       "tag": "0044_market_daily",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794837635057,
+      "tag": "0045_market_range_nullable",
+      "breakpoints": true
     }
   ]
 }

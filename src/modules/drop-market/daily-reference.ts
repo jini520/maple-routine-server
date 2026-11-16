@@ -118,7 +118,8 @@ export function agreed(values: number[], previous: number | null): boolean {
   return previous !== null && m >= 0.8 * previous && m <= 1.2 * previous
 }
 
-function fromVotes(day: string, source: ReferenceSource, votes: Map<string, Vote>): DayReference {
+/** 표들로 낸 기준가 · 범위 · 울타리. MASPI 의 기준 기간 기준가도 이것으로 낸다. */
+export function referenceFromVotes(day: string, source: ReferenceSource, votes: Map<string, Vote>): DayReference {
   const all = [...votes.values()]
   const fence = logFence(all.map((v) => v.value))
   const inside = all.filter((v) => v.value >= fence.low && v.value <= fence.high)
@@ -158,7 +159,7 @@ export function referenceOf(input: {
     const votes = votesOf(rows.filter((r) => r.day >= from && r.day <= day), weightOf)
     if (votes.size < MIN_VOTERS) continue
     if (!agreed([...votes.values()].map((v) => v.value), usable?.ref ?? null)) continue
-    return fromVotes(day, source, votes)
+    return referenceFromVotes(day, source, votes)
   }
   return usable === null ? null : { ...usable, day, source: 'carry' }
 }

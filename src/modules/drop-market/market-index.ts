@@ -53,7 +53,11 @@ export function relativeOf(item: BasketItem, refOf: (scope: string) => number | 
 }
 
 /** 전날 지수에 곱할 비율. 이틀 모두 등락비가 있는 아이템으로만 세어, 아이템이 빠지거나 돌아와도 지수가 튀지 않는다. */
-export function linkOf(weights: Map<string, number>, before: Map<string, number>, after: Map<string, number>): number | null {
+export function linkOf(
+  weights: ReadonlyMap<string, number>,
+  before: ReadonlyMap<string, number>,
+  after: ReadonlyMap<string, number>,
+): number | null {
   let num = 0
   let den = 0
   for (const [key, rel] of after) {
@@ -67,7 +71,7 @@ export function linkOf(weights: Map<string, number>, before: Map<string, number>
 }
 
 /** 등락비가 있는 아이템만으로 센 그날의 지수. 기준 기간의 첫날에 이어 붙이는 시작값으로 쓴다. */
-export function directIndex(basket: BasketItem[], relatives: Map<string, number>): number {
+export function directIndex(basket: BasketItem[], relatives: ReadonlyMap<string, number>): number {
   let num = 0
   let den = 0
   for (const b of basket) {

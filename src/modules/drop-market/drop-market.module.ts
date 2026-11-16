@@ -2,10 +2,17 @@ import { Module } from '@nestjs/common'
 
 import { DropMarketRepository } from './drop-market.repository'
 import { DropMarketService } from './drop-market.service'
+import { MarketDailyRepository } from './market-daily.repository'
+import { MarketPublishJob } from './market-publish.job'
+import { MarketPublishService } from './market-publish.service'
+import { MarketController } from './market.controller'
 
-/** 드롭 시세. drop_prices 를 월드 묶음마다 읽어 잘못 적은 값을 빼고 봉을 만든다. 읽기만 한다. */
+/**
+ * 드롭 시세. 관리 화면의 판정과 봉, 그리고 하루 한 번 내는 일일 기준가 · MASPI 와 앱이 받는 공개 조회다.
+ */
 @Module({
-  providers: [DropMarketRepository, DropMarketService],
+  controllers: [MarketController],
+  providers: [DropMarketRepository, DropMarketService, MarketDailyRepository, MarketPublishService, MarketPublishJob],
   exports: [DropMarketService],
 })
 export class DropMarketModule {}

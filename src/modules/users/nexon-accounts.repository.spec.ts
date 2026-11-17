@@ -263,6 +263,22 @@ describeDb('NexonAccountsRepository', () => {
       expect(await db.select().from(users)).toHaveLength(2)
     })
 
+    // 1.0.15 부터 앱은 키 해시를 보내지 않는다. 키를 다시 받아도 메이플 ID 가 같아 같은 계정 줄이다.
+    it('키 해시 없이 메이플 ID 만으로 등록하고, 다시 보내도 줄이 늘지 않는다', async () => {
+      const login = await users$.upsertByNexonUid('uid-1')
+
+      await expect(repo.registerSubAccount(login.nexonAccountId, null, ['m1', 'm2'])).resolves.toBe(
+        'registered',
+      )
+      await expect(repo.registerSubAccount(login.nexonAccountId, null, ['m2', 'm3'])).resolves.toBe(
+        'registered',
+      )
+
+      const [sub] = await registrationsOf(login.nexonAccountId)
+      expect(await mapleIdsOfAccount(sub)).toEqual(['m1', 'm2', 'm3'])
+      expect(await accountIds()).toHaveLength(2)
+    })
+
     // 키를 다시 받은 부계정은 키가 여럿이다. 메이플 ID 가 같아 같은 넥슨 계정 줄에 단다.
     it('키를 다시 받아 등록하면 같은 부계정에 키가 하나 더 달린다', async () => {
       const login = await users$.upsertByNexonUid('uid-1')
@@ -327,7 +343,7 @@ describeDb('NexonAccountsRepository', () => {
       await repo.registerSubAccount(first.nexonAccountId, KEY_OLD, ['m1'])
       const sub = await holderOf(KEY_OLD)
 
-      await repo.unregisterSubAccount(first.nexonAccountId, KEY_OLD)
+      await repo.unregisterSubAccount(first.nexonAccountId, ['m1'])
 
       expect(await registrationsOf(first.nexonAccountId)).toEqual([])
       await expect(repo.registerSubAccount(second.nexonAccountId, KEY_OLD, ['m1'])).resolves.toBe(
@@ -337,17 +353,17 @@ describeDb('NexonAccountsRepository', () => {
       expect(await mapleIdsOfAccount(sub!)).toEqual(['m1'])
     })
 
-    // 해제는 여러 기기가 같은 키로 보낼 수 있고, 기기에만 남은 키로도 보낸다.
-    it('해제는 남의 등록을 지우지 않고, 처음 보는 키로 와도 줄을 만들지 않는다', async () => {
+    // 해제는 여러 기기가 보낼 수 있고, 서버에 등록한 적 없는 키를 지울 때도 보낸다.
+    it('해제는 남의 등록을 지우지 않고, 처음 보는 메이플 ID 로 와도 줄을 만들지 않는다', async () => {
       const first = await users$.upsertByNexonUid('uid-1')
       const second = await users$.upsertByNexonUid('uid-2')
       await repo.registerSubAccount(first.nexonAccountId, KEY_OLD, ['m1'])
 
-      await repo.unregisterSubAccount(second.nexonAccountId, KEY_OLD)
-      await repo.unregisterSubAccount(first.nexonAccountId, KEY_NEW)
+      await repo.unregisterSubAccount(second.nexonAccountId, ['m1'])
+      await repo.unregisterSubAccount(first.nexonAccountId, ['m9'])
 
       expect(await registrationsOf(first.nexonAccountId)).toHaveLength(1)
-      expect(await holderOf(KEY_NEW)).toBeUndefined()
+      expect(await accountIds()).toHaveLength(3)
     })
 
     // 두 로그인이 서로를 부계정으로 두면 누가 메인인지 가릴 수 없다.

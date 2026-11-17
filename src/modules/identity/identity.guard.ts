@@ -28,6 +28,8 @@ export interface IdentityContext {
 export type IdentityRequest = FastifyRequest & { identity?: IdentityContext }
 
 export const API_KEY_HASH_HEADER = 'x-api-key-hash'
+/** 로그인 없이 쓰는 사람의 메이플 ID 해시. 1.0.15 부터 키 해시 대신 온다. */
+export const MAPLE_ID_HASH_HEADER = 'x-maple-id-hash'
 /** 앱이 만든 SHA-256 의 소문자 16진. 키 원문이 실려 오면 길이가 안 맞아 여기서 걸린다. */
 export const API_KEY_HASH = /^[0-9a-f]{64}$/
 
@@ -37,7 +39,7 @@ export const ALLOW_DELETION_PENDING = 'identity:allow-deletion-pending'
 export const AllowDeletionPending = () => SetMetadata(ALLOW_DELETION_PENDING, true)
 
 /**
- * 쓰기 경로의 신원. Authorization: Bearer <세션> 아니면 x-api-key-hash 다.
+ * 쓰기 경로의 신원. Authorization: Bearer <세션>, x-maple-id-hash, x-api-key-hash 차례로 본다. 키 해시는 1.0.14 까지의 앱이 보낸다.
  *
  * 세션이 왔으면 키는 안 읽는다. 죽은 세션도 키로 안 넘어가고 401 이다. 넘어가면 같은 사람의 기록이
  * 두 열쇠로 갈라진다. 세션은 수명만 보고 넥슨을 안 부른다.
@@ -82,6 +84,13 @@ export class IdentityGuard implements CanActivate {
         source: 'login',
         nexonAccountId: account.nexonAccountId,
       }
+      return
+    }
+    const mapleId = request.headers[MAPLE_ID_HASH_HEADER]
+    if (mapleId !== undefined) {
+      if (typeof mapleId !== 'string' || !API_KEY_HASH.test(mapleId)) throw new UnauthorizedException()
+      const found = await this.users.upsertByMapleId(mapleId)
+      request.identity = { userId: found.id, source: 'key', nexonAccountId: found.nexonAccountId }
       return
     }
     const header = request.headers[API_KEY_HASH_HEADER]

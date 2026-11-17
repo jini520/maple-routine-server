@@ -12,6 +12,7 @@ function build() {
   const sessions = { findByHash: jest.fn() }
   const users = {
     upsertByApiKeyHash: jest.fn(),
+    upsertByMapleId: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
@@ -100,12 +101,26 @@ describe('IdentityGuard', () => {
     expect(sessions.findByHash).not.toHaveBeenCalled()
   })
 
+  // API 키는 다시 받으면 바뀌지만 메이플 ID 는 바뀌지 않는다.
+  it('메이플 ID 해시가 오면 그 메이플 ID 의 계정을 찾거나 만들고 key 신원이다. 키 해시는 안 읽는다', async () => {
+    const { guard, users } = build()
+    users.upsertByMapleId.mockResolvedValue({ id: 'u3', nexonAccountId: 'a3' })
+    const { context, request } = contextOf({ 'x-maple-id-hash': HEX, 'x-api-key-hash': HEX })
+
+    await expect(guard.canActivate(context)).resolves.toBe(true)
+
+    expect(users.upsertByMapleId).toHaveBeenCalledWith(HEX)
+    expect(users.upsertByApiKeyHash).not.toHaveBeenCalled()
+    expect(request.identity).toEqual({ userId: 'u3', source: 'key', nexonAccountId: 'a3' })
+  })
+
   it('둘 다 없거나 해시 모양이 틀리면 401 이다', async () => {
     const { guard, users } = build()
     const cases: Record<string, string>[] = [
       {},
       { 'x-api-key-hash': HEX.toUpperCase() },
       { 'x-api-key-hash': HEX.slice(1) },
+      { 'x-maple-id-hash': HEX.toUpperCase() },
       { 'x-api-key-hash': 'live_' + 'x'.repeat(59) },
       { authorization: 'Basic abc' },
     ]

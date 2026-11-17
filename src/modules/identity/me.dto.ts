@@ -18,12 +18,12 @@ export const mapleId = nexonIdHash
 export const mapleIdsBody = z.object({ mapleIds: z.array(mapleId).max(50) })
 export type MapleIdsBody = z.infer<typeof mapleIdsBody>
 
-/** 메이플 ID 가 없으면 같은 넥슨 계정인지 가를 수 없어 받지 않는다. */
+/** 메이플 ID 가 없으면 어느 넥슨 계정인지 찾을 수 없어 받지 않는다. 키 해시는 1.0.14 까지의 앱만 보낸다. */
 export const subAccountBody = z.object({
-  apiKeyHash: z.string().regex(API_KEY_HASH),
+  apiKeyHash: z.string().regex(API_KEY_HASH).optional(),
   mapleIds: z.array(mapleId).min(1).max(50),
 })
 export type SubAccountBody = z.infer<typeof subAccountBody>
 
-export const subAccountRemovalBody = z.object({ apiKeyHash: z.string().regex(API_KEY_HASH) })
+export const subAccountRemovalBody = z.object({ mapleIds: z.array(mapleId).min(1).max(50) })
 export type SubAccountRemovalBody = z.infer<typeof subAccountRemovalBody>

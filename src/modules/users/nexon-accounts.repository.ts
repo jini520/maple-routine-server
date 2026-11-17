@@ -5,8 +5,8 @@ import { DB, type Db } from '../../database/database.module'
 import { nexonAccountMapleIds, subAccounts } from '../../database/schema'
 import {
   addMapleIds,
-  findAccountByKey,
   findOrCreateKeyAccount,
+  findOrCreateMapleIdAccount,
   lockNexonAccounts,
   mapleIdsOf,
 } from './nexon-account-store'
@@ -39,8 +39,8 @@ export class NexonAccountsRepository {
   }
 
   /**
-   * 키의 넥슨 계정을 이 로그인의 부계정으로 잇는다. 처음 보는 키는 사람과 계정 줄을 만들고, 메이플 ID 로 같은 넥슨 ID 의 줄과
-   * 합친다. 이미 이 로그인의 부계정이면 그대로 둔다.
+   * 메이플 ID 의 넥슨 계정을 이 로그인의 부계정으로 잇는다. 처음 보는 메이플 ID 는 사람과 계정 줄을 만든다. 이미 이 로그인의
+   * 부계정이면 그대로 둔다. 키 해시는 1.0.14 까지의 앱이 보내고, 오면 그 키의 줄을 메이플 ID 로 같은 넥슨 ID 의 줄과 합친다.
    *
    * 거절은 넷이다. 메이플 ID 가 로그인 자신의 것과 겹치거나 키가 로그인 줄에 달려 있으면 같은 넥슨 ID 다. 다른 로그인에 등록된
    * 계정은 옮기지 않는다. 옮기면 먼저 등록한 사람의 기록이 다른 사람에게 넘어간다. 부계정을 가진 계정은 부계정이 될 수 없고,
@@ -50,7 +50,7 @@ export class NexonAccountsRepository {
    */
   async registerSubAccount(
     loginAccountId: string,
-    apiKeyHash: Buffer,
+    apiKeyHash: Buffer | null,
     mapleIds: readonly string[],
   ): Promise<SubAccountRegistration> {
     try {
@@ -68,7 +68,12 @@ export class NexonAccountsRepository {
           )
           .limit(1)
         if (overlap !== undefined) throw new Rejected('same_account')
-        const holder = await findOrCreateKeyAccount(tx, apiKeyHash)
+        const [first] = unique
+        if (first === undefined) throw new Error('메이플 ID 없이 부계정을 등록할 수 없다')
+        const holder =
+          apiKeyHash === null
+            ? await findOrCreateMapleIdAccount(tx, first)
+            : await findOrCreateKeyAccount(tx, apiKeyHash)
         if (holder.nexonAccountId === loginAccountId) throw new Rejected('same_account')
         const sub = await addMapleIds(tx, holder.nexonAccountId, unique)
         if (sub === loginAccountId) throw new Rejected('same_account')
@@ -101,20 +106,23 @@ export class NexonAccountsRepository {
   }
 
   /**
-   * 키의 넥슨 계정과 이 로그인을 잇는 등록을 지운다. 계정 줄 · 메이플 ID · 기록은 남는다. 등록이 없거나 처음 보는 키면 아무 일도
-   * 하지 않는다. 같은 해제를 여러 기기가 보낸다.
+   * 메이플 ID 의 넥슨 계정과 이 로그인을 잇는 등록을 지운다. 계정 줄 · 메이플 ID · 기록은 남는다. 등록이 없거나 처음 보는
+   * 메이플 ID 면 아무 일도 하지 않는다. 같은 해제를 여러 기기가 보낸다.
    */
-  async unregisterSubAccount(loginAccountId: string, apiKeyHash: Buffer): Promise<void> {
+  async unregisterSubAccount(loginAccountId: string, mapleIds: readonly string[]): Promise<void> {
+    if (mapleIds.length === 0) return
     await this.db.transaction(async (tx) => {
       await lockNexonAccounts(tx)
-      const holder = await findAccountByKey(tx, apiKeyHash)
-      if (holder === null) return
+      const holders = tx
+        .select({ id: nexonAccountMapleIds.nexonAccountId })
+        .from(nexonAccountMapleIds)
+        .where(inArray(nexonAccountMapleIds.mapleId, [...mapleIds]))
       await tx
         .delete(subAccounts)
         .where(
           and(
             eq(subAccounts.loginAccountId, loginAccountId),
-            eq(subAccounts.subAccountId, holder.nexonAccountId),
+            inArray(subAccounts.subAccountId, holders),
           ),
         )
     })

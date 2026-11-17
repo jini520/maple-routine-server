@@ -27,7 +27,7 @@ function loginAccountOf(identity: IdentityContext): string {
 }
 
 /**
- * 넥슨 로그인의 부계정 등록과 해제. 서버는 어느 키가 그 사람의 부계정인지만 적고, 키 값은 보관하지 않는다.
+ * 넥슨 로그인의 부계정 등록과 해제. 부계정은 메이플 ID 로 찾는다. 키는 다시 받으면 바뀐다.
  *
  * 목록 경로는 없다. 다른 기기에서 등록한 부계정은 기록 받기의 응답으로 알린다.
  */
@@ -45,7 +45,7 @@ export class SubAccountsController {
   ): Promise<void> {
     const result = await this.accounts.registerSubAccount(
       loginAccountOf(identity),
-      sha256(body.apiKeyHash),
+      body.apiKeyHash === undefined ? null : sha256(body.apiKeyHash),
       body.mapleIds,
     )
     if (result !== 'registered') throw new ConflictException({ code: result })
@@ -58,6 +58,6 @@ export class SubAccountsController {
     @CurrentIdentity() identity: IdentityContext,
     @Body(new ZodValidationPipe(subAccountRemovalBody)) body: SubAccountRemovalBody,
   ): Promise<void> {
-    await this.accounts.unregisterSubAccount(loginAccountOf(identity), sha256(body.apiKeyHash))
+    await this.accounts.unregisterSubAccount(loginAccountOf(identity), body.mapleIds)
   }
 }

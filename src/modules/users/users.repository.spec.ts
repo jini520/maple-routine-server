@@ -408,6 +408,18 @@ describeDb('UsersRepository', () => {
     })
   })
 
+  // 키는 다시 받으면 바뀌어, 키 해시로 찾으면 그때마다 새 사람이 생겼다.
+  it('메이플 ID 로 계정을 찾고, 처음 보는 메이플 ID 는 사람 · 계정 줄 · 메이플 ID 줄을 만든다', async () => {
+    const first = await repo.upsertByMapleId('m1')
+    const again = await repo.upsertByMapleId('m1')
+    const [both] = await Promise.all([repo.upsertByMapleId('m2'), repo.upsertByMapleId('m2')])
+
+    expect(again).toEqual(first)
+    expect(await repo.upsertByMapleId('m2')).toEqual(both)
+    expect(await db.select().from(users)).toHaveLength(2)
+    expect(await db.select().from(nexonAccountMapleIds)).toHaveLength(2)
+  })
+
   it('전체 사용자는 삭제를 예약한 사람을 빼고, 기준 시각 앞에 만든 사람만 따로 셀 수 있다', async () => {
     await db.insert(users).values([
       { createdAt: new Date('2026-11-01T00:00:00Z') },

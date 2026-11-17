@@ -72,6 +72,36 @@ export async function findOrCreateKeyAccount(tx: Tx, apiKeyHash: Buffer): Promis
   return winner
 }
 
+export async function findAccountByMapleId(
+  tx: Tx | Db,
+  mapleId: string,
+): Promise<FoundAccount | null> {
+  const [row] = await tx
+    .select(ACCOUNT_COLUMNS)
+    .from(nexonAccountMapleIds)
+    .innerJoin(nexonAccounts, eq(nexonAccounts.id, nexonAccountMapleIds.nexonAccountId))
+    .where(eq(nexonAccountMapleIds.mapleId, mapleId))
+  return row ?? null
+}
+
+/**
+ * 메이플 ID 로 넥슨 계정을 찾고, 없으면 사람 · 계정 줄 · 메이플 ID 줄을 함께 만든다. `lockNexonAccounts` 안에서 부른다. 잠그지
+ * 않으면 같은 메이플 ID 가 동시에 와 UNIQUE 에 진 쪽이 실패한다.
+ */
+export async function findOrCreateMapleIdAccount(tx: Tx, mapleId: string): Promise<FoundAccount> {
+  const found = await findAccountByMapleId(tx, mapleId)
+  if (found !== null) return found
+  const [user] = await tx.insert(users).values({}).returning({ id: users.id })
+  if (user === undefined) throw new Error('사람을 만들지 못했다')
+  const [account] = await tx
+    .insert(nexonAccounts)
+    .values({ userId: user.id })
+    .returning(ACCOUNT_COLUMNS)
+  if (account === undefined) throw new Error('계정 줄을 만들지 못했다')
+  await tx.insert(nexonAccountMapleIds).values({ nexonAccountId: account.nexonAccountId, mapleId })
+  return account
+}
+
 /**
  * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 키 · 메이플 ID · 부계정 등록 · 강화 이상 보고를 옮기고 from 을 지운다. 기록은
  * 메이플 ID 를 가리키므로 메이플 ID 를 따라 옮겨진다. from 의 사람에게 다른 줄이 없으면 그 사람의 옛 기록을 into 의 사람에게

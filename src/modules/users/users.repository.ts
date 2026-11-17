@@ -6,7 +6,9 @@ import { DB, type Db } from '../../database/database.module'
 import { nexonAccountKeys, nexonAccounts, users } from '../../database/schema'
 import {
   ACCOUNT_COLUMNS,
+  findAccountByMapleId,
   findOrCreateKeyAccount,
+  findOrCreateMapleIdAccount,
   type FoundAccount,
   lockNexonAccounts,
   mergeNexonAccounts,
@@ -62,6 +64,19 @@ export class UsersRepository {
   /** 키 해시로 넥슨 계정을 찾는다. 처음 보는 해시는 사람과 계정 줄을 만든다. 증명은 없고 표본을 묶는 꼬리표다. */
   upsertByApiKeyHash(apiKeyHash: Buffer): Promise<FoundAccount> {
     return this.db.transaction((tx) => findOrCreateKeyAccount(tx, apiKeyHash))
+  }
+
+  /**
+   * 메이플 ID 해시로 넥슨 계정을 찾는다. 처음 보는 메이플 ID 는 사람과 계정 줄을 만든다. 키는 다시 받으면 바뀌지만 메이플 ID 는
+   * 바뀌지 않아, 로그인 없이 쓰는 사람을 이것으로 찾는다. 찾으면 잠그지 않는다. 요청마다 불려서다.
+   */
+  async upsertByMapleId(mapleId: string): Promise<FoundAccount> {
+    const found = await findAccountByMapleId(this.db, mapleId)
+    if (found !== null) return found
+    return this.db.transaction(async (tx) => {
+      await lockNexonAccounts(tx)
+      return findOrCreateMapleIdAccount(tx, mapleId)
+    })
   }
 
   /** 세션 경로의 계정. 세션은 사람만 가리키므로 그 사람의 로그인 계정 줄(`nexon_uid` 가 있는 줄)을 찾는다. */

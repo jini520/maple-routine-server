@@ -81,30 +81,43 @@ describe('SubAccountsController', () => {
     }
   })
 
-  it('해제는 받은 키 해시를 한 번 더 해시해 로그인 계정에서 뗀다. 204 다', async () => {
+  // 1.0.15 부터 앱은 키 해시를 보내지 않는다. 키는 다시 받으면 바뀐다.
+  it('키 해시 없이 메이플 ID 만으로 등록한다', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/sub-accounts',
+      headers: bearer,
+      payload: { mapleIds: [M1] },
+    })
+
+    expect(res.statusCode).toBe(204)
+    expect(accounts.registerSubAccount).toHaveBeenCalledWith('a1', null, [M1])
+  })
+
+  it('해제는 메이플 ID 로 로그인 계정에서 뗀다. 204 다', async () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/v1/me/sub-accounts',
       headers: bearer,
-      payload: { apiKeyHash: hash },
+      payload: { mapleIds: [M1, M2] },
     })
 
     expect(res.statusCode).toBe(204)
-    expect(accounts.unregisterSubAccount).toHaveBeenCalledWith('a1', sha256(hash))
+    expect(accounts.unregisterSubAccount).toHaveBeenCalledWith('a1', [M1, M2])
   })
 
-  it('해제도 키 해시로 오면 403 이고, 키 해시 모양이 틀리면 400 이다', async () => {
+  it('해제도 키 해시 헤더로 오면 403 이고, 메이플 ID 가 없으면 400 이다', async () => {
     const byKey = await app.inject({
       method: 'DELETE',
       url: '/v1/me/sub-accounts',
       headers: keyHeader,
-      payload: { apiKeyHash: hash },
+      payload: { mapleIds: [M1] },
     })
     const malformed = await app.inject({
       method: 'DELETE',
       url: '/v1/me/sub-accounts',
       headers: bearer,
-      payload: { apiKeyHash: 'x' },
+      payload: { mapleIds: [] },
     })
 
     expect(byKey.statusCode).toBe(403)

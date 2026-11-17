@@ -2,6 +2,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   ForbiddenException,
   HttpCode,
   Post,
@@ -12,7 +13,12 @@ import { sha256 } from '../../common/hash'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { NexonAccountsRepository } from '../users/nexon-accounts.repository'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from './identity.guard'
-import { type SubAccountBody, subAccountBody } from './me.dto'
+import {
+  type SubAccountBody,
+  subAccountBody,
+  type SubAccountRemovalBody,
+  subAccountRemovalBody,
+} from './me.dto'
 
 /** 세션의 로그인 계정. 키 사용자에게는 부계정이 없고, 어느 로그인에 붙일지는 세션이 정한다. */
 function loginAccountOf(identity: IdentityContext): string {
@@ -21,16 +27,16 @@ function loginAccountOf(identity: IdentityContext): string {
 }
 
 /**
- * 넥슨 로그인의 부계정 등록. 서버는 어느 키가 그 사람의 부계정인지만 적고, 키 값은 보관하지 않는다.
+ * 넥슨 로그인의 부계정 등록과 해제. 서버는 어느 키가 그 사람의 부계정인지만 적고, 키 값은 보관하지 않는다.
  *
- * 목록 · 지우기 경로는 없다. 앱이 부계정을 기기마다 따로 관리해 서버의 목록을 받지도, 서버에서 지우지도 않는다.
+ * 목록 경로는 없다. 다른 기기에서 등록한 부계정은 기록 받기의 응답으로 알린다.
  */
 @Controller('v1/me/sub-accounts')
 @UseGuards(IdentityGuard)
 export class SubAccountsController {
   constructor(private readonly accounts: NexonAccountsRepository) {}
 
-  /** 같은 넥슨 ID 면 409 `same_account` 다. */
+  /** 거절은 409 이고 이유를 `code` 로 준다(`same_account` · `registered_elsewhere` 등). */
   @Post()
   @HttpCode(204)
   async register(
@@ -42,6 +48,16 @@ export class SubAccountsController {
       sha256(body.apiKeyHash),
       body.mapleIds,
     )
-    if (result === 'same_account') throw new ConflictException({ code: 'same_account' })
+    if (result !== 'registered') throw new ConflictException({ code: result })
+  }
+
+  /** 등록이 없어도 204 다. */
+  @Delete()
+  @HttpCode(204)
+  async unregister(
+    @CurrentIdentity() identity: IdentityContext,
+    @Body(new ZodValidationPipe(subAccountRemovalBody)) body: SubAccountRemovalBody,
+  ): Promise<void> {
+    await this.accounts.unregisterSubAccount(loginAccountOf(identity), sha256(body.apiKeyHash))
   }
 }

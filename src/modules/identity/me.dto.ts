@@ -24,3 +24,6 @@ export const subAccountBody = z.object({
   mapleIds: z.array(mapleId).min(1).max(50),
 })
 export type SubAccountBody = z.infer<typeof subAccountBody>
+
+export const subAccountRemovalBody = z.object({ apiKeyHash: z.string().regex(API_KEY_HASH) })
+export type SubAccountRemovalBody = z.infer<typeof subAccountRemovalBody>

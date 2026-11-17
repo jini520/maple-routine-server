@@ -48,6 +48,7 @@ export class MarketDailyRepository {
   /**
    * from ~ to(KST 날짜, 둘 다 포함)에 거래된 completed 줄. 거래권이 없는 월드와 월드를 모르는 줄은 어느 시세에도 넣지 않는다.
    * 사람은 넥슨 계정 · 메이플 ID · 사용자 id 중 있는 것의 앞쪽이다. 만들기 어려운 신원일수록 한 사람이 여러 사람으로 보이기 어렵다.
+   * 부계정은 그 계정을 등록한 로그인의 넥슨 계정으로 센다.
    */
   async rowsBetween(from: string, to: string): Promise<DailyRow[]> {
     const result = await this.db.execute<{
@@ -61,13 +62,14 @@ export class MarketDailyRepository {
     }>(sql`
       select dp.item_id, i.key as item_key, dp.ring_level,
              case when i.world_bound then w.key else w.price_group end as scope,
-             coalesce('a:' || na.nexon_account_id::text, 'm:' || dp.maple_id, 'u:' || dp.user_id::text, 'r:' || dp.id::text) as person,
+             coalesce('a:' || coalesce(sa.login_account_id, na.nexon_account_id)::text, 'm:' || dp.maple_id, 'u:' || dp.user_id::text, 'r:' || dp.id::text) as person,
              to_char((dp.priced_at at time zone 'Asia/Seoul')::date, 'YYYY-MM-DD') as day,
              dp.price_meso::float8 as price
       from drop_prices dp
       join items i on i.id = dp.item_id
       join worlds w on w.id = dp.world_id
       left join nexon_account_maple_ids na on na.maple_id = dp.maple_id
+      left join sub_accounts sa on sa.sub_account_id = na.nexon_account_id
       where dp.record_status = 'completed'
         and w.price_group is not null
         and dp.priced_at >= (${from}::date)::timestamp at time zone 'Asia/Seoul'

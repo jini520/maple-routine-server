@@ -1,8 +1,17 @@
 import { randomUUID } from 'node:crypto'
 
-import { dropPrices, items, users, worlds } from '../../database/schema'
+import {
+  dropPrices,
+  items,
+  nexonAccountMapleIds,
+  nexonAccounts,
+  subAccounts,
+  users,
+  worlds,
+} from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { DropMarketRepository } from './drop-market.repository'
+import { MarketDailyRepository } from './market-daily.repository'
 
 describeDb('DropMarketRepository', () => {
   let db: TestDb
@@ -82,6 +91,44 @@ describeDb('DropMarketRepository', () => {
         { key: 'helios', name: '핼리오스' },
       ],
     })
+  })
+
+  // 한 사람이 계정마다 한 표씩 내면 혼자서 기준가의 합의 인원을 채울 수 있다.
+  it('부계정의 줄은 그 계정을 등록한 로그인과 같은 사람의 줄이다', async () => {
+    const [other] = await db.insert(users).values({}).returning({ id: users.id })
+    const [main, sub] = await db
+      .insert(nexonAccounts)
+      .values([{ userId: me }, { userId: other.id }])
+      .returning({ id: nexonAccounts.id })
+    await db.insert(nexonAccountMapleIds).values([
+      { nexonAccountId: main.id, mapleId: 'm-main' },
+      { nexonAccountId: sub.id, mapleId: 'm-sub' },
+    ])
+    await db.insert(subAccounts).values({ loginAccountId: main.id, subAccountId: sub.id })
+    for (const [userId, mapleId] of [
+      [me, 'm-main'],
+      [other.id, 'm-sub'],
+    ]) {
+      await db.insert(dropPrices).values({
+        userId,
+        mapleId,
+        dropRecordId: randomUUID(),
+        identifiedBy: 'key',
+        itemId: item.ring,
+        priceMeso: 100,
+        recordStatus: 'completed',
+        periodKey: '2026-10-15',
+        worldId: world.scania,
+        ringLevel: 4,
+        pricedAt: new Date('2026-10-17T03:00:00Z'),
+      })
+    }
+
+    const shown = await repo.rows({ kind: 'equipment', key: 'general' }, since)
+    const daily = await new MarketDailyRepository(db).rowsBetween('2026-10-17', '2026-10-17')
+
+    expect(new Set(shown.map((r) => r.person))).toEqual(new Set([`a:${main.id}`]))
+    expect(new Set(daily.map((r) => r.person))).toEqual(new Set([`a:${main.id}`]))
   })
 
   it('장비는 거래권의 월드를 함께 세고 소비 아이템은 안 센다', async () => {

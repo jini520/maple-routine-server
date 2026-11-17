@@ -15,6 +15,10 @@ import { newReferralCode } from './referral-code'
 
 export type { FoundAccount } from './nexon-account-store'
 
+/** 부계정으로 등록된 계정의 사람이 아니다. 그 사람은 메인과 한 명이라 사용자 수에 따로 세지 않는다. */
+const notSubAccount = sql`not exists (
+  select 1 from sub_accounts s join nexon_accounts sa on sa.id = s.sub_account_id where sa.user_id = ${users.id})`
+
 /** 추천인 코드가 겹쳐 다시 뽑는 횟수의 끝. 코드가 1조 가지가 넘어 한 번 겹치는 일도 드물다. */
 const ACCOUNT_INSERT_ATTEMPTS = 5
 
@@ -142,7 +146,7 @@ export class UsersRepository {
     return deleted.length
   }
 
-  /** 삭제를 예약하지 않은 사람 수. createdBefore 를 주면 그 앞에 만든 사람만 센다. 예약한 사람은 30일 뒤 지워진다. */
+  /** 삭제를 예약하지 않은 사람 수. 부계정의 사람은 뺀다. createdBefore 를 주면 그 앞에 만든 사람만 센다. 예약한 사람은 30일 뒤 지워진다. */
   async countActive(createdBefore?: Date): Promise<number> {
     const [row] = await this.db
       .select({ n: sql<number>`count(*)::int` })
@@ -150,13 +154,14 @@ export class UsersRepository {
       .where(
         and(
           isNull(users.deletionRequestedAt),
+          notSubAccount,
           createdBefore ? lt(users.createdAt, createdBefore) : undefined,
         ),
       )
     return row?.n ?? 0
   }
 
-  /** 날마다(한국 시각) 새로 만든 사람과 그 중 삭제를 예약하지 않은 사람. 오래된 날부터. */
+  /** 날마다(한국 시각) 새로 만든 사람과 그 중 삭제를 예약하지 않은 사람. 부계정의 사람은 뺀다. 오래된 날부터. */
   createdDaily(range: {
     since: Date
     until: Date
@@ -169,7 +174,9 @@ export class UsersRepository {
         active: sql<number>`(count(*) filter (where ${users.deletionRequestedAt} is null))::int`,
       })
       .from(users)
-      .where(and(gte(users.createdAt, range.since), lt(users.createdAt, range.until)))
+      .where(
+        and(gte(users.createdAt, range.since), lt(users.createdAt, range.until), notSubAccount),
+      )
       .groupBy(day)
       .orderBy(sql`1`)
   }

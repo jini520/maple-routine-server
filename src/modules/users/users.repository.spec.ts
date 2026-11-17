@@ -11,6 +11,7 @@ import {
   nexonAccountMapleIds,
   nexonAccounts,
   referrals,
+  subAccounts,
   usageEvents,
   users,
 } from '../../database/schema'
@@ -437,6 +438,20 @@ describeDb('UsersRepository', () => {
       until: new Date('2026-11-03T15:00:00Z'),
     }
     expect(await repo.createdDaily(range)).toEqual([{ day: '2026-11-03', created: 2, active: 1 }])
+  })
+
+  // 부계정의 키는 등록되거나 기록을 보낼 때 자기 사람 줄을 만든다. 따로 세면 다계정 사용자가 계정 수만큼 잡힌다.
+  it('부계정으로 등록된 계정의 사람은 전체 사용자와 새 사용자에 세지 않는다', async () => {
+    const login = await repo.upsertByNexonUid('uid-1')
+    const sub = await repo.upsertByApiKeyHash(sha256('sub-key'))
+    await repo.upsertByApiKeyHash(sha256('key-user'))
+    await db
+      .insert(subAccounts)
+      .values({ loginAccountId: login.nexonAccountId, subAccountId: sub.nexonAccountId })
+
+    const range = { since: new Date(Date.now() - 86_400_000), until: new Date(Date.now() + 86_400_000) }
+    expect(await repo.countActive()).toBe(2)
+    expect((await repo.createdDaily(range)).map((d) => [d.created, d.active])).toEqual([[2, 2]])
   })
 
   describe('추천인 코드', () => {

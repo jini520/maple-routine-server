@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { items, dropPrices, nexonAccountMapleIds, worlds } from '../../database/schema'
+import { items, dropPrices, nexonAccountMapleIds, subAccounts, worlds } from '../../database/schema'
 
 /** 장비를 서로 거래할 수 있는 월드들. worlds.price_group 이 같은 월드다. */
 export interface PriceGroup {
@@ -95,12 +95,13 @@ export class DropMarketRepository {
         pricedAt: dropPrices.pricedAt,
         worldKey: worlds.key,
         worldName: worlds.name,
-        person: sql<string>`coalesce('a:' || ${nexonAccountMapleIds.nexonAccountId}::text, 'm:' || ${dropPrices.mapleId}, 'u:' || ${dropPrices.userId}::text, 'r:' || ${dropPrices.id}::text)`,
+        person: sql<string>`coalesce('a:' || coalesce(${subAccounts.loginAccountId}, ${nexonAccountMapleIds.nexonAccountId})::text, 'm:' || ${dropPrices.mapleId}, 'u:' || ${dropPrices.userId}::text, 'r:' || ${dropPrices.id}::text)`,
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
       .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .leftJoin(nexonAccountMapleIds, eq(nexonAccountMapleIds.mapleId, dropPrices.mapleId))
+      .leftJoin(subAccounts, eq(subAccounts.subAccountId, nexonAccountMapleIds.nexonAccountId))
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),

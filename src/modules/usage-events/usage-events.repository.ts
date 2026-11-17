@@ -4,6 +4,10 @@ import { and, eq, gte, lt, sql } from 'drizzle-orm'
 import { DB, type Db } from '../../database/database.module'
 import { usageEvents } from '../../database/schema'
 import type { IdentitySource } from '../identity/identity.guard'
+import { personOf, SUB_OWNERS, subOwnerOf } from '../users/sub-owners'
+
+/** 부계정을 메인과 한 명으로 세는 사람. */
+const person = personOf(usageEvents.userId)
 
 /** 묶음이 함께 싣는 값. */
 export interface UsageBatch {
@@ -88,11 +92,12 @@ export class UsageEventsRepository {
     return this.db
       .select({
         day: kstDay,
-        visitors: sql<number>`count(distinct ${usageEvents.userId})::int`,
+        visitors: sql<number>`count(distinct ${person})::int`,
         visits: sql<number>`(count(*) filter (where ${usageEvents.type} = 'visit'))::int`,
         views: sql<number>`(count(*) filter (where ${usageEvents.type} = 'screen'))::int`,
       })
       .from(usageEvents)
+      .leftJoin(SUB_OWNERS, subOwnerOf(usageEvents.userId))
       .where(this.within(range, filter))
       .groupBy(kstDay)
       .orderBy(sql`1`)
@@ -111,8 +116,9 @@ export class UsageEventsRepository {
   /** 기간 안의 서로 다른 사람. 날마다의 방문자를 더하면 여러 날 온 사람이 여럿으로 잡힌다. */
   async visitorCount(range: UsageRange, filter: UsageFilter = {}): Promise<number> {
     const [row] = await this.db
-      .select({ n: sql<number>`count(distinct ${usageEvents.userId})::int` })
+      .select({ n: sql<number>`count(distinct ${person})::int` })
       .from(usageEvents)
+      .leftJoin(SUB_OWNERS, subOwnerOf(usageEvents.userId))
       .where(this.within(range, filter))
     return row?.n ?? 0
   }
@@ -128,10 +134,11 @@ export class UsageEventsRepository {
     const platform = filter.platform ? sql`and platform = ${filter.platform}` : sql``
     const result = await this.db.execute<{ dim: string; name: string; value: number }>(sql`
       with last as (
-        select distinct on (user_id) platform::text as platform, identified_by::text as identity, app_version
+        select distinct on (${person}) platform::text as platform, identified_by::text as identity, app_version
           from ${usageEvents}
+          left join ${SUB_OWNERS} on ${subOwnerOf(usageEvents.userId)}
          where user_id is not null and occurred_at >= ${range.since} and occurred_at < ${range.until} ${platform}
-         order by user_id, occurred_at desc
+         order by ${person}, occurred_at desc
       )
       select 'platform' as dim, platform as name, count(*)::int as value from last group by platform
       union all
@@ -165,13 +172,14 @@ export class UsageEventsRepository {
     return this.db
       .select({
         name: usageEvents.name,
-        visitors: sql<number>`count(distinct ${usageEvents.userId})::int`,
+        visitors: sql<number>`count(distinct ${person})::int`,
         views: sql<number>`count(*)::int`,
         medianMs: sql<
           number | null
         >`percentile_cont(0.5) within group (order by ${usageEvents.durationMs})::float8`,
       })
       .from(usageEvents)
+      .leftJoin(SUB_OWNERS, subOwnerOf(usageEvents.userId))
       .where(and(this.within(range, {}), eq(usageEvents.type, 'screen')))
       .groupBy(usageEvents.name)
       .orderBy(sql`2 desc`, sql`3 desc`, usageEvents.name)
@@ -180,8 +188,9 @@ export class UsageEventsRepository {
   /** 화면 하나의 날마다 방문자. 오래된 날부터. */
   screenDaily(name: string, range: UsageRange): Promise<{ day: string; visitors: number }[]> {
     return this.db
-      .select({ day: kstDay, visitors: sql<number>`count(distinct ${usageEvents.userId})::int` })
+      .select({ day: kstDay, visitors: sql<number>`count(distinct ${person})::int` })
       .from(usageEvents)
+      .leftJoin(SUB_OWNERS, subOwnerOf(usageEvents.userId))
       .where(
         and(this.within(range, {}), eq(usageEvents.type, 'screen'), eq(usageEvents.name, name)),
       )

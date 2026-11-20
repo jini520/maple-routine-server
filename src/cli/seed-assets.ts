@@ -5,7 +5,7 @@
  * 맥에서 돌린다. 관리 화면 경로를 거쳐야 형식 검사와 파일 쓰기 순서가 운영과 같다. 서버에 이미 있는 그림은 건너뛴다.
  *
  * @example
- * npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://mapleroutine.store ~/.maple-routine/hexa
+ * npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://admin.mapleroutine.store ~/.maple-routine/hexa
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'

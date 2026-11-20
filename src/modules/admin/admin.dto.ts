@@ -527,7 +527,7 @@ export const enhancementRulesBody = z.object({
 export type EnhancementRulesBody = z.infer<typeof enhancementRulesBody>
 export const potentialTypeParam = z.enum(POTENTIAL_RESET_TYPES)
 export const potentialGradeParam = z.enum(POTENTIAL_GRADES)
-export const minLevelParam = z.coerce.number().int().min(1)
+export const minRequiredLevelParam = z.coerce.number().int().min(1)
 export const fromStarParam = z.coerce.number().int().min(0)
 export const costBody = z.object({ costMeso: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) })
 export type CostBody = z.infer<typeof costBody>
@@ -535,7 +535,7 @@ const meso = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 /** 구간 하나. 등급 넷을 한 번에 받는다. */
 export const potentialBandBody = z.object({
   type: potentialTypeParam,
-  minLevel: z.number().int().min(1),
+  minRequiredLevel: z.number().int().min(1),
   costs: z.object({ rare: meso, epic: meso, unique: meso, legendary: meso }),
 })
 export type PotentialBandBody = z.infer<typeof potentialBandBody>
@@ -563,7 +563,7 @@ export const superiorItemBody = z.object({
 export type SuperiorItemBody = z.infer<typeof superiorItemBody>
 export const superiorItemNameParam = z.string().trim().min(1).max(100)
 /** 슈페리얼 장비의 그림. 그림 고르개가 고른 그림의 id 다. */
-export const superiorItemIconBody = z.object({ assetId: z.string().uuid() })
+export const superiorItemIconBody = z.object({ iconAssetId: z.string().uuid() })
 export type SuperiorItemIconBody = z.infer<typeof superiorItemIconBody>
 
 export const mvpGradeParam = z.enum(MVP_GRADES)

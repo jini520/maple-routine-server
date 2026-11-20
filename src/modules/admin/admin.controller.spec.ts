@@ -193,7 +193,7 @@ describe('AdminController', () => {
     moveContent: jest.fn(),
   }
   const enhancementRepo = {
-    section: jest.fn(),
+    adminRows: jest.fn(),
     setRules: jest.fn(),
     setPotentialResetCost: jest.fn(),
     addPotentialResetBand: jest.fn(),
@@ -2278,7 +2278,12 @@ describe('AdminController', () => {
   })
 
   describe('강화 비용', () => {
-    it('규칙 PUT 204, 칸 PUT 204 · 모르면 404, 구간 POST 201 · 같은 구간 409, 구간 DELETE 204 · 1 구간 409 다', async () => {
+    it('rows 는 관리 줄이고, 규칙 PUT 204, 칸 PUT 204 · 모르면 404, 구간 POST 201 · 같은 구간 409, 구간 DELETE 204 · 1 구간 409 다', async () => {
+      const rows = { updatedAt: null, superiorSeries: [], superiorItems: [] }
+      enhancementRepo.adminRows.mockResolvedValue(rows)
+      expect(
+        (await app.inject({ method: 'GET', url: '/admin/enhancement-costs/rows' })).json(),
+      ).toEqual(rows)
       enhancementRepo.setRules.mockResolvedValue(undefined)
       expect(
         (
@@ -2339,7 +2344,7 @@ describe('AdminController', () => {
       enhancementRepo.addPotentialResetBand.mockResolvedValue(undefined)
       const bandBody = {
         type: 'potential',
-        minLevel: 275,
+        minRequiredLevel: 275,
         costs: { rare: 1, epic: 2, unique: 3, legendary: 4 },
       }
       expect(
@@ -2507,30 +2512,30 @@ describe('AdminController', () => {
 
     it('슈페리얼 장비 그림 PUT 204 · 모르는 장비 404 · 그림 표에 없는 그림 400 · uuid 가 아니면 400 이다', async () => {
       const url = `/admin/enhancement-costs/superior-items/${encodeURIComponent('타일런트 리카온 벨트')}/icon`
-      const assetId = '49d165ed-66b2-40f0-9013-753e2d94d3bb'
+      const iconAssetId = '49d165ed-66b2-40f0-9013-753e2d94d3bb'
       const put = async (payload: object) =>
         (await app.inject({ method: 'PUT', url, payload })).statusCode
 
       enhancementRepo.setSuperiorItemIcon.mockResolvedValue(true)
-      expect(await put({ assetId })).toBe(204)
+      expect(await put({ iconAssetId })).toBe(204)
       expect(enhancementRepo.setSuperiorItemIcon).toHaveBeenCalledWith(
         '타일런트 리카온 벨트',
-        assetId,
+        iconAssetId,
       )
       enhancementRepo.setSuperiorItemIcon.mockResolvedValue(false)
-      expect(await put({ assetId })).toBe(404)
-      enhancementRepo.setSuperiorItemIcon.mockRejectedValue(new AssetNotFound(assetId))
-      expect(await put({ assetId })).toBe(400)
-      expect(await put({ assetId: 'tyrant_lycaon_belt' })).toBe(400)
+      expect(await put({ iconAssetId })).toBe(404)
+      enhancementRepo.setSuperiorItemIcon.mockRejectedValue(new AssetNotFound(iconAssetId))
+      expect(await put({ iconAssetId })).toBe(400)
+      expect(await put({ iconAssetId: 'tyrant_lycaon_belt' })).toBe(400)
     })
   })
 
   describe('MVP 등급', () => {
     it('rows 는 칸 그대로이고, PUT 은 204 · 모르면 404 · ENUM 밖 key 는 400, move 는 204 다', async () => {
-      mvpRepo.section.mockResolvedValue({ updatedAt: null, grades: [] })
+      mvpRepo.section.mockResolvedValue({ updatedAt: null, mvpGrades: [] })
       expect((await app.inject({ method: 'GET', url: '/admin/mvp-grades/rows' })).json()).toEqual({
         updatedAt: null,
-        grades: [],
+        mvpGrades: [],
       })
 
       mvpRepo.update.mockResolvedValue(true)

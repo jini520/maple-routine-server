@@ -52,6 +52,12 @@ const CONVERTED = [
   'hunting_regions',
   'hunting_grounds',
   'hunting_ground_levels',
+  'potential_reset_costs',
+  'soul_potential_reset_costs',
+  'starforce_cost_steps',
+  'superior_series',
+  'superior_items',
+  'mvp_grades',
 ]
 
 interface DesignColumn {

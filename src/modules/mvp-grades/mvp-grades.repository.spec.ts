@@ -44,8 +44,11 @@ describeDb('MvpGradesRepository', () => {
   })
   afterAll(() => close())
 
-  it('sort_order 차례로 내고, 이름 · 퍼센트 둘을 고쳐도 명패는 그대로이며 차례를 옮긴다. 모르는 key 는 false 다', async () => {
-    expect((await repo.section()).grades.map((g) => g.key)).toEqual(['normal', 'silver', 'gold'])
+  it('표 이름의 배열에 sort_order 차례로 줄 id 와 함께 내고, 이름 · 퍼센트 둘을 고쳐도 명패는 그대로이며 차례를 옮긴다. 모르는 key 는 false 다', async () => {
+    const ids = Object.fromEntries(
+      (await db.select().from(mvpGrades)).map((g) => [g.key, g.id] as const),
+    )
+    expect((await repo.section()).mvpGrades.map((g) => g.key)).toEqual(['normal', 'silver', 'gold'])
     expect(
       await repo.update('gold', {
         name: '골드',
@@ -66,8 +69,9 @@ describeDb('MvpGradesRepository', () => {
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.grades).toEqual([
+    expect(section.mvpGrades).toEqual([
       {
+        id: ids.normal,
         key: 'normal',
         name: '일반',
         auctionFeePercent: 5,
@@ -75,6 +79,7 @@ describeDb('MvpGradesRepository', () => {
         plateAssetId: null,
       },
       {
+        id: ids.gold,
         key: 'gold',
         name: '골드',
         auctionFeePercent: 3,
@@ -82,6 +87,7 @@ describeDb('MvpGradesRepository', () => {
         plateAssetId: plate,
       },
       {
+        id: ids.silver,
         key: 'silver',
         name: '실버',
         auctionFeePercent: 3,

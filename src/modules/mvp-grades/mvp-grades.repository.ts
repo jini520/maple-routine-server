@@ -10,6 +10,7 @@ export const MVP_GRADES = ['normal', 'bronze', 'silver', 'gold', 'diamond', 'red
 export type MvpGrade = (typeof MVP_GRADES)[number]
 
 export interface MvpGradeView {
+  id: string
   key: MvpGrade
   name: string
   auctionFeePercent: number
@@ -18,13 +19,13 @@ export interface MvpGradeView {
   plateAssetId: string | null
 }
 
-/** GET /v1/game-data 의 mvpGrades 칸. 차례가 등급의 높낮이다. */
+/** GET /v1/game-data 의 mvpGrades 칸. 차례가 등급의 높낮이다. 기록의 MVP 등급이 줄 id 로 가리킨다. */
 export interface MvpGradesSection {
   updatedAt: string | null
-  grades: MvpGradeView[]
+  mvpGrades: MvpGradeView[]
 }
 
-export type MvpGradeInput = Omit<MvpGradeView, 'key' | 'plateAssetId'>
+export type MvpGradeInput = Omit<MvpGradeView, 'id' | 'key' | 'plateAssetId'>
 
 /** 등급은 고치고 옮기기만 있다. ENUM 과 일대일이라 더하고 지우는 것은 마이그레이션이다. */
 @Injectable()
@@ -38,7 +39,8 @@ export class MvpGradesRepository {
       .orderBy(asc(mvpGrades.sortOrder), asc(mvpGrades.key))
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'mvpGrades'),
-      grades: rows.map((g) => ({
+      mvpGrades: rows.map((g) => ({
+        id: g.id,
         key: g.key,
         name: g.name,
         auctionFeePercent: g.auctionFeePercent,

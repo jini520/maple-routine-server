@@ -1083,4 +1083,58 @@ describeDb('moveOldDb', () => {
       { id: levels[1]?.id, groundId: ground?.id, mobLevel: 201 },
     ])
   })
+
+  it('강화 비용 · MVP: 줄 id 를 두고 잠재 구간 시작을 새 칸으로 옮기고, 마이그레이션이 새 DB 에 넣은 슈페리얼 줄은 옛 DB 의 줄로 바뀐다', async () => {
+    const plate = await insertOldAsset('mvp/gold.webp')
+    const [band] = await oldDb
+      .insert(oldSchema.potentialResetCosts)
+      .values({ type: 'additional', minLevel: 160, grade: 'epic', costMeso: 16_000_000 })
+      .returning({ id: oldSchema.potentialResetCosts.id })
+    await oldDb.insert(oldSchema.soulPotentialResetCosts).values({ grade: 'rare', costMeso: 1 })
+    await oldDb.insert(oldSchema.starforceSteps).values({ fromStar: 0, exponent: 1, divisor: 36 })
+    const [gold] = await oldDb
+      .insert(oldSchema.mvpGrades)
+      .values({
+        key: 'gold',
+        name: '골드',
+        auctionFeePercent: 3,
+        starforceDiscountPercent: 5,
+        plateAssetId: plate,
+        sortOrder: 3,
+      })
+      .returning({ id: oldSchema.mvpGrades.id })
+    // 슈페리얼 줄은 옛 마이그레이션 0043 이 두 DB 에 따로 넣어 줄 id 가 다르다.
+    const oldSeries = await oldDb.select().from(oldSchema.superiorSeries)
+    const oldItems = await oldDb.select().from(oldSchema.superiorItems)
+    const seeded = await newDb.select({ id: schema.superiorSeries.id }).from(schema.superiorSeries)
+    expect(seeded.map((r) => r.id).sort()).not.toEqual(oldSeries.map((r) => r.id).sort())
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      potentialResetCosts: 1,
+      soulPotentialResetCosts: 1,
+      starforceCostSteps: 1,
+      superiorSeries: oldSeries.length,
+      superiorItems: oldItems.length,
+      mvpGrades: 1,
+    })
+    expect(await newDb.select().from(schema.potentialResetCosts)).toEqual([
+      {
+        id: band?.id,
+        type: 'additional',
+        minRequiredLevel: 160,
+        grade: 'epic',
+        costMeso: 16_000_000,
+      },
+    ])
+    expect(await newDb.select().from(schema.starforceCostSteps)).toMatchObject([
+      { fromStar: 0, exponent: 1, divisor: 36 },
+    ])
+    expect(await newDb.select().from(schema.mvpGrades)).toMatchObject([
+      { id: gold?.id, key: 'gold', plateAssetId: plate, sortOrder: 3 },
+    ])
+    const byId = <T extends { id: string }>(rows: T[]) =>
+      [...rows].sort((x, y) => (x.id < y.id ? -1 : 1))
+    expect(byId(await newDb.select().from(schema.superiorSeries))).toEqual(byId(oldSeries))
+    expect(byId(await newDb.select().from(schema.superiorItems))).toEqual(byId(oldItems))
+  })
 })

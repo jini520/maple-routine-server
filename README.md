@@ -81,7 +81,9 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 ```
 
 - **배포는 main 에서만 한다**(2026-11-09 사용자 지정, 앱 저장소 `ADR-188` 결정 9). main 은 운영 박스에 배포된 것만 담는다. develop 의
-  작업은 develop 을 head, main 을 base 로 PR 해 merge commit 으로 머지한 뒤 배포한다. `git archive HEAD` 와 rsync 는 서 있는 체크아웃을
+  작업은 develop 을 head, main 을 base 로 PR 해 merge commit 으로 머지한 뒤 배포한다. develop 에 지금 앱과 호환되지 않는 변경이
+  있는 동안(2026-11-20 부터 앱 저장소 #947 의 새 표)에는 develop 을 main 에 머지하지 않고, main 에서 딴 hotfix 만 머지해 배포한다
+  (앱 저장소 `ADR-188` 결정 9). `git archive HEAD` 와 rsync 는 서 있는 체크아웃을
   그대로 보내므로, develop 에 선 채로 돌리면 검토하지 않은 작업이 박스에 올라간다.
 - **배포 규칙. 빌드는 맥에서, 재시작은 한국 시각 3 ~ 7시에 한다**(2026-11-06 사용자 지정). 배포하는 동안 사용자가 기능을 못 쓸 수 있어서다.
   - 앱 박스는 메모리 952MB · CPU 2 다. 2026-11-06 에 박스에서 `docker compose build` 를 돌리자 10분 넘게 부하가 5.4 까지 오르고

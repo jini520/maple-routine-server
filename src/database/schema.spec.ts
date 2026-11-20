@@ -64,6 +64,13 @@ const CONVERTED = [
   'notices',
   'faq_sheets',
   'faq_items',
+  'users',
+  'nexon_accounts',
+  'maple_ids',
+  'sub_account_registrations',
+  'referrals',
+  'nexon_sessions',
+  'nexon_login_attempts',
 ]
 
 interface DesignColumn {

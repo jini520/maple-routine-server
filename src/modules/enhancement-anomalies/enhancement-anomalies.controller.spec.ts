@@ -18,9 +18,9 @@ const item = {
 
 describe('EnhancementAnomaliesController', () => {
   let app: NestFastifyApplication
-  const sessions = { findByHash: jest.fn() }
+  const sessions = { findByHash: jest.fn(), touch: jest.fn() }
   const users = {
-    upsertByApiKeyHash: jest.fn(),
+    upsertByMapleId: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }

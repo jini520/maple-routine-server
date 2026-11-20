@@ -1,4 +1,4 @@
-import { usageEvents, users } from '../../database/schema'
+import { nexonAccounts, subAccountRegistrations, usageEvents, users } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { UsageEventsRepository } from './usage-events.repository'
 
@@ -139,6 +139,35 @@ describeDb('UsageEventsRepository', () => {
         { name: '1.0.13', value: 1 },
       ]),
     )
+  })
+
+  // 폰은 로그인으로, 태블릿은 부계정의 키로 쓰는 사람이 둘로 잡히지 않게 한다.
+  it('부계정의 사람은 그 계정을 등록한 로그인의 사람과 한 명으로 센다', async () => {
+    const [main, sub] = await db
+      .insert(nexonAccounts)
+      .values([{ userId: me }, { userId: other }])
+      .returning({ id: nexonAccounts.id })
+    await db
+      .insert(subAccountRegistrations)
+      .values({ loginNexonAccountId: main.id, subNexonAccountId: sub.id })
+    await repo.insert(batchOf(me), [
+      event('visit', '2026-11-03T01:00:00Z'),
+      event('screen', '2026-11-03T01:01:00Z', 'Boss', 1000),
+    ])
+    await repo.insert(batchOf(other, 'android'), [
+      event('visit', '2026-11-03T02:00:00Z'),
+      event('screen', '2026-11-03T02:01:00Z', 'Boss', 3000),
+    ])
+
+    expect(await repo.visitorCount(nov3)).toBe(1)
+    expect(await repo.dailyCounts(nov3)).toEqual([
+      { day: '2026-11-03', visitors: 1, visits: 2, views: 2 },
+    ])
+    expect((await repo.composition(nov3)).platform).toEqual([{ name: 'android', value: 1 }])
+    expect(await repo.screenStats(nov3)).toEqual([
+      { name: 'Boss', visitors: 1, views: 2, medianMs: 2000 },
+    ])
+    expect(await repo.screenDaily('Boss', nov3)).toEqual([{ day: '2026-11-03', visitors: 1 }])
   })
 
   it('방문 시각을 한국 시각의 요일(월요일 0)과 시로 센다', async () => {

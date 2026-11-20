@@ -27,9 +27,9 @@ const body = {
 
 describe('DropPricesController', () => {
   let app: NestFastifyApplication
-  const sessions = { findByHash: jest.fn() }
+  const sessions = { findByHash: jest.fn(), touch: jest.fn() }
   const users = {
-    upsertByApiKeyHash: jest.fn(),
+    upsertByMapleId: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
     deletionRequestedAt: jest.fn().mockResolvedValue(null),
   }
@@ -56,7 +56,7 @@ describe('DropPricesController', () => {
   beforeEach(() => {
     sessions.findByHash.mockReset()
     sessions.findByHash.mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
-    users.upsertByApiKeyHash.mockReset()
+    users.upsertByMapleId.mockReset()
     prices.upsert.mockReset().mockResolvedValue(undefined)
     prices.markDeleted.mockReset().mockResolvedValue(undefined)
     bosses.findDifficulty.mockReset().mockResolvedValue(null)
@@ -241,7 +241,7 @@ describe('DropPricesController', () => {
   })
 
   it('키 사용자는 key 로 적힌다', async () => {
-    users.upsertByApiKeyHash.mockResolvedValue({
+    users.upsertByMapleId.mockResolvedValue({
       id: 'u2',
       nexonAccountId: 'a2',
     })
@@ -249,7 +249,7 @@ describe('DropPricesController', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/drop-prices',
-      headers: { 'x-api-key-hash': 'ab'.repeat(32) },
+      headers: { 'x-maple-id-hash': 'ab'.repeat(32) },
       payload: body,
     })
 

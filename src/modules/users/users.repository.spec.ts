@@ -1,25 +1,18 @@
 import { eq } from 'drizzle-orm'
 
-import { sha256, sha256Hex } from '../../common/hash'
+import { sha256Hex } from '../../common/hash'
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
-  bossClears,
-  items,
-  dropPrices,
-  enhancementAnomalies,
-  nexonAccountKeys,
-  nexonAccountMapleIds,
+  mapleIds,
   nexonAccounts,
   referrals,
+  subAccountRegistrations,
   usageEvents,
   users,
 } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import * as referralCode from './referral-code'
 import { UsersRepository } from './users.repository'
-
-const RECORD_A = '0a0a0a0a-0000-4000-8000-00000000000a'
-const RECORD_B = '0b0b0b0b-0000-4000-8000-00000000000b'
 
 async function errorOf(query: PromiseLike<unknown>): Promise<unknown> {
   try {
@@ -51,10 +44,10 @@ describeDb('UsersRepository', () => {
       expect.objectContaining({
         id: found.nexonAccountId,
         userId: found.id,
-        nexonUid: sha256Hex('uid-1'),
+        uidHash: sha256Hex('uid-1'),
       }),
     ])
-    expect(await db.select().from(nexonAccountKeys)).toEqual([])
+    expect(await db.select().from(mapleIds)).toEqual([])
   })
 
   it('같은 uid 로 다시 오면 같은 사람 · 같은 계정이다', async () => {
@@ -88,26 +81,23 @@ describeDb('UsersRepository', () => {
     await expect(repo.deletionRequestedAt(id)).resolves.not.toBeNull()
   })
 
-  // 키는 넥슨 계정 줄의 칸이 아니라 키 표의 줄이다. 한 넥슨 ID 가 키를 다시 받으면 키가 여럿이 된다.
-  it('처음 보는 키 해시는 사람 · 넥슨 계정 줄 · 키 줄을 만들고, 다시 오면 같은 계정이다', async () => {
-    const hash = sha256('a'.repeat(64))
-    const first = await repo.upsertByApiKeyHash(hash)
+  // 키는 다시 받으면 바뀌어, 키 해시로 찾으면 그때마다 새 사람이 생겼다. 메이플 ID 는 바뀌지 않는다.
+  it('처음 보는 메이플 ID 는 사람 · 넥슨 계정 줄 · 메이플 ID 줄을 만들고, 다시 오면 같은 계정이다', async () => {
+    const first = await repo.upsertByMapleId('m1')
 
-    const second = await repo.upsertByApiKeyHash(hash)
+    const second = await repo.upsertByMapleId('m1')
 
     expect(second).toEqual(first)
     expect(await db.select().from(nexonAccounts)).toEqual([
-      expect.objectContaining({ id: first.nexonAccountId, userId: first.id, nexonUid: null }),
+      expect.objectContaining({ id: first.nexonAccountId, userId: first.id, uidHash: null }),
     ])
-    expect(await db.select().from(nexonAccountKeys)).toEqual([
-      expect.objectContaining({ nexonAccountId: first.nexonAccountId, apiKeyHash: hash }),
+    expect(await db.select().from(mapleIds)).toEqual([
+      expect.objectContaining({ nexonAccountId: first.nexonAccountId, hash: 'm1' }),
     ])
   })
 
-  it('같은 키 해시가 동시에 와도 사람과 넥슨 계정 줄은 하나다', async () => {
-    const hash = sha256('a'.repeat(64))
-
-    const [a, b] = await Promise.all([repo.upsertByApiKeyHash(hash), repo.upsertByApiKeyHash(hash)])
+  it('같은 메이플 ID 가 동시에 와도 사람과 넥슨 계정 줄은 하나다', async () => {
+    const [a, b] = await Promise.all([repo.upsertByMapleId('m1'), repo.upsertByMapleId('m1')])
 
     expect(a).toEqual(b)
     expect(await db.select().from(users)).toHaveLength(1)
@@ -116,9 +106,10 @@ describeDb('UsersRepository', () => {
 
   it('세션 경로는 그 사람의 로그인 계정을 찾는다', async () => {
     const { id, nexonAccountId } = await repo.upsertByNexonUid('uid-1')
-    await repo.linkApiKey(id, sha256('k'.repeat(64)))
+    const keyUser = await repo.upsertByMapleId('m1')
 
     await expect(repo.findLoginAccount(id)).resolves.toEqual({ nexonAccountId })
+    await expect(repo.findLoginAccount(keyUser.id)).resolves.toBeNull()
     await expect(repo.findLoginAccount('00000000-0000-4000-8000-000000000000')).resolves.toBeNull()
   })
 
@@ -138,8 +129,7 @@ describeDb('UsersRepository', () => {
   })
 
   it('기준보다 앞서 예약한 사람만 지우고, 남기는 표의 줄은 사람과의 연결만 끊는다', async () => {
-    const hash = sha256('b'.repeat(64))
-    const due = await repo.upsertByApiKeyHash(hash)
+    const due = await repo.upsertByMapleId('m-due')
     const kept = await repo.upsertByNexonUid('uid-2')
     await db
       .update(users)
@@ -172,239 +162,17 @@ describeDb('UsersRepository', () => {
   })
 
   // 지운 사람의 기록과 이어지면 익명이 아니다.
-  it('지운 뒤 같은 키로 오면 새 사람이다', async () => {
-    const hash = sha256('c'.repeat(64))
-    const before = await repo.upsertByApiKeyHash(hash)
+  it('지운 뒤 같은 메이플 ID 로 오면 새 사람이다', async () => {
+    const before = await repo.upsertByMapleId('m1')
     await db
       .update(users)
       .set({ deletionRequestedAt: new Date('2026-01-01T00:00:00Z') })
       .where(eq(users.id, before.id))
     await repo.purgeDeletionsBefore(new Date('2026-02-01T00:00:00Z'))
 
-    const after = await repo.upsertByApiKeyHash(hash)
+    const after = await repo.upsertByMapleId('m1')
 
     expect(after.id).not.toBe(before.id)
-  })
-
-  describe('linkApiKey', () => {
-    const KEY = sha256('k'.repeat(64))
-    let itemId: string
-
-    beforeEach(async () => {
-      const [item] = await db
-        .insert(items)
-        .values({ key: 'ring', name: '반지', isValuable: true, isDrop: true })
-        .returning({ id: items.id })
-      itemId = item.id
-    })
-
-    function dropPrice(userId: string, dropRecordId: string, updatedAt: string) {
-      return {
-        userId,
-        dropRecordId,
-        identifiedBy: 'key' as const,
-        itemId,
-        recordStatus: 'pending' as const,
-        periodKey: '2026-11-05',
-        updatedAt: new Date(updatedAt),
-      }
-    }
-
-    function anomaly(userId: string, updatedAt: string) {
-      return {
-        userId,
-        identifiedBy: 'key' as const,
-        historyDate: '2026-11-01',
-        enhancementType: 'cube' as const,
-        anomalyType: 'event_world_unknown' as const,
-        itemName: '',
-        rowCount: 1,
-        updatedAt: new Date(updatedAt),
-      }
-    }
-
-    /** 키가 달린 넥슨 계정 줄과 그 줄의 사람. */
-    async function holderOfKey(): Promise<{ nexonAccountId: string; userId: string } | undefined> {
-      const [row] = await db
-        .select({ nexonAccountId: nexonAccounts.id, userId: nexonAccounts.userId })
-        .from(nexonAccountKeys)
-        .innerJoin(nexonAccounts, eq(nexonAccounts.id, nexonAccountKeys.nexonAccountId))
-        .where(eq(nexonAccountKeys.apiKeyHash, KEY))
-      return row
-    }
-
-    // 다른 기기가 아직 그 키를 쓰면 그 기기가 보내는 값도 로그인한 넥슨 계정으로 모여야 한다.
-    it('처음 보는 키는 로그인 계정 줄에 단다', async () => {
-      const login = await repo.upsertByNexonUid('uid-1')
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect(await holderOfKey()).toEqual({
-        nexonAccountId: login.nexonAccountId,
-        userId: login.id,
-      })
-      expect(await repo.upsertByApiKeyHash(KEY)).toEqual(login)
-      expect(await db.select().from(nexonAccounts)).toHaveLength(1)
-    })
-
-    // 앱은 로그인 직후와 앱을 켤 때 같은 키를 다시 보낼 수 있다.
-    it('이미 이은 키를 다시 보내도 바뀌는 것이 없다', async () => {
-      const login = await repo.upsertByNexonUid('uid-1')
-      await repo.linkApiKey(login.id, KEY)
-      const accounts = await db.select().from(nexonAccounts)
-      const keys = await db.select().from(nexonAccountKeys)
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect(await db.select().from(nexonAccounts)).toEqual(accounts)
-      expect(await db.select().from(nexonAccountKeys)).toEqual(keys)
-    })
-
-    // 앱은 메이플 ID 가 같은 것을 확인한 키만 보낸다. 같은 넥슨 ID 라 한 줄이어야 한다.
-    it('키의 넥슨 계정 줄을 로그인 줄로 합치고, 키 사람에게 다른 줄이 없으면 옛 기록을 옮기고 사람을 지운다', async () => {
-      const key = await repo.upsertByApiKeyHash(KEY)
-      const login = await repo.upsertByNexonUid('uid-1')
-      await db
-        .insert(nexonAccountMapleIds)
-        .values({ nexonAccountId: key.nexonAccountId, mapleId: 'm1' })
-      await db.insert(dropPrices).values(dropPrice(key.id, RECORD_A, '2026-11-01T00:00:00Z'))
-      await db.insert(enhancementAnomalies).values(anomaly(key.id, '2026-11-01T00:00:00Z'))
-      await db.insert(usageEvents).values({
-        userId: key.id,
-        identifiedBy: 'key',
-        type: 'visit',
-        name: '',
-        platform: 'ios',
-        appVersion: '1.0.13',
-        occurredAt: new Date('2026-11-01T00:00:00Z'),
-      })
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect((await db.select().from(users)).map((row) => row.id)).toEqual([login.id])
-      expect((await db.select().from(nexonAccounts)).map((row) => row.id)).toEqual([
-        login.nexonAccountId,
-      ])
-      expect(await holderOfKey()).toEqual({
-        nexonAccountId: login.nexonAccountId,
-        userId: login.id,
-      })
-      expect(await db.select().from(nexonAccountMapleIds)).toEqual([
-        expect.objectContaining({ nexonAccountId: login.nexonAccountId, mapleId: 'm1' }),
-      ])
-      expect(await db.select().from(dropPrices)).toEqual([
-        expect.objectContaining({ userId: login.id, dropRecordId: RECORD_A, identifiedBy: 'key' }),
-      ])
-      expect(await db.select().from(enhancementAnomalies)).toEqual([
-        expect.objectContaining({ userId: login.id, identifiedBy: 'key' }),
-      ])
-      expect((await db.select().from(usageEvents)).map((row) => row.userId)).toEqual([login.id])
-    })
-
-    // 옛 드롭 줄은 사람 안에서 기록 id 로 유일하다. 합칠 때도 나중 값이 앞 값을 덮어야 UNIQUE 가 깨지지 않는다.
-    it('같은 옛 드롭 기록이 양쪽 사람에게 있으면 updated_at 이 늦은 줄을 남긴다', async () => {
-      const key = await repo.upsertByApiKeyHash(KEY)
-      const login = await repo.upsertByNexonUid('uid-1')
-      const [keyNewer] = await db
-        .insert(dropPrices)
-        .values(dropPrice(key.id, RECORD_A, '2026-11-03T00:00:00Z'))
-        .returning({ id: dropPrices.id })
-      await db.insert(dropPrices).values(dropPrice(login.id, RECORD_A, '2026-11-02T00:00:00Z'))
-      await db.insert(dropPrices).values(dropPrice(key.id, RECORD_B, '2026-11-02T00:00:00Z'))
-      const [loginNewer] = await db
-        .insert(dropPrices)
-        .values(dropPrice(login.id, RECORD_B, '2026-11-03T00:00:00Z'))
-        .returning({ id: dropPrices.id })
-
-      await repo.linkApiKey(login.id, KEY)
-
-      const prices = await db.select().from(dropPrices)
-      expect(prices.map((row) => row.id).sort()).toEqual([keyNewer.id, loginNewer.id].sort())
-      expect(prices.every((row) => row.userId === login.id)).toBe(true)
-    })
-
-    // 처치 · 가계부 · 강화 합계는 메이플 ID 를 가리킨다. 메이플 ID 가 로그인 줄로 옮겨 가면 기록도 함께 이어진다.
-    it('메이플 ID 를 가리키는 기록은 키 사람을 지워도 남아 로그인 계정으로 이어진다', async () => {
-      const key = await repo.upsertByApiKeyHash(KEY)
-      const login = await repo.upsertByNexonUid('uid-1')
-      await db
-        .insert(nexonAccountMapleIds)
-        .values({ nexonAccountId: key.nexonAccountId, mapleId: 'm1' })
-      await db.insert(bossClears).values({
-        identifiedBy: 'key',
-        periodRecordId: RECORD_A,
-        mapleId: 'm1',
-        ocid: 'o1',
-        cycle: 'weekly',
-        periodKey: '2026-11-05',
-        priceMeso: 0,
-        payoutMeso: 0,
-        splitMode: 'even',
-        partySize: 1,
-        source: 'auto',
-      })
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect(await db.select().from(bossClears)).toEqual([
-        expect.objectContaining({ mapleId: 'm1' }),
-      ])
-      expect(await db.select().from(nexonAccountMapleIds)).toEqual([
-        expect.objectContaining({ nexonAccountId: login.nexonAccountId, mapleId: 'm1' }),
-      ])
-    })
-
-    // 넥슨 ID 가 같은 줄은 한 줄이어야 한다. 키 사람의 다른 로그인은 다른 넥슨 ID 라 그대로 둔다.
-    it('키 사람에게 다른 로그인 줄이 있어도 키의 줄만 합치고, 그 사람과 로그인 줄은 남긴다', async () => {
-      const other = await repo.upsertByNexonUid('uid-2')
-      const key = await repo.upsertByApiKeyHash(KEY)
-      await db
-        .update(nexonAccounts)
-        .set({ userId: other.id })
-        .where(eq(nexonAccounts.id, key.nexonAccountId))
-      await db.delete(users).where(eq(users.id, key.id))
-      await db.insert(dropPrices).values(dropPrice(other.id, RECORD_A, '2026-11-01T00:00:00Z'))
-      const login = await repo.upsertByNexonUid('uid-1')
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect(await holderOfKey()).toEqual({
-        nexonAccountId: login.nexonAccountId,
-        userId: login.id,
-      })
-      expect((await db.select().from(nexonAccounts)).map((row) => row.id).sort()).toEqual(
-        [other.nexonAccountId, login.nexonAccountId].sort(),
-      )
-      expect(await db.select().from(dropPrices)).toEqual([
-        expect.objectContaining({ userId: other.id }),
-      ])
-    })
-
-    // 앱이 메이플 ID 를 맞춰 본 키가 다른 넥슨 ID 의 로그인 줄에 이미 달려 있으면 어느 쪽인지 가릴 수 없다.
-    it('키가 다른 로그인 줄에 달려 있으면 옮기지 않는다', async () => {
-      const other = await repo.upsertByNexonUid('uid-2')
-      await repo.linkApiKey(other.id, KEY)
-      const login = await repo.upsertByNexonUid('uid-1')
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect(await holderOfKey()).toEqual({
-        nexonAccountId: other.nexonAccountId,
-        userId: other.id,
-      })
-    })
-
-    // 합치면 사용자가 한 삭제 요청이 말없이 사라진다. 키 사람은 예약대로 지워진다.
-    it('키 사람이 삭제를 예약했으면 옮기지 않는다', async () => {
-      const key = await repo.upsertByApiKeyHash(KEY)
-      await repo.requestDeletion(key.id)
-      const login = await repo.upsertByNexonUid('uid-1')
-
-      await repo.linkApiKey(login.id, KEY)
-
-      expect(await holderOfKey()).toEqual({ nexonAccountId: key.nexonAccountId, userId: key.id })
-      expect(await repo.deletionRequestedAt(key.id)).not.toBeNull()
-    })
   })
 
   it('전체 사용자는 삭제를 예약한 사람을 빼고, 기준 시각 앞에 만든 사람만 따로 셀 수 있다', async () => {
@@ -439,6 +207,23 @@ describeDb('UsersRepository', () => {
     expect(await repo.createdDaily(range)).toEqual([{ day: '2026-11-03', created: 2, active: 1 }])
   })
 
+  // 부계정은 등록할 때 자기 사람 줄을 만든다. 따로 세면 다계정 사용자가 계정 수만큼 잡힌다.
+  it('부계정으로 등록된 계정의 사람은 전체 사용자와 새 사용자에 세지 않는다', async () => {
+    const login = await repo.upsertByNexonUid('uid-1')
+    const sub = await repo.upsertByMapleId('m-sub')
+    await repo.upsertByMapleId('m-key-user')
+    await db
+      .insert(subAccountRegistrations)
+      .values({ loginNexonAccountId: login.nexonAccountId, subNexonAccountId: sub.nexonAccountId })
+
+    const range = {
+      since: new Date(Date.now() - 86_400_000),
+      until: new Date(Date.now() + 86_400_000),
+    }
+    expect(await repo.countActive()).toBe(2)
+    expect((await repo.createdDaily(range)).map((d) => [d.created, d.active])).toEqual([[2, 2]])
+  })
+
   describe('추천인 코드', () => {
     afterEach(() => jest.restoreAllMocks())
 
@@ -450,9 +235,9 @@ describeDb('UsersRepository', () => {
       return row?.code
     }
 
-    it('로그인 계정 줄은 코드를 받고 키 줄은 받지 않는다', async () => {
+    it('로그인 계정 줄은 코드를 받고 로그인 없는 줄은 받지 않는다', async () => {
       const login = await repo.upsertByNexonUid('uid-1')
-      const key = await repo.upsertByApiKeyHash(sha256('k'))
+      const key = await repo.upsertByMapleId('m1')
 
       expect(await codeOf(login.nexonAccountId)).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/)
       expect(await codeOf(key.nexonAccountId)).toBeNull()
@@ -473,11 +258,11 @@ describeDb('UsersRepository', () => {
       expect(await db.select().from(users)).toHaveLength(2)
     })
 
-    // 코드를 만드는 곳은 upsertAccount 하나뿐이라, 다른 경로로 코드 없는 로그인 줄이 생기면 DB 가 막아야 한다.
-    it('코드 없는 로그인 줄과 코드 있는 키 줄은 DB 가 거절한다', async () => {
+    // 코드를 만드는 곳은 upsertByNexonUid 하나뿐이라, 다른 경로로 코드 없는 로그인 줄이 생기면 DB 가 막아야 한다.
+    it('코드 없는 로그인 줄과 코드 있는 로그인 없는 줄은 DB 가 거절한다', async () => {
       const [{ id }] = await db.insert(users).values({}).returning({ id: users.id })
 
-      const login = db.insert(nexonAccounts).values({ userId: id, nexonUid: 'uid-1' })
+      const login = db.insert(nexonAccounts).values({ userId: id, uidHash: 'uid-1' })
       expect(isCheckViolation(await errorOf(login))).toBe(true)
       const key = db.insert(nexonAccounts).values({ userId: id, referralCode: 'AAAAAAAA' })
       expect(isCheckViolation(await errorOf(key))).toBe(true)
@@ -489,17 +274,20 @@ describeDb('UsersRepository', () => {
       const a = await repo.upsertByNexonUid('uid-1')
       const b = await repo.upsertByNexonUid('uid-2')
       const c = await repo.upsertByNexonUid('uid-3')
-      await db
-        .insert(referrals)
-        .values({ referredAccountId: a.nexonAccountId, referrerAccountId: b.nexonAccountId })
+      await db.insert(referrals).values({
+        referredNexonAccountId: a.nexonAccountId,
+        referrerNexonAccountId: b.nexonAccountId,
+      })
 
-      const self = db
-        .insert(referrals)
-        .values({ referredAccountId: c.nexonAccountId, referrerAccountId: c.nexonAccountId })
+      const self = db.insert(referrals).values({
+        referredNexonAccountId: c.nexonAccountId,
+        referrerNexonAccountId: c.nexonAccountId,
+      })
       expect(isCheckViolation(await errorOf(self))).toBe(true)
-      const again = db
-        .insert(referrals)
-        .values({ referredAccountId: a.nexonAccountId, referrerAccountId: c.nexonAccountId })
+      const again = db.insert(referrals).values({
+        referredNexonAccountId: a.nexonAccountId,
+        referrerNexonAccountId: c.nexonAccountId,
+      })
       expect(isUniqueViolation(await errorOf(again))).toBe(true)
     })
 
@@ -509,8 +297,8 @@ describeDb('UsersRepository', () => {
       const b = await repo.upsertByNexonUid('uid-2')
       const c = await repo.upsertByNexonUid('uid-3')
       await db.insert(referrals).values([
-        { referredAccountId: b.nexonAccountId, referrerAccountId: a.nexonAccountId },
-        { referredAccountId: c.nexonAccountId, referrerAccountId: b.nexonAccountId },
+        { referredNexonAccountId: b.nexonAccountId, referrerNexonAccountId: a.nexonAccountId },
+        { referredNexonAccountId: c.nexonAccountId, referrerNexonAccountId: b.nexonAccountId },
       ])
       await db
         .update(users)
@@ -521,7 +309,10 @@ describeDb('UsersRepository', () => {
 
       expect(
         await db
-          .select({ referred: referrals.referredAccountId, referrer: referrals.referrerAccountId })
+          .select({
+            referred: referrals.referredNexonAccountId,
+            referrer: referrals.referrerNexonAccountId,
+          })
           .from(referrals),
       ).toEqual([{ referred: c.nexonAccountId, referrer: null }])
     })

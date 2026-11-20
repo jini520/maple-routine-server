@@ -9,16 +9,16 @@ export interface SessionRow {
   id: string
   userId: string
   platform: Platform
-  accessSealed: Buffer
+  sealedAccessToken: Buffer
   accessExpiresAt: Date
-  refreshSealed: Buffer
+  sealedRefreshToken: Buffer
   refreshExpiresAt: Date
 }
 
 export interface SealedTokens {
-  accessSealed: Buffer
+  sealedAccessToken: Buffer
   accessExpiresAt: Date
-  refreshSealed: Buffer
+  sealedRefreshToken: Buffer
   refreshExpiresAt: Date
 }
 
@@ -26,9 +26,9 @@ const SESSION_COLUMNS = {
   id: nexonSessions.id,
   userId: nexonSessions.userId,
   platform: nexonSessions.platform,
-  accessSealed: nexonSessions.accessSealed,
+  sealedAccessToken: nexonSessions.sealedAccessToken,
   accessExpiresAt: nexonSessions.accessExpiresAt,
-  refreshSealed: nexonSessions.refreshSealed,
+  sealedRefreshToken: nexonSessions.sealedRefreshToken,
   refreshExpiresAt: nexonSessions.refreshExpiresAt,
 }
 
@@ -38,7 +38,7 @@ export class SessionsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async create(
-    input: { sessionHash: Buffer; userId: string; platform: Platform } & SealedTokens,
+    input: { hash: Buffer; userId: string; platform: Platform } & SealedTokens,
   ): Promise<{ id: string }> {
     const [row] = await this.db
       .insert(nexonSessions)
@@ -48,11 +48,11 @@ export class SessionsRepository {
     return row
   }
 
-  async findByHash(sessionHash: Buffer): Promise<SessionRow | null> {
+  async findByHash(hash: Buffer): Promise<SessionRow | null> {
     const [row] = await this.db
       .select(SESSION_COLUMNS)
       .from(nexonSessions)
-      .where(eq(nexonSessions.sessionHash, sessionHash))
+      .where(eq(nexonSessions.hash, hash))
     return row ?? null
   }
 
@@ -79,8 +79,8 @@ export class SessionsRepository {
     await this.db.delete(nexonSessions).where(eq(nexonSessions.id, id))
   }
 
-  async deleteByHash(sessionHash: Buffer): Promise<void> {
-    await this.db.delete(nexonSessions).where(eq(nexonSessions.sessionHash, sessionHash))
+  async deleteByHash(hash: Buffer): Promise<void> {
+    await this.db.delete(nexonSessions).where(eq(nexonSessions.hash, hash))
   }
 
   /** 탈퇴가 부른다. 세션은 기록이 아니라 살아 있는 자격 증명이라 기기 둘 것을 다 거둔다. */

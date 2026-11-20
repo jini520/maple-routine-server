@@ -17,9 +17,9 @@ function row(overrides: Partial<SessionRow> = {}): SessionRow {
     id: 'sid',
     userId: 'uid',
     platform: 'ios',
-    accessSealed: seal.seal('access', 'AT-old'),
+    sealedAccessToken: seal.seal('access', 'AT-old'),
     accessExpiresAt: new Date(Date.now() + 3_600_000),
-    refreshSealed: seal.seal('refresh', 'RT-old'),
+    sealedRefreshToken: seal.seal('refresh', 'RT-old'),
     refreshExpiresAt: new Date(Date.now() + 86_400_000),
     ...overrides,
   }
@@ -72,10 +72,10 @@ describe('TokenService', () => {
     expect(sessions.updateTokens).toHaveBeenCalledTimes(1)
     const [, saved] = sessions.updateTokens.mock.calls[0] as [
       string,
-      { accessSealed: Buffer; refreshSealed: Buffer },
+      { sealedAccessToken: Buffer; sealedRefreshToken: Buffer },
     ]
-    expect(seal.open('access', saved.accessSealed)).toBe('AT-new')
-    expect(seal.open('refresh', saved.refreshSealed)).toBe('RT-new')
+    expect(seal.open('access', saved.sealedAccessToken)).toBe('AT-new')
+    expect(seal.open('refresh', saved.sealedRefreshToken)).toBe('RT-new')
   })
 
   it('갱신이 거절되면 세션을 지우고 ReloginRequired 를 던진다', async () => {

@@ -97,12 +97,12 @@ export class AuthService {
       const sessionValue = randomToken()
       const now = Date.now()
       ;({ id: sessionId } = await this.sessions.create({
-        sessionHash: sha256(sessionValue),
+        hash: sha256(sessionValue),
         userId: user.id,
         platform,
-        accessSealed: this.seal.seal('access', tokens.accessToken),
+        sealedAccessToken: this.seal.seal('access', tokens.accessToken),
         accessExpiresAt: new Date(now + tokens.expiresIn * 1000),
-        refreshSealed: this.seal.seal('refresh', tokens.refreshToken),
+        sealedRefreshToken: this.seal.seal('refresh', tokens.refreshToken),
         refreshExpiresAt: new Date(now + tokens.refreshExpiresIn * 1000),
       }))
 

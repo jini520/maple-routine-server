@@ -1260,4 +1260,109 @@ describeDb('moveOldDb', () => {
     )
     expect(await newDb.select().from(schema.imageCrops)).toEqual([])
   })
+
+  it('계정: 줄 id 그대로 칸 이름만 바꾸고 세션도 옮긴다. 키 표와 로그인 시도는 옮기지 않고, 키로만 쓰던 계정 줄은 사람과 함께 남는다', async () => {
+    const [login, keyOnly, sub] = await oldDb
+      .insert(oldSchema.users)
+      .values([{}, { deletionRequestedAt: new Date('2026-11-10T00:00:00Z') }, {}])
+      .returning({ id: oldSchema.users.id })
+    const [loginAccount, keyAccount, subAccount] = await oldDb
+      .insert(oldSchema.nexonAccounts)
+      .values([
+        { userId: login.id, nexonUid: 'u'.repeat(64), referralCode: 'AAAAAAAA' },
+        { userId: keyOnly.id },
+        { userId: sub.id },
+      ])
+      .returning({ id: oldSchema.nexonAccounts.id })
+    await oldDb
+      .insert(oldSchema.nexonAccountKeys)
+      .values({ nexonAccountId: keyAccount.id, apiKeyHash: Buffer.from('key') })
+    const [maple] = await oldDb
+      .insert(oldSchema.nexonAccountMapleIds)
+      .values([
+        { nexonAccountId: loginAccount.id, mapleId: 'm1' },
+        { nexonAccountId: subAccount.id, mapleId: 'm3' },
+      ])
+      .returning({ id: oldSchema.nexonAccountMapleIds.id })
+    const [registration] = await oldDb
+      .insert(oldSchema.subAccounts)
+      .values({ loginAccountId: loginAccount.id, subAccountId: subAccount.id })
+      .returning({ id: oldSchema.subAccounts.id })
+    await oldDb
+      .insert(oldSchema.referrals)
+      .values({ referredAccountId: subAccount.id, referrerAccountId: loginAccount.id })
+    const [session] = await oldDb
+      .insert(oldSchema.nexonSessions)
+      .values({
+        sessionHash: Buffer.from('session'),
+        userId: login.id,
+        platform: 'ios',
+        accessSealed: Buffer.from('access'),
+        accessExpiresAt: new Date('2026-11-21T00:00:00Z'),
+        refreshSealed: Buffer.from('refresh'),
+        refreshExpiresAt: new Date('2026-12-21T00:00:00Z'),
+      })
+      .returning({ id: oldSchema.nexonSessions.id })
+    await oldDb.insert(oldSchema.nexonLoginAttempts).values({
+      state: 'state',
+      redeemHash: Buffer.from('redeem'),
+      platform: 'android',
+      expiresAt: new Date('2026-11-21T00:10:00Z'),
+    })
+
+    const moved = await moveOldDb(oldDb, newDb)
+
+    expect(moved).toMatchObject({
+      users: 3,
+      nexonAccounts: 3,
+      mapleIds: 2,
+      subAccountRegistrations: 1,
+      referrals: 1,
+      nexonSessions: 1,
+    })
+    expect(await newDb.select().from(schema.users)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: keyOnly.id,
+          deletionRequestedAt: new Date('2026-11-10T00:00:00Z'),
+        }),
+      ]),
+    )
+    expect(
+      (await newDb.select().from(schema.nexonAccounts)).map((a) => [
+        a.id,
+        a.uidHash,
+        a.referralCode,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        [loginAccount.id, 'u'.repeat(64), 'AAAAAAAA'],
+        [keyAccount.id, null, null],
+      ]),
+    )
+    expect(await newDb.select().from(schema.mapleIds)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: maple.id, nexonAccountId: loginAccount.id, hash: 'm1' }),
+      ]),
+    )
+    expect(await newDb.select().from(schema.subAccountRegistrations)).toEqual([
+      expect.objectContaining({
+        id: registration.id,
+        loginNexonAccountId: loginAccount.id,
+        subNexonAccountId: subAccount.id,
+      }),
+    ])
+    expect(await newDb.select().from(schema.referrals)).toEqual([
+      expect.objectContaining({
+        referredNexonAccountId: subAccount.id,
+        referrerNexonAccountId: loginAccount.id,
+      }),
+    ])
+    const [movedSession] = await newDb.select().from(schema.nexonSessions)
+    expect(movedSession).toMatchObject({ id: session.id, userId: login.id, platform: 'ios' })
+    expect(movedSession.hash.toString()).toBe('session')
+    expect(movedSession.sealedAccessToken.toString()).toBe('access')
+    expect(movedSession.sealedRefreshToken.toString()).toBe('refresh')
+    expect(await newDb.select().from(schema.nexonLoginAttempts)).toEqual([])
+  })
 })

@@ -8,7 +8,7 @@ import { layout } from './layout'
 export const USERS_HTML = layout(
   '/admin/users',
   '사용자',
-  `<div class="head"><div><h1>사용자</h1><p>앱을 쓰는 사람의 수다. 방문자는 그 날 사용 사건을 하나라도 보낸 서로 다른 사람이고, 새 사용자는 서버가 그 사람을 처음 만든 날로 센다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p></div></div>
+  `<div class="head"><div><h1>사용자</h1><p>앱을 쓰는 사람의 수다. 방문자는 그 날 사용 사건을 하나라도 보낸 서로 다른 사람이고, 새 사용자는 서버가 그 사람을 처음 만든 날로 센다. 부계정으로 등록된 계정의 사람은 그 계정을 등록한 로그인의 사람과 한 명으로 센다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="dash-filters">
   <div class="btns" role="group" aria-label="기간" id="presets"></div>

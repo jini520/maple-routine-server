@@ -2,13 +2,13 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   ForbiddenException,
   HttpCode,
   Post,
   UseGuards,
 } from '@nestjs/common'
 
-import { sha256 } from '../../common/hash'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { NexonAccountsRepository } from '../users/nexon-accounts.repository'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from './identity.guard'
@@ -21,27 +21,33 @@ function loginAccountOf(identity: IdentityContext): string {
 }
 
 /**
- * 넥슨 로그인의 부계정 등록. 서버는 어느 키가 그 사람의 부계정인지만 적고, 키 값은 보관하지 않는다.
+ * 넥슨 로그인의 부계정 등록과 해제. 부계정은 메이플 ID 로 찾는다. 키는 다시 받으면 바뀌고, 서버는 키 값을 보관하지 않는다.
  *
- * 목록 · 지우기 경로는 없다. 앱이 부계정을 기기마다 따로 관리해 서버의 목록을 받지도, 서버에서 지우지도 않는다.
+ * 목록 경로는 없다. 다른 기기에서 등록한 부계정은 기록 받기의 응답으로 알린다.
  */
 @Controller('v1/me/sub-accounts')
 @UseGuards(IdentityGuard)
 export class SubAccountsController {
   constructor(private readonly accounts: NexonAccountsRepository) {}
 
-  /** 같은 넥슨 ID 면 409 `same_account` 다. */
+  /** 거절은 409 이고 이유를 `code` 로 준다(`same_account` · `registered_elsewhere` · `has_sub_accounts` · `login_is_sub_account`). */
   @Post()
   @HttpCode(204)
   async register(
     @CurrentIdentity() identity: IdentityContext,
     @Body(new ZodValidationPipe(subAccountBody)) body: SubAccountBody,
   ): Promise<void> {
-    const result = await this.accounts.registerSubAccount(
-      loginAccountOf(identity),
-      sha256(body.apiKeyHash),
-      body.mapleIds,
-    )
-    if (result === 'same_account') throw new ConflictException({ code: 'same_account' })
+    const result = await this.accounts.registerSubAccount(loginAccountOf(identity), body.mapleIds)
+    if (result !== 'registered') throw new ConflictException({ code: result })
+  }
+
+  /** 등록이 없어도 204 다. 같은 해제를 여러 기기가 보낸다. */
+  @Delete()
+  @HttpCode(204)
+  async unregister(
+    @CurrentIdentity() identity: IdentityContext,
+    @Body(new ZodValidationPipe(subAccountBody)) body: SubAccountBody,
+  ): Promise<void> {
+    await this.accounts.unregisterSubAccount(loginAccountOf(identity), body.mapleIds)
   }
 }

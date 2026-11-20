@@ -60,8 +60,8 @@ export const users = pgTable('users', {
 })
 
 /**
- * 넥슨 ID 하나. 같은 넥슨 ID 의 넥슨 로그인과 API 키는 한 줄이다. 키는 nexon_account_keys, 메이플 ID 는
- * nexon_account_maple_ids 가 든다. 메이플 ID 가 다른 줄과 겹치면 같은 넥슨 ID 라 한 줄로 합친다.
+ * 넥슨 ID 하나. 같은 넥슨 ID 의 넥슨 로그인과 로그인 없이 쓰는 키는 한 줄이다. 메이플 ID 는 maple_ids 가 든다. 메이플 ID 가 다른
+ * 줄과 겹치면 같은 넥슨 ID 라 한 줄로 합친다.
  */
 export const nexonAccounts = pgTable(
   'nexon_accounts',
@@ -70,8 +70,8 @@ export const nexonAccounts = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    /** 넥슨 uid. 플랫폼을 가로질러 같다. 넥슨 로그인으로 확인한 계정만 값이 있다. */
-    nexonUid: text('nexon_uid').unique(),
+    /** 넥슨 uid 의 SHA-256 16진. 플랫폼을 가로질러 같다. 넥슨 로그인으로 확인한 계정만 값이 있다. */
+    uidHash: text('uid_hash').unique(),
     /** 다른 사람에게 알려 줄 추천인 코드. 로그인 계정에만 있다. */
     referralCode: text('referral_code').unique(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
@@ -81,60 +81,52 @@ export const nexonAccounts = pgTable(
     index('nexon_accounts_user_id_idx').on(t.userId),
     check(
       'nexon_accounts_referral_code_login_only',
-      sql`(${t.nexonUid} IS NOT NULL) = (${t.referralCode} IS NOT NULL)`,
+      sql`(${t.uidHash} IS NOT NULL) = (${t.referralCode} IS NOT NULL)`,
     ),
   ],
-)
-
-/** 넥슨 계정의 API 키 하나. 키를 다시 받으면 같은 넥슨 계정에 줄이 하나 더 달린다. */
-export const nexonAccountKeys = pgTable(
-  'nexon_account_keys',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    nexonAccountId: uuid('nexon_account_id')
-      .notNull()
-      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
-    /** 앱이 보낸 해시를 서버가 한 번 더 해시한 것. */
-    apiKeyHash: bytea('api_key_hash').notNull().unique(),
-    createdAt: timestamptz('created_at').notNull().defaultNow(),
-  },
-  (t) => [index('nexon_account_keys_account_idx').on(t.nexonAccountId)],
 )
 
 /**
  * 넥슨 계정의 메이플 ID 하나. 메이플 ID 는 넥슨 계정 하나에만 속해 서버 전체에서 한 줄이다. 앱이 알려 주는 값이라
  * 증명은 아니다. 목록에서 빠져도 지우지 않는다. 다른 넥슨 ID 로 옮겨 가지 않아 남겨도 부딪치지 않는다.
  */
-export const nexonAccountMapleIds = pgTable(
-  'nexon_account_maple_ids',
+export const mapleIds = pgTable(
+  'maple_ids',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     nexonAccountId: uuid('nexon_account_id')
       .notNull()
       .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
-    mapleId: text('maple_id').notNull().unique(),
+    /** 넥슨 `character/list` 의 `account_id` 의 SHA-256 16진. 요청 헤더 `x-maple-id-hash` 와 같은 값이다. */
+    hash: text('hash').notNull().unique(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
-  (t) => [index('nexon_account_maple_ids_account_idx').on(t.nexonAccountId)],
+  (t) => [index('maple_ids_nexon_account_id_idx').on(t.nexonAccountId)],
 )
 
-/** 넥슨 로그인이 등록한 부계정 하나. 부계정은 로그인 하나에만 붙는다. 어느 쪽 계정 줄이 지워져도 함께 지워진다. */
-export const subAccounts = pgTable(
-  'sub_accounts',
+/**
+ * 넥슨 로그인이 다른 넥슨 계정을 부계정으로 등록한 것 한 건. 부계정은 로그인 하나에만 붙는다. 어느 쪽 계정 줄이 지워져도
+ * 함께 지워진다.
+ */
+export const subAccountRegistrations = pgTable(
+  'sub_account_registrations',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    loginAccountId: uuid('login_account_id')
+    loginNexonAccountId: uuid('login_nexon_account_id')
       .notNull()
       .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
-    subAccountId: uuid('sub_account_id')
+    subNexonAccountId: uuid('sub_nexon_account_id')
       .notNull()
       .unique()
       .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
   (t) => [
-    index('sub_accounts_login_idx').on(t.loginAccountId),
-    check('sub_accounts_not_self', sql`${t.loginAccountId} <> ${t.subAccountId}`),
+    index('sub_account_registrations_login_idx').on(t.loginNexonAccountId),
+    check(
+      'sub_account_registrations_not_self',
+      sql`${t.loginNexonAccountId} <> ${t.subNexonAccountId}`,
+    ),
   ],
 )
 
@@ -143,17 +135,19 @@ export const referrals = pgTable(
   'referrals',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    referredAccountId: uuid('referred_account_id')
+    referredNexonAccountId: uuid('referred_nexon_account_id')
       .notNull()
       .unique()
       .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
     /** 추천한 계정이 지워지면 비운다. 줄이 남아야 추천받은 계정이 다른 코드를 다시 넣지 못한다. */
-    referrerAccountId: uuid('referrer_account_id').references(() => nexonAccounts.id, {
+    referrerNexonAccountId: uuid('referrer_nexon_account_id').references(() => nexonAccounts.id, {
       onDelete: 'set null',
     }),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
-  (t) => [check('referrals_not_self', sql`${t.referredAccountId} <> ${t.referrerAccountId}`)],
+  (t) => [
+    check('referrals_not_self', sql`${t.referredNexonAccountId} <> ${t.referrerNexonAccountId}`),
+  ],
 )
 
 export const nexonSessions = pgTable(
@@ -161,17 +155,20 @@ export const nexonSessions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /** 앱이 든 값의 sha256. 원본은 저장하지 않는다. */
-    sessionHash: bytea('session_hash').notNull().unique(),
+    hash: bytea('hash').notNull().unique(),
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     /** 갱신도 같은 자격 쌍으로 해야 넥슨이 받는다. */
     platform: platformEnum('platform').notNull(),
-    accessSealed: bytea('access_sealed').notNull(),
+    /** 봉한 넥슨 액세스 토큰. */
+    sealedAccessToken: bytea('sealed_access_token').notNull(),
     accessExpiresAt: timestamptz('access_expires_at').notNull(),
-    refreshSealed: bytea('refresh_sealed').notNull(),
+    /** 봉한 넥슨 갱신 토큰. */
+    sealedRefreshToken: bytea('sealed_refresh_token').notNull(),
     refreshExpiresAt: timestamptz('refresh_expires_at').notNull(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
+    /** 이 세션으로 요청이 마지막으로 온 때. 오래 쓰지 않은 세션을 운영에서 가려낸다. */
     lastUsedAt: timestamptz('last_used_at').notNull().defaultNow(),
   },
   (t) => [
@@ -351,7 +348,7 @@ export const dropPrices = pgTable(
     /** 기기가 만든 v4. 메이플 ID 안에서(옛 줄은 사람 안에서) 유일하다. 남의 기록 id 로 남의 줄을 못 덮는다. */
     dropRecordId: uuid('drop_record_id').notNull(),
     /** 드롭한 캐릭터의 메이플 ID. 계정을 삭제하면 비운다. 메이플 ID · ocid 없이 온 드롭(1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱)은 NULL 이다. */
-    mapleId: text('maple_id').references(() => nexonAccountMapleIds.mapleId, {
+    mapleId: text('maple_id').references(() => mapleIds.hash, {
       onDelete: 'set null',
       onUpdate: 'cascade',
     }),
@@ -1409,7 +1406,7 @@ export const bossClears = pgTable(
     /** 잡은 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
+      .references(() => mapleIds.hash, { onDelete: 'cascade', onUpdate: 'cascade' }),
     ocid: text('ocid').notNull(),
     /** 같은 처치를 가리는 보스. 표에 없는 보스면 NULL. */
     bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
@@ -1469,7 +1466,7 @@ export const serverCashbookEntries = pgTable(
     /** 기록의 메이플 ID. 캐릭터 기록은 그 캐릭터의 메이플 ID 다. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
+      .references(() => mapleIds.hash, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /** NULL 은 메이플 ID 기록이다. */
     ocid: text('ocid'),
     entryType: cashbookEntryTypeEnum('entry_type').notNull(),
@@ -1545,7 +1542,7 @@ export const enhancementTotals = pgTable(
     /** 강화한 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
     mapleId: text('maple_id')
       .notNull()
-      .references(() => nexonAccountMapleIds.mapleId, { onDelete: 'cascade', onUpdate: 'cascade' }),
+      .references(() => mapleIds.hash, { onDelete: 'cascade', onUpdate: 'cascade' }),
     /** 그날 그 이름이었던 캐릭터. 이름을 바꿔도 그대로라 이것으로 가린다. */
     ocid: text('ocid').notNull(),
     /** 강화한 날(KST YYYY-MM-DD). */

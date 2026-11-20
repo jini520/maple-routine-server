@@ -1,4 +1,4 @@
-import { sha256, sha256Hex } from '../../common/hash'
+import { sha256Hex } from '../../common/hash'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { Test } from '@nestjs/testing'
 
@@ -14,14 +14,13 @@ const M3 = sha256Hex('m3')
 
 describe('MeController', () => {
   let app: NestFastifyApplication
-  const sessions = { findByHash: jest.fn(), deleteByUserId: jest.fn() }
+  const sessions = { findByHash: jest.fn(), touch: jest.fn(), deleteByUserId: jest.fn() }
   const users = {
-    upsertByApiKeyHash: jest.fn(),
+    upsertByMapleId: jest.fn(),
     requestDeletion: jest.fn(),
     cancelDeletion: jest.fn(),
     deletionRequestedAt: jest.fn(),
     findLoginAccount: jest.fn().mockResolvedValue({ nexonAccountId: 'a1' }),
-    linkApiKey: jest.fn(),
   }
   const accounts = { reportMapleIds: jest.fn() }
   const bearer = { authorization: 'Bearer S' }
@@ -44,11 +43,10 @@ describe('MeController', () => {
   beforeEach(() => {
     sessions.findByHash.mockReset().mockResolvedValue({ id: 'sid', userId: 'u1', platform: 'ios' })
     sessions.deleteByUserId.mockReset().mockResolvedValue(undefined)
-    users.upsertByApiKeyHash.mockReset()
+    users.upsertByMapleId.mockReset()
     users.requestDeletion.mockReset().mockResolvedValue(undefined)
     users.cancelDeletion.mockReset().mockResolvedValue(undefined)
     users.deletionRequestedAt.mockReset().mockResolvedValue(null)
-    users.linkApiKey.mockReset().mockResolvedValue(undefined)
     accounts.reportMapleIds.mockReset().mockResolvedValue([M1, M2])
   })
 
@@ -71,7 +69,7 @@ describe('MeController', () => {
   })
 
   it('키 사용자는 해시로 찾은 사람에게 예약을 적는다', async () => {
-    users.upsertByApiKeyHash.mockResolvedValue({
+    users.upsertByMapleId.mockResolvedValue({
       id: 'u2',
       nexonAccountId: 'a2',
     })
@@ -79,7 +77,7 @@ describe('MeController', () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/v1/me',
-      headers: { 'x-api-key-hash': 'cd'.repeat(32) },
+      headers: { 'x-maple-id-hash': 'cd'.repeat(32) },
     })
 
     expect(res.statusCode).toBe(204)
@@ -111,66 +109,16 @@ describe('MeController', () => {
     expect(res.json()).toEqual({ deletion: null })
   })
 
-  describe('POST /v1/me/api-key-links', () => {
-    const hash = 'ab'.repeat(32)
-
-    it('세션의 사람에 키 해시를 한 번 더 해시해 잇는다. 204 다', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/v1/me/api-key-links',
-        headers: bearer,
-        payload: { apiKeyHash: hash },
-      })
-
-      expect(res.statusCode).toBe(204)
-      expect(users.linkApiKey).toHaveBeenCalledWith('u1', sha256(hash))
+  // 1.0.15 의 키 사용자는 메이플 ID 해시로 밝혀지고, 로그인한 기기가 메이플 ID 를 알리면 같은 넥슨 ID 의 줄이 합쳐진다.
+  it('키를 로그인에 다는 경로는 없다', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/api-key-links',
+      headers: bearer,
+      payload: { apiKeyHash: 'ab'.repeat(32) },
     })
 
-    // 어느 사람에 합칠지는 세션이 정한다. 키 해시 헤더로는 합칠 사람이 없다.
-    it('키 해시 헤더로 오면 403 이고 잇지 않는다', async () => {
-      users.upsertByApiKeyHash.mockResolvedValue({
-        id: 'u2',
-        nexonAccountId: 'a2',
-      })
-
-      const res = await app.inject({
-        method: 'POST',
-        url: '/v1/me/api-key-links',
-        headers: { 'x-api-key-hash': 'cd'.repeat(32) },
-        payload: { apiKeyHash: hash },
-      })
-
-      expect(res.statusCode).toBe(403)
-      expect(res.json()).toEqual(expect.objectContaining({ code: 'login_required' }))
-      expect(users.linkApiKey).not.toHaveBeenCalled()
-    })
-
-    // 키 원문이 실려 오면 길이가 안 맞아 여기서 걸린다.
-    it('해시 모양이 틀리면 400 이다', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/v1/me/api-key-links',
-        headers: bearer,
-        payload: { apiKeyHash: 'test_' + 'a'.repeat(40) },
-      })
-
-      expect(res.statusCode).toBe(400)
-      expect(users.linkApiKey).not.toHaveBeenCalled()
-    })
-
-    it('삭제를 예약한 사람이면 403 이다', async () => {
-      users.deletionRequestedAt.mockResolvedValue(new Date('2026-11-04T03:00:00Z'))
-
-      const res = await app.inject({
-        method: 'POST',
-        url: '/v1/me/api-key-links',
-        headers: bearer,
-        payload: { apiKeyHash: hash },
-      })
-
-      expect(res.statusCode).toBe(403)
-      expect(users.linkApiKey).not.toHaveBeenCalled()
-    })
+    expect(res.statusCode).toBe(404)
   })
 
   describe('PUT /v1/me/maple-ids', () => {
@@ -190,7 +138,7 @@ describe('MeController', () => {
 
     // 부계정의 메이플 ID 는 그 키의 신원으로 알린다. 계정마다 자기 줄에 적어야 같은 넥슨 ID 를 알아본다.
     it('키 해시로 오면 그 키의 넥슨 계정에 적는다', async () => {
-      users.upsertByApiKeyHash.mockResolvedValue({
+      users.upsertByMapleId.mockResolvedValue({
         id: 'u2',
         nexonAccountId: 'a2',
       })
@@ -198,7 +146,7 @@ describe('MeController', () => {
       await app.inject({
         method: 'PUT',
         url: '/v1/me/maple-ids',
-        headers: { 'x-api-key-hash': 'cd'.repeat(32) },
+        headers: { 'x-maple-id-hash': 'cd'.repeat(32) },
         payload: { mapleIds: [M3] },
       })
 

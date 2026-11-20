@@ -56,7 +56,7 @@ export class DropMarketService {
     ])
     const markets = new Map<string, MarketRow[]>()
     for (const r of rows) {
-      const key = marketKey(r.itemId, r.ringLevel, scope.key)
+      const key = marketKey(r.marketItemId, scope.key)
       markets.set(key, [...(markets.get(key) ?? []), r])
     }
     return [...markets.entries()]
@@ -77,7 +77,7 @@ export class DropMarketService {
     ])
     const firstDay = kstDayNumber(now) - DETAIL_DAYS + 1
     const judged = (
-      rows.length === 0 ? [] : judge(marketKey(rows[0].itemId, rows[0].ringLevel, scope.key), rows)
+      rows.length === 0 ? [] : judge(marketKey(rows[0].marketItemId, scope.key), rows)
     )
       .map(({ id, priceMeso, pricedAt, worldKey, worldName, verdict, fence, basis }) => ({
         id,

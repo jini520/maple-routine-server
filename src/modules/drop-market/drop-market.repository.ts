@@ -6,12 +6,12 @@ import {
   dropPrices,
   itemGroups,
   items,
-  mapleIds,
-  subAccountRegistrations,
+  ringLevelItems,
   tradeGroups,
   worlds,
 } from '../../database/schema'
 import { WORLD_BOUND_TYPE } from '../items/items'
+import { SUB_OWNERS, subOwnerOf } from '../users/sub-owners'
 
 /** 장비를 서로 거래할 수 있는 월드들. 같은 거래권 줄을 가리키는 월드다. */
 export interface PriceGroup {
@@ -38,6 +38,8 @@ export interface MarketScope {
 export interface MarketRow {
   id: string
   itemId: string
+  /** 시세의 아이템. 반지는 그 레벨의 아이템 줄이고, 기준가가 이 줄로 저장된다 */
+  marketItemId: string
   itemKey: string
   itemName: string
   ringLevel: number | null
@@ -45,7 +47,7 @@ export interface MarketRow {
   pricedAt: Date
   worldKey: string
   worldName: string
-  /** 넥슨 계정 · 메이플 ID · 사용자 id 중 줄에 있는 것의 앞쪽. 하루 작업과 같은 값이라 더미 입력을 가린다 */
+  /** 사람 줄(부계정은 등록한 로그인의 사람), 없으면 줄마다 따로. 하루 작업과 같은 값이라 더미 입력을 가린다 */
   person: string
 }
 
@@ -96,6 +98,7 @@ export class DropMarketRepository {
       .select({
         id: dropPrices.id,
         itemId: dropPrices.itemId,
+        marketItemId: sql<string>`coalesce(${ringLevelItems.itemId}, ${dropPrices.itemId})`,
         itemKey: items.key,
         itemName: items.name,
         ringLevel: dropPrices.ringLevel,
@@ -103,18 +106,21 @@ export class DropMarketRepository {
         pricedAt: dropPrices.pricedAt,
         worldKey: worlds.key,
         worldName: worlds.name,
-        person: sql<string>`coalesce('a:' || coalesce(${subAccountRegistrations.loginNexonAccountId}, ${mapleIds.nexonAccountId})::text, 'm:' || ${dropPrices.mapleId}, 'u:' || ${dropPrices.userId}::text, 'r:' || ${dropPrices.id}::text)`,
+        person: sql<string>`coalesce('u:' || coalesce(so.owner_user_id, ${dropPrices.userId})::text, 'r:' || ${dropPrices.id}::text)`,
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
       .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
       .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
-      .leftJoin(mapleIds, eq(mapleIds.hash, dropPrices.mapleId))
       .leftJoin(
-        subAccountRegistrations,
-        eq(subAccountRegistrations.subNexonAccountId, mapleIds.nexonAccountId),
+        ringLevelItems,
+        and(
+          eq(ringLevelItems.ringItemId, dropPrices.itemId),
+          eq(ringLevelItems.ringLevel, dropPrices.ringLevel),
+        ),
       )
+      .leftJoin(SUB_OWNERS, subOwnerOf(dropPrices.userId))
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),

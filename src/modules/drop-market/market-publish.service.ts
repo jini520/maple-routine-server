@@ -44,10 +44,9 @@ const LISTED_GROUP = 'general'
 const SPARK_DAYS = 30
 const SERIES_DAYS = 365
 
-/** 앱에 주는 시세 한 줄. 판 사람 수와 기준가의 근거는 싣지 않는다 */
+/** 앱에 주는 시세 한 줄. 판 사람 수와 기준가의 근거는 싣지 않는다. 반지는 레벨 아이템의 key 다 */
 interface MarketEntry {
   itemKey: string
-  ringLevel: number | null
   price: number
   changePct: number | null
   /** 범위. 7일 표가 모자라면 `null` 이다 */
@@ -97,7 +96,7 @@ function rangesOf(
   for (const [market, ref] of references) {
     if (ref === null) continue
     const history = (stored.get(market) ?? []).filter((r) => r.day < day)
-    if (ref.source === 'carry') {
+    if (ref.source === 'kept') {
       const prev = history.find((r) => r.day === yesterday)
       out.set(market, prev?.q1 != null && prev.q3 != null ? { q1: prev.q1, q3: prev.q3 } : null)
       continue
@@ -113,7 +112,7 @@ function rangesOf(
 function basketItemsOf(rows: StoredBasket[]): BasketItem[] {
   const byItem = new Map<string, BasketItem>()
   for (const r of rows) {
-    const key = `${r.itemId}|${r.ringLevel ?? ''}`
+    const key = r.itemId
     const item = byItem.get(key) ?? { key, scopes: [], weight: r.weight, entersOn: r.entersOn }
     item.scopes.push({ scope: r.scope, basePrice: r.basePriceMeso, persons: r.persons })
     byItem.set(key, item)
@@ -228,6 +227,19 @@ export class MarketPublishService {
     return ran.length
   }
 
+  /**
+   * 마지막으로 낸 날의 앱 응답을 다시 만든다. 옛 DB 를 옮긴 뒤 한 번 돌린다. 옛 응답은 반지 레벨이 든 열쇠와 몸이라 옮기지 않는다.
+   *
+   * @returns 다시 만든 날. 낸 날이 없으면 `null`
+   */
+  async rebuildLatestResponses(): Promise<string | null> {
+    const ran = await this.repo.ranDays()
+    const last = ran[ran.length - 1]
+    if (last === undefined) return null
+    await this.buildResponses(last)
+    return last
+  }
+
   /** 기준 기간의 표로 바스켓을 정한다. 한 번 정하면 그대로 쓴다. */
   async ensureBasket(): Promise<BasketItem[]> {
     const stored = await this.repo.basket()
@@ -258,7 +270,7 @@ export class MarketPublishService {
       const votes = votesOf(list, weightOf)
       if (votes.size < BASKET_MIN_PERSONS) continue
       const m = parseMarketKey(market)
-      const key = `${m.itemId}|${m.ringLevel ?? ''}`
+      const key = m.itemId
       const itemKey = meta.get(m.itemId)?.key ?? ''
       const entersOn = LATE_ENTRY.find(([prefix]) => itemKey.startsWith(prefix))?.[1] ?? null
       const item = candidates.get(key) ?? { key, scopes: [], entersOn }
@@ -273,10 +285,8 @@ export class MarketPublishService {
     await this.repo.saveBasket(
       basket.flatMap((b) =>
         b.scopes.map((s) => {
-          const [itemId, ring] = b.key.split('|')
           return {
-            itemId,
-            ringLevel: ring === '' ? null : Number(ring),
+            itemId: b.key,
             scope: s.scope,
             basePriceMeso: s.basePrice,
             persons: s.persons,
@@ -296,12 +306,7 @@ export class MarketPublishService {
   ): Map<string, number> {
     const out = new Map<string, number>()
     for (const b of basket) {
-      const [itemId, ring] = b.key.split('|')
-      const rel = relativeOf(
-        b,
-        (scope) => refs.get(marketKey(itemId, ring === '' ? null : Number(ring), scope)) ?? null,
-        day,
-      )
+      const rel = relativeOf(b, (scope) => refs.get(marketKey(b.key, scope)) ?? null, day)
       if (rel !== null) out.set(b.key, rel)
     }
     return out
@@ -356,14 +361,8 @@ export class MarketPublishService {
           (linkOf(weights, rels.get(d) ?? NONE, rels.get(next) ?? NONE) ?? 1),
       )
     }
-    const days = daysFrom(start, until)
     await this.repo.saveMaspi(
-      days.map((d, i) => ({
-        day: d,
-        value: round(value.get(d) as number, 2),
-        change:
-          i === 0 ? null : round((value.get(d) as number) - (value.get(days[i - 1]) as number), 2),
-      })),
+      daysFrom(start, until).map((d) => ({ day: d, close: round(value.get(d) as number, 2) })),
     )
   }
 
@@ -379,10 +378,7 @@ export class MarketPublishService {
       this.relativesFrom(basket, refs.get(yesterday) ?? NONE, yesterday),
       this.relativesFrom(basket, refs.get(day) ?? NONE, day),
     )
-    const value = prev.value * (link ?? 1)
-    await this.repo.saveMaspi([
-      { day, value: round(value, 2), change: round(value - prev.value, 2) },
-    ])
+    await this.repo.saveMaspi([{ day, close: round(prev.close * (link ?? 1), 2) }])
   }
 
   /** 그날 앱에 줄 응답을 모두 만들어 저장한다. 판 사람 수 · 기준가의 근거 · 빈 날 표시는 싣지 않는다. */
@@ -413,7 +409,7 @@ export class MarketPublishService {
     }
     const built: Built[] = []
     for (const [market, list] of refs) {
-      const fresh = list.filter((r) => r.day >= freshFrom && r.source !== 'carry').length
+      const fresh = list.filter((r) => r.day >= freshFrom && r.source !== 'kept').length
       if (!isReliable(fresh)) continue
       const byDay = new Map(list.map((r) => [r.day, r]))
       const series = fillSeries(
@@ -424,7 +420,7 @@ export class MarketPublishService {
             ref: r?.ref ?? null,
             q1: r?.q1 ?? null,
             q3: r?.q3 ?? null,
-            fresh: r !== undefined && r.source !== 'carry',
+            fresh: r !== undefined && r.source !== 'kept',
           }
         }),
       )
@@ -442,7 +438,6 @@ export class MarketPublishService {
         persons: persons.get(market)?.size ?? 0,
         entry: {
           itemKey: item.key,
-          ringLevel: m.ringLevel,
           price: last.price,
           changePct: prev === undefined ? null : round((last.price / prev.price - 1) * 100, 1),
           low: last.low,
@@ -467,6 +462,8 @@ export class MarketPublishService {
     const equipment = listOf((b) => !b.worldBound && b.scope === LISTED_GROUP)
     const responses: { key: string; body: string; etag: string }[] = []
     const last = maspi[maspi.length - 1]
+    const before = maspi[maspi.length - 2]
+    // 전일 대비는 저장된 두 종가의 차이다. 반올림 전 값으로 빼면 보이는 두 종가의 차이와 0.01 어긋난다.
     responses.push({
       key: 'maspi',
       ...toResponse(
@@ -474,9 +471,9 @@ export class MarketPublishService {
           ? EMPTY_MASPI
           : {
               date: last.day,
-              close: last.value,
-              change: last.change,
-              series: maspi.map((m) => ({ date: m.day, value: m.value })),
+              close: last.close,
+              change: before === undefined ? null : round(last.close - before.close, 2),
+              series: maspi.map((m) => ({ date: m.day, value: m.close })),
             },
       ),
     })
@@ -495,7 +492,7 @@ export class MarketPublishService {
     }
     for (const b of details) {
       responses.push({
-        key: `item:${b.entry.itemKey}:${b.entry.ringLevel ?? ''}:${b.scope}`,
+        key: `item:${b.entry.itemKey}:${b.scope}`,
         ...toResponse({ date: day, ...b.entry, grade: b.grade, series: b.series }),
       })
     }

@@ -5,10 +5,11 @@ import { eq, type AnyColumn } from 'drizzle-orm'
 import {
   dropPrices,
   items,
-  marketDays,
   marketJudgements,
+  marketReferencePrices,
   marketResponses,
-  maspiDays,
+  maspiDailyCloses,
+  ringLevelItems,
   tradeGroups,
   users,
   worlds,
@@ -123,8 +124,11 @@ describeDb('MarketPublishService', () => {
 
     await service.backfill('2026-11-05')
 
-    const [base] = await db.select().from(maspiDays).where(sqlDay(maspiDays.day, '2026-10-22'))
-    expect(base.value).toBeCloseTo(10_000)
+    const [base] = await db
+      .select()
+      .from(maspiDailyCloses)
+      .where(sqlDay(maspiDailyCloses.date, '2026-10-22'))
+    expect(base.close).toBeCloseTo(10_000)
     const list = await repo.latestResponse('items:scania')
     const body = JSON.parse(list?.body ?? '{}') as {
       equipment: { itemKey: string; price: number; grade: string }[]
@@ -142,13 +146,19 @@ describeDb('MarketPublishService', () => {
   it('낸 날은 뒤늦은 줄이 와도 다시 계산하지 않고, 하루 작업은 끝내지 않은 날만 낸다', async () => {
     await steadyMarket('2026-10-22', '2026-11-05', 30 * EOK)
     await service.backfill('2026-11-05')
-    const before = await db.select().from(marketDays).where(sqlDay(marketDays.day, '2026-11-03'))
+    const before = await db
+      .select()
+      .from(marketReferencePrices)
+      .where(sqlDay(marketReferencePrices.date, '2026-11-03'))
 
     // 지난 날짜로 줄을 보내도 이미 낸 11/03 은 바뀌지 않는다.
     for (const who of ['x', 'd', 'e']) await trade(who, '2026-11-03', 90 * EOK)
     await service.catchUp('2026-11-06')
 
-    const after = await db.select().from(marketDays).where(sqlDay(marketDays.day, '2026-11-03'))
+    const after = await db
+      .select()
+      .from(marketReferencePrices)
+      .where(sqlDay(marketReferencePrices.date, '2026-11-03'))
     expect(after).toEqual(before)
     expect(await repo.ranDays()).toContain('2026-11-06')
     await expect(service.backfill('2026-11-06')).rejects.toThrow()
@@ -160,30 +170,121 @@ describeDb('MarketPublishService', () => {
     // 11/06 · 11/07 은 3일 표로 새 기준가가 서고, 11/08 은 3일 안에 거래가 없어 유지한다.
     await service.backfill('2026-11-08')
 
-    const [fresh] = await db.select().from(marketDays).where(sqlDay(marketDays.day, '2026-11-07'))
-    const [carry] = await db.select().from(marketDays).where(sqlDay(marketDays.day, '2026-11-08'))
-    expect(fresh.q1Meso).not.toBeNull()
-    expect(carry.source).toBe('carry')
-    expect([carry.q1Meso, carry.q3Meso]).toEqual([fresh.q1Meso, fresh.q3Meso])
+    const [fresh] = await db
+      .select()
+      .from(marketReferencePrices)
+      .where(sqlDay(marketReferencePrices.date, '2026-11-07'))
+    const [kept] = await db
+      .select()
+      .from(marketReferencePrices)
+      .where(sqlDay(marketReferencePrices.date, '2026-11-08'))
+    expect(fresh.rangeLowMeso).not.toBeNull()
+    expect(kept.source).toBe('kept')
+    expect([kept.rangeLowMeso, kept.rangeHighMeso]).toEqual([
+      fresh.rangeLowMeso,
+      fresh.rangeHighMeso,
+    ])
   })
 
   it('지난 날의 범위를 다시 계산해도 기준가 · 판정 · MASPI 는 그대로이고, 마지막 날의 응답을 다시 만든다', async () => {
     await crowdMarket('2026-10-22', '2026-11-05', 30 * EOK)
     await service.backfill('2026-11-05')
-    const days = await db.select().from(marketDays)
+    const days = await db.select().from(marketReferencePrices)
     const judgements = await db.select().from(marketJudgements)
-    const maspi = await db.select().from(maspiDays)
+    const maspi = await db.select().from(maspiDailyCloses)
     const response = await repo.latestResponse('items:scania')
     // 옛 방식의 범위와 그것으로 만든 응답이 남아 있던 상태.
-    await db.update(marketDays).set({ q1Meso: 1, q3Meso: 1 })
+    await db.update(marketReferencePrices).set({ rangeLowMeso: 1, rangeHighMeso: 1 })
     await db.update(marketResponses).set({ body: '{}', etag: '"old"' })
 
     await service.recomputeRanges()
 
-    expect(await db.select().from(marketDays)).toEqual(days)
+    expect(await db.select().from(marketReferencePrices)).toEqual(days)
     expect(await db.select().from(marketJudgements)).toEqual(judgements)
-    expect(await db.select().from(maspiDays)).toEqual(maspi)
+    expect(await db.select().from(maspiDailyCloses)).toEqual(maspi)
     expect(await repo.latestResponse('items:scania')).toEqual(response)
+  })
+
+  // 반지는 레벨마다 아이템 줄이 따로 있다. 앱은 레벨 아이템의 key 로 시세를 부르고, 레벨 조각은 열쇠에 없다.
+  it('반지 줄은 그 레벨의 아이템 줄로 재고, 응답의 열쇠와 아이템 key 도 레벨 아이템이다', async () => {
+    const [level] = await db
+      .insert(items)
+      .values({ key: 'ring_lv4', name: '반지 lv.4', isDrop: true })
+      .returning({ id: items.id })
+    await db
+      .insert(ringLevelItems)
+      .values({ itemId: level.id, ringItemId: item.ring, ringLevel: 4 })
+    await steadyMarket('2026-10-22', '2026-11-05', 30 * EOK)
+
+    await service.backfill('2026-11-05')
+
+    const refs = await db.select().from(marketReferencePrices)
+    expect(new Set(refs.map((r) => r.itemId))).toEqual(new Set([level.id]))
+    expect(refs[0]).toMatchObject({ scopeType: 'trade_group' })
+    const list = JSON.parse((await repo.latestResponse('items:scania'))?.body ?? '{}') as {
+      equipment: { itemKey: string }[]
+    }
+    expect(list.equipment.map((e) => e.itemKey)).toEqual(['ring_lv4'])
+    expect(await repo.latestResponse('item:ring_lv4:general')).not.toBeNull()
+    expect(JSON.stringify(list)).not.toContain('ringLevel')
+  })
+
+  // 판정은 직전 30일 신뢰도를 세는 데만 쓴다. 사람 줄이 없는 익명 줄은 그 값을 물려받을 사람이 없다.
+  it('판정은 사람 줄마다 남기고, 사람 줄이 없는 줄의 판정은 남기지 않는다', async () => {
+    await steadyMarket('2026-11-01', '2026-11-03', 30 * EOK)
+    await db.insert(dropPrices).values({
+      dropRecordId: randomUUID(),
+      identifiedBy: 'key',
+      itemId: item.ring,
+      priceMeso: 30 * EOK,
+      recordStatus: 'completed',
+      periodKey: '2026-10-22',
+      worldId: world.scania,
+      ringLevel: 4,
+      pricedAt: new Date('2026-11-03T12:00:00+09:00'),
+    })
+
+    await service.backfill('2026-11-03')
+
+    const judged = await db
+      .select()
+      .from(marketJudgements)
+      .where(sqlDay(marketJudgements.date, '2026-11-03'))
+    expect(new Set(judged.map((j) => j.userId))).toEqual(new Set([person.a, person.b, person.c]))
+  })
+
+  // 저장된 두 종가의 차이로 내야 보이는 두 종가와 전일 대비가 어긋나지 않는다.
+  it('MASPI 의 전일 대비는 응답에 실린 두 종가의 차이다', async () => {
+    await steadyMarket('2026-10-22', '2026-11-05', 30 * EOK)
+    await service.backfill('2026-11-05')
+    await db
+      .update(maspiDailyCloses)
+      .set({ close: 10_123.45 })
+      .where(sqlDay(maspiDailyCloses.date, '2026-11-04'))
+    await db
+      .update(maspiDailyCloses)
+      .set({ close: 10_200.12 })
+      .where(sqlDay(maspiDailyCloses.date, '2026-11-05'))
+
+    await service.buildResponses('2026-11-05')
+
+    const maspi = JSON.parse((await repo.latestResponse('maspi'))?.body ?? '{}') as {
+      close: number
+      change: number
+    }
+    expect(maspi).toMatchObject({ close: 10_200.12, change: 76.67 })
+  })
+
+  // 옛 DB 를 옮길 때 응답 저장 줄은 옮기지 않는다. 다음 하루 작업 전까지 앱이 시세를 못 받지 않게 다시 만든다.
+  it('응답이 하나도 없어도 마지막으로 낸 날의 응답을 다시 만든다', async () => {
+    await steadyMarket('2026-10-22', '2026-11-05', 30 * EOK)
+    await service.backfill('2026-11-05')
+    const before = await repo.latestResponse('items:scania')
+    await db.delete(marketResponses)
+
+    await expect(service.rebuildLatestResponses()).resolves.toBe('2026-11-05')
+
+    expect(await repo.latestResponse('items:scania')).toEqual(before)
   })
 
   it('같은 날 응답을 다시 만들어도 몸과 ETag 가 같다', async () => {

@@ -1659,101 +1659,109 @@ export const enhancementAnomalies = pgTable(
   ],
 )
 
-/** 일일 기준가의 근거. 응답에는 싣지 않는다. 거래가 적은 날이 드러나기 때문이다. */
+/** 일일 기준가의 근거. 응답에는 싣지 않는다. 거래가 적은 날이 드러나기 때문이다. `kept` 는 합의가 없어 마지막 새 기준가를 유지한 날이다. */
 export const marketReferenceSourceEnum = pgEnum('market_reference_source', [
   'today',
   'three_day',
-  'carry',
+  'kept',
 ])
 
-/** 시세(아이템 · 반지 레벨 · 범위)마다 날마다 낸 일일 기준가. 하루 작업이 한 번 넣고 다시 쓰지 않는다. 기준가가 빈 날은 줄이 없다. */
-export const marketDays = pgTable(
-  'market_days',
+/** 시세의 범위가 무엇의 줄인가. 장비는 거래권(`trade_groups`), 소비 아이템은 월드(`worlds`)다. */
+export const marketScopeTypeEnum = pgEnum('market_scope_type', ['trade_group', 'world'])
+
+/**
+ * 시세 하나(아이템 · 범위)의 하루 일일 기준가. 하루 작업이 한 번 넣고 다시 쓰지 않는다. 기준가가 빈 날은 줄이 없다. 반지는 레벨
+ * 아이템 줄이 따로 있어 레벨 칸이 없다.
+ */
+export const marketReferencePrices = pgTable(
+  'market_reference_prices',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /** KST 날짜 */
-    day: date('day', { mode: 'string' }).notNull(),
+    date: date('date', { mode: 'string' }).notNull(),
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id),
-    ringLevel: integer('ring_level'),
-    /** 장비는 거래권 key(`trade_groups.key`), 소비 아이템은 월드 key */
-    scope: text('scope').notNull(),
+    scopeType: marketScopeTypeEnum('scope_type').notNull(),
+    /** 범위 줄의 id. `scope_type` 이 가리키는 표의 줄이라 외래키를 걸지 않는다. */
+    scopeId: uuid('scope_id').notNull(),
     source: marketReferenceSourceEnum('source').notNull(),
-    refMeso: bigint('ref_meso', { mode: 'number' }).notNull(),
-    /** 범위의 두 끝. 7일 표가 모자라면 비운다 */
-    q1Meso: bigint('q1_meso', { mode: 'number' }),
-    q3Meso: bigint('q3_meso', { mode: 'number' }),
-    /** 그날 줄을 판정한 울타리 */
-    fenceLow: doublePrecision('fence_low').notNull(),
-    fenceHigh: doublePrecision('fence_high').notNull(),
-    voters: integer('voters').notNull(),
-    /** 마지막 새 기준가의 날. 유지 중이면 그 값을 처음 낸 날이다 */
-    freshDay: date('fresh_day', { mode: 'string' }).notNull(),
+    referencePriceMeso: bigint('reference_price_meso', { mode: 'number' }).notNull(),
+    /** 그날 기준가 둘레에서 거래가 몰린 범위의 두 끝. 7일 표가 모자라면 비운다 */
+    rangeLowMeso: bigint('range_low_meso', { mode: 'number' }),
+    rangeHighMeso: bigint('range_high_meso', { mode: 'number' }),
+    /** 그날 표를 판정한 울타리의 두 끝 */
+    fenceLowMeso: doublePrecision('fence_low_meso').notNull(),
+    fenceHighMeso: doublePrecision('fence_high_meso').notNull(),
+    /** 마지막으로 새 기준가를 낸 날. 유지 중이면 그 값을 처음 낸 날이다 */
+    freshDate: date('fresh_date', { mode: 'string' }).notNull(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('market_days_market_day_unique').on(
-      t.day,
+    unique('market_reference_prices_date_item_scope_unique').on(
+      t.date,
       t.itemId,
-      sql`coalesce(${t.ringLevel}, 0)`,
-      t.scope,
+      t.scopeType,
+      t.scopeId,
     ),
   ],
 )
 
-/** 사람마다 날마다의 판정 수. 신뢰도가 직전 30일의 이 값을 쓰고, 더미 입력을 한 날은 그 사람의 줄을 뒤 날 계산에서도 뺀다. */
+/**
+ * 사람마다 날마다의 판정 수. 신뢰도가 직전 30일의 이 값을 쓰고, 더미 입력을 한 날은 그 사람의 줄을 뒤 날 계산에서도 뺀다.
+ * 사람 줄이 지워지면 함께 지운다. 직전 30일의 신뢰도를 세는 데만 쓴다.
+ */
 export const marketJudgements = pgTable(
   'market_judgements',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    day: date('day', { mode: 'string' }).notNull(),
-    /** 넥슨 계정 · 메이플 ID · 사용자 id 중 줄에 있는 것의 앞쪽 */
-    person: text('person').notNull(),
-    judged: integer('judged').notNull(),
-    excluded: integer('excluded').notNull(),
-    dummy: boolean('dummy').notNull().default(false),
+    date: date('date', { mode: 'string' }).notNull(),
+    /** 부계정의 사람은 그 계정을 등록한 로그인의 사람이다. */
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    judgedCount: integer('judged_count').notNull(),
+    excludedCount: integer('excluded_count').notNull(),
+    isDummy: boolean('is_dummy').notNull().default(false),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
-  (t) => [unique('market_judgements_day_person_unique').on(t.day, t.person)],
+  (t) => [unique('market_judgements_date_user_unique').on(t.date, t.userId)],
 )
 
-/** 하루 작업이 끝낸 날. 기준가가 하나도 없는 날도 끝낸 날로 남겨, 다시 계산하지 않게 한다. */
-export const marketRuns = pgTable('market_runs', {
+/** 하루 작업이 시세를 낸 날. 기준가가 하나도 없는 날도 낸 날로 남겨, 다시 계산하지 않게 한다. */
+export const marketPublishedDays = pgTable('market_published_days', {
   id: uuid('id').primaryKey().defaultRandom(),
-  day: date('day', { mode: 'string' }).notNull().unique(),
+  date: date('date', { mode: 'string' }).notNull().unique(),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 })
 
-/** MASPI 바스켓. 처음 채울 때 기준 기간으로 한 번 정한다. 무게는 아이템마다 같은 값이 범위 줄마다 실린다. */
-export const maspiBasket = pgTable(
-  'maspi_basket',
+/** MASPI 바스켓에 든 아이템의 범위 하나. 처음 채울 때 기준 기간으로 한 번 정한다. 무게는 아이템마다 같은 값이 범위 줄마다 실린다. */
+export const maspiBasketItems = pgTable(
+  'maspi_basket_items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id),
-    ringLevel: integer('ring_level'),
-    scope: text('scope').notNull(),
-    basePriceMeso: doublePrecision('base_price_meso').notNull(),
-    persons: integer('persons').notNull(),
-    weight: doublePrecision('weight').notNull(),
+    scopeType: marketScopeTypeEnum('scope_type').notNull(),
+    scopeId: uuid('scope_id').notNull(),
+    basePriceMeso: bigint('base_price_meso', { mode: 'number' }).notNull(),
+    /** 기준 기간에 그 시세에 표를 낸 사람 수 */
+    voterCount: integer('voter_count').notNull(),
+    /** 지수에서 그 아이템이 차지하는 무게 */
+    indexWeight: doublePrecision('index_weight').notNull(),
     /** 이 날부터 지수에 든다 */
-    entersOn: date('enters_on', { mode: 'string' }),
+    fromDate: date('from_date', { mode: 'string' }),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex('maspi_basket_unique').on(t.itemId, sql`coalesce(${t.ringLevel}, 0)`, t.scope),
-  ],
+  (t) => [unique('maspi_basket_items_item_scope_unique').on(t.itemId, t.scopeType, t.scopeId)],
 )
 
-/** MASPI 날마다의 종가 */
-export const maspiDays = pgTable('maspi_days', {
+/** MASPI 의 하루 종가. 전날 대비는 이웃한 두 종가에서 낸다. */
+export const maspiDailyCloses = pgTable('maspi_daily_closes', {
   id: uuid('id').primaryKey().defaultRandom(),
-  day: date('day', { mode: 'string' }).notNull().unique(),
-  value: doublePrecision('value').notNull(),
-  /** 전날 종가와의 차이. 첫날은 없다 */
-  change: doublePrecision('change'),
+  date: date('date', { mode: 'string' }).notNull().unique(),
+  close: doublePrecision('close').notNull(),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 })
 
@@ -1762,12 +1770,12 @@ export const marketResponses = pgTable(
   'market_responses',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    day: date('day', { mode: 'string' }).notNull(),
-    /** 응답을 찾는 열쇠. `maspi` · `items:<월드 key>` · `item:<아이템 key>:<반지 레벨>:<범위>` */
+    date: date('date', { mode: 'string' }).notNull(),
+    /** 응답을 찾는 열쇠. `maspi` · `items:<월드 key>` · `item:<아이템 key>:<범위 key>` */
     key: text('key').notNull(),
     body: text('body').notNull(),
     etag: text('etag').notNull(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
-  (t) => [unique('market_responses_day_key_unique').on(t.day, t.key)],
+  (t) => [unique('market_responses_date_key_unique').on(t.date, t.key)],
 )

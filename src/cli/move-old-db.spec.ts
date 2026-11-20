@@ -19,7 +19,9 @@ import {
   SwappedDatabases,
   UnknownAssetPath,
   UnknownHexaCoreType,
+  UnknownMarketScope,
   UnknownQuantity,
+  UnknownRingLevel,
   UnknownTradeGroup,
 } from './move-old-db'
 
@@ -1364,5 +1366,136 @@ describeDb('moveOldDb', () => {
     expect(movedSession.sealedAccessToken.toString()).toBe('access')
     expect(movedSession.sealedRefreshToken.toString()).toBe('refresh')
     expect(await newDb.select().from(schema.nexonLoginAttempts)).toEqual([])
+  })
+
+  it('시세: 범위 글자를 거래권 · 월드 줄로, 반지 레벨을 레벨 아이템 줄로, 판정의 사람 글자를 사람 줄로 옮긴다. 응답 저장 줄은 옮기지 않는다', async () => {
+    await insertOldGroup('spec_ring', 'accessory')
+    const ring = await insertOldItem('ring', { name: '반지', category: 'spec_ring' })
+    const whetstone = await insertOldItem('whetstone', { name: '연마석' })
+    await insertOldBox('ring_box', [4, 4], [ring])
+    await oldDb
+      .insert(oldSchema.worlds)
+      .values({ key: 'scania', name: '스카니아', priceGroup: 'general', sortOrder: 0 })
+    const [user] = await oldDb
+      .insert(oldSchema.users)
+      .values({})
+      .returning({ id: oldSchema.users.id })
+    const [account] = await oldDb
+      .insert(oldSchema.nexonAccounts)
+      .values({ userId: user.id })
+      .returning({ id: oldSchema.nexonAccounts.id })
+    const day = {
+      source: 'carry' as const,
+      refMeso: 30,
+      q1Meso: 29,
+      q3Meso: 31,
+      fenceLow: 20,
+      fenceHigh: 40,
+      voters: 3,
+      freshDay: '2026-11-01',
+    }
+    await oldDb.insert(oldSchema.marketDays).values([
+      { ...day, day: '2026-11-02', itemId: ring, ringLevel: 4, scope: 'general' },
+      { ...day, day: '2026-11-02', itemId: whetstone, ringLevel: null, scope: 'scania' },
+    ])
+    await oldDb.insert(oldSchema.marketJudgements).values([
+      { day: '2026-11-02', person: `u:${user.id}`, judged: 2, excluded: 1, dummy: false },
+      { day: '2026-11-02', person: `a:${account.id}`, judged: 1, excluded: 0, dummy: true },
+      {
+        day: '2026-11-02',
+        person: 'u:00000000-0000-4000-8000-000000000000',
+        judged: 5,
+        excluded: 0,
+        dummy: false,
+      },
+    ])
+    await oldDb.insert(oldSchema.marketRuns).values({ day: '2026-11-02' })
+    await oldDb.insert(oldSchema.maspiBasket).values({
+      itemId: ring,
+      ringLevel: 4,
+      scope: 'general',
+      basePriceMeso: 30,
+      persons: 5,
+      weight: 1,
+    })
+    await oldDb.insert(oldSchema.maspiDays).values([
+      { day: '2026-11-01', value: 10_000 },
+      { day: '2026-11-02', value: 10_100.5, change: 100.5 },
+    ])
+    await oldDb
+      .insert(oldSchema.marketResponses)
+      .values({ day: '2026-11-02', key: 'item:ring:4:general', body: '{}', etag: '"e"' })
+
+    const moved = await moveOldDb(oldDb, newDb)
+
+    const [level] = await newDb
+      .select({ id: schema.items.id })
+      .from(schema.items)
+      .where(eq(schema.items.key, 'ring_lv4'))
+    const [general] = await newDb.select({ id: schema.tradeGroups.id }).from(schema.tradeGroups)
+    const [scania] = await newDb.select({ id: schema.worlds.id }).from(schema.worlds)
+    expect(moved).toMatchObject({
+      marketReferencePrices: 2,
+      marketJudgements: 1,
+      maspiDailyCloses: 2,
+    })
+    expect(await newDb.select().from(schema.marketReferencePrices)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          itemId: level.id,
+          scopeType: 'trade_group',
+          scopeId: general.id,
+          source: 'kept',
+          referencePriceMeso: 30,
+          rangeLowMeso: 29,
+          rangeHighMeso: 31,
+          freshDate: '2026-11-01',
+        }),
+        expect.objectContaining({ itemId: whetstone, scopeType: 'world', scopeId: scania.id }),
+      ]),
+    )
+    expect(await newDb.select().from(schema.marketJudgements)).toEqual([
+      expect.objectContaining({ userId: user.id, judgedCount: 3, excludedCount: 1, isDummy: true }),
+    ])
+    expect(await newDb.select().from(schema.maspiBasketItems)).toEqual([
+      expect.objectContaining({
+        itemId: level.id,
+        scopeType: 'trade_group',
+        voterCount: 5,
+        indexWeight: 1,
+      }),
+    ])
+    expect((await newDb.select().from(schema.maspiDailyCloses)).map((m) => m.close).sort()).toEqual(
+      [10_000, 10_100.5],
+    )
+    expect(await newDb.select().from(schema.marketPublishedDays)).toHaveLength(1)
+    expect(await newDb.select().from(schema.marketResponses)).toEqual([])
+  })
+
+  it('시세 줄의 범위 글자를 모르거나 반지 레벨에 맞는 레벨 아이템이 없으면 알리고 아무것도 옮기지 않는다', async () => {
+    const [ring] = await oldDb
+      .insert(oldSchema.items)
+      .values({ key: 'ring', name: '반지', isDrop: true })
+      .returning({ id: oldSchema.items.id })
+    const row = {
+      day: '2026-11-02',
+      itemId: ring.id,
+      source: 'today' as const,
+      refMeso: 30,
+      fenceLow: 20,
+      fenceHigh: 40,
+      voters: 3,
+      freshDay: '2026-11-02',
+    }
+    await oldDb.insert(oldSchema.marketDays).values({ ...row, ringLevel: null, scope: 'moon' })
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownMarketScope('moon'))
+
+    await oldDb.delete(oldSchema.marketDays)
+    await oldDb.insert(oldSchema.marketDays).values({ ...row, ringLevel: 7, scope: 'general' })
+    await oldDb
+      .insert(oldSchema.worlds)
+      .values({ key: 'scania', name: '스카니아', priceGroup: 'general', sortOrder: 0 })
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownRingLevel(`${ring.id} · 7`))
+    expect(await newDb.select().from(schema.marketReferencePrices)).toEqual([])
   })
 })

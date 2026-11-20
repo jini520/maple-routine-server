@@ -13,7 +13,7 @@ function point(id: string, priceMeso: number, day: string, person = 'u:a'): Stor
 
 const fences = new Map([
   ['2026-11-12', { low: 7 * EOK, high: 9 * EOK, source: 'today' as const }],
-  ['2026-11-13', { low: 7 * EOK, high: 9 * EOK, source: 'carry' as const }],
+  ['2026-11-13', { low: 7 * EOK, high: 9 * EOK, source: 'kept' as const }],
 ])
 
 describe('judgeStored', () => {
@@ -35,7 +35,7 @@ describe('judgeStored', () => {
 
     expect(j).toMatchObject({
       verdict: 'excluded',
-      basis: 'carry',
+      basis: 'kept',
       fence: { low: 7 * EOK, high: 9 * EOK },
     })
   })

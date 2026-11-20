@@ -21,11 +21,11 @@ export const describeDb = TEST_DATABASE_URL ? describe : describe.skip
 
 const TABLES = [
   'market_responses',
-  'maspi_days',
-  'maspi_basket',
-  'market_runs',
+  'maspi_daily_closes',
+  'maspi_basket_items',
+  'market_published_days',
   'market_judgements',
-  'market_days',
+  'market_reference_prices',
   'hunting_ground_levels',
   'hunting_grounds',
   'hunting_regions',

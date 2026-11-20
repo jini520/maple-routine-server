@@ -14,7 +14,7 @@ export interface Vote {
 }
 
 /** 기준가의 근거. 응답에는 싣지 않는다. 거래가 적은 날이 드러나기 때문이다. */
-export type ReferenceSource = 'today' | 'three_day' | 'carry'
+export type ReferenceSource = 'today' | 'three_day' | 'kept'
 
 export interface DayReference {
   day: string
@@ -27,8 +27,6 @@ export interface DayReference {
   /** 울타리. 그날 줄의 판정에 쓴다 */
   low: number
   high: number
-  /** 표를 낸 사람 수(울타리 전) */
-  voters: number
   /** 마지막 새 기준가의 날. 유지 중이면 그 값을 처음 낸 날이다 */
   freshDay: string
 }
@@ -133,7 +131,6 @@ export function referenceFromVotes(
     q3: null,
     low: fence.low,
     high: fence.high,
-    voters: all.length,
     freshDay: day,
   }
 }
@@ -176,7 +173,7 @@ export function referenceOf(input: {
       continue
     return referenceFromVotes(day, source, votes)
   }
-  return usable === null ? null : { ...usable, day, source: 'carry' }
+  return usable === null ? null : { ...usable, day, source: 'kept' }
 }
 
 /** 지난 30일 판정으로 정한 표의 무게. 잘못 적기를 되풀이하는 사람이 기준가를 흔들지 못하게 한다. */

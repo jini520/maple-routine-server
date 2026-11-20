@@ -1498,4 +1498,66 @@ describeDb('moveOldDb', () => {
     await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownRingLevel(`${ring.id} · 7`))
     expect(await newDb.select().from(schema.marketReferencePrices)).toEqual([])
   })
+
+  it('로그: 줄 id 그대로 신원 종류를 걷고, 강화 이상 보고는 사람 칸과 장비 key 를 걷고 칸 이름을 바꾼다', async () => {
+    const [user] = await oldDb
+      .insert(oldSchema.users)
+      .values({})
+      .returning({ id: oldSchema.users.id })
+    const [account] = await oldDb
+      .insert(oldSchema.nexonAccounts)
+      .values({ userId: user.id })
+      .returning({ id: oldSchema.nexonAccounts.id })
+    const [event] = await oldDb
+      .insert(oldSchema.usageEvents)
+      .values({
+        userId: user.id,
+        identifiedBy: 'key',
+        type: 'screen',
+        name: 'Boss',
+        durationMs: 1200,
+        platform: 'android',
+        appVersion: '1.0.14',
+        occurredAt: new Date('2026-11-10T00:00:00Z'),
+      })
+      .returning({ id: oldSchema.usageEvents.id })
+    const [anomaly] = await oldDb
+      .insert(oldSchema.enhancementAnomalies)
+      .values({
+        userId: user.id,
+        nexonAccountId: account.id,
+        identifiedBy: 'key',
+        historyDate: '2026-11-01',
+        enhancementType: 'cube',
+        anomalyType: 'event_world_unknown',
+        itemKey: null,
+        itemName: '',
+        rowCount: 3,
+        detail: '월드 A',
+      })
+      .returning({ id: oldSchema.enhancementAnomalies.id })
+
+    const moved = await moveOldDb(oldDb, newDb)
+
+    expect(moved).toMatchObject({ usageEvents: 1, enhancementAnomalies: 1 })
+    expect(await newDb.select().from(schema.usageEvents)).toEqual([
+      expect.objectContaining({
+        id: event.id,
+        userId: user.id,
+        type: 'screen',
+        name: 'Boss',
+        durationMs: 1200,
+      }),
+    ])
+    expect(await newDb.select().from(schema.enhancementAnomalies)).toEqual([
+      expect.objectContaining({
+        id: anomaly.id,
+        nexonAccountId: account.id,
+        apiType: 'cube',
+        reason: 'event_world_unknown',
+        rowCount: 3,
+        detail: '월드 A',
+      }),
+    ])
+  })
 })

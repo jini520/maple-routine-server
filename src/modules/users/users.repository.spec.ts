@@ -140,7 +140,6 @@ describeDb('UsersRepository', () => {
       .set({ deletionRequestedAt: new Date('2026-11-01T00:00:00Z') })
       .where(eq(users.id, kept.id))
     const event = {
-      identifiedBy: 'key' as const,
       type: 'visit' as const,
       name: '',
       platform: 'ios' as const,

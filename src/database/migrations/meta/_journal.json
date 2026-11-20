@@ -414,6 +414,13 @@
       "when": 1795196169389,
       "tag": "0058_market_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795197039154,
+      "tag": "0059_log_bundle",
+      "breakpoints": true
     }
   ]
 }

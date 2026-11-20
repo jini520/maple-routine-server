@@ -4,24 +4,21 @@ import { layout } from './layout'
 /**
  * 사용자 대시보드. 사람 수와 그 일별 · 요일별 증감을 본다. 읽기만 한다.
  * 기간은 한국 시각 오늘까지다. 오늘 값은 새로고침할 때마다 늘어난다. 플랫폼을 고르면 사건으로 세는 값만 그 플랫폼으로 센다.
+ * 지표 칸 아래는 방문자 · 요일과 시간대 · 새 사용자와 구성 셋으로 나눠 한 번에 하나만 보인다. 한 화면에 다 쌓으면 1440×900 을
+ * 넘는다. 고른 것은 주소의 `#` 에 남는다.
  */
 export const USERS_HTML = layout(
   '/admin/users',
   '사용자',
-  `<div class="head"><div><h1>사용자</h1><p>앱을 쓰는 사람의 수다. 방문자는 그 날 사용 사건을 하나라도 보낸 서로 다른 사람이고, 새 사용자는 서버가 그 사람을 처음 만든 날로 센다. 부계정으로 등록된 계정의 사람은 그 계정을 등록한 로그인의 사람과 한 명으로 센다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p></div></div>
+  `<div class="top"><h1>사용자</h1><span id="views"></span><span class="grow"></span><div class="btns" role="group" aria-label="기간" id="presets"></div><select id="platform" class="on-bg" aria-label="플랫폼"><option value="">모든 플랫폼</option><option value="ios">iOS</option><option value="android">Android</option></select><span class="mono dim" id="range"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
-<div class="dash-filters">
-  <div class="btns" role="group" aria-label="기간" id="presets"></div>
-  <div class="inline"><label for="platform">플랫폼</label><select id="platform" class="on-bg"><option value="">전체</option><option value="ios">iOS</option><option value="android">Android</option></select></div>
-  <span class="mono dim" id="range"></span>
-</div>
-<div id="dash" style="display: grid; gap: 20px">
+<div id="dash" style="display: grid; gap: 16px">
   <div class="kpis" id="kpis"></div>
-  <section class="card">
-    <header><h2>일별 방문자</h2><p>막대 아래 두 줄은 그 날 보낸 알림 수, 맨 아래 줄은 전날과의 차이다</p></header>
+  <section class="card" data-view="daily">
+    <header><h2>일별 방문자</h2><p>막대 아래 두 줄은 그 날 보낸 알림 수, 맨 아래 줄은 전날과의 차이다. 방문자는 그 날 사용 사건을 하나라도 보낸 서로 다른 사람이고, 부계정의 사람은 그 계정을 등록한 로그인의 사람과 한 명으로 센다. 날짜는 한국 시각이고 오늘은 지금까지 받은 사건으로 센다</p></header>
     <div class="body" id="daily"></div>
   </section>
-  <div class="dash-2">
+  <div class="dash-2" data-view="pattern" hidden>
     <section class="card">
       <header><h2>요일별 방문자</h2><p>막대는 평균, 세로선은 가장 적은 날부터 가장 많은 날까지</p></header>
       <div class="body" id="weekday"></div>
@@ -31,9 +28,9 @@ export const USERS_HTML = layout(
       <div class="body" id="heat"></div>
     </section>
   </div>
-  <div class="dash-2">
+  <div class="dash-2" data-view="fresh" hidden>
     <section class="card">
-      <header><h2>일별 새 사용자</h2><p>서버가 사람을 처음 만든 날. 모든 플랫폼</p></header>
+      <header><h2>일별 새 사용자</h2><p>서버가 사람을 처음 만든 날. 모든 플랫폼. 부계정의 사람은 세지 않는다</p></header>
       <div class="body" id="fresh"></div>
     </section>
     <section class="card">
@@ -44,7 +41,13 @@ export const USERS_HTML = layout(
 </div>
 ${DASHBOARD_SCRIPT}
 <script>
-  var state = { days: 7, platform: '' };
+  var VIEWS = [['daily', '방문자'], ['pattern', '요일과 시간대'], ['fresh', '새 사용자와 구성']];
+  var state = { days: 7, platform: '', view: VIEWS.some(function (v) { return v[0] === hashKey(); }) ? hashKey() : 'daily' };
+
+  function showView() {
+    clear(document.getElementById('views')).appendChild(segButtons(VIEWS, state.view, function (v) { state.view = v; setHashKey(v === 'daily' ? null : v); showView(); }));
+    document.querySelectorAll('[data-view]').forEach(function (node) { node.hidden = node.getAttribute('data-view') !== state.view; });
+  }
   var PLATFORM_NAMES = { ios: 'iOS', android: 'Android' };
   var IDENTITY_NAMES = { login: '넥슨 로그인', key: 'API 키' };
 
@@ -74,7 +77,7 @@ ${DASHBOARD_SCRIPT}
       series: '새 사용자', unit: '명', height: 140,
       days: d.daily.map(function (x) { return { day: x.day, value: x.fresh }; }),
     }));
-    document.getElementById('comp-note').textContent = n + '일 방문자 ' + num(t.period.value) + '명. 마지막으로 보낸 사건으로 한 번씩 센다';
+    document.getElementById('comp-note').textContent = n + '일 방문자 ' + num(t.period.value) + '명. 마지막으로 보낸 사건으로 한 번씩 센다. 로그인 방식은 그 사람에게 로그인한 넥슨 계정이 있는지로 가른다';
     var comp = clear(document.getElementById('composition'));
     comp.appendChild(splitPart('플랫폼', inOrder(d.composition.platform, ['ios', 'android'], PLATFORM_NAMES), PARTS, '명'));
     comp.appendChild(splitPart('로그인 방식', inOrder(d.composition.identity, ['login', 'key'], IDENTITY_NAMES), PARTS, '명'));
@@ -93,6 +96,7 @@ ${DASHBOARD_SCRIPT}
   }
 
   document.getElementById('platform').addEventListener('change', function (e) { state.platform = e.target.value; load(); });
+  showView();
   load();
 </script>`,
 )

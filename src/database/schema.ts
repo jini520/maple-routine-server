@@ -1574,15 +1574,15 @@ export const enhancementTotals = pgTable(
 )
 
 /** 강화 내역의 API 종류. 앱이 받은 엔드포인트 넷이다. */
-export const enhancementTypeEnum = pgEnum('enhancement_type', [
+export const enhancementApiTypeEnum = pgEnum('enhancement_api_type', [
   'cube',
   'starforce',
   'potential',
   'soul_potential',
 ])
 
-/** 강화 합계에서 빠지거나 판정하지 못한 이유. */
-export const enhancementAnomalyTypeEnum = pgEnum('enhancement_anomaly_type', [
+/** 강화 합계에서 빠지거나 판정하지 못한 이유. 값이 종류가 아니라 합계에서 빠진 이유라 `reason` 이다. */
+export const enhancementAnomalyReasonEnum = pgEnum('enhancement_anomaly_reason', [
   'event_world_unknown',
   'no_level',
   'no_grade',
@@ -1591,10 +1591,6 @@ export const enhancementAnomalyTypeEnum = pgEnum('enhancement_anomaly_type', [
   'no_cost',
 ])
 
-/**
- * 앱이 강화 합계에서 빼거나 이벤트 월드를 판정하지 못한 줄의 수. 운영자가 예상하지 못한 상황의 양과 모양을 보는 표이고 통계에
- * 쓰지 않는다. 앱은 응답 원본을 저장하지 않아 이 값이 원인을 볼 유일한 단서다. 캐릭터 이름은 받지 않는다.
- */
 /** 사용 로그 사건의 종류. 모르는 종류를 받으면 운영자가 뜻을 모르는 줄이 쌓인다. */
 export const usageEventTypeEnum = pgEnum('usage_event_type', ['visit', 'screen', 'action'])
 
@@ -1607,7 +1603,6 @@ export const usageEvents = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-    identifiedBy: identitySourceEnum('identified_by').notNull(),
     type: usageEventTypeEnum('type').notNull(),
     /** 화면은 라우트 이름, 동작은 동작 이름이다. 방문은 빈 글자다. */
     name: text('name').notNull(),
@@ -1625,21 +1620,26 @@ export const usageEvents = pgTable(
   ],
 )
 
+/**
+ * 앱이 강화 합계에서 빼거나 이벤트 월드를 판정하지 못한 줄의 수. 운영자가 예상하지 못한 상황의 양과 모양을 보는 표이고 통계에
+ * 쓰지 않는다. 앱은 응답 원본을 저장하지 않아 이 값이 원인을 볼 유일한 단서다. 캐릭터 이름은 받지 않는다. 사람은 넥슨 계정
+ * 줄이 가리킨다.
+ *
+ * 한 줄은 넥슨 계정 · 날 · API 종류 · 이유 · 장비 · 상세다. 상세는 비울 수 있어 `coalesce(detail, '')` 로 견주고, 계정을 지워 넥슨
+ * 계정 칸이 빈 줄은 견주지 않는다. 빈 줄끼리 부딪치면 밤의 계정 삭제가 실패한다.
+ */
 export const enhancementAnomalies = pgTable(
   'enhancement_anomalies',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     /** 강화 내역을 받은 넥슨 계정. 강화 내역은 넥슨 계정마다 받는다. 계정 삭제로 지워지면 NULL. */
     nexonAccountId: uuid('nexon_account_id').references(() => nexonAccounts.id, {
       onDelete: 'set null',
     }),
-    identifiedBy: identitySourceEnum('identified_by').notNull(),
     /** 강화한 날(KST YYYY-MM-DD). */
     historyDate: text('history_date').notNull(),
-    enhancementType: enhancementTypeEnum('enhancement_type').notNull(),
-    anomalyType: enhancementAnomalyTypeEnum('anomaly_type').notNull(),
-    itemKey: text('item_key'),
+    apiType: enhancementApiTypeEnum('api_type').notNull(),
+    reason: enhancementAnomalyReasonEnum('reason').notNull(),
     /** 응답의 장비 이름. 판정하지 못한 줄은 장비와 무관해 빈 글자다. */
     itemName: text('item_name').notNull(),
     rowCount: integer('row_count').notNull(),
@@ -1649,13 +1649,16 @@ export const enhancementAnomalies = pgTable(
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
   (t) => [
-    unique('enhancement_anomalies_account_key_unique').on(
-      t.nexonAccountId,
-      t.historyDate,
-      t.enhancementType,
-      t.anomalyType,
-      t.itemName,
-    ),
+    uniqueIndex('enhancement_anomalies_account_key_unique')
+      .on(
+        t.nexonAccountId,
+        t.historyDate,
+        t.apiType,
+        t.reason,
+        t.itemName,
+        sql`coalesce(${t.detail}, '')`,
+      )
+      .where(sql`${t.nexonAccountId} IS NOT NULL`),
   ],
 )
 

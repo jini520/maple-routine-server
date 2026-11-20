@@ -2,35 +2,33 @@ import { DASHBOARD_SCRIPT } from './dashboard'
 import { layout } from './layout'
 
 /**
- * 사용 로그 대시보드. 읽기만 한다. 위 칸을 누르면 일별 막대가 그 지표로 바뀌고, 화면 줄을 누르면 오른쪽에 그 화면을 펼친다.
+ * 사용 로그 대시보드. 읽기만 한다. 지표와 화면별 둘로 나눠 한 번에 하나만 보인다. 한 화면에 다 쌓으면 1440×900 을 넘는다.
+ * 지표 위 칸을 누르면 일별 막대가 그 지표로 바뀌고, 화면별은 줄을 누르면 오른쪽에 그 화면을 펼친다. 화면 목록은 10줄씩 넘긴다.
  * 동작 칸은 그 기간에 나온 동작 이름으로 만든다. 앱이 동작을 더해도 서버를 고치지 않고 칸이 생긴다.
  */
 export const USAGE_HTML = layout(
   '/admin/usage',
   '사용 로그',
-  `<div class="head"><div><h1>사용 로그</h1><p>앱이 묶어 보낸 사용 사건이다. 방문은 앱을 열거나 30분 넘게 비웠다 돌아온 횟수고, 동작 이름은 앱이 보낸 그대로다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p></div></div>
+  `<div class="top"><h1>사용 로그</h1><span id="views"></span><span class="grow"></span><div class="btns" role="group" aria-label="기간" id="presets"></div><span class="mono dim" id="range"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
-<div class="dash-filters">
-  <div class="btns" role="group" aria-label="기간" id="presets"></div>
-  <span class="mono dim" id="range"></span>
-</div>
-<div id="dash" style="display: grid; gap: 20px">
-  <div class="dash-top">
+<div id="dash" style="display: grid; gap: 16px">
+  <div class="dash-top" data-view="metrics">
     <section class="card dash-main">
       <div class="tabs" role="tablist" aria-label="지표" id="tabs"></div>
       <div class="body" id="daily"></div>
+      <p class="hint">앱이 묶어 보낸 사용 사건이다. 방문은 앱을 열거나 30분 넘게 비웠다 돌아온 횟수고, 동작 이름은 앱이 보낸 그대로다. 날짜는 한국 시각으로 자르고, 오늘은 지금까지 받은 사건으로 센다.</p>
     </section>
     <aside class="card dash-rail">
       <header><h2>기간 방문자 구성</h2><p id="comp-note"></p></header>
       <div class="body"><div class="parts" id="composition"></div></div>
     </aside>
   </div>
-  <section class="card">
+  <section class="card" data-view="screens" hidden>
     <header><h2>화면별</h2><p>방문자가 많은 화면부터. 줄을 누르면 그 화면의 일별 방문자가 오른쪽에 뜬다. 체류는 화면을 떠날 때 잰 시간의 중앙값이다</p></header>
     <div class="split-view">
       <div class="table">
         <table class="rank"><thead><tr><th>화면</th><th>방문자</th><th class="num">본 횟수</th><th class="num">체류 중앙값</th><th class="num">지난 7일 방문자</th></tr></thead><tbody id="screens"></tbody></table>
-        <button type="button" class="more" id="more" hidden></button>
+        <div class="inline" id="pager"></div>
       </div>
       <div class="detail" id="detail"></div>
     </div>
@@ -38,7 +36,13 @@ export const USAGE_HTML = layout(
 </div>
 ${DASHBOARD_SCRIPT}
 <script>
-  var state = { days: 7, tab: 'visits', screen: null, showAll: false, data: null };
+  var VIEWS = [['metrics', '지표'], ['screens', '화면별']];
+  var state = { days: 7, tab: 'visits', screen: null, page: 0, data: null, view: hashKey() === 'screens' ? 'screens' : 'metrics' };
+
+  function showView() {
+    clear(document.getElementById('views')).appendChild(segButtons(VIEWS, state.view, function (v) { state.view = v; setHashKey(v === 'metrics' ? null : v); showView(); }));
+    document.querySelectorAll('[data-view]').forEach(function (node) { node.hidden = node.getAttribute('data-view') !== state.view; });
+  }
   var PLATFORM_NAMES = { ios: 'iOS', android: 'Android' };
   var VERSION_COLORS = ['var(--ramp-5)', 'var(--ramp-4)', 'var(--ramp-3)', 'var(--ramp-2)', 'var(--ramp-gray)'];
   var TOP_SCREENS = 10;
@@ -96,7 +100,9 @@ ${DASHBOARD_SCRIPT}
 
   function renderScreens(d) {
     var body = clear(document.getElementById('screens'));
-    var rows = state.showAll ? d.screens : d.screens.slice(0, TOP_SCREENS);
+    var pages = Math.max(1, Math.ceil(d.screens.length / TOP_SCREENS));
+    if (state.page >= pages) state.page = pages - 1;
+    var rows = d.screens.slice(state.page * TOP_SCREENS, (state.page + 1) * TOP_SCREENS);
     var max = d.screens.reduce(function (a, s) { return Math.max(a, s.visitors); }, 0) || 1;
     if (rows.length === 0) {
       var tr = el('tr');
@@ -128,9 +134,7 @@ ${DASHBOARD_SCRIPT}
       tr.addEventListener('click', function () { pickScreen(s.name); });
       body.appendChild(tr);
     });
-    var more = document.getElementById('more');
-    more.hidden = d.screens.length <= TOP_SCREENS;
-    more.textContent = state.showAll ? '위 ' + TOP_SCREENS + '개만 보기' : '나머지 ' + (d.screens.length - TOP_SCREENS) + '개 화면';
+    clear(document.getElementById('pager')).appendChild(pager(pages, state.page, function (at) { state.page = at; renderScreens(d); }));
   }
 
   async function pickScreen(name) {
@@ -174,7 +178,7 @@ ${DASHBOARD_SCRIPT}
     renderTabs(d);
     renderDaily(d);
     var visitors = d.composition.platform.reduce(function (a, p) { return a + p.value; }, 0);
-    document.getElementById('comp-note').textContent = num(visitors) + '명';
+    document.getElementById('comp-note').textContent = num(visitors) + '명. 마지막으로 보낸 사건으로 한 번씩 센다';
     var comp = clear(document.getElementById('composition'));
     comp.appendChild(splitPart('앱 버전', versionParts(d.composition.version), VERSION_COLORS, '명'));
     comp.appendChild(splitPart('플랫폼', inOrder(d.composition.platform, ['ios', 'android'], PLATFORM_NAMES), PARTS, '명'));
@@ -195,7 +199,7 @@ ${DASHBOARD_SCRIPT}
     render(r.json);
   }
 
-  document.getElementById('more').addEventListener('click', function () { state.showAll = !state.showAll; renderScreens(state.data); });
+  showView();
   load();
 </script>`,
 )

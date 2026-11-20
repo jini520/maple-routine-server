@@ -84,6 +84,8 @@ export interface MoveResult {
   marketPublishedDays: number
   maspiBasketItems: number
   maspiDailyCloses: number
+  usageEvents: number
+  enhancementAnomalies: number
 }
 
 /** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
@@ -195,6 +197,8 @@ const MOVED_TABLES = [
   schema.maspiBasketItems,
   schema.maspiDailyCloses,
   schema.marketResponses,
+  schema.usageEvents,
+  schema.enhancementAnomalies,
 ]
 
 /**
@@ -374,6 +378,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const ops = await operationRows(oldDb)
   const accounts = await accountRows(oldDb)
   const market = await marketRows(oldDb, { ringLevelItems, tradeGroups, worlds, accounts })
+  const logs = await logRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -437,6 +442,8 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.marketPublishedDays, market.marketPublishedDays)
     await insertAll(tx, schema.maspiBasketItems, market.maspiBasketItems)
     await insertAll(tx, schema.maspiDailyCloses, market.maspiDailyCloses)
+    await insertAll(tx, schema.usageEvents, logs.usageEvents)
+    await insertAll(tx, schema.enhancementAnomalies, logs.enhancementAnomalies)
   })
   return {
     assets: assets.length,
@@ -499,6 +506,44 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     marketPublishedDays: market.marketPublishedDays.length,
     maspiBasketItems: market.maspiBasketItems.length,
     maspiDailyCloses: market.maspiDailyCloses.length,
+    usageEvents: logs.usageEvents.length,
+    enhancementAnomalies: logs.enhancementAnomalies.length,
+  }
+}
+
+/**
+ * 로그 표의 새 줄. 줄 id 그대로다. 신원 종류는 사람의 값이라 걷는다. 강화 이상 보고의 사람은 넥슨 계정 줄이 가리키고, 장비
+ * key 는 읽는 곳이 없어 걷는다. 옛 한 줄의 기준에는 상세가 없어, 새 기준에서 겹치는 줄은 생기지 않는다.
+ */
+async function logRows(oldDb: OldDb) {
+  const [events, anomalies] = await Promise.all([
+    oldDb.select().from(oldSchema.usageEvents),
+    oldDb.select().from(oldSchema.enhancementAnomalies),
+  ])
+  return {
+    usageEvents: events.map((e) => ({
+      id: e.id,
+      userId: e.userId,
+      type: e.type,
+      name: e.name,
+      durationMs: e.durationMs,
+      platform: e.platform,
+      appVersion: e.appVersion,
+      occurredAt: e.occurredAt,
+      receivedAt: e.receivedAt,
+    })),
+    enhancementAnomalies: anomalies.map((a) => ({
+      id: a.id,
+      nexonAccountId: a.nexonAccountId,
+      historyDate: a.historyDate,
+      apiType: a.enhancementType,
+      reason: a.anomalyType,
+      itemName: a.itemName,
+      rowCount: a.rowCount,
+      detail: a.detail,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+    })),
   }
 }
 

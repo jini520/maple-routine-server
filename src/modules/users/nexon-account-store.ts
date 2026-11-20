@@ -100,8 +100,9 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     DELETE FROM ${enhancementAnomalies} d USING ${enhancementAnomalies} o
      WHERE d.nexon_account_id IN (${from}, ${into}) AND o.nexon_account_id IN (${from}, ${into})
        AND d.nexon_account_id <> o.nexon_account_id
-       AND d.history_date = o.history_date AND d.enhancement_type = o.enhancement_type
-       AND d.anomaly_type = o.anomaly_type AND d.item_name = o.item_name
+       AND d.history_date = o.history_date AND d.api_type = o.api_type
+       AND d.reason = o.reason AND d.item_name = o.item_name
+       AND coalesce(d.detail, '') = coalesce(o.detail, '')
        AND (d.updated_at < o.updated_at OR (d.updated_at = o.updated_at AND d.nexon_account_id = ${from}))`)
   await tx
     .update(enhancementAnomalies)
@@ -121,8 +122,9 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
 }
 
 /**
- * 사람 칸으로 찾는 기록을 옮긴다. ocid 가 없는 드롭 줄은 사람 안에서 기록 id 로 유일해, 양쪽에 같은 기록이 있으면 늦게 고친 줄을
- * 남긴다. 옮기지 않으면 사람을 지울 때 사람 칸이 비어 익명 줄이 된다.
+ * 사람 칸으로 찾는 기록(드롭 줄 · 사용 로그)을 옮긴다. ocid 가 없는 드롭 줄은 사람 안에서 기록 id 로 유일해, 양쪽에 같은 기록이
+ * 있으면 늦게 고친 줄을 남긴다. 옮기지 않으면 사람을 지울 때 사람 칸이 비어 익명 줄이 된다. 강화 이상 보고는 넥슨 계정 칸으로
+ * 옮긴다.
  */
 async function moveLegacyRecords(tx: Tx, from: string, into: string): Promise<void> {
   await tx.execute(sql`
@@ -131,7 +133,6 @@ async function moveLegacyRecords(tx: Tx, from: string, into: string): Promise<vo
        AND d.user_id <> o.user_id AND d.drop_record_id = o.drop_record_id
        AND (d.updated_at < o.updated_at OR (d.updated_at = o.updated_at AND d.user_id = ${from}))`)
   await tx.execute(sql`UPDATE drop_prices SET user_id = ${into} WHERE user_id = ${from}`)
-  await tx.execute(sql`UPDATE enhancement_anomalies SET user_id = ${into} WHERE user_id = ${from}`)
   await tx.execute(sql`UPDATE usage_events SET user_id = ${into} WHERE user_id = ${from}`)
 }
 

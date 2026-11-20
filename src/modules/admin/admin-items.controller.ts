@@ -33,7 +33,7 @@ import {
   ItemsRepository,
 } from '../items/items.repository'
 import { moveBody, snakeKey } from './admin.dto'
-import { ITEMS_HTML } from './views/items'
+import { ITEM_GROUPS_HTML, ITEMS_HTML } from './views/items'
 
 const itemBody = z.object({
   name: z.string().trim().min(1).max(100),
@@ -64,6 +64,13 @@ export class AdminItemsController {
   @Header('cache-control', 'no-store')
   page(): string {
     return ITEMS_HTML
+  }
+
+  @Get('items/groups')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  itemGroupsPage(): string {
+    return ITEM_GROUPS_HTML
   }
 
   @Get('items/rows')

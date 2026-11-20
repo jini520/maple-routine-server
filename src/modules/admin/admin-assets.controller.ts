@@ -28,7 +28,7 @@ import {
   ImageCropsRepository,
 } from '../assets/image-crops.repository'
 import { ItemGroupsRepository } from '../items/item-groups.repository'
-import { ASSETS_HTML } from './views/assets'
+import { ASSET_CROPS_HTML, ASSETS_HTML } from './views/assets'
 
 /** 폭과 위치. 놓이는 자리에 대한 % 다. 위치는 그림을 밀어 보이는 곳을 고르므로 음수도 된다. */
 const cropBody = z.object({
@@ -63,6 +63,13 @@ export class AdminAssetsController {
   @Header('cache-control', 'no-store')
   page(): string {
     return ASSETS_HTML
+  }
+
+  @Get('assets/crops')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  cropsPage(): string {
+    return ASSET_CROPS_HTML
   }
 
   /** 그림 화면 목록. 그림마다 보이는 이름 · 쓰는 곳을 들고, 트리를 그릴 아이템 분류와 크롭을 함께 낸다. */

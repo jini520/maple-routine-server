@@ -27,7 +27,7 @@ const MENU: readonly MenuItem[] = [
       {
         label: '가계부',
         items: [
-          ['/admin/cashbook-categories', '가계부 갈래'],
+          ['/admin/cashbook-categories', '가계부 분류'],
           ['/admin/hunt-loot', '사냥 전리품'],
           ['/admin/spend-catalog', '지출 카탈로그'],
           ['/admin/symbol-costs', '심볼 비용'],
@@ -134,7 +134,7 @@ export function layout(path: string, title: string, body: string): string {
   .nav details[open] > summary::after { transform: rotate(90deg) }
   .nav summary:hover { background: var(--surface-2); color: var(--text) }
   .nav .group { display: flex; flex-direction: column; gap: 2px; margin-left: 10px; padding-left: 6px }
-  .main { padding: 28px 24px 56px; min-width: 0 }
+  .main { padding: 24px 24px 28px; min-width: 0 }
   .page { max-width: 1120px; display: grid; gap: 20px }
   @media (max-width: 760px) {
     .shell { grid-template-columns: 1fr }
@@ -452,7 +452,14 @@ export function layout(path: string, title: string, body: string): string {
   function inline() { var d = el('div', undefined, 'inline'); for (var i = 0; i < arguments.length; i++) d.appendChild(arguments[i]); return d; }
   function field(label, small, control) { var d = el('div', undefined, 'field'); var l = el('label', label); if (small) { l.appendChild(document.createTextNode(' ')); l.appendChild(el('small', small)); } d.appendChild(l); d.appendChild(control); return d; }
   function mini(headers, tbody) { var wrap = el('div', undefined, 'mini'); var t = el('table'); var thead = el('thead'); var hr = el('tr'); headers.forEach(function (h) { hr.appendChild(el('th', h)); }); thead.appendChild(hr); t.appendChild(thead); t.appendChild(tbody); wrap.appendChild(t); return wrap; }
-  function fail(what, r) { return what + ' ' + r.status + '\\n' + r.text; }
+  // 서버가 준 거절 이유. 검사 실패는 칸 이름과 이유를 줄마다 적는다. JSON 그대로 보이면 무엇이 틀렸는지 찾아 읽어야 한다.
+  function reason(r) {
+    var m = r.json && r.json.message;
+    if (Array.isArray(m)) return m.map(function (x) { return typeof x === 'string' ? x : ((x.path && x.path.length ? x.path.join('.') + ': ' : '') + x.message); }).join('\\n');
+    if (typeof m === 'string') return m;
+    return r.text || '';
+  }
+  function fail(what, r) { return what + ' ' + r.status + '\\n' + reason(r); }
   function orNull(v) { v = (v || '').trim(); return v === '' ? null : v; }
   function meso(n) { return Number(n).toLocaleString('ko-KR'); }
   ${MONEY_JS}

@@ -77,7 +77,7 @@ describeDb('BossDropsRepository', () => {
         .where(eq(bossDifficulties.difficulty, difficulty))
     )[0]?.id
 
-  it('줄을 더하면 그 조합 · 갈래의 맨 뒤에 서고, 칸은 표 이름의 배열에 난이도 · 아이템 줄 id 로 갈래 ENUM 순 · 줄 순으로 난다', async () => {
+  it('줄을 더하면 그 조합 · 분류의 맨 뒤에 서고, 칸은 표 이름의 배열에 난이도 · 아이템 줄 id 로 분류 ENUM 순 · 줄 순으로 난다', async () => {
     await repo.create(row({ category: 'consumable', item: 'red_boss_ring_box' }))
     await repo.create(row({ category: 'fixed', item: 'spell_trace', quantity: 160 }))
     await repo.create(row())
@@ -111,8 +111,8 @@ describeDb('BossDropsRepository', () => {
     ])
   })
 
-  // 드롭 기록은 한 수익 건에서 같은 아이템이 한 줄이라 갈래만 다른 줄을 두면 둘을 가르지 못한다.
-  it('모르는 조합 · 아이템과 같은 줄은 던지고, 갈래만 다른 같은 아이템도 같은 줄로 본다. 시작이 다르면 같은 아이템이 둘 설 수 있다', async () => {
+  // 드롭 기록은 한 수익 건에서 같은 아이템이 한 줄이라 분류만 다른 줄을 두면 둘을 가르지 못한다.
+  it('모르는 조합 · 아이템과 같은 줄은 던지고, 분류만 다른 같은 아이템도 같은 줄로 본다. 시작이 다르면 같은 아이템이 둘 설 수 있다', async () => {
     await expect(repo.create(row({ difficulty: 'easy' }))).rejects.toBeInstanceOf(NoBossDifficulty)
     await expect(repo.create(row({ item: 'nobody' }))).rejects.toBeInstanceOf(NoDropItem)
     await repo.create(row())

@@ -82,7 +82,7 @@ export interface SpendCatalogSection {
   spendItemRewardTypes: SpendItemRewardTypeView[]
 }
 
-/** 관리 화면이 고치는 묶음. 갈래는 지출 갈래의 key 다. */
+/** 관리 화면이 고치는 묶음. 분류는 지출 분류의 key 다. */
 export interface SpendGroupInput {
   key: string
   name: string
@@ -134,7 +134,7 @@ export class SpendGroupExists extends Error {}
 export class SpendTileExists extends Error {}
 export class SpendItemExists extends Error {}
 export class NoSpendGroup extends Error {}
-/** 모르는 갈래이거나 수입 갈래다. 묶음은 지출 갈래만 가리킨다. */
+/** 모르는 분류이거나 수입 분류다. 묶음은 지출 분류만 가리킨다. */
 export class NoSpendCategory extends Error {}
 export class NoSpendTile extends Error {}
 /** 항목의 모양이 앱의 시트가 가를 수 없는 모양이다. message 가 이유다. */
@@ -312,7 +312,7 @@ export class SpendCatalogRepository {
     }
   }
 
-  /** 묶음을 맨 뒤에 더한다. 같은 key 는 SpendGroupExists, 지출 갈래가 아니면 NoSpendCategory 다. */
+  /** 묶음을 맨 뒤에 더한다. 같은 key 는 SpendGroupExists, 지출 분류가 아니면 NoSpendCategory 다. */
   async createGroup(input: SpendGroupInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
       const cashbookCategoryId = await this.categoryId(tx, input.category)
@@ -343,7 +343,7 @@ export class SpendCatalogRepository {
     })
   }
 
-  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. key 는 못 바꾼다. 모르면 false 다. */
+  /** 이름 · 분류 · 카드 제목 · 열림을 갈아 끼운다. key 는 못 바꾼다. 모르면 false 다. */
   async updateGroup(key: string, input: Omit<SpendGroupInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const cashbookCategoryId = await this.categoryId(tx, input.category)
@@ -533,7 +533,7 @@ export class SpendCatalogRepository {
       )
   }
 
-  /** 지출 갈래만 찾는다. 수입 갈래의 key 는 null 이다. */
+  /** 지출 분류만 찾는다. 수입 분류의 key 는 null 이다. */
   private async categoryId(db: DbOrTx, key: string): Promise<string | null> {
     const [row] = await db
       .select({ id: cashbookCategories.id })

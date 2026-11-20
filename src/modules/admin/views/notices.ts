@@ -19,7 +19,6 @@ export const NOTICES_HTML = layout(
   <table class="sheet"><thead><tr><th>상태</th><th>제목</th><th>올리는 시각</th><th>알림</th><th></th></tr></thead><tbody id="rows"></tbody></table>
 </section>
 <style>
-  .form-dialog.wide { width: min(1040px, calc(100vw - 32px)) }
   .editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 20px; align-items: start }
   .editor-grid textarea { min-height: 260px }
   .editor-grid .preview { max-height: 62vh; overflow: auto; padding: 12px; border-radius: 10px; background: var(--surface-2) }

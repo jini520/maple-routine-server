@@ -71,7 +71,7 @@ describeDb('CashbookCategoriesRepository', () => {
     expect(keys).toEqual(['income.hunting', 'income.item_sale', 'spend.buff', 'spend.content'])
   })
 
-  it('갈래를 고치면 key 는 그대로이고 칸의 시각이 움직인다. 칸은 줄 id 와 그림 줄 id 를 낸다', async () => {
+  it('분류를 고치면 key 는 그대로이고 칸의 시각이 움직인다. 칸은 줄 id 와 그림 줄 id 를 낸다', async () => {
     const { id } = await repo.createCategory(
       category({ entryType: 'income', key: 'hunting', name: '사냥' }),
     )

@@ -377,7 +377,7 @@ describeDb('moveOldDb', () => {
     expect(contents).toHaveLength(3)
   })
 
-  it('드롭 표는 갈래 · 기간 칸을 새 이름으로, 고정 보상 개수는 `개` 를 뗀 정수로 옮긴다. 결정석 가격 · 직접 완료 기간도 줄 id 를 두고 옮긴다', async () => {
+  it('드롭 표는 분류 · 기간 칸을 새 이름으로, 고정 보상 개수는 `개` 를 뗀 정수로 옮긴다. 결정석 가격 · 직접 완료 기간도 줄 id 를 두고 옮긴다', async () => {
     const portrait = await insertOldAsset('bosses/lucid.webp')
     const { bossId, difficultyIds } = await insertOldBoss('lucid', 'weekly', portrait)
     const [hard] = difficultyIds

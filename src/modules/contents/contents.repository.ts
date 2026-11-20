@@ -60,18 +60,18 @@ export interface ContentView {
   regionIconAssetId: string | null
 }
 
-/** GET /v1/game-data 의 contents 칸. 갈래는 sort_order 차례, 컨텐츠는 일간 뒤 주간이고 그 안이 sort_order 차례다. */
+/** GET /v1/game-data 의 contents 칸. 분류는 sort_order 차례, 컨텐츠는 일간 뒤 주간이고 그 안이 sort_order 차례다. */
 export interface ContentsSection {
   updatedAt: string | null
   contentCategories: ContentCategoryView[]
   contents: ContentView[]
 }
 
-/** 관리 화면의 컨텐츠. 갈래의 key 를 함께 든다. */
+/** 관리 화면의 컨텐츠. 분류의 key 를 함께 든다. */
 export type ContentAdminRow = ContentView & { category: ContentCategory }
 
 export type ContentCategoryInput = Omit<ContentCategoryView, 'id' | 'key'>
-/** 갈래는 key 로, 그림은 그림 줄 id 로 받는다. */
+/** 분류는 key 로, 그림은 그림 줄 id 로 받는다. */
 export type ContentInput = Omit<ContentAdminRow, 'id' | 'categoryId'>
 
 export class ContentExists extends Error {}
@@ -130,7 +130,7 @@ function viewOf(r: ContentAdminRow): ContentView {
 }
 
 /**
- * 갈래는 고치고 옮기기만 있다. ENUM 과 일대일이라 더하고 지우는 것은 마이그레이션이다. 컨텐츠는 더하고 고치고 옮기기만
+ * 분류는 고치고 옮기기만 있다. ENUM 과 일대일이라 더하고 지우는 것은 마이그레이션이다. 컨텐츠는 더하고 고치고 옮기기만
  * 있다. 캐시 · 추적 목록 · 공유 원장이 key 를 들어 지우지 않고 until 로 닫는다.
  */
 @Injectable()
@@ -183,7 +183,7 @@ export class ContentsRepository {
     return { categories, rows, updatedAt }
   }
 
-  /** 갈래의 글자 · 태그 · 주간 최대 횟수 · 공유 차례를 갈아 끼운다. 모르면 false 다. */
+  /** 분류의 글자 · 태그 · 주간 최대 횟수 · 공유 차례를 갈아 끼운다. 모르면 false 다. */
   async updateCategory(key: ContentCategory, input: ContentCategoryInput): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
@@ -203,7 +203,7 @@ export class ContentsRepository {
     })
   }
 
-  /** 갈래의 차례를 한 칸 옮긴다. 끝이면 그대로 true 다. 모르면 false 다. */
+  /** 분류의 차례를 한 칸 옮긴다. 끝이면 그대로 true 다. 모르면 false 다. */
   async moveCategory(key: ContentCategory, direction: 'up' | 'down'): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
@@ -219,7 +219,7 @@ export class ContentsRepository {
   }
 
   /**
-   * 컨텐츠를 같은 주기의 맨 뒤에 더한다. 모르는 갈래는 NoContentCategory, 공백만 다른 API 이름은 ApiNameTaken, 같은 key 는
+   * 컨텐츠를 같은 주기의 맨 뒤에 더한다. 모르는 분류는 NoContentCategory, 공백만 다른 API 이름은 ApiNameTaken, 같은 key 는
    * ContentExists, 그림 표에 없는 그림은 AssetNotFound 다.
    */
   async createContent(input: ContentInput): Promise<{ id: string }> {
@@ -253,7 +253,7 @@ export class ContentsRepository {
     })
   }
 
-  /** 컨텐츠를 갈아 끼운다. key 와 주기는 못 바꾼다. 모르면 false 다. 갈래 · API 이름 · 그림 검사는 더할 때와 같다. */
+  /** 컨텐츠를 갈아 끼운다. key 와 주기는 못 바꾼다. 모르면 false 다. 분류 · API 이름 · 그림 검사는 더할 때와 같다. */
   async updateContent(key: string, input: Omit<ContentInput, 'key' | 'cycle'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx.select({ id: contents.id }).from(contents).where(eq(contents.key, key))

@@ -5,31 +5,48 @@ import { DB, type Db } from '../../database/database.module'
 import {
   itemGroups,
   items,
-  marketDays,
   marketJudgements,
+  marketPublishedDays,
+  marketReferencePrices,
   marketResponses,
-  marketRuns,
-  maspiBasket,
-  maspiDays,
+  maspiBasketItems,
+  maspiDailyCloses,
   tradeGroups,
   worlds,
 } from '../../database/schema'
 import { WORLD_BOUND_TYPE } from '../items/items'
+import { SUB_OWNERS } from '../users/sub-owners'
 import type { DayReference, Judgement, MarketRow } from './daily-reference'
 import type { MarketRange } from './market-range'
 
-/** 시세 하나를 가르는 열쇠. 아이템 · 반지 레벨 · 범위다. */
-export function marketKey(itemId: string, ringLevel: number | null, scope: string): string {
-  return `${itemId}|${ringLevel ?? ''}|${scope}`
+/** 시세 하나를 가르는 열쇠. 아이템 · 범위 key 다. 반지는 레벨마다 아이템 줄이 따로 있어 레벨 조각이 없다. */
+export function marketKey(itemId: string, scope: string): string {
+  return `${itemId}|${scope}`
 }
 
-export function parseMarketKey(key: string): {
-  itemId: string
-  ringLevel: number | null
-  scope: string
-} {
-  const [itemId, ring, scope] = key.split('|')
-  return { itemId, ringLevel: ring === '' ? null : Number(ring), scope }
+export function parseMarketKey(key: string): { itemId: string; scope: string } {
+  const [itemId, scope] = key.split('|')
+  return { itemId, scope }
+}
+
+/** 계산이 쓰는 사람 열쇠. 사람 줄이 없는 익명 줄은 줄마다 따로 센다(`r:`). 판정은 사람 줄이 있는 사람만 남긴다. */
+export function personOfUser(userId: string): string {
+  return `u:${userId}`
+}
+
+function userOfPerson(person: string): string | null {
+  return person.startsWith('u:') ? person.slice(2) : null
+}
+
+/** 범위 key 는 거래권 key 나 월드 key 다. 둘은 겹치지 않는다. 저장할 때는 종류와 줄 id 로 적는다. */
+type ScopeType = (typeof marketReferencePrices.$inferSelect)['scopeType']
+
+/** 범위 key 를 저장할 줄 id 로 바꾸지 못했다. message 가 그 key 다. */
+export class UnknownMarketScope extends Error {}
+
+interface Scopes {
+  rowOf(scope: string): { scopeType: ScopeType; scopeId: string }
+  keyOf(scopeType: ScopeType, scopeId: string): string
 }
 
 /** 하루 작업이 읽는 줄. 시세 열쇠가 붙어 있다. */
@@ -39,7 +56,6 @@ export interface DailyRow extends MarketRow {
 
 export interface StoredBasket {
   itemId: string
-  ringLevel: number | null
   scope: string
   basePriceMeso: number
   persons: number
@@ -54,37 +70,34 @@ export class MarketDailyRepository {
 
   /**
    * from ~ to(KST 날짜, 둘 다 포함)에 거래된 completed 줄. 거래권이 없는 월드와 월드를 모르는 줄은 어느 시세에도 넣지 않는다.
-   * 사람은 넥슨 계정 · 메이플 ID · 사용자 id 중 있는 것의 앞쪽이다. 만들기 어려운 신원일수록 한 사람이 여러 사람으로 보이기 어렵다.
-   * 부계정은 그 계정을 등록한 로그인의 넥슨 계정으로 센다.
+   * 반지는 그 레벨의 아이템 줄로 센다. 사람은 사람 줄이고, 부계정의 사람은 그 계정을 등록한 로그인의 사람으로 센다.
    */
   async rowsBetween(from: string, to: string): Promise<DailyRow[]> {
     const result = await this.db.execute<{
       item_id: string
-      item_key: string
-      ring_level: number | null
       scope: string
       person: string
       day: string
       price: number
     }>(sql`
-      select dp.item_id, i.key as item_key, dp.ring_level,
+      select coalesce(rl.item_id, dp.item_id) as item_id,
              case when g.type = ${WORLD_BOUND_TYPE} then w.key else tg.key end as scope,
-             coalesce('a:' || coalesce(sr.login_nexon_account_id, mi.nexon_account_id)::text, 'm:' || dp.maple_id, 'u:' || dp.user_id::text, 'r:' || dp.id::text) as person,
+             coalesce('u:' || coalesce(so.owner_user_id, dp.user_id)::text, 'r:' || dp.id::text) as person,
              to_char((dp.priced_at at time zone 'Asia/Seoul')::date, 'YYYY-MM-DD') as day,
              dp.price_meso::float8 as price
       from drop_prices dp
       join items i on i.id = dp.item_id
       left join item_groups g on g.id = i.group_id
+      left join ring_level_items rl on rl.ring_item_id = dp.item_id and rl.ring_level = dp.ring_level
       join worlds w on w.id = dp.world_id
       join trade_groups tg on tg.id = w.trade_group_id
-      left join maple_ids mi on mi.hash = dp.maple_id
-      left join sub_account_registrations sr on sr.sub_nexon_account_id = mi.nexon_account_id
+      left join ${SUB_OWNERS} on so.sub_user_id = dp.user_id
       where dp.record_status = 'completed'
         and dp.priced_at >= (${from}::date)::timestamp at time zone 'Asia/Seoul'
         and dp.priced_at < ((${to}::date + 1)::timestamp at time zone 'Asia/Seoul')
     `)
     return result.rows.map((r) => ({
-      market: marketKey(r.item_id, r.ring_level, r.scope),
+      market: marketKey(r.item_id, r.scope),
       item: r.item_id,
       person: r.person,
       day: r.day,
@@ -103,69 +116,78 @@ export class MarketDailyRepository {
 
   async dummyDays(from: string, to: string): Promise<Set<string>> {
     const rows = await this.db
-      .select({ day: marketJudgements.day, person: marketJudgements.person })
+      .select({ date: marketJudgements.date, userId: marketJudgements.userId })
       .from(marketJudgements)
       .where(
         and(
-          eq(marketJudgements.dummy, true),
-          gte(marketJudgements.day, from),
-          lte(marketJudgements.day, to),
+          eq(marketJudgements.isDummy, true),
+          gte(marketJudgements.date, from),
+          lte(marketJudgements.date, to),
         ),
       )
-    return new Set(rows.map((r) => `${r.day}|${r.person}`))
+    return new Set(rows.map((r) => `${r.date}|${personOfUser(r.userId)}`))
   }
 
   async judgementSums(from: string, to: string): Promise<Map<string, Judgement>> {
     const rows = await this.db
       .select({
-        person: marketJudgements.person,
-        judged: sql<number>`sum(${marketJudgements.judged})::int`,
-        excluded: sql<number>`sum(${marketJudgements.excluded})::int`,
+        userId: marketJudgements.userId,
+        judged: sql<number>`sum(${marketJudgements.judgedCount})::int`,
+        excluded: sql<number>`sum(${marketJudgements.excludedCount})::int`,
       })
       .from(marketJudgements)
-      .where(and(gte(marketJudgements.day, from), lte(marketJudgements.day, to)))
-      .groupBy(marketJudgements.person)
+      .where(and(gte(marketJudgements.date, from), lte(marketJudgements.date, to)))
+      .groupBy(marketJudgements.userId)
     return new Map(
-      rows.map((r) => [r.person, { judged: Number(r.judged), excluded: Number(r.excluded) }]),
+      rows.map((r) => [
+        personOfUser(r.userId),
+        { judged: Number(r.judged), excluded: Number(r.excluded) },
+      ]),
     )
   }
 
   /**
    * from ~ to 의 일일 기준가. 시세 열쇠마다 날짜 차례다.
    *
-   * @param scope 주면 그 범위(거래권 · 월드)의 시세만 읽는다
+   * @param scope 주면 그 범위(거래권 · 월드 key)의 시세만 읽는다
    */
   async referencesBetween(
     from: string,
     to: string,
     scope?: string,
   ): Promise<Map<string, DayReference[]>> {
+    const scopes = await this.scopes()
+    const only = scope === undefined ? undefined : scopes.rowOf(scope)
     const rows = await this.db
       .select()
-      .from(marketDays)
+      .from(marketReferencePrices)
       .where(
         and(
-          gte(marketDays.day, from),
-          lte(marketDays.day, to),
-          scope === undefined ? undefined : eq(marketDays.scope, scope),
+          gte(marketReferencePrices.date, from),
+          lte(marketReferencePrices.date, to),
+          only === undefined
+            ? undefined
+            : and(
+                eq(marketReferencePrices.scopeType, only.scopeType),
+                eq(marketReferencePrices.scopeId, only.scopeId),
+              ),
         ),
       )
-      .orderBy(asc(marketDays.day))
+      .orderBy(asc(marketReferencePrices.date))
     const out = new Map<string, DayReference[]>()
     for (const r of rows) {
-      const key = marketKey(r.itemId, r.ringLevel, r.scope)
+      const key = marketKey(r.itemId, scopes.keyOf(r.scopeType, r.scopeId))
       out.set(key, [
         ...(out.get(key) ?? []),
         {
-          day: r.day,
+          day: r.date,
           source: r.source,
-          ref: r.refMeso,
-          q1: r.q1Meso,
-          q3: r.q3Meso,
-          low: r.fenceLow,
-          high: r.fenceHigh,
-          voters: r.voters,
-          freshDay: r.freshDay,
+          ref: r.referencePriceMeso,
+          q1: r.rangeLowMeso,
+          q3: r.rangeHighMeso,
+          low: r.fenceLowMeso,
+          high: r.fenceHighMeso,
+          freshDay: r.freshDate,
         },
       ])
     }
@@ -174,53 +196,63 @@ export class MarketDailyRepository {
 
   async ranDays(): Promise<string[]> {
     const rows = await this.db
-      .select({ day: marketRuns.day })
-      .from(marketRuns)
-      .orderBy(asc(marketRuns.day))
-    return rows.map((r) => r.day)
+      .select({ date: marketPublishedDays.date })
+      .from(marketPublishedDays)
+      .orderBy(asc(marketPublishedDays.date))
+    return rows.map((r) => r.date)
   }
 
-  /** 하루치를 한 번에 넣는다. 이미 끝낸 날이면 아무것도 바꾸지 않는다. 낸 날은 다시 쓰지 않는다. */
+  /**
+   * 하루치를 한 번에 넣는다. 이미 끝낸 날이면 아무것도 바꾸지 않는다. 낸 날은 다시 쓰지 않는다. 판정은 사람 줄이 있는 사람만
+   * 남긴다. 익명 줄은 다음 날 신뢰도를 물려받을 사람이 없다.
+   */
   async saveDay(
     day: string,
     references: Map<string, DayReference | null>,
     judged: Map<string, Judgement>,
     dummies: Set<string>,
   ): Promise<boolean> {
+    const scopes = await this.scopes()
     return this.db.transaction(async (tx) => {
       const run = await tx
-        .insert(marketRuns)
-        .values({ day })
+        .insert(marketPublishedDays)
+        .values({ date: day })
         .onConflictDoNothing()
-        .returning({ id: marketRuns.id })
+        .returning({ id: marketPublishedDays.id })
       if (run.length === 0) return false
       const refRows = [...references]
         .filter((e): e is [string, DayReference] => e[1] !== null)
         .map(([key, r]) => {
           const m = parseMarketKey(key)
           return {
-            day,
+            date: day,
             itemId: m.itemId,
-            ringLevel: m.ringLevel,
-            scope: m.scope,
+            ...scopes.rowOf(m.scope),
             source: r.source,
-            refMeso: r.ref,
-            q1Meso: r.q1,
-            q3Meso: r.q3,
-            fenceLow: r.low,
-            fenceHigh: r.high,
-            voters: r.voters,
-            freshDay: r.freshDay,
+            referencePriceMeso: r.ref,
+            rangeLowMeso: r.q1,
+            rangeHighMeso: r.q3,
+            fenceLowMeso: r.low,
+            fenceHighMeso: r.high,
+            freshDate: r.freshDay,
           }
         })
       for (let i = 0; i < refRows.length; i += 500)
-        await tx.insert(marketDays).values(refRows.slice(i, i + 500))
-      const judgeRows = [...judged].map(([person, j]) => ({
-        day,
-        person,
-        ...j,
-        dummy: dummies.has(person),
-      }))
+        await tx.insert(marketReferencePrices).values(refRows.slice(i, i + 500))
+      const judgeRows = [...judged].flatMap(([person, j]) => {
+        const userId = userOfPerson(person)
+        return userId === null
+          ? []
+          : [
+              {
+                date: day,
+                userId,
+                judgedCount: j.judged,
+                excludedCount: j.excluded,
+                isDummy: dummies.has(person),
+              },
+            ]
+      })
       for (let i = 0; i < judgeRows.length; i += 500)
         await tx.insert(marketJudgements).values(judgeRows.slice(i, i + 500))
       return true
@@ -229,18 +261,20 @@ export class MarketDailyRepository {
 
   /** 낸 날의 범위만 갈아 끼운다. 기준가 · 울타리 · 판정은 그대로 둔다. */
   async updateRanges(day: string, ranges: Map<string, MarketRange | null>): Promise<void> {
+    const scopes = await this.scopes()
     await this.db.transaction(async (tx) => {
       for (const [key, range] of ranges) {
         const m = parseMarketKey(key)
+        const scope = scopes.rowOf(m.scope)
         await tx
-          .update(marketDays)
-          .set({ q1Meso: range?.q1 ?? null, q3Meso: range?.q3 ?? null })
+          .update(marketReferencePrices)
+          .set({ rangeLowMeso: range?.q1 ?? null, rangeHighMeso: range?.q3 ?? null })
           .where(
             and(
-              eq(marketDays.day, day),
-              eq(marketDays.itemId, m.itemId),
-              sql`coalesce(${marketDays.ringLevel}, 0) = ${m.ringLevel ?? 0}`,
-              eq(marketDays.scope, m.scope),
+              eq(marketReferencePrices.date, day),
+              eq(marketReferencePrices.itemId, m.itemId),
+              eq(marketReferencePrices.scopeType, scope.scopeType),
+              eq(marketReferencePrices.scopeId, scope.scopeId),
             ),
           )
       }
@@ -248,39 +282,49 @@ export class MarketDailyRepository {
   }
 
   async basket(): Promise<StoredBasket[]> {
-    return this.db
-      .select({
-        itemId: maspiBasket.itemId,
-        ringLevel: maspiBasket.ringLevel,
-        scope: maspiBasket.scope,
-        basePriceMeso: maspiBasket.basePriceMeso,
-        persons: maspiBasket.persons,
-        weight: maspiBasket.weight,
-        entersOn: maspiBasket.entersOn,
-      })
-      .from(maspiBasket)
+    const scopes = await this.scopes()
+    const rows = await this.db.select().from(maspiBasketItems)
+    return rows.map((r) => ({
+      itemId: r.itemId,
+      scope: scopes.keyOf(r.scopeType, r.scopeId),
+      basePriceMeso: r.basePriceMeso,
+      persons: r.voterCount,
+      weight: r.indexWeight,
+      entersOn: r.fromDate,
+    }))
   }
 
   async saveBasket(rows: StoredBasket[]): Promise<void> {
-    if (rows.length > 0) await this.db.insert(maspiBasket).values(rows).onConflictDoNothing()
+    if (rows.length === 0) return
+    const scopes = await this.scopes()
+    await this.db
+      .insert(maspiBasketItems)
+      .values(
+        rows.map((r) => ({
+          itemId: r.itemId,
+          ...scopes.rowOf(r.scope),
+          basePriceMeso: Math.round(r.basePriceMeso),
+          voterCount: r.persons,
+          indexWeight: r.weight,
+          fromDate: r.entersOn,
+        })),
+      )
+      .onConflictDoNothing()
   }
 
-  async maspiBetween(
-    from: string,
-    to: string,
-  ): Promise<{ day: string; value: number; change: number | null }[]> {
+  async maspiBetween(from: string, to: string): Promise<{ day: string; close: number }[]> {
     return this.db
-      .select({ day: maspiDays.day, value: maspiDays.value, change: maspiDays.change })
-      .from(maspiDays)
-      .where(and(gte(maspiDays.day, from), lte(maspiDays.day, to)))
-      .orderBy(asc(maspiDays.day))
+      .select({ day: maspiDailyCloses.date, close: maspiDailyCloses.close })
+      .from(maspiDailyCloses)
+      .where(and(gte(maspiDailyCloses.date, from), lte(maspiDailyCloses.date, to)))
+      .orderBy(asc(maspiDailyCloses.date))
   }
 
-  async saveMaspi(rows: { day: string; value: number; change: number | null }[]): Promise<void> {
+  async saveMaspi(rows: { day: string; close: number }[]): Promise<void> {
     for (let i = 0; i < rows.length; i += 500) {
       await this.db
-        .insert(maspiDays)
-        .values(rows.slice(i, i + 500))
+        .insert(maspiDailyCloses)
+        .values(rows.slice(i, i + 500).map((r) => ({ date: r.day, close: r.close })))
         .onConflictDoNothing()
     }
   }
@@ -293,9 +337,9 @@ export class MarketDailyRepository {
     for (let i = 0; i < responses.length; i += 200) {
       await this.db
         .insert(marketResponses)
-        .values(responses.slice(i, i + 200).map((r) => ({ day, ...r })))
+        .values(responses.slice(i, i + 200).map((r) => ({ date: day, ...r })))
         .onConflictDoUpdate({
-          target: [marketResponses.day, marketResponses.key],
+          target: [marketResponses.date, marketResponses.key],
           set: { body: sql`excluded.body`, etag: sql`excluded.etag` },
         })
     }
@@ -307,7 +351,7 @@ export class MarketDailyRepository {
       .select({ body: marketResponses.body, etag: marketResponses.etag })
       .from(marketResponses)
       .where(eq(marketResponses.key, key))
-      .orderBy(desc(marketResponses.day))
+      .orderBy(desc(marketResponses.date))
       .limit(1)
     return row ?? null
   }
@@ -338,6 +382,34 @@ export class MarketDailyRepository {
       .where(eq(items.key, key))
       .limit(1)
     return row === undefined ? null : { id: row.id, worldBound: row.type === WORLD_BOUND_TYPE }
+  }
+
+  /** 범위 key 와 저장할 종류 · 줄 id 를 오가는 표. 거래권과 월드는 줄이 적어 부를 때마다 읽는다. */
+  private async scopes(): Promise<Scopes> {
+    const [groups, worldRows] = await Promise.all([
+      this.db.select({ id: tradeGroups.id, key: tradeGroups.key }).from(tradeGroups),
+      this.db.select({ id: worlds.id, key: worlds.key }).from(worlds),
+    ])
+    const byKey = new Map<string, { scopeType: ScopeType; scopeId: string }>([
+      ...groups.map((g) => [g.key, { scopeType: 'trade_group' as const, scopeId: g.id }] as const),
+      ...worldRows.map((w) => [w.key, { scopeType: 'world' as const, scopeId: w.id }] as const),
+    ])
+    const byId = new Map<string, string>([
+      ...groups.map((g) => [`trade_group|${g.id}`, g.key] as const),
+      ...worldRows.map((w) => [`world|${w.id}`, w.key] as const),
+    ])
+    return {
+      rowOf(scope) {
+        const row = byKey.get(scope)
+        if (row === undefined) throw new UnknownMarketScope(scope)
+        return row
+      },
+      keyOf(scopeType, scopeId) {
+        const key = byId.get(`${scopeType}|${scopeId}`)
+        if (key === undefined) throw new UnknownMarketScope(`${scopeType}|${scopeId}`)
+        return key
+      },
+    }
   }
 
   /** 시세 범위가 있는 월드. key 와 거래권 key 다. 거래권이 없는 월드는 시세에서 빠진다. */

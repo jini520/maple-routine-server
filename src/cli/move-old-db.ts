@@ -79,6 +79,11 @@ export interface MoveResult {
   subAccountRegistrations: number
   referrals: number
   nexonSessions: number
+  marketReferencePrices: number
+  marketJudgements: number
+  marketPublishedDays: number
+  maspiBasketItems: number
+  maspiDailyCloses: number
 }
 
 /** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
@@ -104,6 +109,12 @@ export class UnknownHexaCoreType extends Error {}
 
 /** 고정 보상의 개수 글자가 숫자나 숫자 뒤 `개` 가 아니다. message 가 그 글자다. */
 export class UnknownQuantity extends Error {}
+
+/** 시세 줄의 반지 레벨에 맞는 레벨 아이템 줄이 없다. message 가 `아이템 id · 레벨` 이다. */
+export class UnknownRingLevel extends Error {}
+
+/** 시세 줄의 범위 글자가 거래권 key 도 월드 key 도 아니다. message 가 그 글자다. */
+export class UnknownMarketScope extends Error {}
 
 /** 한 번에 넣는 줄 수. Postgres 의 자리 표시자 상한(65535)을 넘지 않게 나눈다. */
 const CHUNK = 1000
@@ -178,6 +189,12 @@ const MOVED_TABLES = [
   schema.referrals,
   schema.nexonSessions,
   schema.nexonLoginAttempts,
+  schema.marketReferencePrices,
+  schema.marketJudgements,
+  schema.marketPublishedDays,
+  schema.maspiBasketItems,
+  schema.maspiDailyCloses,
+  schema.marketResponses,
 ]
 
 /**
@@ -356,6 +373,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const sectionUpdates = await sectionUpdateRows(oldDb)
   const ops = await operationRows(oldDb)
   const accounts = await accountRows(oldDb)
+  const market = await marketRows(oldDb, { ringLevelItems, tradeGroups, worlds, accounts })
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -414,6 +432,11 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.subAccountRegistrations, accounts.subAccountRegistrations)
     await insertAll(tx, schema.referrals, accounts.referrals)
     await insertAll(tx, schema.nexonSessions, accounts.nexonSessions)
+    await insertAll(tx, schema.marketReferencePrices, market.marketReferencePrices)
+    await insertAll(tx, schema.marketJudgements, market.marketJudgements)
+    await insertAll(tx, schema.marketPublishedDays, market.marketPublishedDays)
+    await insertAll(tx, schema.maspiBasketItems, market.maspiBasketItems)
+    await insertAll(tx, schema.maspiDailyCloses, market.maspiDailyCloses)
   })
   return {
     assets: assets.length,
@@ -471,6 +494,124 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     subAccountRegistrations: accounts.subAccountRegistrations.length,
     referrals: accounts.referrals.length,
     nexonSessions: accounts.nexonSessions.length,
+    marketReferencePrices: market.marketReferencePrices.length,
+    marketJudgements: market.marketJudgements.length,
+    marketPublishedDays: market.marketPublishedDays.length,
+    maspiBasketItems: market.maspiBasketItems.length,
+    maspiDailyCloses: market.maspiDailyCloses.length,
+  }
+}
+
+/**
+ * 시세 표의 새 줄. 범위 글자는 거래권이나 월드의 줄로, 반지 레벨은 레벨 아이템 줄로, 판정의 사람 글자는 사람 줄로 바꾼다.
+ *
+ * 판정은 사람 줄 글자(`u:`)와 넥슨 계정 글자(`a:`) · 메이플 ID 글자(`m:`)를 그 사람 줄로 옮기고, 지워진 사람이나 익명 줄의
+ * 판정은 버린다. 같은 날 같은 사람이 둘이 되면 수를 더한다. 앱 응답 저장 줄은 옮기지 않는다. 반지 레벨이 든 옛 열쇠와 옛 몸이라
+ * 1.0.15 앱이 쓸 수 없고, 옮긴 뒤 `market-responses` 명령이 마지막 날의 응답을 다시 만든다.
+ */
+async function marketRows(
+  oldDb: OldDb,
+  moved: {
+    ringLevelItems: readonly { itemId: string; ringItemId: string; ringLevel: number }[]
+    tradeGroups: readonly { id: string; key: string }[]
+    worlds: readonly { id: string; key: string }[]
+    accounts: {
+      users: readonly { id: string }[]
+      nexonAccounts: readonly { id: string; userId: string }[]
+      mapleIds: readonly { hash: string; nexonAccountId: string }[]
+    }
+  },
+) {
+  const [days, judgements, runs, basket, maspi] = await Promise.all([
+    oldDb.select().from(oldSchema.marketDays),
+    oldDb.select().from(oldSchema.marketJudgements),
+    oldDb.select().from(oldSchema.marketRuns),
+    oldDb.select().from(oldSchema.maspiBasket),
+    oldDb.select().from(oldSchema.maspiDays),
+  ])
+  const levelItem = new Map(
+    moved.ringLevelItems.map((r) => [`${r.ringItemId}|${r.ringLevel}`, r.itemId]),
+  )
+  const itemOf = (itemId: string, ringLevel: number | null): string => {
+    if (ringLevel === null) return itemId
+    const id = levelItem.get(`${itemId}|${ringLevel}`)
+    if (id === undefined) throw new UnknownRingLevel(`${itemId} · ${ringLevel}`)
+    return id
+  }
+  const scopeOf = new Map<string, { scopeType: 'trade_group' | 'world'; scopeId: string }>([
+    ...moved.tradeGroups.map(
+      (g) => [g.key, { scopeType: 'trade_group' as const, scopeId: g.id }] as const,
+    ),
+    ...moved.worlds.map((w) => [w.key, { scopeType: 'world' as const, scopeId: w.id }] as const),
+  ])
+  const scope = (key: string) => {
+    const row = scopeOf.get(key)
+    if (row === undefined) throw new UnknownMarketScope(key)
+    return row
+  }
+
+  const userIds = new Set(moved.accounts.users.map((u) => u.id))
+  const userOfAccount = new Map(moved.accounts.nexonAccounts.map((a) => [a.id, a.userId]))
+  const accountOfMaple = new Map(moved.accounts.mapleIds.map((m) => [m.hash, m.nexonAccountId]))
+  const userOf = (person: string): string | undefined => {
+    const value = person.slice(2)
+    if (person.startsWith('u:')) return userIds.has(value) ? value : undefined
+    if (person.startsWith('a:')) return userOfAccount.get(value)
+    if (person.startsWith('m:')) {
+      const account = accountOfMaple.get(value)
+      return account === undefined ? undefined : userOfAccount.get(account)
+    }
+    return undefined
+  }
+  const judged = new Map<string, typeof schema.marketJudgements.$inferInsert>()
+  for (const j of judgements) {
+    const userId = userOf(j.person)
+    if (userId === undefined) continue
+    const key = `${j.day}|${userId}`
+    const prev = judged.get(key)
+    judged.set(key, {
+      date: j.day,
+      userId,
+      judgedCount: (prev?.judgedCount ?? 0) + j.judged,
+      excludedCount: (prev?.excludedCount ?? 0) + j.excluded,
+      isDummy: (prev?.isDummy ?? false) || j.dummy,
+      createdAt: prev?.createdAt ?? j.createdAt,
+    })
+  }
+
+  return {
+    marketReferencePrices: days.map((d) => ({
+      id: d.id,
+      date: d.day,
+      itemId: itemOf(d.itemId, d.ringLevel),
+      ...scope(d.scope),
+      source: d.source === 'carry' ? ('kept' as const) : d.source,
+      referencePriceMeso: d.refMeso,
+      rangeLowMeso: d.q1Meso,
+      rangeHighMeso: d.q3Meso,
+      fenceLowMeso: d.fenceLow,
+      fenceHighMeso: d.fenceHigh,
+      freshDate: d.freshDay,
+      createdAt: d.createdAt,
+    })),
+    marketJudgements: [...judged.values()],
+    marketPublishedDays: runs.map((r) => ({ id: r.id, date: r.day, createdAt: r.createdAt })),
+    maspiBasketItems: basket.map((b) => ({
+      id: b.id,
+      itemId: itemOf(b.itemId, b.ringLevel),
+      ...scope(b.scope),
+      basePriceMeso: Math.round(b.basePriceMeso),
+      voterCount: b.persons,
+      indexWeight: b.weight,
+      fromDate: b.entersOn,
+      createdAt: b.createdAt,
+    })),
+    maspiDailyCloses: maspi.map((m) => ({
+      id: m.id,
+      date: m.day,
+      close: m.value,
+      createdAt: m.createdAt,
+    })),
   }
 }
 

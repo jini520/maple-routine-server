@@ -71,6 +71,12 @@ const CONVERTED = [
   'referrals',
   'nexon_sessions',
   'nexon_login_attempts',
+  'market_reference_prices',
+  'market_judgements',
+  'market_published_days',
+  'market_responses',
+  'maspi_basket_items',
+  'maspi_daily_closes',
 ]
 
 interface DesignColumn {

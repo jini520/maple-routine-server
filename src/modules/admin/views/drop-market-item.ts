@@ -31,7 +31,7 @@ export const DROP_MARKET_ITEM_HTML = layout(
 <script>
   function eok(n) { return n >= 1e8 ? (n / 1e8).toFixed(2) + '억' : meso(n); }
   var VERDICT = { included: ['포함', 'tag ok'], pending: ['판단 보류', 'tag'], excluded: ['제외', 'tag accent'] };
-  var BASIS = { today: '그날 표', three_day: '3일 표', carry: '유지', dummy: '더미 입력' };
+  var BASIS = { today: '그날 표', three_day: '3일 표', kept: '유지', dummy: '더미 입력' };
   var params = new URLSearchParams(location.search);
   var PERIODS = [['day', '일봉', 'candles'], ['week', '주봉', 'weeklyCandles']];
   var state = { period: params.get('period') === 'week' ? 'week' : 'day', detail: null, kind: params.get('kind') === 'consumable' ? 'consumable' : 'equipment', key: params.get('key') || 'general', item: params.get('item') || '', ring: params.get('ring') };

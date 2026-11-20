@@ -32,10 +32,10 @@ export class MarketController {
     await send(req, reply, stored)
   }
 
+  /** 반지는 레벨 아이템의 key(`<반지 key>_lv<레벨>`)로 부른다. 레벨마다 아이템 줄이 따로 있다. */
   @Get('v1/market/items/:itemKey')
   async item(
     @Param('itemKey') itemKey: string,
-    @Query('ring') ring: string | undefined,
     @Query('world') world: string | undefined,
     @Req() req: FastifyRequest,
     @Res() reply: FastifyReply,
@@ -44,9 +44,7 @@ export class MarketController {
     // 장비는 일반 거래권 하나라 월드를 보지 않는다. 소비 아이템은 월드마다 값이 다르다.
     const scope = item === null ? null : item.worldBound ? (world ?? null) : 'general'
     const stored =
-      scope === null
-        ? null
-        : await this.repo.latestResponse(`item:${itemKey}:${ring ?? ''}:${scope}`)
+      scope === null ? null : await this.repo.latestResponse(`item:${itemKey}:${scope}`)
     if (stored === null) throw new NotFoundException('신뢰할 수 있는 시세가 아니다')
     await send(req, reply, stored)
   }

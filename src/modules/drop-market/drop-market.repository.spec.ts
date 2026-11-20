@@ -143,8 +143,9 @@ describeDb('DropMarketRepository', () => {
     const shown = await repo.rows({ kind: 'equipment', key: 'general' }, since)
     const daily = await new MarketDailyRepository(db).rowsBetween('2026-10-17', '2026-10-17')
 
-    expect(new Set(shown.map((r) => r.person))).toEqual(new Set([`a:${main.id}`]))
-    expect(new Set(daily.map((r) => r.person))).toEqual(new Set([`a:${main.id}`]))
+    // 시세의 사람은 사람 줄이다. 부계정의 사람은 그 계정을 등록한 로그인의 사람으로 센다.
+    expect(new Set(shown.map((r) => r.person))).toEqual(new Set([`u:${me}`]))
+    expect(new Set(daily.map((r) => r.person))).toEqual(new Set([`u:${me}`]))
   })
 
   it('장비는 거래권의 월드를 함께 세고 소비 아이템은 안 센다', async () => {

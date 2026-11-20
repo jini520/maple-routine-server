@@ -118,7 +118,6 @@ describe('referenceOf', () => {
     q3: ref,
     low: ref * 0.8,
     high: ref * 1.2,
-    voters: 3,
     freshDay: day,
   })
 
@@ -169,12 +168,12 @@ describe('referenceOf', () => {
     const day3 = referenceOf({
       day: '2026-11-04',
       rows: lonely,
-      previous: { ...last, day: '2026-11-03', source: 'carry' },
+      previous: { ...last, day: '2026-11-03', source: 'kept' },
       weightOf: everyone,
     })
     const day4 = referenceOf({ day: '2026-11-05', rows: [], previous: day3, weightOf: everyone })
 
-    expect(day3).toMatchObject({ source: 'carry', ref: 5 * EOK, freshDay: '2026-11-01' })
+    expect(day3).toMatchObject({ source: 'kept', ref: 5 * EOK, freshDay: '2026-11-01' })
     expect(day4).toBeNull()
   })
 
@@ -266,7 +265,6 @@ describe('runDay', () => {
     const result = runDay({ day, rowsByMarket, previous: new Map(), judgements: new Map() })
 
     expect([...result.dummies]).toEqual(['x'])
-    expect(result.references.get('ether1')?.voters).toBe(3)
     expect(result.judged.get('x')).toEqual({ judged: 3, excluded: 3 })
     expect(result.judged.get('a')).toEqual({ judged: 3, excluded: 0 })
   })
@@ -290,6 +288,5 @@ describe('runDay', () => {
     })
 
     expect(result.references.get('life')?.ref).toBe(8 * EOK)
-    expect(result.references.get('life')?.voters).toBe(5)
   })
 })

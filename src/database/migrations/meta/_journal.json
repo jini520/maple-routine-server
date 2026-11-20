@@ -407,6 +407,13 @@
       "when": 1795194688025,
       "tag": "0057_account_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795196169389,
+      "tag": "0058_market_bundle",
+      "breakpoints": true
     }
   ]
 }

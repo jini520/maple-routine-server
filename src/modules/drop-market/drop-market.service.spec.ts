@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto'
 
-import { dropPrices, items, tradeGroups, users, worlds } from '../../database/schema'
+import {
+  dropPrices,
+  items,
+  ringLevelItems,
+  tradeGroups,
+  users,
+  worlds,
+} from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { shiftDay } from './daily-reference'
 import { DropMarketRepository } from './drop-market.repository'
@@ -97,6 +104,28 @@ describeDb('DropMarketService', () => {
       rows.filter((r) => r.priceMeso === 30 * EOK).every((r) => r.verdict === 'included'),
     ).toBe(true)
     expect(rows[0]).not.toHaveProperty('person')
+  })
+
+  // 하루 작업은 반지를 그 레벨의 아이템 줄로 잰다. 관리 화면은 판매가 줄의 반지 · 레벨로 그 줄의 울타리를 찾아야 한다.
+  it('반지 레벨에 레벨 아이템 줄이 있으면 그 줄의 기준가 울타리로 판정한다', async () => {
+    const [level] = await db
+      .insert(items)
+      .values({ key: 'ring_lv4', name: '반지 lv.4', isDrop: true })
+      .returning({ id: items.id })
+    await db
+      .insert(ringLevelItems)
+      .values({ itemId: level.id, ringItemId: item.ring, ringLevel: 4 })
+    await trade('d', 'ring', '2026-11-04', 300 * EOK, '13:00')
+
+    await publish.backfill('2026-11-05')
+    const { rows } = await service.detail(GENERAL, RING, NOW)
+    const overview = await service.overview(GENERAL, NOW)
+
+    expect(rows.find((r) => r.priceMeso === 300 * EOK)).toMatchObject({
+      verdict: 'excluded',
+      basis: 'today',
+    })
+    expect(overview.find((o) => o.itemKey === 'ring')?.excludedCount).toBeGreaterThan(0)
   })
 
   it('그날 더미 입력을 한 사람의 줄은 울타리 안이어도 제외이고, 한눈에 보는 화면의 제외 수에 든다', async () => {

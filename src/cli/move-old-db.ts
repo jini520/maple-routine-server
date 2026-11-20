@@ -103,7 +103,11 @@ export class SwappedDatabases extends Error {}
 export class UnmovedRecords extends Error {}
 
 /** 2026-11-17 운영에 줄이 없어 옮기지 않는 옛 기록 표. 1.0.14 까지의 앱이 올리지 않는 표다. */
-const EMPTY_OLD_RECORD_TABLES = [oldSchema.enhancementTotals, oldSchema.bossClears]
+const EMPTY_OLD_RECORD_TABLES = [
+  oldSchema.enhancementTotals,
+  oldSchema.bossClears,
+  oldSchema.serverCashbookEntries,
+]
 
 /** 옛 그림 경로의 폴더 · 확장자를 분류로 읽지 못했다. message 가 그 경로다. */
 export class UnknownAssetPath extends Error {}

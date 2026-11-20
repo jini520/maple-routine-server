@@ -1,13 +1,17 @@
 import { eq, sql } from 'drizzle-orm'
 
-import { isCheckViolation } from '../common/pg-errors'
+import { isCheckViolation, isUniqueViolation } from '../common/pg-errors'
 import {
+  cashbookItemTypes,
   characters,
+  inventoryItems,
+  items,
   mapleIdNames,
   mapleIds,
   partyAppointments,
   rememberedLevels,
   users,
+  worlds,
 } from './schema'
 import { describeDb, insertNexonAccount, openTestDb, type TestDb } from './test-db'
 
@@ -118,5 +122,47 @@ describeDb('기록 표', () => {
         )
       expect({ row, rejected: isCheckViolation(error) }).toEqual({ row, rejected: true })
     }
+  })
+
+  // 장비가 아닌 아이템은 메이플 ID · 월드마다 한 줄이다. 장비는 같은 아이템도 하나씩 따로다. 종류가 다른 표에 있어 트리거가 지킨다.
+  it('인벤토리는 장비가 아니면 같은 메이플 ID · 월드 · 아이템의 줄을 둘 받지 않고, 장비는 받는다', async () => {
+    await insertNexonAccount(db, ['m-a'])
+    const mapleId = await mapleIdOf('m-a')
+    const [world] = await db
+      .insert(worlds)
+      .values({ key: 'scania', name: '스카니아', sortOrder: 0 })
+      .returning({ id: worlds.id })
+    const [item] = await db
+      .insert(items)
+      .values({ key: 'gem', name: '보석' })
+      .returning({ id: items.id })
+    const types = await db
+      .insert(cashbookItemTypes)
+      .values([
+        { key: 'equipment', name: '장비', hasTariff: false, sortOrder: 0 },
+        { key: 'etc', name: '기타', unit: '개', hasTariff: true, sortOrder: 1 },
+      ])
+      .returning({ id: cashbookItemTypes.id, key: cashbookItemTypes.key })
+    const typeOf = Object.fromEntries(types.map((t) => [t.key, t.id]))
+    const row = (type: string) => ({
+      id: crypto.randomUUID(),
+      mapleId,
+      worldId: world.id,
+      itemId: item.id,
+      cashbookItemTypeId: typeOf[type],
+      addedQuantity: 1,
+    })
+
+    await db.insert(inventoryItems).values([row('equipment'), row('equipment'), row('etc')])
+    const error: unknown = await db
+      .insert(inventoryItems)
+      .values(row('etc'))
+      .then(
+        () => null,
+        (thrown: unknown) => thrown,
+      )
+
+    expect(isUniqueViolation(error, 'inventory_items_maple_world_item_unique')).toBe(true)
+    expect(await db.select().from(inventoryItems)).toHaveLength(3)
   })
 })

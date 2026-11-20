@@ -449,6 +449,13 @@
       "when": 1795200333365,
       "tag": "0063_boss_records",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795201034243,
+      "tag": "0064_cashbook_records",
+      "breakpoints": true
     }
   ]
 }

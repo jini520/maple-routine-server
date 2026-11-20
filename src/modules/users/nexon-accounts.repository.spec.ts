@@ -211,7 +211,7 @@ describeDb('NexonAccountsRepository', () => {
       ])
     })
 
-    // 1.0.13 을 잠그기 전에는 옛 드롭 줄을 사람으로 찾는다. 사람을 지우면 그 칸이 비어 익명 줄이 된다.
+    // ocid 가 없는 드롭 줄은 사람으로 찾는다. 사람을 지우면 그 칸이 비어 익명 줄이 된다.
     it('새 줄의 사람을 지울 때 그 사람의 옛 드롭 줄은 남기는 줄의 사람으로 옮긴다', async () => {
       const [item] = await db
         .insert(items)

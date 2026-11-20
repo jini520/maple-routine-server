@@ -136,7 +136,7 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
 }
 
 /**
- * 사람 칸으로 찾는 기록을 옮긴다. 1.0.13 앱의 드롭 줄은 사람 안에서 기록 id 로 유일해, 양쪽에 같은 기록이 있으면 늦게 고친 줄을
+ * 사람 칸으로 찾는 기록을 옮긴다. ocid 가 없는 드롭 줄은 사람 안에서 기록 id 로 유일해, 양쪽에 같은 기록이 있으면 늦게 고친 줄을
  * 남긴다. 옮기지 않으면 사람을 지울 때 사람 칸이 비어 익명 줄이 된다.
  */
 async function moveLegacyRecords(tx: Tx, from: string, into: string): Promise<void> {

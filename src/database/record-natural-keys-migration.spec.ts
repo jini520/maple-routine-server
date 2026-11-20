@@ -41,7 +41,7 @@ describeDb('0036 기록 표를 넥슨이 준 값으로', () => {
     await admin.end()
   })
 
-  // 1.0.13 앱이 보낸 드롭 줄은 ocid 가 없어 1.0.13 을 잠글 때까지 그대로 둔다. 시세 표본이다.
+  // 1.0.13 앱이 보낸 드롭 줄은 ocid 가 없어도 1.0.15 로 옮길 때까지 그대로 둔다. 시세 표본이다.
   it('넥슨 계정 줄의 기기 계정 id 를 걷고, 옛 드롭 줄은 넥슨이 준 값이 빈 채로 남긴다', async () => {
     const { rows: users } = await pool.query<{ id: string }>(
       `INSERT INTO users DEFAULT VALUES RETURNING id`,

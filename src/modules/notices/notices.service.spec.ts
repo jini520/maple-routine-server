@@ -9,7 +9,6 @@ function row(over: Partial<NoticeDetailRow>): NoticeDetailRow {
     title: '점검',
     body: null,
     link: 'https://g/1',
-    sourceId: 1,
     publishedAt: new Date('2026-10-01T00:00:00Z'),
     startsAt: null,
     endsAt: null,

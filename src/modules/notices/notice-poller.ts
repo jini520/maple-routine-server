@@ -223,7 +223,6 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
       kind,
       title: item.title,
       link: item.url,
-      sourceId: item.noticeId,
       publishedAt: new Date(item.date),
       blocks: null,
       fetchedAt: now,

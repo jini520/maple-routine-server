@@ -9,9 +9,6 @@ import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 /** 묶음 key 의 모양. 소문자 · 숫자 · 붙임표다. 표의 CHECK 와 같다. */
 export const FAQ_KEY = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-/** 답 블록 하나. 지금 종류는 문단뿐이다. */
-export type FaqBlock = (typeof faqItems.$inferSelect)['answer'][number]
-
 export interface FaqSheetView {
   key: string
   title: string
@@ -20,18 +17,21 @@ export interface FaqSheetView {
 export interface FaqItemView {
   sheet: string
   question: string
-  answer: FaqBlock[]
+  /** 답 글. 문단은 빈 줄로 나눈다. */
+  answer: string
 }
 
-/** GET /v1/game-data 의 faqs 칸. 문항은 묶음 차례, 묶음 안에서는 문항 차례로 평평하게 선다. 문항이 없는 묶음도 낸다. */
+/** GET /v1/game-data 의 faqs 칸. 배열 이름은 표 이름이고 문항은 묶음을 줄 id 로 가리킨다. 문항이 없는 묶음도 낸다. */
 export interface FaqsSection {
   updatedAt: string | null
-  sheets: FaqSheetView[]
-  items: FaqItemView[]
+  faqSheets: (FaqSheetView & { id: string })[]
+  faqItems: { sheetId: string; question: string; answer: string }[]
 }
 
-/** 관리 화면의 줄. 문항은 key 가 없어 id 로 고르고 지운다. */
-export interface FaqsAdminRows extends Omit<FaqsSection, 'items'> {
+/** 관리 화면의 줄. 묶음은 key 로 잇고, 문항은 key 가 없어 id 로 고르고 지운다. */
+export interface FaqsAdminRows {
+  updatedAt: string | null
+  sheets: FaqSheetView[]
   items: (FaqItemView & { id: string })[]
 }
 
@@ -47,22 +47,39 @@ export class FaqsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<FaqsSection> {
-    const rows = await this.adminRows()
+    const [sheets, items, updatedAt] = await this.rows()
     return {
-      ...rows,
-      items: rows.items.map(({ sheet, question, answer }) => ({ sheet, question, answer })),
+      updatedAt,
+      faqSheets: sheets.map((s) => ({ id: s.id, key: s.key, title: s.title })),
+      faqItems: items.map((i) => ({ sheetId: i.sheetId, question: i.question, answer: i.answer })),
     }
   }
 
   async adminRows(): Promise<FaqsAdminRows> {
-    const [sheets, items, updatedAt] = await Promise.all([
+    const [sheets, items, updatedAt] = await this.rows()
+    return {
+      updatedAt,
+      sheets: sheets.map((s) => ({ key: s.key, title: s.title })),
+      items: items.map((i) => ({
+        id: i.id,
+        sheet: i.sheet,
+        question: i.question,
+        answer: i.answer,
+      })),
+    }
+  }
+
+  /** 묶음 차례 · 문항 차례로. */
+  private rows() {
+    return Promise.all([
       this.db
-        .select({ key: faqSheets.key, title: faqSheets.title })
+        .select({ id: faqSheets.id, key: faqSheets.key, title: faqSheets.title })
         .from(faqSheets)
         .orderBy(asc(faqSheets.sortOrder), asc(faqSheets.key)),
       this.db
         .select({
           id: faqItems.id,
+          sheetId: faqItems.sheetId,
           sheet: faqSheets.key,
           question: faqItems.question,
           answer: faqItems.answer,
@@ -77,7 +94,6 @@ export class FaqsRepository {
         ),
       sectionUpdatedAt(this.db, 'faqs'),
     ])
-    return { updatedAt, sheets, items }
   }
 
   /** 묶음을 맨 뒤에 더한다. 같은 key 는 FaqSheetExists 다. */

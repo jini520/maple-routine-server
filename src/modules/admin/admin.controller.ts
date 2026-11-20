@@ -139,7 +139,12 @@ import {
 } from '../worlds/worlds.repository'
 import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
 import type { AppNoticeRow } from '../notices/notices.repository'
-import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
+import {
+  AlreadyPublished,
+  OperatorNoticesService,
+  type PushRequest,
+  SchedulePassed,
+} from '../notices/operator-notices.service'
 import {
   type BossDropCreateBody,
   bossDropCreateBody,
@@ -561,7 +566,7 @@ export class AdminController {
     }
   }
 
-  /** 쓴다. 저장은 그 자리에서 되고 알림은 push 가 정한다. 지난 시각의 예약 · https 가 아닌 본문 주소는 400 이다. */
+  /** 쓴다. 올릴 시각이 있으면 그때 앱에 보이고 켠 알림도 그때 간다. 지난 시각의 예약 · https 가 아닌 본문 주소는 400 이다. */
   @Post('notices')
   @HttpCode(201)
   async createNotice(@Body(new ZodValidationPipe(noticeCreateBody)) body: NoticeCreateBody) {
@@ -570,22 +575,15 @@ export class AdminController {
         title: body.title,
         markdown: body.markdown,
         link: body.link ?? null,
-        push:
-          body.push === null || body.push === undefined
-            ? null
-            : {
-                title: body.push.title ?? null,
-                body: body.push.body ?? null,
-                scheduledAt: body.push.scheduledAt ? new Date(body.push.scheduledAt) : null,
-              },
+        publishAt: body.publishAt ? new Date(body.publishAt) : null,
+        push: pushRequest(body.push),
       })
     } catch (error) {
-      if (error instanceof SchedulePassed) throw new BadRequestException('예약 시각이 이미 지났다')
-      throw markdownRejection(error)
+      throw noticeRejection(error)
     }
   }
 
-  /** 고친다. 넥슨 공지나 없는 id 는 404, https 가 아닌 본문 주소는 400 이다. */
+  /** 고친다. 넥슨 공지나 없는 id 는 404, https 가 아닌 본문 주소 · 지난 예약 시각은 400, 올라간 공지의 시각 바꾸기는 409 다. */
   @Patch('notices/:id')
   async updateNotice(
     @Param('id', new ZodValidationPipe(rowId)) id: string,
@@ -597,13 +595,11 @@ export class AdminController {
         title: body.title,
         markdown: body.markdown,
         link: body.link ?? null,
-        push:
-          body.push === null || body.push === undefined
-            ? null
-            : { title: body.push.title ?? null, body: body.push.body ?? null },
+        publishAt: body.publishAt ? new Date(body.publishAt) : null,
+        push: pushRequest(body.push),
       })
     } catch (error) {
-      throw markdownRejection(error)
+      throw noticeRejection(error)
     }
     if (result === null) throw new NotFoundException()
     return result
@@ -615,11 +611,17 @@ export class AdminController {
     if (!(await this.notices.remove(id))) throw new NotFoundException()
   }
 
-  /** 아직 안 나간 예약을 내린다. 공지는 남는다. */
-  @Delete('notices/:id/schedule')
+  /** 예약한 공지를 지금 올린다. 켠 알림도 지금 간다. 없으면 404, 이미 올라갔으면 409 다. */
+  @Post('notices/:id/publish')
   @HttpCode(204)
-  async cancelSchedule(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
-    if (!(await this.notices.cancelSchedule(id))) throw new NotFoundException()
+  async publishNotice(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    let found: boolean
+    try {
+      found = await this.notices.publishNow(id)
+    } catch (error) {
+      throw noticeRejection(error)
+    }
+    if (!found) throw new NotFoundException()
   }
 
   /* ── FAQ ── */
@@ -2314,6 +2316,20 @@ function toAdminNotice(row: AppNoticeRow) {
     pushTitle: row.pushTitle,
     pushBody: row.pushBody,
   }
+}
+
+/** 알림 문구 본문을 서비스 입력으로. 없으면 알림을 안 보낸다. */
+function pushRequest(push: NoticeCreateBody['push']): PushRequest | null {
+  return push === null || push === undefined
+    ? null
+    : { title: push.title ?? null, body: push.body ?? null }
+}
+
+/** 공지 쓰기의 거절. 지난 예약 시각은 400, 이미 올라간 공지는 409, 본문 주소는 markdownRejection 이 고른다. */
+function noticeRejection(error: unknown): unknown {
+  if (error instanceof SchedulePassed) return new BadRequestException('예약 시각이 이미 지났다')
+  if (error instanceof AlreadyPublished) return new ConflictException('이미 올라간 공지다')
+  return markdownRejection(error)
 }
 
 /** 공지 본문의 거절을 400 으로 바꾼 예외. 메시지에 거절한 주소가 들어 있다. 다른 에러는 그대로 돌려준다. */

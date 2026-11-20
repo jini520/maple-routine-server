@@ -14,6 +14,7 @@ import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
 import {
   MissingGameRule,
   moveOldDb,
+  UnknownCropValue,
   SharedCoreMismatch,
   SwappedDatabases,
   UnknownAssetPath,
@@ -1190,5 +1191,73 @@ describeDb('moveOldDb', () => {
       new MissingGameRule('spend_tariff_percent'),
     )
     expect(await newDb.select().from(schema.gameRules)).toEqual([])
+  })
+
+  it('크롭 · 공지 · FAQ: 크롭 글자를 숫자 셋으로 나누고 모달 띠 줄은 버리며, FAQ 답 블록을 빈 줄로 잇고, 공지는 칸 이름만 바꾼다', async () => {
+    const portrait = await insertOldAsset('bosses/spec_boss.webp')
+    const crops = await oldDb
+      .insert(oldSchema.imageCrops)
+      .values([
+        { kind: 'boss_portrait', assetId: portrait, size: '120.5% auto', position: '50% -12%' },
+        { kind: 'boss_portrait_modal', assetId: portrait, size: '200% auto', position: '50% 40%' },
+      ])
+      .returning({ id: oldSchema.imageCrops.id, kind: oldSchema.imageCrops.kind })
+    const [sheet] = await oldDb
+      .insert(oldSchema.faqSheets)
+      .values({ key: 'spec-sheet', title: '시험', sortOrder: 0 })
+      .returning({ id: oldSchema.faqSheets.id })
+    await oldDb.insert(oldSchema.faqItems).values({
+      sheetId: sheet?.id ?? '',
+      sortOrder: 0,
+      question: '질문',
+      answer: [
+        { kind: 'paragraph', text: '첫 문단' },
+        { kind: 'paragraph', text: '둘째 문단' },
+      ],
+    })
+    const [old] = await oldDb
+      .insert(oldSchema.notices)
+      .values({
+        noticeKey: 'event-1374',
+        kind: 'event',
+        title: '이벤트',
+        sourceId: 1374,
+        publishedAt: new Date('2026-11-01T00:00:00Z'),
+      })
+      .returning({ id: oldSchema.notices.id })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      imageCrops: 1,
+      notices: 1,
+      faqSheets: 1,
+      faqItems: 1,
+    })
+    expect(await newDb.select().from(schema.imageCrops)).toMatchObject([
+      {
+        id: crops.find((c) => c.kind === 'boss_portrait')?.id,
+        type: 'boss_portrait',
+        assetId: portrait,
+        widthPercent: 120.5,
+        positionXPercent: 50,
+        positionYPercent: -12,
+      },
+    ])
+    expect(await newDb.select().from(schema.faqItems)).toMatchObject([
+      { sheetId: sheet?.id, question: '질문', answer: '첫 문단\n\n둘째 문단' },
+    ])
+    expect(await newDb.select().from(schema.notices)).toMatchObject([
+      { id: old?.id, key: 'event-1374', type: 'event', title: '이벤트' },
+    ])
+  })
+
+  it('크롭 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니면 그 줄을 알리고 아무것도 옮기지 않는다', async () => {
+    const portrait = await insertOldAsset('bosses/odd.webp')
+    await oldDb
+      .insert(oldSchema.imageCrops)
+      .values({ kind: 'boss_portrait', assetId: portrait, size: 'cover', position: 'center' })
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(
+      new UnknownCropValue('boss_portrait cover / center'),
+    )
+    expect(await newDb.select().from(schema.imageCrops)).toEqual([])
   })
 })

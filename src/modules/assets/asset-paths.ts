@@ -7,7 +7,7 @@ import { assetCategoryEnum } from '../../database/schema'
 export type AssetCategory = (typeof assetCategoryEnum.enumValues)[number]
 export type AssetExt = 'png' | 'webp' | 'jpg'
 
-/** 분류마다 받는 확장자. 앞선 확장자가 옛 그림 이름을 풀 때 먼저 고르는 것이다. */
+/** 분류마다 받는 확장자. */
 export const ASSET_CATEGORIES = {
   boss: ['webp', 'png'],
   item: ['png', 'webp'],
@@ -97,43 +97,6 @@ export function assetKeyText(key: {
 /** 디스크와 nginx `/assets/` 의 파일 이름. 내용 해시라 같은 이름을 덮어쓰지 않는다. */
 export function storedFileName(sha256: string, ext: string): string {
   return `${sha256}.${ext}`
-}
-
-/**
- * 옛 앱이 읽던 그림 이름을 내는 칸의 종류. 칸의 값을 그림 후보로 푸는 방법이 종류마다 다르다.
- * `slug` 는 확장자를 뗀 이름, `fileName` 은 확장자까지 든 이름이다. 그 칸을 내는 표를 새 표로 바꿀 때 종류를 걷는다.
- */
-export const ASSET_REFS = {
-  bossPortrait: { categories: ['boss'], key: 'slug' },
-  itemIcon: { categories: ['item', 'item_ring'], key: 'fileName' },
-  mapBackground: { categories: ['map'], key: 'slug' },
-  mapIcon: { categories: ['map_icon'], key: 'slug' },
-} as const satisfies Record<
-  string,
-  { categories: readonly AssetCategory[]; key: 'slug' | 'fileName' }
->
-
-export type AssetRef = keyof typeof ASSET_REFS
-
-/** 칸 값 하나가 가리킬 수 있는 그림 전부. 앞선 것이 먼저 고르는 것이다. */
-export function refCandidates(ref: AssetRef, value: string): AssetKey[] {
-  const { categories, key } = ASSET_REFS[ref]
-  const v = value.normalize('NFC')
-  if (key === 'fileName') {
-    const dot = v.lastIndexOf('.')
-    if (dot <= 0) return []
-    const fileName = v.slice(0, dot)
-    const extension = v.slice(dot + 1)
-    return categories.flatMap((category) => {
-      const exts: readonly string[] = ASSET_CATEGORIES[category]
-      return exts.includes(extension)
-        ? [{ category, fileName, extension: extension as AssetExt }]
-        : []
-    })
-  }
-  return categories.flatMap((category) =>
-    ASSET_CATEGORIES[category].map((extension) => ({ category, fileName: v, extension })),
-  )
 }
 
 /** 파일 머리 바이트로 본 형식. 확장자와 내용이 다른 그림을 받지 않기 위해서다. */

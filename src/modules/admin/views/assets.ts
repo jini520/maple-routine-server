@@ -33,8 +33,8 @@ export const ASSETS_HTML = layout(
   </div>
 </section>
 <section class="card">
-  <header><h2>크롭</h2><p>크기는 <code>120% auto</code>, 위치는 <code>50% 40%</code> 모양이다. 줄이 없으면 앱은 cover · 가운데로 그린다. 미리보기 틀의 비율은 앱 자리와 비슷하게 맞춘 것이다</p><div class="grow"></div><div class="inline" id="crop-kind"></div></header>
-  <div class="table"><table><thead><tr><th>미리보기</th><th>slug</th><th>크기</th><th>위치</th><th></th></tr></thead><tbody id="crop-rows"></tbody></table></div>
+  <header><h2>크롭</h2><p>폭은 놓이는 자리의 폭에 대한 %, 위치는 가로 · 세로 % 다. 줄이 없으면 앱은 cover · 가운데로 그린다. 미리보기 틀의 비율은 앱 자리와 비슷하게 맞춘 것이다</p><div class="grow"></div><div class="inline" id="crop-kind"></div></header>
+  <div class="table"><table><thead><tr><th>미리보기</th><th>그림</th><th class="num">폭 %</th><th class="num">가로 %</th><th class="num">세로 %</th><th></th></tr></thead><tbody id="crop-rows"></tbody></table></div>
 </section>
 <style>
   .notice { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--r-card); background: var(--danger-tint); color: var(--danger-ink); font-weight: 500 }
@@ -63,14 +63,13 @@ export const ASSETS_HTML = layout(
   .crop { background-color: var(--surface-2); background-repeat: no-repeat; border-radius: 8px; flex: none }
   .crop.boss_portrait { width: 180px; height: 90px }
   .crop.boss_portrait_icon { width: 56px; height: 56px; border-radius: 50% }
-  .crop.boss_portrait_modal { width: 72px; height: 160px }
+  .w-num { width: 76px }
   .crop.daily_quest_region { width: 180px; height: 72px }
 </style>
 <script>
   var CROP_KINDS = [
     ['boss_portrait', '보스 카드', 'boss'],
     ['boss_portrait_icon', '보스 원형 아이콘', 'boss'],
-    ['boss_portrait_modal', '파티 분배 모달 띠', 'boss'],
     ['daily_quest_region', '컨텐츠 카드 지도', 'map'],
   ];
   /**
@@ -263,28 +262,29 @@ export const ASSETS_HTML = layout(
     var rows = document.getElementById('crop-rows'); rows.innerHTML = '';
     var files = state.rows.filter(function (f) { return f.category === kind[2]; }).sort(byFile);
     files.forEach(function (f) {
-      var slug = f.fileName;
-      var saved = state.crops.find(function (c) { return c.kind === kind[0] && c.slug === slug; });
+      var name = f.fileName;
+      var saved = state.crops.find(function (c) { return c.type === kind[0] && c.assetId === f.id; });
       var tr = el('tr');
       var box = el('div', undefined, 'crop ' + kind[0]); box.style.backgroundImage = 'url(' + urlOf(f) + ')';
-      var size = input('text', 'mono'); size.value = saved ? saved.size : ''; size.placeholder = 'cover'; size.size = 12;
-      var pos = input('text', 'mono'); pos.value = saved ? saved.position : ''; pos.placeholder = 'center'; pos.size = 12;
-      function preview() { box.style.backgroundSize = size.value.trim() || 'cover'; box.style.backgroundPosition = pos.value.trim() || 'center'; }
-      size.addEventListener('input', preview); pos.addEventListener('input', preview); preview();
+      var num = function (v) { var i = input('number'); i.step = '0.1'; i.className = 'w-num'; i.value = v === null || v === undefined ? '' : v; return i; };
+      var w = num(saved ? saved.widthPercent : null), x = num(saved ? saved.positionXPercent : null), y = num(saved ? saved.positionYPercent : null);
+      w.placeholder = 'cover'; x.placeholder = '50'; y.placeholder = '50';
+      function preview() { box.style.backgroundSize = w.value.trim() ? w.value.trim() + '% auto' : 'cover'; box.style.backgroundPosition = x.value.trim() || y.value.trim() ? (x.value.trim() || '50') + '% ' + (y.value.trim() || '50') + '%' : 'center'; }
+      [w, x, y].forEach(function (i) { i.addEventListener('input', preview); }); preview();
       var save = button('저장', 'btn sm'), remove = button('지우기', 'btn danger sm');
       save.addEventListener('click', async function () {
-        var r = await call('PUT', '/admin/image-crops/' + kind[0] + '/' + encodeURIComponent(slug), { size: size.value.trim(), position: pos.value.trim() });
-        show(r.ok ? slug + ' 크롭을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) load();
+        var r = await call('PUT', '/admin/image-crops/' + kind[0] + '/' + f.id, { widthPercent: Number(w.value), positionXPercent: Number(x.value || 50), positionYPercent: Number(y.value || 50) });
+        show(r.ok ? name + ' 크롭을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) load();
       });
       remove.addEventListener('click', async function () {
-        var r = await call('DELETE', '/admin/image-crops/' + kind[0] + '/' + encodeURIComponent(slug));
-        show(r.ok ? slug + ' 크롭을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) load();
+        var r = await call('DELETE', '/admin/image-crops/' + kind[0] + '/' + f.id);
+        show(r.ok ? name + ' 크롭을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) load();
       });
-      cell(tr, box); cell(tr, slug, 'mono'); cell(tr, size); cell(tr, pos);
+      cell(tr, box); cell(tr, name, 'mono'); cell(tr, w, 'num'); cell(tr, x, 'num'); cell(tr, y, 'num');
       cell(tr, saved ? inline(save, remove) : save, 'act');
       rows.appendChild(tr);
     });
-    if (files.length === 0) { var tr = el('tr'); var td = cell(tr, '그림이 없다', 'empty'); td.colSpan = 5; rows.appendChild(tr); }
+    if (files.length === 0) { var tr = el('tr'); var td = cell(tr, '그림이 없다', 'empty'); td.colSpan = 6; rows.appendChild(tr); }
   }
 
   async function load() {

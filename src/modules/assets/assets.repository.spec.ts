@@ -128,10 +128,11 @@ describeDb('AssetsRepository', () => {
     const ids = await insertAssets(db, ['items/used.png', 'bosses/old.webp'])
     await insertItems(db, [{ key: 'u', name: '쓰는 아이템', iconAssetId: ids['items/used.png'] }])
     await db.insert(imageCrops).values({
-      kind: 'boss_portrait',
+      type: 'boss_portrait',
       assetId: ids['bosses/old.webp'] ?? '',
-      size: '120% auto',
-      position: '50% 50%',
+      widthPercent: 120,
+      positionXPercent: 50,
+      positionYPercent: 50,
     })
     await expect(repo.remove(ids['items/used.png'] ?? '')).rejects.toEqual(
       new AssetInUse([{ kind: '아이템', name: '쓰는 아이템', itemCategory: null }]),

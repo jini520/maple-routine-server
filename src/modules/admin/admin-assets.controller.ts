@@ -22,21 +22,21 @@ import { AssetNotFound } from '../assets/asset-refs'
 import { AssetStore } from '../assets/asset-store'
 import { AssetInUse, AssetsRepository } from '../assets/assets.repository'
 import {
-  IMAGE_CROP_KINDS,
+  IMAGE_CROP_TYPES,
   type ImageCrop,
-  type ImageCropKind,
+  type ImageCropType,
   ImageCropsRepository,
 } from '../assets/image-crops.repository'
 import { ItemGroupsRepository } from '../items/item-groups.repository'
 import { ASSETS_HTML } from './views/assets'
 
-/** 앱의 크롭 계산(`lib/image-crop.ts`)이 읽는 두 문법. 다른 값은 앱이 기본 크롭으로 떨어뜨리므로 쓰기 때 막는다. */
+/** 폭과 위치. 놓이는 자리에 대한 % 다. 위치는 그림을 밀어 보이는 곳을 고르므로 음수도 된다. */
 const cropBody = z.object({
-  size: z.string().regex(/^\d+(\.\d+)?% auto$/),
-  position: z.string().regex(/^-?\d+(\.\d+)?% -?\d+(\.\d+)?%$/),
+  widthPercent: z.number().positive().max(1000),
+  positionXPercent: z.number().min(-1000).max(1000),
+  positionYPercent: z.number().min(-1000).max(1000),
 })
-const cropKindParam = z.enum(IMAGE_CROP_KINDS)
-const cropSlugParam = z.string().min(1).max(100)
+const cropTypeParam = z.enum(IMAGE_CROP_TYPES)
 const assetIdParam = z.string().uuid()
 /** 빈 이름은 비우기다. 비면 화면이 쓰는 곳의 이름을 보인다. */
 const nameBody = z.object({
@@ -75,7 +75,7 @@ export class AdminAssetsController {
       this.crops.section(),
       this.groups.tree(),
     ])
-    return { updatedAt: section.updatedAt, categories, rows, crops: crops.crops }
+    return { updatedAt: section.updatedAt, categories, rows, crops: crops.imageCrops }
   }
 
   @Put('assets/:id/name')
@@ -136,15 +136,15 @@ export class AdminAssetsController {
     return { ...key, sha256, result }
   }
 
-  @Put('image-crops/:kind/:slug')
+  @Put('image-crops/:type/:assetId')
   @HttpCode(204)
   async putCrop(
-    @Param('kind', new ZodValidationPipe(cropKindParam)) kind: ImageCropKind,
-    @Param('slug', new ZodValidationPipe(cropSlugParam)) slug: string,
+    @Param('type', new ZodValidationPipe(cropTypeParam)) type: ImageCropType,
+    @Param('assetId', new ZodValidationPipe(assetIdParam)) assetId: string,
     @Body(new ZodValidationPipe(cropBody)) body: ImageCrop,
   ): Promise<void> {
     try {
-      await this.crops.put(kind, slug.normalize('NFC'), body)
+      await this.crops.put(type, assetId, body)
     } catch (error) {
       if (error instanceof AssetNotFound)
         throw new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
@@ -153,13 +153,13 @@ export class AdminAssetsController {
   }
 
   /** 줄을 지우면 앱은 그 그림을 기본 크롭(cover · 가운데)으로 그린다. 없으면 404 다. */
-  @Delete('image-crops/:kind/:slug')
+  @Delete('image-crops/:type/:assetId')
   @HttpCode(204)
   async removeCrop(
-    @Param('kind', new ZodValidationPipe(cropKindParam)) kind: ImageCropKind,
-    @Param('slug', new ZodValidationPipe(cropSlugParam)) slug: string,
+    @Param('type', new ZodValidationPipe(cropTypeParam)) type: ImageCropType,
+    @Param('assetId', new ZodValidationPipe(assetIdParam)) assetId: string,
   ): Promise<void> {
-    if (!(await this.crops.remove(kind, slug.normalize('NFC'))))
-      throw new NotFoundException(`크롭이 없다: ${kind}/${slug}`)
+    if (!(await this.crops.remove(type, assetId)))
+      throw new NotFoundException(`크롭이 없다: ${type}/${assetId}`)
   }
 }

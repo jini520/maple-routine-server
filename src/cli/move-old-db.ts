@@ -69,7 +69,14 @@ export interface MoveResult {
   mvpGrades: number
   gameRules: number
   gameDataSectionUpdates: number
+  imageCrops: number
+  notices: number
+  faqSheets: number
+  faqItems: number
 }
+
+/** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
+export class UnknownCropValue extends Error {}
 
 /** 옛 DB 에 게임 규칙 줄 하나가 없다. message 가 그 key 다. */
 export class MissingGameRule extends Error {}
@@ -154,6 +161,10 @@ const MOVED_TABLES = [
   schema.mvpGrades,
   schema.gameRules,
   schema.gameDataSectionUpdates,
+  schema.imageCrops,
+  schema.notices,
+  schema.faqSheets,
+  schema.faqItems,
 ]
 
 /**
@@ -330,6 +341,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const enhancement = await enhancementCostRows(oldDb)
   const rules = await gameRuleRow(oldDb)
   const sectionUpdates = await sectionUpdateRows(oldDb)
+  const ops = await operationRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -378,6 +390,10 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.mvpGrades, enhancement.mvpGrades)
     await insertAll(tx, schema.gameRules, [rules])
     await insertAll(tx, schema.gameDataSectionUpdates, sectionUpdates)
+    await insertAll(tx, schema.imageCrops, ops.imageCrops)
+    await insertAll(tx, schema.notices, ops.notices)
+    await insertAll(tx, schema.faqSheets, ops.faqSheets)
+    await insertAll(tx, schema.faqItems, ops.faqItems)
   })
   return {
     assets: assets.length,
@@ -425,6 +441,74 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     mvpGrades: enhancement.mvpGrades.length,
     gameRules: 1,
     gameDataSectionUpdates: sectionUpdates.length,
+    imageCrops: ops.imageCrops.length,
+    notices: ops.notices.length,
+    faqSheets: ops.faqSheets.length,
+    faqItems: ops.faqItems.length,
+  }
+}
+
+const CROP_WIDTH = /^(\d+(?:\.\d+)?)% auto$/
+const CROP_POSITION = /^(-?\d+(?:\.\d+)?)% (-?\d+(?:\.\d+)?)%$/
+
+/**
+ * 크롭 · 공지 · FAQ 의 새 줄. 줄 id 는 그대로다. 크롭의 CSS 글자는 숫자 셋으로 나누고, 앱이 읽지 않는 파티 모달 띠 줄은
+ * 옮기지 않는다. FAQ 답의 문단 블록은 빈 줄로 이은 글이 된다. 공지는 칸 이름만 바뀌고 넥슨 id 칸을 버린다.
+ */
+async function operationRows(oldDb: OldDb) {
+  const [crops, notices, sheets, items] = await Promise.all([
+    oldDb.select().from(oldSchema.imageCrops),
+    oldDb.select().from(oldSchema.notices),
+    oldDb.select().from(oldSchema.faqSheets),
+    oldDb.select().from(oldSchema.faqItems),
+  ])
+  const imageCrops = crops.flatMap((c) => {
+    if (c.kind === 'boss_portrait_modal') return []
+    const width = CROP_WIDTH.exec(c.size)
+    const position = CROP_POSITION.exec(c.position)
+    if (width === null || position === null)
+      throw new UnknownCropValue(`${c.kind} ${c.size} / ${c.position}`)
+    return [
+      {
+        id: c.id,
+        type: c.kind,
+        assetId: c.assetId,
+        widthPercent: Number(width[1]),
+        positionXPercent: Number(position[1]),
+        positionYPercent: Number(position[2]),
+        updatedAt: c.updatedAt,
+      },
+    ]
+  })
+  return {
+    imageCrops,
+    notices: notices.map((n) => ({
+      id: n.id,
+      key: n.noticeKey,
+      type: n.kind,
+      title: n.title,
+      body: n.body,
+      blocks: n.blocks,
+      markdown: n.markdown,
+      link: n.link,
+      publishedAt: n.publishedAt,
+      startsAt: n.startsAt,
+      endsAt: n.endsAt,
+      scheduledAt: n.scheduledAt,
+      sentAt: n.sentAt,
+      pushTitle: n.pushTitle,
+      pushBody: n.pushBody,
+      fetchedAt: n.fetchedAt,
+      detailFetchedAt: n.detailFetchedAt,
+    })),
+    faqSheets: sheets,
+    faqItems: items.map((i) => ({
+      id: i.id,
+      sheetId: i.sheetId,
+      sortOrder: i.sortOrder,
+      question: i.question,
+      answer: i.answer.map((block) => block.text).join('\n\n'),
+    })),
   }
 }
 

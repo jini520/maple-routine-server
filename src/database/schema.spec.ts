@@ -60,6 +60,10 @@ const CONVERTED = [
   'mvp_grades',
   'game_rules',
   'game_data_section_updates',
+  'image_crops',
+  'notices',
+  'faq_sheets',
+  'faq_items',
 ]
 
 interface DesignColumn {

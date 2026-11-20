@@ -7,7 +7,6 @@ import {
   imageSize,
   parseAssetKey,
   parseAssetPath,
-  refCandidates,
   sniffImage,
 } from './asset-paths'
 
@@ -57,20 +56,6 @@ describe('parseAssetPath', () => {
   // 옛 DB 를 옮길 때 폴더가 분류로 읽히지 않는 그림이 있으면 옮기기가 멈춘다.
   it('분류마다 옛 폴더가 하나씩 있다', () => {
     expect(Object.values(FOLDER_CATEGORIES).sort()).toEqual(Object.keys(ASSET_CATEGORIES).sort())
-  })
-})
-
-describe('refCandidates', () => {
-  it('slug 는 분류의 확장자마다, fileName 은 분류마다 후보를 낸다', () => {
-    expect(refCandidates('bossPortrait', 'bellona')).toEqual([
-      { category: 'boss', fileName: 'bellona', extension: 'webp' },
-      { category: 'boss', fileName: 'bellona', extension: 'png' },
-    ])
-    expect(refCandidates('itemIcon', 'ring.png')).toEqual([
-      { category: 'item', fileName: 'ring', extension: 'png' },
-      { category: 'item_ring', fileName: 'ring', extension: 'png' },
-    ])
-    expect(refCandidates('itemIcon', 'ring')).toEqual([])
   })
 })
 

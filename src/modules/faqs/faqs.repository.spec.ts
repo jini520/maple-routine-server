@@ -2,21 +2,14 @@ import { count, eq } from 'drizzle-orm'
 
 import { faqItems, gameDataSectionUpdates } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
-import { type FaqBlock, FaqSheetExists, FaqsRepository, NoFaqSheet } from './faqs.repository'
+import { FaqSheetExists, FaqsRepository, NoFaqSheet } from './faqs.repository'
 
-const paragraph = (text: string): FaqBlock => ({ kind: 'paragraph', text })
-const addBoss = {
-  question: '보스는 어떻게 더하나요?',
-  answer: [paragraph('추가 버튼을 누릅니다.')],
-}
+const addBoss = { question: '보스는 어떻게 더하나요?', answer: '추가 버튼을 누릅니다.' }
 const hideBoss = {
   question: '보스를 숨길 수 있나요?',
-  answer: [paragraph('꺼 두면 숨겨집니다.'), paragraph('다시 켜면 보입니다.')],
+  answer: '꺼 두면 숨겨집니다.\n\n다시 켜면 보입니다.',
 }
-const whatToday = {
-  question: 'today에서는 무엇을 할 수 있나요?',
-  answer: [paragraph('오늘 할 일')],
-}
+const whatToday = { question: 'today에서는 무엇을 할 수 있나요?', answer: '오늘 할 일' }
 
 describeDb('FaqsRepository', () => {
   let db: TestDb
@@ -42,21 +35,28 @@ describeDb('FaqsRepository', () => {
     return { addBoss: a.id, hideBoss: h.id, whatToday: t.id }
   }
 
-  it('칸은 묶음 차례대로, 묶음 안에서는 문항 차례대로 문항을 평평하게 낸다. 문항이 없는 묶음도 낸다', async () => {
-    expect(await repo.section()).toEqual({ updatedAt: null, sheets: [], items: [] })
+  it('칸은 표 이름의 배열에 묶음 차례 · 문항 차례로 내고 문항은 묶음을 줄 id 로 가리킨다. 문항이 없는 묶음도 낸다', async () => {
+    expect(await repo.section()).toEqual({ updatedAt: null, faqSheets: [], faqItems: [] })
     await seed()
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.sheets).toEqual([
-      { key: 'today', title: 'today' },
-      { key: 'boss-manage', title: '보스 관리' },
-      { key: 'settings-theme', title: '테마' },
+    expect(section.faqSheets.map((s) => [s.key, s.title])).toEqual([
+      ['today', 'today'],
+      ['boss-manage', '보스 관리'],
+      ['settings-theme', '테마'],
     ])
-    expect(section.items).toEqual([
-      { sheet: 'today', ...whatToday },
-      { sheet: 'boss-manage', ...addBoss },
-      { sheet: 'boss-manage', ...hideBoss },
+    const id = (key: string) => section.faqSheets.find((s) => s.key === key)?.id
+    expect(section.faqItems).toEqual([
+      { sheetId: id('today'), ...whatToday },
+      { sheetId: id('boss-manage'), ...addBoss },
+      { sheetId: id('boss-manage'), ...hideBoss },
+    ])
+    // 관리 화면은 같은 줄을 묶음 key 로 잇는다.
+    expect((await repo.adminRows()).items.map((i) => [i.sheet, i.question])).toEqual([
+      ['today', whatToday.question],
+      ['boss-manage', addBoss.question],
+      ['boss-manage', hideBoss.question],
     ])
   })
 
@@ -71,8 +71,8 @@ describeDb('FaqsRepository', () => {
     expect(await repo.moveItem('00000000-0000-4000-8000-000000000000', 'up')).toBe(false)
 
     const section = await repo.section()
-    expect(section.sheets.map((s) => s.key)).toEqual(['boss-manage', 'today', 'settings-theme'])
-    expect(section.items.map((i) => i.question)).toEqual([
+    expect(section.faqSheets.map((s) => s.key)).toEqual(['boss-manage', 'today', 'settings-theme'])
+    expect(section.faqItems.map((i) => i.question)).toEqual([
       hideBoss.question,
       addBoss.question,
       whatToday.question,
@@ -88,9 +88,7 @@ describeDb('FaqsRepository', () => {
     await expect(repo.createItem('nobody', addBoss)).rejects.toBeInstanceOf(NoFaqSheet)
     expect(await repo.updateSheet('today', { title: '오늘' })).toBe(true)
     expect(await repo.updateSheet('nobody', { title: '누구' })).toBe(false)
-    expect(
-      await repo.updateItem(ids.addBoss, { question: '보스 추가', answer: [paragraph('버튼')] }),
-    ).toBe(true)
+    expect(await repo.updateItem(ids.addBoss, { question: '보스 추가', answer: '버튼' })).toBe(true)
     expect(await repo.updateItem('00000000-0000-4000-8000-000000000000', addBoss)).toBe(false)
 
     const rows = await repo.adminRows()
@@ -99,7 +97,7 @@ describeDb('FaqsRepository', () => {
       id: ids.addBoss,
       sheet: 'boss-manage',
       question: '보스 추가',
-      answer: [paragraph('버튼')],
+      answer: '버튼',
     })
   })
 
@@ -112,8 +110,8 @@ describeDb('FaqsRepository', () => {
     expect(await repo.removeSheet('boss-manage')).toBe(false)
 
     const section = await repo.section()
-    expect(section.sheets.map((s) => s.key)).toEqual(['today', 'settings-theme'])
-    expect(section.items).toEqual([])
+    expect(section.faqSheets.map((s) => s.key)).toEqual(['today', 'settings-theme'])
+    expect(section.faqItems).toEqual([])
     const [left] = await db.select({ n: count() }).from(faqItems)
     expect(left?.n).toBe(0)
   })

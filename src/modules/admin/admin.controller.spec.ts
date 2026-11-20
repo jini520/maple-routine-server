@@ -77,7 +77,11 @@ import {
   ManualCompletionRepository,
 } from '../manual-completion/manual-completion.repository'
 import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
-import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
+import {
+  AlreadyPublished,
+  OperatorNoticesService,
+  SchedulePassed,
+} from '../notices/operator-notices.service'
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { AdminController } from './admin.controller'
 import { UsageDashboardService } from './usage-dashboard.service'
@@ -138,7 +142,7 @@ describe('AdminController', () => {
     create: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
-    cancelSchedule: jest.fn(),
+    publishNow: jest.fn(),
   }
   const prices = { items: jest.fn(), points: jest.fn(), periods: jest.fn(), recent: jest.fn() }
   const market = { scopes: jest.fn(), overview: jest.fn(), detail: jest.fn() }
@@ -637,13 +641,13 @@ describe('AdminController', () => {
       })
     })
 
-    it('POST /admin/notices 는 검사한 본문을 서비스에 넘기고 201 이다', async () => {
+    it('POST /admin/notices 는 올릴 시각과 알림 문구를 서비스에 넘기고 201 이다', async () => {
       notices.create.mockResolvedValue({ id: ROW, noticeKey: 'k', messageId: 'm' })
 
       const res = await app.inject({
         method: 'POST',
         url: '/admin/notices',
-        payload: { ...body, push: { title: '제목', scheduledAt: '2026-12-01T10:00:00+09:00' } },
+        payload: { ...body, publishAt: '2026-12-01T10:00:00+09:00', push: { title: '제목' } },
       })
 
       expect(res.statusCode).toBe(201)
@@ -652,7 +656,8 @@ describe('AdminController', () => {
         title: '점검',
         markdown: '밤 10시',
         link: null,
-        push: { title: '제목', body: null, scheduledAt: new Date('2026-12-01T01:00:00Z') },
+        publishAt: new Date('2026-12-01T01:00:00Z'),
+        push: { title: '제목', body: null },
       })
     })
 
@@ -681,9 +686,16 @@ describe('AdminController', () => {
       const passed = await app.inject({
         method: 'POST',
         url: '/admin/notices',
-        payload: { ...body, push: { scheduledAt: '2020-01-01T00:00:00Z' } },
+        payload: { ...body, publishAt: '2020-01-01T00:00:00Z' },
       })
       expect(passed.statusCode).toBe(400)
+      notices.update.mockRejectedValueOnce(new AlreadyPublished())
+      const published = await app.inject({
+        method: 'PATCH',
+        url: `/admin/notices/${ROW}`,
+        payload: { ...body, publishAt: '2030-01-01T00:00:00Z' },
+      })
+      expect(published.statusCode).toBe(409)
 
       const noTitle = await app.inject({
         method: 'POST',
@@ -717,6 +729,7 @@ describe('AdminController', () => {
         title: '점검',
         markdown: '밤 10시',
         link: null,
+        publishAt: null,
         push: null,
       })
 
@@ -750,7 +763,7 @@ describe('AdminController', () => {
       expect(notices.create).not.toHaveBeenCalled()
     })
 
-    it('DELETE 둘은 204 이고 없으면 404 다', async () => {
+    it('지우기와 지금 올리기는 204 이고 없으면 404, 이미 올라간 공지를 지금 올리면 409 다', async () => {
       notices.remove.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
       expect(
         (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}` })).statusCode,
@@ -759,14 +772,14 @@ describe('AdminController', () => {
         (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}` })).statusCode,
       ).toBe(404)
 
-      notices.cancelSchedule.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}/schedule` })).statusCode,
-      ).toBe(204)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}/schedule` })).statusCode,
-      ).toBe(404)
-      expect(notices.cancelSchedule).toHaveBeenCalledWith(ROW)
+      const publish = async () =>
+        (await app.inject({ method: 'POST', url: `/admin/notices/${ROW}/publish` })).statusCode
+      notices.publishNow.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+      expect(await publish()).toBe(204)
+      expect(await publish()).toBe(404)
+      expect(notices.publishNow).toHaveBeenCalledWith(ROW)
+      notices.publishNow.mockRejectedValueOnce(new AlreadyPublished())
+      expect(await publish()).toBe(409)
     })
   })
 
@@ -1629,13 +1642,11 @@ describe('AdminController', () => {
       expect((await createSheet({ key: 'boss-manage', title: '보스 관리' })).statusCode).toBe(409)
     })
 
-    it('답은 빈 줄로 나눈 문단마다 앞뒤 공백을 걷어 문단 블록이 되고, 빈 문단은 버린다', async () => {
+    // 앱은 빈 줄에서 문단을 나눠 그린다. 빈 줄이 여럿이거나 공백만 든 줄이 섞이면 빈 문단이 그려진다.
+    it('답은 빈 줄로 나눈 문단마다 앞뒤 공백을 걷고 빈 문단을 버려 빈 줄 하나로 이은 글이 된다', async () => {
       const answer =
         '  추가 버튼을 누릅니다.\n이름을 고릅니다.  \n\n \n\n  다시 켜면 보입니다. \n\n'
-      const blocks = [
-        { kind: 'paragraph', text: '추가 버튼을 누릅니다.\n이름을 고릅니다.' },
-        { kind: 'paragraph', text: '다시 켜면 보입니다.' },
-      ]
+      const blocks = '추가 버튼을 누릅니다.\n이름을 고릅니다.\n\n다시 켜면 보입니다.'
       faqRepo.createItem.mockResolvedValue({ id: ROW })
       expect((await createItem({ question: ' 보스는 어떻게 더하나요? ', answer })).statusCode).toBe(
         201,

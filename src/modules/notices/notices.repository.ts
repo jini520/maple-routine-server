@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { notices } from '../../database/schema'
@@ -13,7 +13,6 @@ export interface NoticeRow {
   title: string
   body: string | null
   link: string | null
-  sourceId: number | null
   publishedAt: Date
   startsAt: Date | null
   endsAt: Date | null
@@ -39,7 +38,6 @@ export interface NewNotice {
   publishedAt: Date
   body?: string | null
   link?: string | null
-  sourceId?: number | null
   startsAt?: Date | null
   endsAt?: Date | null
   blocks?: NoticeBlock[] | null
@@ -63,12 +61,11 @@ export interface ListedNotice {
 
 const ROW_COLUMNS = {
   id: notices.id,
-  noticeKey: notices.noticeKey,
-  kind: notices.kind,
+  noticeKey: notices.key,
+  kind: notices.type,
   title: notices.title,
   body: notices.body,
   link: notices.link,
-  sourceId: notices.sourceId,
   publishedAt: notices.publishedAt,
   startsAt: notices.startsAt,
   endsAt: notices.endsAt,
@@ -81,18 +78,21 @@ const ROW_COLUMNS = {
 const DETAIL_COLUMNS = { ...ROW_COLUMNS, blocks: notices.blocks }
 
 /** 상세의 이벤트 시작일. 없으면 올린 날짜다. 썬데이 기록의 정렬 축이다. */
+/** 게시 시각이 지났다. 예약한 운영자 공지는 그 시각 전에 앱에 보이지 않는다. */
+const PUBLISHED = lte(notices.publishedAt, sql`now()`)
+
 const STARTS_OR_PUBLISHED = sql`coalesce(${notices.startsAt}, ${notices.publishedAt})`
 
 @Injectable()
 export class NoticesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** 최근 것부터. kinds 가 null 이면 전 분류다. */
+  /** 앱이 받는 목록. 최근 것부터이고 게시 시각이 지나지 않은 예약 공지는 뺀다. kinds 가 null 이면 전 분류다. */
   list(kinds: readonly NoticeKind[] | null, limit: number): Promise<NoticeRow[]> {
     return this.db
       .select(ROW_COLUMNS)
       .from(notices)
-      .where(kinds === null ? undefined : inArray(notices.kind, [...kinds]))
+      .where(and(PUBLISHED, kinds === null ? undefined : inArray(notices.type, [...kinds])))
       .orderBy(desc(notices.publishedAt), desc(notices.id))
       .limit(limit)
   }
@@ -101,7 +101,7 @@ export class NoticesRepository {
     const [row] = await this.db
       .select(DETAIL_COLUMNS)
       .from(notices)
-      .where(eq(notices.noticeKey, noticeKey))
+      .where(and(eq(notices.key, noticeKey), PUBLISHED))
       .limit(1)
     return row === undefined ? null : asDetail(row)
   }
@@ -110,7 +110,7 @@ export class NoticesRepository {
     const rows = await this.db
       .select({ id: notices.id })
       .from(notices)
-      .where(eq(notices.kind, kind))
+      .where(eq(notices.type, kind))
       .limit(1)
     return rows.length > 0
   }
@@ -118,9 +118,9 @@ export class NoticesRepository {
   async knownKeys(keys: readonly string[]): Promise<Set<string>> {
     if (keys.length === 0) return new Set()
     const rows = await this.db
-      .select({ noticeKey: notices.noticeKey })
+      .select({ noticeKey: notices.key })
       .from(notices)
-      .where(inArray(notices.noticeKey, [...keys]))
+      .where(inArray(notices.key, [...keys]))
     return new Set(rows.map((row) => row.noticeKey))
   }
 
@@ -128,13 +128,12 @@ export class NoticesRepository {
     const [row] = await this.db
       .insert(notices)
       .values({
-        noticeKey: input.noticeKey,
-        kind: input.kind,
+        key: input.noticeKey,
+        type: input.kind,
         title: input.title,
         publishedAt: input.publishedAt,
         body: input.body ?? null,
         link: input.link ?? null,
-        sourceId: input.sourceId ?? null,
         startsAt: input.startsAt ?? null,
         endsAt: input.endsAt ?? null,
         blocks: input.blocks ?? null,
@@ -158,7 +157,7 @@ export class NoticesRepository {
         await tx
           .update(notices)
           .set({ title: row.title, link: row.link, publishedAt: row.publishedAt, fetchedAt: at })
-          .where(and(eq(notices.noticeKey, row.noticeKey), sql`${notices.kind} <> 'app'`))
+          .where(and(eq(notices.key, row.noticeKey), sql`${notices.type} <> 'app'`))
       }
     })
   }
@@ -167,7 +166,7 @@ export class NoticesRepository {
   async purgeStale(before: Date): Promise<number> {
     const rows = await this.db
       .delete(notices)
-      .where(and(sql`${notices.kind} <> 'app'`, lt(notices.fetchedAt, before)))
+      .where(and(sql`${notices.type} <> 'app'`, lt(notices.fetchedAt, before)))
       .returning({ id: notices.id })
     return rows.length
   }
@@ -176,9 +175,9 @@ export class NoticesRepository {
   async staleDetailKeys(keys: readonly string[], before: Date): Promise<Set<string>> {
     if (keys.length === 0) return new Set()
     const rows = await this.db
-      .select({ noticeKey: notices.noticeKey })
+      .select({ noticeKey: notices.key })
       .from(notices)
-      .where(and(inArray(notices.noticeKey, [...keys]), lt(notices.detailFetchedAt, before)))
+      .where(and(inArray(notices.key, [...keys]), lt(notices.detailFetchedAt, before)))
     return new Set(rows.map((row) => row.noticeKey))
   }
 
@@ -196,7 +195,7 @@ export class NoticesRepository {
         endsAt: detail.endsAt ?? null,
         detailFetchedAt: at,
       })
-      .where(eq(notices.noticeKey, noticeKey))
+      .where(eq(notices.key, noticeKey))
   }
 
   async markSent(id: string, at: Date): Promise<void> {
@@ -210,11 +209,11 @@ export class NoticesRepository {
   }): Promise<{ day: string; kind: NoticeKind; count: number }[]> {
     const day = sql<string>`to_char(${notices.sentAt} at time zone 'Asia/Seoul', 'YYYY-MM-DD')`
     return this.db
-      .select({ day, kind: notices.kind, count: sql<number>`count(*)::int` })
+      .select({ day, kind: notices.type, count: sql<number>`count(*)::int` })
       .from(notices)
       .where(and(gte(notices.sentAt, range.since), lt(notices.sentAt, range.until)))
-      .groupBy(day, notices.kind)
-      .orderBy(sql`1`, notices.kind)
+      .groupBy(day, notices.type)
+      .orderBy(sql`1`, notices.type)
   }
 
   /** 운영자 공지만 최근 것부터. 관리 화면이 읽는다. */
@@ -222,7 +221,7 @@ export class NoticesRepository {
     return this.db
       .select({ ...ROW_COLUMNS, markdown: notices.markdown })
       .from(notices)
-      .where(eq(notices.kind, 'app'))
+      .where(eq(notices.type, 'app'))
       .orderBy(desc(notices.publishedAt), desc(notices.id))
       .limit(limit)
   }
@@ -233,7 +232,7 @@ export class NoticesRepository {
     return row ?? null
   }
 
-  /** 제목 · 내용 · 링크를 간다. published_at 은 목록의 정렬 축이라 안 건드린다. 알림 문구는 보냈을 때만 덮는다. */
+  /** 제목 · 내용 · 링크를 간다. 게시 시각과 알림 예약은 예약한 공지에서만 넘겨 받는다. 알림 문구는 넘겼을 때만 덮는다. */
   async updateApp(
     id: string,
     patch: {
@@ -244,6 +243,8 @@ export class NoticesRepository {
       link: string | null
       pushTitle?: string | null
       pushBody?: string | null
+      publishedAt?: Date
+      scheduledAt?: Date | null
     },
   ): Promise<boolean> {
     const rows = await this.db
@@ -254,18 +255,13 @@ export class NoticesRepository {
     return rows.length > 0
   }
 
-  async deleteApp(id: string): Promise<boolean> {
-    const rows = await this.db.delete(notices).where(appRow(id)).returning({ id: notices.id })
-    return rows.length > 0
+  /** 예약한 공지의 게시 시각과 알림 예약을 바꾼다. 지금 올리기가 부른다. */
+  async setPublishedAt(id: string, publishedAt: Date, scheduledAt: Date | null): Promise<void> {
+    await this.db.update(notices).set({ publishedAt, scheduledAt }).where(appRow(id))
   }
 
-  /** 아직 안 나간 예약을 내린다. 공지는 남는다. 이미 나갔거나 예약이 없으면 false 다. */
-  async cancelSchedule(id: string): Promise<boolean> {
-    const rows = await this.db
-      .update(notices)
-      .set({ scheduledAt: null })
-      .where(and(appRow(id), isNotNull(notices.scheduledAt), isNull(notices.sentAt)))
-      .returning({ id: notices.id })
+  async deleteApp(id: string): Promise<boolean> {
+    const rows = await this.db.delete(notices).where(appRow(id)).returning({ id: notices.id })
     return rows.length > 0
   }
 
@@ -274,7 +270,7 @@ export class NoticesRepository {
     return this.db
       .select(ROW_COLUMNS)
       .from(notices)
-      .where(and(eq(notices.kind, 'app'), lte(notices.scheduledAt, now), isNull(notices.sentAt)))
+      .where(and(eq(notices.type, 'app'), lte(notices.scheduledAt, now), isNull(notices.sentAt)))
       .orderBy(notices.scheduledAt)
   }
 
@@ -283,7 +279,7 @@ export class NoticesRepository {
     const rows = await this.db
       .select(DETAIL_COLUMNS)
       .from(notices)
-      .where(eq(notices.kind, 'event'))
+      .where(eq(notices.type, 'event'))
       .orderBy(desc(STARTS_OR_PUBLISHED), desc(notices.id))
       .limit(limit)
     return rows.map(asDetail)
@@ -292,7 +288,7 @@ export class NoticesRepository {
 
 /** 운영자 공지 한 줄을 고르는 조건. 넥슨 공지를 지우면 되돌릴 방법이 없어 kind 를 늘 함께 본다. */
 function appRow(id: string) {
-  return and(eq(notices.id, id), eq(notices.kind, 'app'))
+  return and(eq(notices.id, id), eq(notices.type, 'app'))
 }
 
 /** jsonb 칸은 unknown 으로 온다. 쓰는 쪽이 넣은 것이라 블록 배열로 믿는다. */

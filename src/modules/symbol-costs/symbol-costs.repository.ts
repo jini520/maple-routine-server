@@ -4,61 +4,76 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, symbolGroups, symbolLevelCosts, symbols } from '../../database/schema'
-import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { AssetNotFound } from '../assets/asset-refs'
 import { isPeriodText } from '../crystal-prices/period-boundary'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface SymbolGroupView {
+  id: string
   key: string
   name: string
   maxLevel: number
-  defaultFrom: number
-  defaultTo: number
+  defaultFromLevel: number
+  defaultToLevel: number
 }
 
 export interface SymbolView {
+  id: string
+  key: string
+  groupId: string
+  name: string
+  requiredLevel: number
+  iconAssetId: string
+}
+
+export interface SymbolLevelCostView {
+  symbolId: string
+  fromLevel: number
+  costMeso: number
+  validFrom: string | null
+  validUntil: string | null
+}
+
+/** GET /v1/game-data 의 symbolCosts 칸. 비용은 강화 전 레벨마다 한 줄이고 한 조합에 기간 줄이 여럿이다. */
+export interface SymbolCostsSection {
+  updatedAt: string | null
+  symbolGroups: SymbolGroupView[]
+  symbols: SymbolView[]
+  symbolLevelCosts: SymbolLevelCostView[]
+}
+
+export interface SymbolGroupInput {
+  key: string
+  name: string
+  maxLevel: number
+  defaultFromLevel: number
+  defaultToLevel: number
+}
+
+/** 묶음은 key 로 가리킨다. */
+export interface SymbolInput {
   key: string
   group: string
   name: string
   requiredLevel: number
-  iconFile: string
+  iconAssetId: string
 }
 
-export interface SymbolLevelCostView {
-  symbol: string
-  level: number
-  costMeso: number
-  from: string | null
-  until: string | null
-}
-
-/** GET /v1/game-data 의 symbolCosts 칸. 비용은 레벨마다 한 줄이고 한 조합에 기간 줄이 여럿이다. */
-export interface SymbolCostsSection {
-  updatedAt: string | null
-  groups: SymbolGroupView[]
-  /** iconFile 은 옛 앱이 읽는 그림 이름이다 */
-  symbols: (SymbolView & { iconAssetId: string })[]
-  levelCosts: SymbolLevelCostView[]
-}
-
-/** 관리 화면의 묶음 하나. 심볼마다 레벨 줄이 서고 레벨마다 가격 줄 전부가 든다. */
-export interface SymbolAdminGroup extends SymbolGroupView {
-  symbols: (SymbolView & {
+/** 관리 화면의 묶음 하나. 심볼마다 강화 전 레벨 줄이 서고 레벨마다 가격 줄 전부가 든다. */
+export interface SymbolAdminGroup extends SymbolGroupInput {
+  symbols: (SymbolInput & {
     levels: {
-      level: number
-      costs: { id: string; costMeso: number; from: string | null; until: string | null }[]
+      fromLevel: number
+      costs: { id: string; costMeso: number; validFrom: string | null; validUntil: string | null }[]
     }[]
   })[]
 }
-
-export type SymbolGroupInput = SymbolGroupView
-export type SymbolInput = SymbolView
 
 export class SymbolGroupExists extends Error {}
 export class SymbolExists extends Error {}
 export class NoSymbolGroup extends Error {}
 export class NoSymbol extends Error {}
-/** 레벨이 1 보다 작거나 만렙 이상이다. 비용은 max_level - 1 까지만 있다. */
+/** 강화 전 레벨이 1 보다 작거나 만렙 이상이다. 비용은 max_level - 1 까지만 있다. */
 export class LevelOutOfRange extends Error {}
 /** 넣고 나서도 지금 서는 줄이 1 부터 max_level - 1 까지 다 있지 않다. 빈 레벨이 있으면 앱의 구간 합이 틀린다. */
 export class LevelsIncomplete extends Error {}
@@ -77,18 +92,15 @@ export class SymbolCostsRepository {
 
   async section(): Promise<SymbolCostsSection> {
     const [groups, symbolRows, costs, updatedAt] = await Promise.all([
-      this.db
-        .select()
-        .from(symbolGroups)
-        .orderBy(asc(symbolGroups.sortOrder), asc(symbolGroups.key)),
+      this.groupRows(),
       this.symbolRows(),
       this.db
         .select({
-          symbol: symbols.key,
-          level: symbolLevelCosts.level,
+          symbolId: symbolLevelCosts.symbolId,
+          fromLevel: symbolLevelCosts.fromLevel,
           costMeso: symbolLevelCosts.costMeso,
-          from: symbolLevelCosts.from,
-          until: symbolLevelCosts.until,
+          validFrom: symbolLevelCosts.validFrom,
+          validUntil: symbolLevelCosts.validUntil,
         })
         .from(symbolLevelCosts)
         .innerJoin(symbols, eq(symbolLevelCosts.symbolId, symbols.id))
@@ -97,8 +109,37 @@ export class SymbolCostsRepository {
           asc(symbolGroups.sortOrder),
           asc(symbols.sortOrder),
           asc(symbols.key),
-          asc(symbolLevelCosts.level),
-          sql`${symbolLevelCosts.from} asc nulls first`,
+          asc(symbolLevelCosts.fromLevel),
+          sql`${symbolLevelCosts.validFrom} asc nulls first`,
+        ),
+      sectionUpdatedAt(this.db, 'symbolCosts'),
+    ])
+    return {
+      updatedAt,
+      symbolGroups: groups,
+      symbols: symbolRows.map((s) => ({
+        id: s.id,
+        key: s.key,
+        groupId: s.groupId,
+        name: s.name,
+        requiredLevel: s.requiredLevel,
+        iconAssetId: s.iconAssetId,
+      })),
+      symbolLevelCosts: costs,
+    }
+  }
+
+  /** 관리 화면이 부른다. 묶음 → 심볼 → 강화 전 레벨 → 가격 줄이고 레벨은 1 부터 max_level - 1 까지 빈 것도 선다. */
+  async adminRows(): Promise<{ updatedAt: string | null; groups: SymbolAdminGroup[] }> {
+    const [groups, symbolRows, costs, updatedAt] = await Promise.all([
+      this.groupRows(),
+      this.symbolRows(),
+      this.db
+        .select()
+        .from(symbolLevelCosts)
+        .orderBy(
+          asc(symbolLevelCosts.fromLevel),
+          sql`${symbolLevelCosts.validFrom} asc nulls first`,
         ),
       sectionUpdatedAt(this.db, 'symbolCosts'),
     ])
@@ -108,51 +149,27 @@ export class SymbolCostsRepository {
         key: g.key,
         name: g.name,
         maxLevel: g.maxLevel,
-        defaultFrom: g.defaultFrom,
-        defaultTo: g.defaultTo,
-      })),
-      symbols: symbolRows.map((s) => ({
-        key: s.key,
-        group: s.group,
-        name: s.name,
-        requiredLevel: s.requiredLevel,
-        iconFile: s.iconFile,
-        iconAssetId: s.iconAssetId,
-      })),
-      levelCosts: costs,
-    }
-  }
-
-  /** 관리 화면이 부른다. 묶음 → 심볼 → 레벨 → 가격 줄이고 레벨은 1 부터 max_level - 1 까지 빈 것도 선다. */
-  async adminRows(): Promise<{ updatedAt: string | null; groups: SymbolAdminGroup[] }> {
-    const section = await this.section()
-    const ids = await this.db
-      .select({ id: symbolLevelCosts.id, symbolId: symbolLevelCosts.symbolId })
-      .from(symbolLevelCosts)
-    const symbolRows = await this.symbolRows()
-    const rowsOf = await this.db
-      .select()
-      .from(symbolLevelCosts)
-      .orderBy(asc(symbolLevelCosts.level), sql`${symbolLevelCosts.from} asc nulls first`)
-    void ids
-    return {
-      updatedAt: section.updatedAt,
-      groups: section.groups.map((g) => ({
-        ...g,
+        defaultFromLevel: g.defaultFromLevel,
+        defaultToLevel: g.defaultToLevel,
         symbols: symbolRows
-          .filter((s) => s.group === g.key)
+          .filter((s) => s.groupId === g.id)
           .map((s) => ({
             key: s.key,
-            group: s.group,
+            group: g.key,
             name: s.name,
             requiredLevel: s.requiredLevel,
-            iconFile: s.iconFile,
+            iconAssetId: s.iconAssetId,
             levels: Array.from({ length: Math.max(0, g.maxLevel - 1) }, (_, i) => i + 1).map(
-              (level) => ({
-                level,
-                costs: rowsOf
-                  .filter((r) => r.symbolId === s.id && r.level === level)
-                  .map((r) => ({ id: r.id, costMeso: r.costMeso, from: r.from, until: r.until })),
+              (fromLevel) => ({
+                fromLevel,
+                costs: costs
+                  .filter((r) => r.symbolId === s.id && r.fromLevel === fromLevel)
+                  .map((r) => ({
+                    id: r.id,
+                    costMeso: r.costMeso,
+                    validFrom: r.validFrom,
+                    validUntil: r.validUntil,
+                  })),
               }),
             ),
           })),
@@ -191,7 +208,7 @@ export class SymbolCostsRepository {
         .where(eq(symbolGroups.key, key))
       if (group === undefined) return false
       const [top] = await tx
-        .select({ max: sql<number | null>`max(${symbolLevelCosts.level})` })
+        .select({ max: sql<number | null>`max(${symbolLevelCosts.fromLevel})` })
         .from(symbolLevelCosts)
         .innerJoin(symbols, eq(symbolLevelCosts.symbolId, symbols.id))
         .where(eq(symbols.groupId, group.id))
@@ -201,8 +218,8 @@ export class SymbolCostsRepository {
         .set({
           name: input.name,
           maxLevel: input.maxLevel,
-          defaultFrom: input.defaultFrom,
-          defaultTo: input.defaultTo,
+          defaultFromLevel: input.defaultFromLevel,
+          defaultToLevel: input.defaultToLevel,
         })
         .where(eq(symbolGroups.id, group.id))
       await touchSection(tx, 'symbolCosts')
@@ -210,7 +227,10 @@ export class SymbolCostsRepository {
     })
   }
 
-  /** 심볼을 묶음 맨 뒤에 더한다. 비용은 addCosts 가 한 번에 넣는다. 모르는 묶음은 NoSymbolGroup, 같은 key 는 SymbolExists 다. */
+  /**
+   * 심볼을 묶음 맨 뒤에 더한다. 비용은 addCosts 가 한 번에 넣는다. 모르는 묶음은 NoSymbolGroup, 같은 key 는 SymbolExists,
+   * 그림 표에 없는 그림은 AssetNotFound 다.
+   */
   async createSymbol(input: SymbolInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
       const [group] = await tx
@@ -218,6 +238,7 @@ export class SymbolCostsRepository {
         .from(symbolGroups)
         .where(eq(symbolGroups.key, input.group))
       if (group === undefined) throw new NoSymbolGroup(input.group)
+      await requireAsset(tx, input.iconAssetId)
       const [last] = await tx
         .select({ max: sql<number | null>`max(${symbols.sortOrder})` })
         .from(symbols)
@@ -231,7 +252,7 @@ export class SymbolCostsRepository {
             groupId: group.id,
             name: input.name,
             requiredLevel: input.requiredLevel,
-            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+            iconAssetId: input.iconAssetId,
             sortOrder: (last?.max ?? -1) + 1,
           })
           .returning({ id: symbols.id })
@@ -245,15 +266,16 @@ export class SymbolCostsRepository {
     })
   }
 
-  /** 이름 · 착용 레벨 · 그림을 갈아 끼운다. key 와 묶음은 못 바꾼다. 모르면 false 다. */
+  /** 이름 · 착용 레벨 · 그림을 갈아 끼운다. key 와 묶음은 못 바꾼다. 모르면 false, 그림 표에 없는 그림은 AssetNotFound 다. */
   async updateSymbol(key: string, input: Omit<SymbolInput, 'key' | 'group'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
+      await requireAsset(tx, input.iconAssetId)
       const rows = await tx
         .update(symbols)
         .set({
           name: input.name,
           requiredLevel: input.requiredLevel,
-          iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+          iconAssetId: input.iconAssetId,
         })
         .where(eq(symbols.key, key))
         .returning({ id: symbols.id })
@@ -288,53 +310,55 @@ export class SymbolCostsRepository {
   }
 
   /**
-   * 레벨 여럿의 새 비용을 한 번에 적는다. 레벨마다 지금 줄이 있으면 그 줄의 until 을 새 시작으로 닫고 새 줄을 연다.
+   * 강화 전 레벨 여럿의 새 비용을 한 번에 적는다. 레벨마다 지금 줄이 있으면 그 줄의 valid_until 을 새 시작으로 닫고 새 줄을 연다.
    *
    * 첫 줄은 시작이 없어도 된다(처음부터). 지금 줄이 있는 레벨은 시작이 있어야 하고 지금 줄의 시작보다 뒤여야 한다.
    * 넣고 나서 지금 서는 줄이 1 부터 max_level - 1 까지 다 있어야 한다. 새 심볼은 전부를 한 번에 넣는다.
    */
   async addCosts(
     symbolKey: string,
-    input: { from: string | null; costs: { level: number; costMeso: number }[] },
+    input: { validFrom: string | null; costs: { fromLevel: number; costMeso: number }[] },
   ): Promise<{ inserted: number }> {
     const found = await this.symbol(symbolKey)
     if (found === null) throw new NoSymbol(symbolKey)
-    if (input.from !== null && !isPeriodText(input.from)) throw new NotAfterCurrent(input.from)
+    const { validFrom } = input
+    if (validFrom !== null && !isPeriodText(validFrom)) throw new NotAfterCurrent(validFrom)
     const levels = new Set<number>()
     for (const c of input.costs) {
-      if (c.level < 1 || c.level >= found.maxLevel) throw new LevelOutOfRange(`${c.level}`)
-      if (levels.has(c.level)) throw new LevelOutOfRange(`레벨이 겹친다: ${c.level}`)
-      levels.add(c.level)
+      if (c.fromLevel < 1 || c.fromLevel >= found.maxLevel)
+        throw new LevelOutOfRange(`${c.fromLevel}`)
+      if (levels.has(c.fromLevel)) throw new LevelOutOfRange(`레벨이 겹친다: ${c.fromLevel}`)
+      levels.add(c.fromLevel)
     }
     return this.db.transaction(async (tx) => {
       const open = await tx
         .select()
         .from(symbolLevelCosts)
-        .where(and(eq(symbolLevelCosts.symbolId, found.id), isNull(symbolLevelCosts.until)))
+        .where(and(eq(symbolLevelCosts.symbolId, found.id), isNull(symbolLevelCosts.validUntil)))
       for (const c of input.costs) {
-        const current = open.find((r) => r.level === c.level)
+        const current = open.find((r) => r.fromLevel === c.fromLevel)
         if (current !== undefined) {
-          if (input.from === null) throw new NotAfterCurrent('지금 비용이 있어 시작이 있어야 한다')
-          if (current.from !== null && input.from <= current.from)
-            throw new NotAfterCurrent(input.from)
+          if (validFrom === null) throw new NotAfterCurrent('지금 비용이 있어 시작이 있어야 한다')
+          if (current.validFrom !== null && validFrom <= current.validFrom)
+            throw new NotAfterCurrent(validFrom)
           await tx
             .update(symbolLevelCosts)
-            .set({ until: input.from })
+            .set({ validUntil: validFrom })
             .where(eq(symbolLevelCosts.id, current.id))
         }
         await tx.insert(symbolLevelCosts).values({
           symbolId: found.id,
-          level: c.level,
+          fromLevel: c.fromLevel,
           costMeso: c.costMeso,
-          from: input.from,
-          until: null,
+          validFrom,
+          validUntil: null,
         })
       }
       const after = await tx
-        .select({ level: symbolLevelCosts.level })
+        .select({ fromLevel: symbolLevelCosts.fromLevel })
         .from(symbolLevelCosts)
-        .where(and(eq(symbolLevelCosts.symbolId, found.id), isNull(symbolLevelCosts.until)))
-      const standing = new Set(after.map((r) => r.level))
+        .where(and(eq(symbolLevelCosts.symbolId, found.id), isNull(symbolLevelCosts.validUntil)))
+      const standing = new Set(after.map((r) => r.fromLevel))
       for (let level = 1; level < found.maxLevel; level += 1) {
         if (!standing.has(level)) throw new LevelsIncomplete(`${level}`)
       }
@@ -348,9 +372,9 @@ export class SymbolCostsRepository {
     return this.db.transaction(async (tx) => {
       const [row] = await tx.select().from(symbolLevelCosts).where(eq(symbolLevelCosts.id, id))
       if (row === undefined) return false
-      if (row.until !== null) throw new NotLatest(id)
+      if (row.validUntil !== null) throw new NotLatest(id)
       const [previous] =
-        row.from === null
+        row.validFrom === null
           ? []
           : await tx
               .select({ id: symbolLevelCosts.id })
@@ -358,45 +382,48 @@ export class SymbolCostsRepository {
               .where(
                 and(
                   eq(symbolLevelCosts.symbolId, row.symbolId),
-                  eq(symbolLevelCosts.level, row.level),
-                  eq(symbolLevelCosts.until, row.from),
+                  eq(symbolLevelCosts.fromLevel, row.fromLevel),
+                  eq(symbolLevelCosts.validUntil, row.validFrom),
                 ),
               )
       if (previous === undefined) throw new OnlyRow(id)
       await tx.delete(symbolLevelCosts).where(eq(symbolLevelCosts.id, id))
       await tx
         .update(symbolLevelCosts)
-        .set({ until: null })
+        .set({ validUntil: null })
         .where(eq(symbolLevelCosts.id, previous.id))
       await touchSection(tx, 'symbolCosts')
       return true
     })
   }
 
-  private async symbolRows(db: DbOrTx = this.db) {
-    const rows = await db
+  private groupRows(): Promise<SymbolGroupView[]> {
+    return this.db
+      .select({
+        id: symbolGroups.id,
+        key: symbolGroups.key,
+        name: symbolGroups.name,
+        maxLevel: symbolGroups.maxLevel,
+        defaultFromLevel: symbolGroups.defaultFromLevel,
+        defaultToLevel: symbolGroups.defaultToLevel,
+      })
+      .from(symbolGroups)
+      .orderBy(asc(symbolGroups.sortOrder), asc(symbolGroups.key))
+  }
+
+  private symbolRows() {
+    return this.db
       .select({
         id: symbols.id,
         key: symbols.key,
-        group: symbolGroups.key,
+        groupId: symbols.groupId,
         name: symbols.name,
         requiredLevel: symbols.requiredLevel,
-        iconAsset: assetNameColumns(assets),
         iconAssetId: symbols.iconAssetId,
       })
       .from(symbols)
       .innerJoin(symbolGroups, eq(symbols.groupId, symbolGroups.id))
-      .innerJoin(assets, eq(assets.id, symbols.iconAssetId))
       .orderBy(asc(symbolGroups.sortOrder), asc(symbols.sortOrder), asc(symbols.key))
-    return rows.map((r) => ({
-      id: r.id,
-      key: r.key,
-      group: r.group,
-      name: r.name,
-      requiredLevel: r.requiredLevel,
-      iconFile: refValueOf('itemIcon', r.iconAsset),
-      iconAssetId: r.iconAssetId,
-    }))
   }
 
   private async symbol(key: string): Promise<{ id: string; maxLevel: number } | null> {
@@ -407,4 +434,10 @@ export class SymbolCostsRepository {
       .where(eq(symbols.key, key))
     return row ?? null
   }
+}
+
+/** 그림 표에 없는 그림 id 는 AssetNotFound 다. FK 오류로 두면 관리 화면에 500 이 난다. */
+async function requireAsset(tx: DbOrTx, id: string): Promise<void> {
+  const [asset] = await tx.select({ id: assets.id }).from(assets).where(eq(assets.id, id))
+  if (asset === undefined) throw new AssetNotFound(id)
 }

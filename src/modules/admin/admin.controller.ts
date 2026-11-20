@@ -1297,11 +1297,10 @@ export class AdminController {
     }
   }
 
-  /** 심볼을 묶음 맨 뒤에 더한다. 비용은 따로 한 번에 넣는다. 모르는 묶음은 404, 같은 key 는 409 다. */
+  /** 심볼을 묶음 맨 뒤에 더한다. 비용은 따로 한 번에 넣는다. 모르는 묶음은 404, 같은 key 는 409, 그림 표에 없는 그림은 400 이다. */
   @Post('symbol-costs/symbols')
   @HttpCode(201)
   async createSymbol(@Body(new ZodValidationPipe(symbolCreateBody)) body: SymbolCreateBody) {
-    await this.requireAssets([['itemIcon', body.iconFile]])
     try {
       return await this.symbolCosts.createSymbol(body)
     } catch (error) {
@@ -1309,7 +1308,7 @@ export class AdminController {
         throw new NotFoundException(`모르는 묶음이다: ${body.group}`)
       if (error instanceof SymbolExists)
         throw new ConflictException(`이미 있는 심볼이다: ${body.key}`)
-      throw error
+      throw assetRejection(error)
     }
   }
 
@@ -1319,9 +1318,13 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(symbolUpdateBody)) body: SymbolUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([['itemIcon', body.iconFile]])
-    if (!(await this.symbolCosts.updateSymbol(key, body)))
-      throw new NotFoundException(`모르는 심볼이다: ${key}`)
+    let found: boolean
+    try {
+      found = await this.symbolCosts.updateSymbol(key, body)
+    } catch (error) {
+      throw assetRejection(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 심볼이다: ${key}`)
   }
 
   @Post('symbol-costs/symbols/:key/move')
@@ -1334,7 +1337,7 @@ export class AdminController {
       throw new NotFoundException(`모르는 심볼이다: ${key}`)
   }
 
-  /** 레벨 여럿의 새 비용을 한 번에 연다. 지금 줄은 닫힌다. 모르는 심볼은 404, 시작 · 레벨 · 빠진 레벨은 400 이다. */
+  /** 강화 전 레벨 여럿의 새 비용을 한 번에 연다. 지금 줄은 닫힌다. 모르는 심볼은 404, 시작 · 레벨 · 빠진 레벨은 400 이다. */
   @Post('symbol-costs/symbols/:key/costs')
   @HttpCode(201)
   async addSymbolCosts(
@@ -1342,7 +1345,10 @@ export class AdminController {
     @Body(new ZodValidationPipe(symbolCostsBody)) body: SymbolCostsBody,
   ) {
     try {
-      return await this.symbolCosts.addCosts(key, { from: body.from ?? null, costs: body.costs })
+      return await this.symbolCosts.addCosts(key, {
+        validFrom: body.validFrom ?? null,
+        costs: body.costs,
+      })
     } catch (error) {
       if (error instanceof NoSymbol) throw new NotFoundException(`모르는 심볼이다: ${key}`)
       if (error instanceof LevelOutOfRange)

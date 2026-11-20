@@ -54,6 +54,9 @@ export interface MoveResult {
   spendItems: number
   spendItemOptions: number
   spendItemRewardTypes: number
+  symbolGroups: number
+  symbols: number
+  symbolLevelCosts: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -122,6 +125,9 @@ const MOVED_TABLES = [
   schema.spendItems,
   schema.spendItemOptions,
   schema.spendItemRewardTypes,
+  schema.symbolGroups,
+  schema.symbols,
+  schema.symbolLevelCosts,
 ]
 
 /**
@@ -293,6 +299,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const boss = await bossReferenceRows(oldDb, boxedCopyOf)
   const content = await contentRows(oldDb)
   const cashbook = await cashbookReferenceRows(oldDb)
+  const symbol = await symbolRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -327,6 +334,9 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.spendItems, cashbook.spendItems)
     await insertAll(tx, schema.spendItemOptions, cashbook.spendItemOptions)
     await insertAll(tx, schema.spendItemRewardTypes, cashbook.spendItemRewardTypes)
+    await insertAll(tx, schema.symbolGroups, symbol.symbolGroups)
+    await insertAll(tx, schema.symbols, symbol.symbols)
+    await insertAll(tx, schema.symbolLevelCosts, symbol.symbolLevelCosts)
   })
   return {
     assets: assets.length,
@@ -360,6 +370,46 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     spendItems: cashbook.spendItems.length,
     spendItemOptions: cashbook.spendItemOptions.length,
     spendItemRewardTypes: cashbook.spendItemRewardTypes.length,
+    symbolGroups: symbol.symbolGroups.length,
+    symbols: symbol.symbols.length,
+    symbolLevelCosts: symbol.symbolLevelCosts.length,
+  }
+}
+
+/** 심볼 표 셋의 새 줄. 줄 id 는 그대로이고 칸 이름만 바뀐다. */
+async function symbolRows(oldDb: OldDb) {
+  const [groups, symbols, costs] = await Promise.all([
+    oldDb.select().from(oldSchema.symbolGroups),
+    oldDb.select().from(oldSchema.symbols),
+    oldDb.select().from(oldSchema.symbolLevelCosts),
+  ])
+  return {
+    symbolGroups: groups.map((g) => ({
+      id: g.id,
+      key: g.key,
+      name: g.name,
+      maxLevel: g.maxLevel,
+      defaultFromLevel: g.defaultFrom,
+      defaultToLevel: g.defaultTo,
+      sortOrder: g.sortOrder,
+    })),
+    symbols: symbols.map((s) => ({
+      id: s.id,
+      key: s.key,
+      groupId: s.groupId,
+      name: s.name,
+      requiredLevel: s.requiredLevel,
+      iconAssetId: s.iconAssetId,
+      sortOrder: s.sortOrder,
+    })),
+    symbolLevelCosts: costs.map((c) => ({
+      id: c.id,
+      symbolId: c.symbolId,
+      fromLevel: c.level,
+      costMeso: c.costMeso,
+      validFrom: c.from,
+      validUntil: c.until,
+    })),
   }
 }
 

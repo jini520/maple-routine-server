@@ -926,4 +926,87 @@ describeDb('moveOldDb', () => {
       { itemId: lootItem, type: 'consumable', npcPriceMeso: 2750, validFrom: '2026-10-22' },
     ])
   })
+
+  it('심볼: 줄 id 를 두고 묶음의 기본 범위 · 비용의 레벨 · 기간 칸을 새 이름으로 옮긴다', async () => {
+    const icon = await insertOldAsset('items/spec_symbol.webp')
+    const [group] = await oldDb
+      .insert(oldSchema.symbolGroups)
+      .values({
+        key: 'arcane',
+        name: '아케인 심볼',
+        maxLevel: 20,
+        defaultFrom: 7,
+        defaultTo: 12,
+        sortOrder: 0,
+      })
+      .returning({ id: oldSchema.symbolGroups.id })
+    const [symbol] = await oldDb
+      .insert(oldSchema.symbols)
+      .values({
+        key: 'vanishing_journey',
+        groupId: group?.id ?? '',
+        name: '소멸의 여로',
+        requiredLevel: 200,
+        iconAssetId: icon,
+        sortOrder: 0,
+      })
+      .returning({ id: oldSchema.symbols.id })
+    const costs = await oldDb
+      .insert(oldSchema.symbolLevelCosts)
+      .values([
+        { symbolId: symbol?.id ?? '', level: 1, costMeso: 100, until: '2026-09-17' },
+        { symbolId: symbol?.id ?? '', level: 1, costMeso: 120, from: '2026-09-17' },
+      ])
+      .returning({ id: oldSchema.symbolLevelCosts.id })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      symbolGroups: 1,
+      symbols: 1,
+      symbolLevelCosts: 2,
+    })
+    expect(await newDb.select().from(schema.symbolGroups)).toEqual([
+      {
+        id: group?.id,
+        key: 'arcane',
+        name: '아케인 심볼',
+        maxLevel: 20,
+        defaultFromLevel: 7,
+        defaultToLevel: 12,
+        sortOrder: 0,
+      },
+    ])
+    expect(await newDb.select().from(schema.symbols)).toEqual([
+      {
+        id: symbol?.id,
+        key: 'vanishing_journey',
+        groupId: group?.id,
+        name: '소멸의 여로',
+        requiredLevel: 200,
+        iconAssetId: icon,
+        sortOrder: 0,
+      },
+    ])
+    expect(
+      (await newDb.select().from(schema.symbolLevelCosts)).sort((a, b) =>
+        a.costMeso < b.costMeso ? -1 : 1,
+      ),
+    ).toEqual([
+      {
+        id: costs[0]?.id,
+        symbolId: symbol?.id,
+        fromLevel: 1,
+        costMeso: 100,
+        validFrom: null,
+        validUntil: '2026-09-17',
+      },
+      {
+        id: costs[1]?.id,
+        symbolId: symbol?.id,
+        fromLevel: 1,
+        costMeso: 120,
+        validFrom: '2026-09-17',
+        validUntil: null,
+      },
+    ])
+  })
 })

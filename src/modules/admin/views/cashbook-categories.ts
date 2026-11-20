@@ -132,7 +132,10 @@ ${ASSET_PICKER}
     var body = { entryType: v('c-type'), key: v('c-key'), name: v('c-name'), cardTitle: v('c-title'), iconAssetId: state.newIcon, description: v('c-desc'), unit: orNull(v('c-unit')) };
     var r = await call('POST', '/admin/cashbook-categories', body);
     show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
-    if (r.ok) ['c-key', 'c-name', 'c-title', 'c-icon', 'c-desc', 'c-unit'].forEach(function (id) { document.getElementById(id).value = ''; });
+    if (r.ok) {
+      ['c-key', 'c-name', 'c-title', 'c-desc', 'c-unit'].forEach(function (id) { document.getElementById(id).value = ''; });
+      state.newIcon = null; document.getElementById('c-icon').textContent = iconText(null);
+    }
     load();
   });
 

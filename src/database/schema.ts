@@ -821,7 +821,7 @@ export const spendGroups = pgTable('spend_groups', {
     .references(() => cashbookCategories.id),
   /** 하루 목록 카드 첫 줄. */
   cardTitle: text('card_title').notNull(),
-  /** 닫힌 묶음은 앱에서 흐리게 서고 못 고른다. 과거 기록은 그대로다. */
+  /** 앱에서 지금 고를 수 있는 묶음인가. 닫아도 그 묶음으로 적은 기록은 그대로다. */
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull(),
 })

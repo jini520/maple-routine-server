@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import {
+  itemGroups,
   items,
   marketDays,
   marketJudgements,
@@ -10,8 +11,10 @@ import {
   marketRuns,
   maspiBasket,
   maspiDays,
+  tradeGroups,
   worlds,
 } from '../../database/schema'
+import { WORLD_BOUND_TYPE } from '../items/items'
 import type { DayReference, Judgement, MarketRow } from './daily-reference'
 import type { MarketRange } from './market-range'
 
@@ -60,16 +63,17 @@ export class MarketDailyRepository {
       price: number
     }>(sql`
       select dp.item_id, i.key as item_key, dp.ring_level,
-             case when i.world_bound then w.key else w.price_group end as scope,
+             case when g.type = ${WORLD_BOUND_TYPE} then w.key else tg.key end as scope,
              coalesce('a:' || na.nexon_account_id::text, 'm:' || dp.maple_id, 'u:' || dp.user_id::text, 'r:' || dp.id::text) as person,
              to_char((dp.priced_at at time zone 'Asia/Seoul')::date, 'YYYY-MM-DD') as day,
              dp.price_meso::float8 as price
       from drop_prices dp
       join items i on i.id = dp.item_id
+      left join item_groups g on g.id = i.group_id
       join worlds w on w.id = dp.world_id
+      join trade_groups tg on tg.id = w.trade_group_id
       left join nexon_account_maple_ids na on na.maple_id = dp.maple_id
       where dp.record_status = 'completed'
-        and w.price_group is not null
         and dp.priced_at >= (${from}::date)::timestamp at time zone 'Asia/Seoul'
         and dp.priced_at < ((${to}::date + 1)::timestamp at time zone 'Asia/Seoul')
     `)
@@ -240,32 +244,35 @@ export class MarketDailyRepository {
     return row ?? null
   }
 
-  /** 아이템 id → key · 소비 여부 · 이름 */
+  /** 아이템 id → key · 월드마다 재는지 · 이름. 월드마다 재는지는 아이템이 든 묶음의 종류로 안다. */
   async itemsById(ids: string[]): Promise<Map<string, { key: string; worldBound: boolean; name: string }>> {
     if (ids.length === 0) return new Map()
     const rows = await this.db
-      .select({ id: items.id, key: items.key, worldBound: items.worldBound, name: items.name })
+      .select({ id: items.id, key: items.key, type: itemGroups.type, name: items.name })
       .from(items)
+      .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
       .where(inArray(items.id, ids))
-    return new Map(rows.map((r) => [r.id, { key: r.key, worldBound: r.worldBound, name: r.name }]))
+    return new Map(
+      rows.map((r) => [r.id, { key: r.key, worldBound: r.type === WORLD_BOUND_TYPE, name: r.name }]),
+    )
   }
 
   async itemByKey(key: string): Promise<{ id: string; worldBound: boolean } | null> {
     const [row] = await this.db
-      .select({ id: items.id, worldBound: items.worldBound })
+      .select({ id: items.id, type: itemGroups.type })
       .from(items)
+      .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
       .where(eq(items.key, key))
       .limit(1)
-    return row ?? null
+    return row === undefined ? null : { id: row.id, worldBound: row.type === WORLD_BOUND_TYPE }
   }
 
-  /** 시세 범위가 있는 월드. key 와 거래권이다. */
-  async worlds(): Promise<{ key: string; priceGroup: string }[]> {
-    const rows = await this.db
-      .select({ key: worlds.key, priceGroup: worlds.priceGroup })
+  /** 시세 범위가 있는 월드. key 와 거래권 key 다. 거래권이 없는 월드는 시세에서 빠진다. */
+  async worlds(): Promise<{ key: string; tradeGroupKey: string }[]> {
+    return this.db
+      .select({ key: worlds.key, tradeGroupKey: tradeGroups.key })
       .from(worlds)
-      .where(sql`${worlds.priceGroup} is not null`)
+      .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
       .orderBy(asc(worlds.sortOrder), asc(worlds.key))
-    return rows.map((r) => ({ key: r.key, priceGroup: r.priceGroup as string }))
   }
 }

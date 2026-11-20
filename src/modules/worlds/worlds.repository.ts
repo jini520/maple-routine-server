@@ -3,60 +3,70 @@ import { and, asc, eq, ne, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { assets, worldPeriods, worlds } from '../../database/schema'
-import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { assets, tradeGroups, worldOpenPeriods, worlds } from '../../database/schema'
+import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
-export interface WorldView {
-  key: string
-  name: string
-  emblem: string | null
-  challengers: boolean
-  event: boolean
-}
-
-/** 월드가 열린 기간 한 줄. from 은 연 날, until 은 닫힌 다음 날인 KST 글자다. */
-export interface WorldPeriod {
-  from: string
-  until: string
+/** 월드가 열린 기간 한 줄. validFrom 은 연 날, validUntil 은 닫힌 다음 날인 KST 글자다. */
+export interface WorldOpenPeriod {
+  validFrom: string
+  validUntil: string
 }
 
 /** 관리 화면이 고치고 지울 때 가리키는 기간 줄. */
-export interface WorldPeriodRow extends WorldPeriod {
+export interface WorldOpenPeriodRow extends WorldOpenPeriod {
   id: string
+}
+
+/** 게임 데이터 worlds 칸의 월드. 칸 이름은 표를 따르고, 기록은 id 로 가리킨다. 열린 기간은 validFrom 차례다. */
+export interface WorldView {
+  id: string
+  key: string
+  name: string
+  emblemAssetId: string | null
+  isChallengers: boolean
+  isEvent: boolean
+  openPeriods: WorldOpenPeriod[]
 }
 
 /** GET /v1/game-data 의 worlds 칸. 차례가 곧 앱의 월드 차례다. */
 export interface WorldsSection {
   updatedAt: string | null
-  /** emblem 은 옛 앱이 읽는 그림 이름이다. periods 는 from 차례이고 없으면 빈 배열이다 */
-  worlds: (WorldView & { emblemAssetId: string | null; periods: WorldPeriod[] })[]
+  worlds: WorldView[]
 }
 
 /** 관리 화면이 보는 월드. 거래권은 앱에 안 싣고 여기에만 있다. NULL 이면 시세에서 빠진다. */
-export interface WorldAdminView extends WorldView {
-  emblemAssetId: string | null
-  priceGroup: string | null
-  periods: WorldPeriodRow[]
+export interface WorldAdminView extends Omit<WorldView, 'openPeriods'> {
+  tradeGroupKey: string | null
+  openPeriods: WorldOpenPeriodRow[]
 }
 
-/** 거래권을 안 주면 새 월드는 general 이고, 고칠 때는 그대로 둔다. */
-export type WorldInput = WorldView & { priceGroup?: string | null }
+/** 관리 화면의 본문. 거래권은 key 로 받는다. 안 주면 새 월드는 general 이고, 고칠 때는 그대로 둔다. */
+export interface WorldInput {
+  key: string
+  name: string
+  emblemAssetId: string | null
+  isChallengers: boolean
+  isEvent: boolean
+  tradeGroupKey?: string | null
+}
 
 export class WorldExists extends Error {}
 /** 기간을 붙일 월드가 표에 없다. */
 export class NoWorld extends Error {}
-/** until 이 from 보다 뒤가 아니다. */
+/** 거래권 표에 없는 거래권 key 다. message 가 그 값이다. */
+export class NoTradeGroup extends Error {}
+/** validUntil 이 validFrom 보다 뒤가 아니다. */
 export class PeriodNotAfter extends Error {}
 /** 같은 월드의 다른 기간과 겹친다. */
 export class PeriodOverlap extends Error {}
 
-/** 두 기간이 하루라도 함께 드는지. until 은 그 날을 빼므로 앞 until 과 뒤 from 이 같으면 안 겹친다. */
-function overlaps(a: WorldPeriod, b: WorldPeriod): boolean {
-  return a.from < b.until && b.from < a.until
+/** 두 기간이 하루라도 함께 드는지. validUntil 은 그 날을 빼므로 앞 끝과 뒤 시작이 같으면 안 겹친다. */
+function overlaps(a: WorldOpenPeriod, b: WorldOpenPeriod): boolean {
+  return a.validFrom < b.validUntil && b.validFrom < a.validUntil
 }
 
-/** 월드는 더하고 고치고 옮기기만 있다. 기록이 key 를 들어 지우지 않는다. */
+/** 월드는 더하고 고치고 옮기기만 있다. 기록이 줄을 가리켜 지우지 않는다. */
 @Injectable()
 export class WorldsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -66,33 +76,45 @@ export class WorldsRepository {
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'worlds'),
       worlds: rows.map((r) => ({
+        id: r.id,
         key: r.key,
         name: r.name,
-        emblem: r.emblem,
         emblemAssetId: r.emblemAssetId,
-        challengers: r.challengers,
-        event: r.event,
-        periods: r.periods.map(({ from, until }) => ({ from, until })),
+        isChallengers: r.isChallengers,
+        isEvent: r.isEvent,
+        openPeriods: r.openPeriods.map(({ validFrom, validUntil }) => ({ validFrom, validUntil })),
       })),
     }
   }
 
-  /** 관리 화면의 표. section 에 거래권을 더한 것이다. */
-  async adminSection(): Promise<{ updatedAt: string | null; worlds: WorldAdminView[] }> {
-    return { updatedAt: await sectionUpdatedAt(this.db, 'worlds'), worlds: await this.rows() }
+  /** 관리 화면의 표. section 에 거래권과 기간 줄 id 를 더하고, 고를 수 있는 거래권을 함께 낸다. */
+  async adminSection(): Promise<{
+    updatedAt: string | null
+    worlds: WorldAdminView[]
+    tradeGroups: { key: string; name: string }[]
+  }> {
+    const [rows, groups, updatedAt] = await Promise.all([
+      this.rows(),
+      this.db
+        .select({ key: tradeGroups.key, name: tradeGroups.name })
+        .from(tradeGroups)
+        .orderBy(asc(tradeGroups.key)),
+      sectionUpdatedAt(this.db, 'worlds'),
+    ])
+    return { updatedAt, worlds: rows, tradeGroups: groups }
   }
 
   private async rows(): Promise<WorldAdminView[]> {
     const periodRows = await this.db
       .select({
-        id: worldPeriods.id,
-        worldId: worldPeriods.worldId,
-        from: worldPeriods.from,
-        until: worldPeriods.until,
+        id: worldOpenPeriods.id,
+        worldId: worldOpenPeriods.worldId,
+        validFrom: worldOpenPeriods.validFrom,
+        validUntil: worldOpenPeriods.validUntil,
       })
-      .from(worldPeriods)
-      .orderBy(asc(worldPeriods.from))
-    const periodsOf = new Map<string, WorldPeriodRow[]>()
+      .from(worldOpenPeriods)
+      .orderBy(asc(worldOpenPeriods.validFrom))
+    const periodsOf = new Map<string, WorldOpenPeriodRow[]>()
     for (const { worldId, ...period } of periodRows) {
       periodsOf.set(worldId, [...(periodsOf.get(worldId) ?? []), period])
     }
@@ -101,25 +123,15 @@ export class WorldsRepository {
         id: worlds.id,
         key: worlds.key,
         name: worlds.name,
-        emblemAsset: assetNameColumns(assets),
         emblemAssetId: worlds.emblemAssetId,
-        challengers: worlds.challengers,
-        event: worlds.event,
-        priceGroup: worlds.priceGroup,
+        isChallengers: worlds.isChallengers,
+        isEvent: worlds.isEvent,
+        tradeGroupKey: tradeGroups.key,
       })
       .from(worlds)
-      .leftJoin(assets, eq(assets.id, worlds.emblemAssetId))
+      .leftJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
       .orderBy(asc(worlds.sortOrder), asc(worlds.key))
-    return rows.map((r) => ({
-      key: r.key,
-      name: r.name,
-      emblem: optionalRefValueOf('worldEmblem', r.emblemAsset),
-      emblemAssetId: r.emblemAssetId,
-      challengers: r.challengers,
-      event: r.event,
-      priceGroup: r.priceGroup,
-      periods: periodsOf.get(r.id) ?? [],
-    }))
+    return rows.map((r) => ({ ...r, openPeriods: periodsOf.get(r.id) ?? [] }))
   }
 
   /** 맨 뒤에 더한다. 같은 key 는 WorldExists 다. */
@@ -132,7 +144,15 @@ export class WorldsRepository {
       try {
         ;[row] = await tx
           .insert(worlds)
-          .values({ ...(await columnsOf(tx, input)), sortOrder: (last?.max ?? -1) + 1 })
+          .values({
+            ...(await columnsOf(tx, {
+              ...input,
+              // null 은 시세에서 빼는 월드(스페셜)라 기본값으로 바꾸지 않는다.
+              tradeGroupKey: input.tradeGroupKey === undefined ? 'general' : input.tradeGroupKey,
+            })),
+            key: input.key,
+            sortOrder: (last?.max ?? -1) + 1,
+          })
           .returning({ id: worlds.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new WorldExists(input.key)
@@ -178,7 +198,7 @@ export class WorldsRepository {
   }
 
   /** 기간을 더한다. 모르는 월드는 NoWorld, 순서가 틀리면 PeriodNotAfter, 겹치면 PeriodOverlap 이다. */
-  async addPeriod(key: string, period: WorldPeriod): Promise<{ id: string }> {
+  async addPeriod(key: string, period: WorldOpenPeriod): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
       const [world] = await tx
         .select({ id: worlds.id })
@@ -188,9 +208,9 @@ export class WorldsRepository {
       if (world === undefined) throw new NoWorld(key)
       await assertFits(tx, world.id, period, null)
       const [row] = await tx
-        .insert(worldPeriods)
+        .insert(worldOpenPeriods)
         .values({ worldId: world.id, ...period })
-        .returning({ id: worldPeriods.id })
+        .returning({ id: worldOpenPeriods.id })
       if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
       await touchSection(tx, 'worlds')
       return row
@@ -198,12 +218,12 @@ export class WorldsRepository {
   }
 
   /** 기간 한 줄을 갈아 끼운다. 모르면 false 이고, 거절은 addPeriod 와 같다. */
-  async updatePeriod(id: string, period: WorldPeriod): Promise<boolean> {
+  async updatePeriod(id: string, period: WorldOpenPeriod): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [current] = await tx
-        .select({ worldId: worldPeriods.worldId })
-        .from(worldPeriods)
-        .where(eq(worldPeriods.id, id))
+        .select({ worldId: worldOpenPeriods.worldId })
+        .from(worldOpenPeriods)
+        .where(eq(worldOpenPeriods.id, id))
       if (current === undefined) return false
       await tx
         .select({ id: worlds.id })
@@ -212,9 +232,9 @@ export class WorldsRepository {
         .for('update')
       await assertFits(tx, current.worldId, period, id)
       await tx
-        .update(worldPeriods)
+        .update(worldOpenPeriods)
         .set({ ...period, updatedAt: new Date() })
-        .where(eq(worldPeriods.id, id))
+        .where(eq(worldOpenPeriods.id, id))
       await touchSection(tx, 'worlds')
       return true
     })
@@ -224,9 +244,9 @@ export class WorldsRepository {
   async removePeriod(id: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
-        .delete(worldPeriods)
-        .where(eq(worldPeriods.id, id))
-        .returning({ id: worldPeriods.id })
+        .delete(worldOpenPeriods)
+        .where(eq(worldOpenPeriods.id, id))
+        .returning({ id: worldOpenPeriods.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'worlds')
       return true
@@ -242,23 +262,45 @@ export class WorldsRepository {
 async function assertFits(
   db: DbOrTx,
   worldId: string,
-  period: WorldPeriod,
+  period: WorldOpenPeriod,
   except: string | null,
 ): Promise<void> {
-  if (period.until <= period.from) throw new PeriodNotAfter(period.from)
+  if (period.validUntil <= period.validFrom) throw new PeriodNotAfter(period.validFrom)
   const others = await db
-    .select({ from: worldPeriods.from, until: worldPeriods.until })
-    .from(worldPeriods)
+    .select({ validFrom: worldOpenPeriods.validFrom, validUntil: worldOpenPeriods.validUntil })
+    .from(worldOpenPeriods)
     .where(
       except === null
-        ? eq(worldPeriods.worldId, worldId)
-        : and(eq(worldPeriods.worldId, worldId), ne(worldPeriods.id, except)),
+        ? eq(worldOpenPeriods.worldId, worldId)
+        : and(eq(worldOpenPeriods.worldId, worldId), ne(worldOpenPeriods.id, except)),
     )
   if (others.some((other) => overlaps(other, period))) throw new PeriodOverlap(worldId)
 }
 
-/** 입력의 엠블럼 이름을 그림 id 로 푼 표의 칸. 그림이 표에 없으면 AssetNotFound 다. */
-async function columnsOf<T extends { emblem: string | null }>(db: DbOrTx, input: T) {
-  const { emblem, ...rest } = input
-  return { ...rest, emblemAssetId: await resolveOptionalAssetId(db, 'worldEmblem', emblem) }
+/**
+ * 본문을 표의 칸으로 바꾼다. 거래권 key 를 줄 id 로 풀고, 거래권을 안 주면 그 칸은 그대로 둔다. 그림 표에 없는 엠블럼은
+ * AssetNotFound, 거래권 표에 없는 key 는 NoTradeGroup 이다.
+ */
+async function columnsOf(db: DbOrTx, input: Omit<WorldInput, 'key'>) {
+  if (input.emblemAssetId !== null) {
+    const [asset] = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(eq(assets.id, input.emblemAssetId))
+    if (asset === undefined) throw new AssetNotFound(input.emblemAssetId)
+  }
+  const columns = {
+    name: input.name,
+    emblemAssetId: input.emblemAssetId,
+    isChallengers: input.isChallengers,
+    isEvent: input.isEvent,
+  }
+  if (input.tradeGroupKey === undefined) return columns
+  if (input.tradeGroupKey === null) return { ...columns, tradeGroupId: null }
+  const [group] = await db
+    .select({ id: tradeGroups.id })
+    .from(tradeGroups)
+    .where(eq(tradeGroups.key, input.tradeGroupKey))
+  if (group === undefined) throw new NoTradeGroup(input.tradeGroupKey)
+  return { ...columns, tradeGroupId: group.id }
 }

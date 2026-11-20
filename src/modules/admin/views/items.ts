@@ -54,8 +54,8 @@ export const ITEMS_HTML = layout(
     </div>
     <div class="checks">
       <label class="check"><input id="ed-valuable" type="checkbox"> 고가</label>
-      <label class="check"><input id="ed-world-bound" type="checkbox"> 월드 간 거래 불가</label>
     </div>
+    <p class="hint" id="ed-follows" hidden></p>
     <div class="field"><label>역할 <small>붙이기만 한다. 붙은 역할은 뺄 수 없다</small></label>
       <div class="checks">
         <label class="check"><input id="ed-drop" type="checkbox"> 드롭 아이템</label>
@@ -130,8 +130,8 @@ ${ASSET_PICKER}
   }
   function groupOk(it) {
     if (state.group === 'all') return true;
-    if (state.group === 'none') return it.category === null;
-    return it.category === state.group;
+    if (state.group === 'none') return it.groupKey === null;
+    return it.groupKey === state.group;
   }
   function treeButton(key, label, count) {
     var b = button(''); b.setAttribute('aria-current', String(state.group === key));
@@ -150,15 +150,15 @@ ${ASSET_PICKER}
     if (state.editGroups) { renderGroupEditor(tree); return; }
     var pool = state.items.filter(roleOk);
     tree.appendChild(treeButton('all', '전체', pool.length));
-    tree.appendChild(treeButton('none', '분류 없음', pool.filter(function (it) { return it.category === null; }).length));
+    tree.appendChild(treeButton('none', '분류 없음', pool.filter(function (it) { return it.groupKey === null; }).length));
     state.categories.forEach(function (kind) {
       tree.appendChild(el('div', kind.name, 'kind'));
       kind.groups.forEach(function (g) {
-        tree.appendChild(treeButton(g.key, g.name, pool.filter(function (it) { return it.category === g.key; }).length));
+        tree.appendChild(treeButton(g.key, g.name, pool.filter(function (it) { return it.groupKey === g.key; }).length));
       });
     });
   }
-  function itemCount(groupKey) { return state.items.filter(function (it) { return it.category === groupKey; }).length; }
+  function itemCount(groupKey) { return state.items.filter(function (it) { return it.groupKey === groupKey; }).length; }
   function kindSelect(value) {
     var s = document.createElement('select'); s.setAttribute('aria-label', '종류');
     state.categories.forEach(function (k) { var o = el('option', k.name); o.value = k.key; s.appendChild(o); });
@@ -202,7 +202,7 @@ ${ASSET_PICKER}
     var kinds = kindSelect(kind.key);
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/item-groups/' + g.key, { kind: kinds.value, name: name.value.trim() });
+      var r = await call('PUT', '/admin/item-groups/' + g.key, { type: kinds.value, name: name.value.trim() });
       show(r.ok ? g.key + ' 묶음을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) { state.groupForm = null; await load(); }
     });
     close.addEventListener('click', function () { state.groupForm = null; renderTree(); });
@@ -215,7 +215,7 @@ ${ASSET_PICKER}
     var name = input('text'); name.placeholder = '부티크'; name.setAttribute('aria-label', '묶음 이름');
     var save = button('더하기', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var r = await call('POST', '/admin/item-groups', { key: key.value.trim(), kind: kind.key, name: name.value.trim() });
+      var r = await call('POST', '/admin/item-groups', { key: key.value.trim(), type: kind.key, name: name.value.trim() });
       show(r.ok ? name.value.trim() + ' 묶음을 더했다' : fail('못 더했다', r), !r.ok); if (r.ok) { state.groupForm = null; await load(); }
     });
     close.addEventListener('click', function () { state.groupForm = null; renderTree(); });
@@ -261,7 +261,7 @@ ${ASSET_PICKER}
     if (shown.length === 0) grid.appendChild(el('p', '맞는 아이템이 없다', 'empty-text'));
     document.getElementById('stat-items').textContent = String(state.items.length);
     document.getElementById('stat-noicon').textContent = String(state.items.filter(function (it) { return it.icon === null; }).length);
-    document.getElementById('stat-nocat').textContent = String(state.items.filter(function (it) { return it.category === null; }).length);
+    document.getElementById('stat-nocat').textContent = String(state.items.filter(function (it) { return it.groupKey === null; }).length);
   }
   function fillCategories(value) {
     var s = document.getElementById('ed-category'); s.innerHTML = '';
@@ -286,10 +286,14 @@ ${ASSET_PICKER}
     document.getElementById('ed-name').value = isNew ? '' : it.name;
     var key = document.getElementById('ed-key'); key.value = isNew ? '' : it.key; key.readOnly = !isNew;
     document.getElementById('ed-key-note').textContent = isNew ? 'snake_case, 한 번 정하면 못 바꾼다' : '바꿀 수 없음';
-    fillCategories(isNew ? (state.group !== 'all' && state.group !== 'none' ? state.group : '') : it.category);
-    document.getElementById('ed-level').value = isNew || it.level === null ? '' : String(it.level);
-    document.getElementById('ed-valuable').checked = !isNew && it.valuable;
-    document.getElementById('ed-world-bound').checked = !isNew && it.worldBound;
+    fillCategories(isNew ? (state.group !== 'all' && state.group !== 'none' ? state.group : '') : it.groupKey);
+    document.getElementById('ed-level').value = isNew || it.requiredLevel === null ? '' : String(it.requiredLevel);
+    document.getElementById('ed-valuable').checked = !isNew && it.isValuable;
+    // 반지 레벨 줄과 같은 물건의 따로 둔 줄은 원래 아이템을 고치면 따라 바뀐다. 직접 고치면 서버가 거절한다.
+    var follows = isNew ? null : it.followsKey;
+    var note = document.getElementById('ed-follows');
+    note.hidden = follows === null; note.textContent = follows === null ? '' : '원래 아이템 ' + follows + ' 을 고치면 따라 바뀌는 줄이라 여기서 고치지 않는다';
+    document.getElementById('ed-save').disabled = follows !== null; document.getElementById('ed-pick').disabled = follows !== null;
     var drop = document.getElementById('ed-drop'); drop.checked = !isNew && it.isDrop; drop.disabled = !isNew && it.isDrop;
     var eq = document.getElementById('ed-equipment'); eq.checked = !isNew && it.isEquipment; eq.disabled = !isNew && it.isEquipment;
     var loot = document.getElementById('ed-loot');
@@ -309,11 +313,10 @@ ${ASSET_PICKER}
     var level = document.getElementById('ed-level').value.trim();
     var body = {
       name: document.getElementById('ed-name').value.trim(),
-      category: document.getElementById('ed-category').value || null,
+      groupKey: document.getElementById('ed-category').value || null,
       iconAssetId: state.icon === null ? null : state.icon.id,
-      valuable: document.getElementById('ed-valuable').checked,
-      worldBound: document.getElementById('ed-world-bound').checked,
-      level: level === '' ? null : Number(level),
+      isValuable: document.getElementById('ed-valuable').checked,
+      requiredLevel: level === '' ? null : Number(level),
       isDrop: document.getElementById('ed-drop').checked,
       isEquipment: document.getElementById('ed-equipment').checked,
     };

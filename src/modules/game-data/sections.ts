@@ -5,7 +5,6 @@ import { gameDataSections } from '../../database/schema'
 
 /** GET /v1/game-data 의 칸 이름. bosses 는 자기 표의 updated_at 으로 내서 여기 없다. */
 export const SECTION_KEYS = [
-  'dropItems',
   'bossDrops',
   'dropBoxes',
   'crystalPrices',
@@ -14,7 +13,6 @@ export const SECTION_KEYS = [
   'cashbookCategories',
   'symbolCosts',
   'contents',
-  'equipmentItems',
   'enhancementCosts',
   'mvpGrades',
   'huntingGrounds',

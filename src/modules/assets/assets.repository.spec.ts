@@ -5,6 +5,7 @@ import {
   describeDb,
   insertAssets,
   insertItems,
+  itemGroupId,
   openTestDb,
   type TestDb,
 } from '../../database/test-db'
@@ -95,7 +96,12 @@ describeDb('AssetsRepository', () => {
       'bosses/named.webp',
     ])
     await insertItems(db, [
-      { key: 'p', name: '그린 펜던트', category: 'pendant', iconAssetId: ids['items/pendant.png'] },
+      {
+        key: 'p',
+        name: '그린 펜던트',
+        groupId: await itemGroupId(db, 'pendant'),
+        iconAssetId: ids['items/pendant.png'],
+      },
     ])
     await db
       .update(assets)

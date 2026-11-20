@@ -3234,7 +3234,7 @@
     },
     {
      "name": "type",
-     "type": "text",
+     "type": "enum item_group_type",
      "references": null,
      "nullable": false,
      "was": "kind"
@@ -6149,7 +6149,9 @@
   },
   "hunt_loot_type": {
    "values": [
-    "fragment · consumable · event"
+    "fragment",
+    "consumable",
+    "event"
    ],
    "was": "hunt_loot_kind",
    "source": "card",
@@ -6165,7 +6167,9 @@
   },
   "image_crop_type": {
    "values": [
-    "boss_portrait · boss_portrait_icon · boss_portrait_modal · daily_quest_region"
+    "boss_portrait",
+    "boss_portrait_icon",
+    "daily_quest_region"
    ],
    "was": "image_crop_kind",
    "source": "card",
@@ -6182,7 +6186,13 @@
   },
   "mvp_grade": {
    "values": [
-    "normal · bronze · silver · gold · diamond · red · black"
+    "normal",
+    "bronze",
+    "silver",
+    "gold",
+    "diamond",
+    "red",
+    "black"
    ],
    "was": null,
    "source": "card",
@@ -6190,7 +6200,11 @@
   },
   "notice_type": {
    "values": [
-    "app · game · event · update · cashshop"
+    "app",
+    "game",
+    "event",
+    "update",
+    "cashshop"
    ],
    "was": "notice_kind",
    "source": "card",

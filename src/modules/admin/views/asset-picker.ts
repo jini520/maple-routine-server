@@ -10,7 +10,7 @@ import { ASSET_REFS } from '../../assets/asset-paths'
  *
  * @example
  * openAssetPicker({ categories: ['item', 'item_ring'], uploadCategory: 'item', current: it.icon && it.icon.id, onPick: function (file) { ... } })
- * cell(tr, inline(emblem, assetPickButton(emblem, 'worldEmblem')))
+ * cell(tr, inline(icon, assetPickButton(icon, 'itemIcon')))
  */
 export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-labelledby="picker-title">
   <header>

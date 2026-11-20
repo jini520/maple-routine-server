@@ -4,7 +4,7 @@
  * 마이그레이션은 advisory lock 안에서 한 번만 돈다. 표를 비우는 것은 스펙이 beforeEach 에서 한다.
  * 스펙 파일이 같은 DB 를 나눠 쓰므로 DB 스펙은 --runInBand 로 돌린다(npm run test:db).
  */
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
@@ -60,13 +60,16 @@ const TABLES = [
   'drop_box_contents',
   'drop_boxes',
   'boss_drop_rewards',
+  'same_item_links',
+  'ring_level_items',
   'items',
   'game_data_sections',
   'app_images',
   'assets',
   'image_crops',
-  'world_periods',
+  'world_open_periods',
   'worlds',
+  'trade_groups',
   'cashbook_entry_items',
   'cashbook_entries',
   'boss_clears',
@@ -115,6 +118,16 @@ export async function insertAssets(
     out[path] = row.id
   }
   return out
+}
+
+/** 묶음 key 의 줄 id. 0041 이 넣은 묶음은 truncate 가 비우지 않아 스펙이 key 로 가리킨다. */
+export async function itemGroupId(db: TestDb, key: string): Promise<string> {
+  const [row] = await db
+    .select({ id: schema.itemGroups.id })
+    .from(schema.itemGroups)
+    .where(eq(schema.itemGroups.key, key))
+  if (row === undefined) throw new Error(`묶음이 없다: ${key}`)
+  return row.id
 }
 
 /** 그림 한 장을 넣고 그 id. 같은 그림이 이미 있으면 그 줄의 id 다. */

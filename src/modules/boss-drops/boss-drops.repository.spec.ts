@@ -45,7 +45,7 @@ describeDb('BossDropsRepository', () => {
       {
         key: 'loose_control_machine_mark',
         name: '루즈 컨트롤 머신 마크',
-        valuable: true,
+        isValuable: true,
         isDrop: true,
       },
       { key: 'red_boss_ring_box', name: '홍옥의 보스 반지 상자', isDrop: true },

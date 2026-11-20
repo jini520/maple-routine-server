@@ -14,7 +14,14 @@ export interface AssetUse {
  * 칸을 더하면 여기에도 더한다. 빠지면 그 칸이 쓰는 그림을 안 쓰는 그림으로 보고 지울 수 있게 된다.
  */
 export const ASSET_USES = [
-  { table: 'items', column: 'icon_asset_id', kind: '아이템', name: 'name', category: 'category' },
+  {
+    table: 'items',
+    column: 'icon_asset_id',
+    kind: '아이템',
+    name: 'name',
+    // 관리 화면의 트리는 묶음을 key 로 묶는다.
+    category: '(SELECT key FROM item_groups WHERE item_groups.id = items.group_id)',
+  },
   { table: 'bosses', column: 'portrait_asset_id', kind: '보스 초상', name: 'name' },
   { table: 'worlds', column: 'emblem_asset_id', kind: '월드 엠블럼', name: 'name' },
   { table: 'mvp_grades', column: 'plate_asset_id', kind: 'MVP 명패', name: 'name' },

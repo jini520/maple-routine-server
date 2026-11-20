@@ -9,7 +9,6 @@ import { DropItemsModule } from '../drop-items/drop-items.module'
 import { DropMarketModule } from '../drop-market/drop-market.module'
 import { DropPricesModule } from '../drop-prices/drop-prices.module'
 import { EnhancementCostsModule } from '../enhancement-costs/enhancement-costs.module'
-import { EquipmentItemsModule } from '../equipment-items/equipment-items.module'
 import { FaqsModule } from '../faqs/faqs.module'
 import { HexaMatrixModule } from '../hexa-matrix/hexa-matrix.module'
 import { HuntingGroundsModule } from '../hunting-grounds/hunting-grounds.module'
@@ -51,7 +50,6 @@ import { UsageDashboardService } from './usage-dashboard.service'
     SymbolCostsModule,
     HexaMatrixModule,
     ContentsModule,
-    EquipmentItemsModule,
     EnhancementCostsModule,
     MvpGradesModule,
     HuntingGroundsModule,

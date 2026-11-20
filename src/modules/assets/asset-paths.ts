@@ -106,7 +106,6 @@ export function storedFileName(sha256: string, ext: string): string {
 export const ASSET_REFS = {
   bossPortrait: { categories: ['boss'], key: 'slug' },
   itemIcon: { categories: ['item', 'item_ring'], key: 'fileName' },
-  worldEmblem: { categories: ['world'], key: 'slug' },
   mapBackground: { categories: ['map'], key: 'slug' },
   mapIcon: { categories: ['map_icon'], key: 'slug' },
   skillIcon: { categories: ['skill'], key: 'fileName' },

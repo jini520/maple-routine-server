@@ -30,8 +30,8 @@ export const WORLDS_HTML = layout(
   <div class="body"><div class="row">
     <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="challengers_5"></div>
     <div class="field"><label for="n-name">이름 <small>API world_name 표기</small></label><input id="n-name" placeholder="챌린저스5"></div>
-    <div class="field"><label for="n-emblem">엠블럼 <small>src/assets/worlds/ 의 파일 basename</small></label><input id="n-emblem" class="mono" placeholder="challengers" data-asset="worldEmblem"></div>
-    <div class="field"><label for="n-price-group">거래권 <small>general · helios_eos, 비우면 시세 제외</small></label><input id="n-price-group" class="mono" value="general"></div>
+    <div class="field"><label>엠블럼 <small>월드 분류의 그림</small></label><div class="inline"><span id="n-emblem" class="mono dim">없음</span><button id="n-emblem-pick" class="btn ghost sm" type="button">고르기</button></div></div>
+    <div class="field"><label for="n-trade-group">거래권 <small>비우면 시세 제외</small></label><select id="n-trade-group"></select></div>
     <label class="check"><input id="n-challengers" type="checkbox"> 챌린저스</label>
     <label class="check"><input id="n-event" type="checkbox"> 이벤트 월드</label>
     <button id="n-add" class="btn" type="button">월드 추가</button>
@@ -42,30 +42,39 @@ export const WORLDS_HTML = layout(
   <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>엠블럼</th><th>챌린저스</th><th>이벤트</th><th>거래권</th><th>열린 기간</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <section class="card">
-  <header><h2>열린 기간</h2><p>KST 날짜다. from 은 연 날, until 은 닫힌 다음 날이라 그 날은 안 든다. 새벽 3시에 닫혔으면 다음 날을 적는다. 같은 월드의 기간끼리는 겹칠 수 없다. 앱은 이벤트 월드에서 지운 캐릭터의 강화를 이 기간으로 가린다</p></header>
+  <header><h2>열린 기간</h2><p>KST 날짜다. 시작은 연 날, 끝은 닫힌 다음 날이라 그 날은 안 든다. 새벽 3시에 닫혔으면 다음 날을 적는다. 같은 월드의 기간끼리는 겹칠 수 없다. 앱은 이벤트 월드에서 지운 캐릭터의 강화를 이 기간으로 가린다</p></header>
   <div class="body"><div class="row">
     <div class="field"><label for="p-world">월드</label><select id="p-world"></select></div>
-    <div class="field"><label for="p-from">from <small>연 날</small></label><input id="p-from" class="mono" placeholder="2025-11-20"></div>
-    <div class="field"><label for="p-until">until <small>닫힌 다음 날</small></label><input id="p-until" class="mono" placeholder="2025-12-19"></div>
+    <div class="field"><label for="p-from">시작 <small>연 날</small></label><input id="p-from" class="mono" placeholder="2025-11-20"></div>
+    <div class="field"><label for="p-until">끝 <small>닫힌 다음 날</small></label><input id="p-until" class="mono" placeholder="2025-12-19"></div>
     <button id="p-add" class="btn" type="button">기간 추가</button>
   </div></div>
-  <div class="table"><table><thead><tr><th>월드</th><th>from</th><th>until</th><th></th></tr></thead><tbody id="periods"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>월드</th><th>시작</th><th>끝</th><th></th></tr></thead><tbody id="periods"></tbody></table></div>
 </section>
 ${ASSET_PICKER}
 <script>
-  var state = { worlds: [], editing: null, editingPeriod: null };
+  // assets 는 그림 id 에서 그림 줄을 찾는 표다. 엠블럼 칸에 파일 이름을 보인다.
+  var state = { worlds: [], tradeGroups: [], assets: {}, editing: null, editingPeriod: null, newEmblem: null };
+
+  function emblemText(id) { var a = id ? state.assets[id] : null; return id === null ? '-' : a ? a.fileName + '.' + a.extension : '그림 표에 없다'; }
+  function tradeGroupSelect(value) {
+    return select([['', '시세 제외']].concat(state.tradeGroups.map(function (g) { return [g.key, g.name + ' (' + g.key + ')']; })), value === null ? '' : value);
+  }
+  function pickEmblem(current, onPick) {
+    openAssetPicker({ categories: ['world'], uploadCategory: 'world', current: current, onPick: function (f) { onPick(f ? f.id : null); } });
+  }
 
   function periodText(w) {
-    return w.periods.length === 0 ? span('-', 'dim') : span(w.periods.map(function (p) { return p.from + ' ~ ' + p.until; }).join(', '), 'mono');
+    return w.openPeriods.length === 0 ? span('-', 'dim') : span(w.openPeriods.map(function (p) { return p.validFrom + ' ~ ' + p.validUntil; }).join(', '), 'mono');
   }
 
   function worldRow(w, i) {
     var tr = el('tr', undefined, state.editing === w.key ? 'open' : '');
     cell(tr, i + 1, 'n'); cell(tr, w.key, 'mono');
     if (state.editing !== w.key) {
-      cell(tr, w.name); cell(tr, w.emblem || '-', 'mono');
-      cell(tr, w.challengers ? span('챌린저스', 'tag accent') : span('-', 'dim')); cell(tr, w.event ? span('이벤트', 'tag') : span('-', 'dim'));
-      cell(tr, w.priceGroup === null ? span('시세 제외', 'dim') : span(w.priceGroup, w.priceGroup === 'general' ? 'mono' : 'tag mono'));
+      cell(tr, w.name); cell(tr, emblemText(w.emblemAssetId), 'mono');
+      cell(tr, w.isChallengers ? span('챌린저스', 'tag accent') : span('-', 'dim')); cell(tr, w.isEvent ? span('이벤트', 'tag') : span('-', 'dim'));
+      cell(tr, w.tradeGroupKey === null ? span('시세 제외', 'dim') : span(w.tradeGroupKey, w.tradeGroupKey === 'general' ? 'mono' : 'tag mono'));
       cell(tr, periodText(w));
       var up = button('↑', 'btn ghost sm'); var down = button('↓', 'btn ghost sm'); var edit = button('수정', 'btn ghost sm');
       up.addEventListener('click', async function () { var r = await call('POST', '/admin/worlds/' + w.key + '/move', { direction: 'up' }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); });
@@ -74,13 +83,15 @@ ${ASSET_PICKER}
       cell(tr, inline(up, down, edit), 'act');
       return tr;
     }
-    var name = input('text'); name.value = w.name; var emblem = input('text', 'mono'); emblem.value = w.emblem || '';
-    var challengers = input('checkbox'); challengers.checked = w.challengers; var event = input('checkbox'); event.checked = w.event;
-    var priceGroup = input('text', 'mono'); priceGroup.value = w.priceGroup || '';
-    cell(tr, name); cell(tr, inline(emblem, assetPickButton(emblem, 'worldEmblem'))); cell(tr, challengers); cell(tr, event); cell(tr, priceGroup); cell(tr, periodText(w));
+    var name = input('text'); name.value = w.name;
+    var emblem = { id: w.emblemAssetId }; var emblemLabel = span(emblemText(emblem.id), 'mono'); var pick = button('고르기', 'btn ghost sm');
+    pick.addEventListener('click', function () { pickEmblem(emblem.id, function (id) { emblem.id = id; emblemLabel.textContent = emblemText(id); }); });
+    var challengers = input('checkbox'); challengers.checked = w.isChallengers; var event = input('checkbox'); event.checked = w.isEvent;
+    var tradeGroup = tradeGroupSelect(w.tradeGroupKey);
+    cell(tr, name); cell(tr, inline(emblemLabel, pick)); cell(tr, challengers); cell(tr, event); cell(tr, tradeGroup); cell(tr, periodText(w));
     var save = button('저장', 'btn sm'); var close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/worlds/' + w.key, { name: name.value.trim(), emblem: orNull(emblem.value), challengers: challengers.checked, event: event.checked, priceGroup: orNull(priceGroup.value) });
+      var r = await call('PUT', '/admin/worlds/' + w.key, { name: name.value.trim(), emblemAssetId: emblem.id, isChallengers: challengers.checked, isEvent: event.checked, tradeGroupKey: orNull(tradeGroup.value) });
       show(r.ok ? w.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editing = null; load();
     });
     close.addEventListener('click', function () { state.editing = null; render(); });
@@ -93,6 +104,8 @@ ${ASSET_PICKER}
     state.worlds.forEach(function (w, i) { rows.appendChild(worldRow(w, i)); });
     if (state.worlds.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 9; rows.appendChild(tr); }
     document.getElementById('count').textContent = state.worlds.length + '줄 · 순서가 곧 앱의 화면 순서';
+    var newGroup = document.getElementById('n-trade-group'); var keep = newGroup.value || 'general';
+    newGroup.replaceWith(Object.assign(tradeGroupSelect(keep), { id: 'n-trade-group' }));
     renderPeriods();
   }
 
@@ -100,18 +113,18 @@ ${ASSET_PICKER}
     var tr = el('tr', undefined, state.editingPeriod === p.id ? 'open' : '');
     cell(tr, w.name + ' (' + w.key + ')');
     if (state.editingPeriod !== p.id) {
-      cell(tr, p.from, 'mono'); cell(tr, p.until, 'mono');
+      cell(tr, p.validFrom, 'mono'); cell(tr, p.validUntil, 'mono');
       var edit = button('수정', 'btn ghost sm'); var remove = button('지우기', 'btn ghost sm');
       edit.addEventListener('click', function () { state.editingPeriod = p.id; renderPeriods(); });
       remove.addEventListener('click', async function () { var r = await call('DELETE', '/admin/worlds/periods/' + p.id); show(r.ok ? w.key + ' 기간을 지웠다' : fail('못 지웠다', r), !r.ok); load(); });
       cell(tr, inline(edit, remove), 'act');
       return tr;
     }
-    var from = input('text', 'mono'); from.value = p.from; var until = input('text', 'mono'); until.value = p.until;
+    var from = input('text', 'mono'); from.value = p.validFrom; var until = input('text', 'mono'); until.value = p.validUntil;
     cell(tr, from); cell(tr, until);
     var save = button('저장', 'btn sm'); var close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/worlds/periods/' + p.id, { from: from.value.trim(), until: until.value.trim() });
+      var r = await call('PUT', '/admin/worlds/periods/' + p.id, { validFrom: from.value.trim(), validUntil: until.value.trim() });
       show(r.ok ? w.key + ' 기간을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editingPeriod = null; load();
     });
     close.addEventListener('click', function () { state.editingPeriod = null; renderPeriods(); });
@@ -126,37 +139,41 @@ ${ASSET_PICKER}
     if (picked) picker.value = picked;
     var rows = document.getElementById('periods'); rows.innerHTML = '';
     var count = 0;
-    state.worlds.forEach(function (w) { w.periods.forEach(function (p) { rows.appendChild(periodRow(w, p)); count += 1; }); });
+    state.worlds.forEach(function (w) { w.openPeriods.forEach(function (p) { rows.appendChild(periodRow(w, p)); count += 1; }); });
     if (count === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 4; rows.appendChild(tr); }
   }
 
   document.getElementById('p-add').addEventListener('click', async function () {
     var key = document.getElementById('p-world').value;
-    var body = { from: document.getElementById('p-from').value.trim(), until: document.getElementById('p-until').value.trim() };
+    var body = { validFrom: document.getElementById('p-from').value.trim(), validUntil: document.getElementById('p-until').value.trim() };
     var r = await call('POST', '/admin/worlds/' + key + '/periods', body);
     show(r.ok ? key + ' 에 기간을 더했다' : fail('더하지 못했다', r), !r.ok);
     if (r.ok) { document.getElementById('p-from').value = ''; document.getElementById('p-until').value = ''; }
     load();
   });
 
+  document.getElementById('n-emblem-pick').addEventListener('click', function () {
+    pickEmblem(state.newEmblem, function (id) { state.newEmblem = id; document.getElementById('n-emblem').textContent = id === null ? '없음' : emblemText(id); });
+  });
   document.getElementById('n-add').addEventListener('click', async function () {
-    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), emblem: orNull(document.getElementById('n-emblem').value), challengers: document.getElementById('n-challengers').checked, event: document.getElementById('n-event').checked, priceGroup: orNull(document.getElementById('n-price-group').value) };
+    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), emblemAssetId: state.newEmblem, isChallengers: document.getElementById('n-challengers').checked, isEvent: document.getElementById('n-event').checked, tradeGroupKey: orNull(document.getElementById('n-trade-group').value) };
     var r = await call('POST', '/admin/worlds', body);
     show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
-    if (r.ok) { ['n-key', 'n-name', 'n-emblem'].forEach(function (id) { document.getElementById(id).value = ''; }); document.getElementById('n-challengers').checked = false; document.getElementById('n-event').checked = false; }
+    if (r.ok) { ['n-key', 'n-name'].forEach(function (id) { document.getElementById(id).value = ''; }); state.newEmblem = null; document.getElementById('n-emblem').textContent = '없음'; document.getElementById('n-challengers').checked = false; document.getElementById('n-event').checked = false; }
     load();
   });
 
   async function load() {
     var r = await call('GET', '/admin/worlds/rows');
-    if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
-    state.worlds = r.json.worlds;
+    var a = await call('GET', '/admin/assets/list');
+    if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
+    state.worlds = r.json.worlds; state.tradeGroups = r.json.tradeGroups;
+    state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; });
     document.getElementById('stat-worlds').textContent = state.worlds.length;
-    document.getElementById('stat-challengers').textContent = state.worlds.filter(function (w) { return w.challengers; }).length;
+    document.getElementById('stat-challengers').textContent = state.worlds.filter(function (w) { return w.isChallengers; }).length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
     render();
   }
   load();
-  attachAssetPickers();
 </script>`,
 )

@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 
 import { isCheckViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, huntLootItems, items } from '../../database/schema'
-import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 import { sameNameItem } from '../items/items'
 
@@ -16,7 +16,7 @@ export interface HuntLootView {
   key: string
   kind: HuntLootKind
   name: string
-  iconFile: string
+  iconAssetId: string
   npcPriceMeso: number | null
   from: string | null
   until: string | null
@@ -25,8 +25,7 @@ export interface HuntLootView {
 /** GET /v1/game-data 의 huntLoot 칸. 차례가 폼의 차례다. */
 export interface HuntLootSection {
   updatedAt: string | null
-  /** iconFile 은 옛 앱이 읽는 그림 이름이다 */
-  items: (HuntLootView & { iconAssetId: string })[]
+  items: HuntLootView[]
 }
 
 export type HuntLootInput = HuntLootView
@@ -53,15 +52,13 @@ export class HuntLootRepository {
           key: items.key,
           kind: huntLootItems.kind,
           name: items.name,
-          iconAsset: assetNameColumns(assets),
           iconAssetId: items.iconAssetId,
           npcPriceMeso: huntLootItems.npcPriceMeso,
           from: huntLootItems.from,
           until: huntLootItems.until,
         })
         .from(huntLootItems)
-        .innerJoin(items, eq(items.id, huntLootItems.itemId))
-        .innerJoin(assets, eq(assets.id, items.iconAssetId))
+        .innerJoin(items, and(eq(items.id, huntLootItems.itemId), isNotNull(items.iconAssetId)))
         .orderBy(asc(huntLootItems.sortOrder), asc(items.key)),
       sectionUpdatedAt(this.db, 'huntLoot'),
     ])
@@ -71,7 +68,6 @@ export class HuntLootRepository {
         key: r.key,
         kind: r.kind,
         name: r.name,
-        iconFile: refValueOf('itemIcon', r.iconAsset),
         iconAssetId: r.iconAssetId as string,
         npcPriceMeso: r.npcPriceMeso,
         from: r.from,
@@ -168,36 +164,31 @@ export class HuntLootRepository {
     })
   }
 
-  /** 아이템 줄의 이름 · 그림을 적는다. 같은 key 의 아이템이 없으면 만든다. 그 줄의 id 를 돌려준다. */
+  /**
+   * 아이템 줄의 이름 · 그림을 적는다. 같은 key 의 아이템이 없으면 만든다. 그 줄의 id 를 돌려준다. 그림 표에 없는 그림은
+   * AssetNotFound 다.
+   */
   private async putItem(
     db: DbOrTx,
     key: string,
-    input: { name: string; iconFile: string },
+    input: { name: string; iconAssetId: string },
   ): Promise<string> {
     const twin = await sameNameItem(db, key, input.name)
     if (twin !== null) throw new HuntLootNameTaken(twin.key)
-    const columns = {
-      name: input.name,
-      iconAssetId: await resolveAssetId(db, 'itemIcon', input.iconFile),
-    }
-    const [same] = await db
-      .select({
-        id: items.id,
-        category: items.category,
-        isDrop: items.isDrop,
-        isEquipment: items.isEquipment,
-      })
-      .from(items)
-      .where(eq(items.key, key))
+    const [asset] = await db
+      .select({ id: assets.id })
+      .from(assets)
+      .where(eq(assets.id, input.iconAssetId))
+    if (asset === undefined) throw new AssetNotFound(input.iconAssetId)
+    const columns = { name: input.name, iconAssetId: input.iconAssetId }
+    // 아이템 줄이 바뀌므로 items 칸도 민다.
+    await touchSection(db, 'items')
+    const [same] = await db.select({ id: items.id }).from(items).where(eq(items.key, key))
     if (same !== undefined) {
       await db
         .update(items)
         .set({ ...columns, updatedAt: new Date() })
         .where(eq(items.id, same.id))
-      // 드롭 아이템 · 강화 장비를 겸하거나 분류가 있는 줄이면 그 칸의 이름 · 그림도 바뀐다.
-      if (same.isDrop) await touchSection(db, 'dropItems')
-      if (same.isEquipment) await touchSection(db, 'equipmentItems')
-      if (same.category !== null) await touchSection(db, 'items')
       return same.id
     }
     const [row] = await db

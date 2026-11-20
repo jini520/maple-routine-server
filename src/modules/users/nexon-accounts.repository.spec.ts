@@ -215,7 +215,7 @@ describeDb('NexonAccountsRepository', () => {
     it('새 줄의 사람을 지울 때 그 사람의 옛 드롭 줄은 남기는 줄의 사람으로 옮긴다', async () => {
       const [item] = await db
         .insert(items)
-        .values({ key: 'ring', name: '반지', valuable: true, isDrop: true })
+        .values({ key: 'ring', name: '반지', isValuable: true, isDrop: true })
         .returning({ id: items.id })
       const old = await users$.upsertByApiKeyHash(KEY_OLD)
       await backdate(old.nexonAccountId, '2026-10-01T00:00:00Z')

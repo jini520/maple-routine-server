@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
-import { dropPrices, items, users, worlds } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { dropPrices, items, tradeGroups, users, worlds } from '../../database/schema'
+import { describeDb, itemGroupId, openTestDb, type TestDb } from '../../database/test-db'
 import { DropMarketRepository } from './drop-market.repository'
 
 describeDb('DropMarketRepository', () => {
@@ -51,18 +51,31 @@ describeDb('DropMarketRepository', () => {
       .insert(items)
       .values([
         { key: 'ring', name: '반지', isDrop: true },
-        { key: 'whetstone', name: '연마석', worldBound: true, isDrop: true },
+        // 소비 묶음의 아이템은 시세를 월드마다 잰다.
+        {
+          key: 'whetstone',
+          name: '연마석',
+          groupId: await itemGroupId(db, 'boss_loot'),
+          isDrop: true,
+        },
       ])
       .returning({ id: items.id, key: items.key })
     for (const r of itemRows) item[r.key] = r.id
+    const [general, heliosEos] = await db
+      .insert(tradeGroups)
+      .values([
+        { key: 'general', name: '일반 월드' },
+        { key: 'helios_eos', name: '에오스 · 핼리오스' },
+      ])
+      .returning({ id: tradeGroups.id })
     const rows = await db
       .insert(worlds)
       .values([
-        { key: 'scania', name: '스카니아', sortOrder: 0 },
-        { key: 'bera', name: '베라', sortOrder: 1 },
-        { key: 'eos', name: '에오스', sortOrder: 2, priceGroup: 'helios_eos' },
-        { key: 'helios', name: '핼리오스', sortOrder: 3, priceGroup: 'helios_eos' },
-        { key: 'special', name: '스페셜', sortOrder: 4, priceGroup: null },
+        { key: 'scania', name: '스카니아', sortOrder: 0, tradeGroupId: general?.id },
+        { key: 'bera', name: '베라', sortOrder: 1, tradeGroupId: general?.id },
+        { key: 'eos', name: '에오스', sortOrder: 2, tradeGroupId: heliosEos?.id },
+        { key: 'helios', name: '핼리오스', sortOrder: 3, tradeGroupId: heliosEos?.id },
+        { key: 'special', name: '스페셜', sortOrder: 4 },
       ])
       .returning({ id: worlds.id, key: worlds.key })
     for (const r of rows) world[r.key] = r.id

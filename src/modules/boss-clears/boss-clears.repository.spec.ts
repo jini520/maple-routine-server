@@ -62,8 +62,8 @@ describeDb('BossClearsRepository', () => {
     await db.insert(worlds).values({
       key: 'scania',
       name: '스카니아',
-      challengers: false,
-      event: false,
+      isChallengers: false,
+      isEvent: false,
       sortOrder: 0,
     })
     lucid = (

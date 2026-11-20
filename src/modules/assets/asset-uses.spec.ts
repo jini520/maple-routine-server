@@ -5,6 +5,7 @@ import {
   describeDb,
   insertAssets,
   insertItems,
+  itemGroupId,
   openTestDb,
   type TestDb,
 } from '../../database/test-db'
@@ -46,13 +47,13 @@ describeDb('assetUses', () => {
       {
         key: 'bears_green',
         name: '베어스 그린 펜던트',
-        category: 'pendant',
+        groupId: await itemGroupId(db, 'pendant'),
         iconAssetId: ids['items/green_pendant.png'],
       },
       {
         key: 'owls_green',
         name: '아울스 그린 펜던트',
-        category: 'pendant',
+        groupId: await itemGroupId(db, 'pendant'),
         iconAssetId: ids['items/green_pendant.png'],
       },
     ])

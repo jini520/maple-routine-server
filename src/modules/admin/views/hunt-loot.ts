@@ -1,3 +1,4 @@
+import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
@@ -25,7 +26,7 @@ export const HUNT_LOOT_HTML = layout(
     <div class="field"><label for="c-key">key</label><input id="c-key" class="mono" placeholder="suspicious_magnifier"></div>
     <div class="field w-sm"><label for="c-kind">분류</label><select id="c-kind"><option value="event">이벤트</option><option value="consumable">소비</option><option value="fragment">조각</option></select></div>
     <div class="field"><label for="c-name">이름</label><input id="c-name" placeholder="수상한 돋보기"></div>
-    <div class="field"><label for="c-icon">그림 파일 <small>src/assets/items/</small></label><input id="c-icon" class="mono" placeholder="suspicious_magnifier.webp"></div>
+    <div class="field"><label>그림 <small>아이템 분류의 그림</small></label><div class="inline"><span id="c-icon" class="mono dim">고르지 않았다</span><button id="c-icon-pick" class="btn ghost sm" type="button">고르기</button></div></div>
     <div class="field w-sm"><label for="c-price">NPC 가격 <small>소비만</small></label><input id="c-price" type="number" min="1" placeholder="2750"></div>
     <div class="field w-sm"><label for="c-from">시작</label><input id="c-from" class="mono" placeholder="2026-10-22"></div>
     <div class="field w-sm"><label for="c-until">끝</label><input id="c-until" class="mono" placeholder="2026-11-19"></div>
@@ -36,9 +37,16 @@ export const HUNT_LOOT_HTML = layout(
   <header><h2>전리품</h2><p>차례가 곧 앱의 차례</p></header>
   <div class="table"><table><thead><tr><th>#</th><th>key</th><th>분류</th><th>이름</th><th>그림 파일</th><th>NPC 가격</th><th>시작</th><th>끝</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
 </section>
+${ASSET_PICKER}
 <script>
   var KINDS = { fragment: '조각', consumable: '소비', event: '이벤트' };
-  var state = { data: null, editing: null };
+  // assets 는 그림 id 에서 그림 줄을 찾는 표다. 그림 칸에 파일 이름을 보인다.
+  var state = { data: null, editing: null, assets: {}, newIcon: null };
+
+  function iconText(id) { var a = id ? state.assets[id] : null; return id === null ? '고르지 않았다' : a ? a.fileName + '.' + a.extension : '그림 표에 없다'; }
+  function pickIcon(current, onPick) {
+    openAssetPicker({ categories: ['item'], uploadCategory: 'item', current: current, onPick: function (f) { if (f) onPick(f.id); } });
+  }
 
   function priceOf(v) { v = (v || '').trim(); return v === '' ? null : Number(v); }
 
@@ -47,7 +55,7 @@ export const HUNT_LOOT_HTML = layout(
     var tr = el('tr', undefined, editing ? 'open' : '');
     cell(tr, i + 1, 'n'); cell(tr, item.key, 'mono'); cell(tr, KINDS[item.kind] || item.kind);
     if (!editing) {
-      cell(tr, item.name); cell(tr, item.iconFile, 'mono');
+      cell(tr, item.name); cell(tr, iconText(item.iconAssetId), 'mono');
       cell(tr, item.npcPriceMeso === null ? '-' : item.npcPriceMeso.toLocaleString(), 'n');
       cell(tr, item.from || '-', 'mono'); cell(tr, item.until || '-', 'mono');
       var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), edit = button('수정', 'btn ghost sm');
@@ -59,15 +67,16 @@ export const HUNT_LOOT_HTML = layout(
       return tr;
     }
     var name = input('text'); name.value = item.name;
-    var icon = input('text', 'mono'); icon.value = item.iconFile;
+    var icon = { id: item.iconAssetId }; var iconLabel = span(iconText(icon.id), 'mono'); var pick = button('고르기', 'btn ghost sm');
+    pick.addEventListener('click', function () { pickIcon(icon.id, function (id) { icon.id = id; iconLabel.textContent = iconText(id); }); });
     var price = input('number'); price.value = item.npcPriceMeso === null ? '' : item.npcPriceMeso; price.disabled = item.kind !== 'consumable';
     var from = input('text', 'mono'); from.value = item.from || '';
     var until = input('text', 'mono'); until.value = item.until || '';
-    cell(tr, name); cell(tr, icon); cell(tr, price); cell(tr, from); cell(tr, until);
+    cell(tr, name); cell(tr, inline(iconLabel, pick)); cell(tr, price); cell(tr, from); cell(tr, until);
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/hunt-loot/' + item.key, {
-        name: name.value.trim(), iconFile: icon.value.trim(), npcPriceMeso: priceOf(price.value), from: orNull(from.value), until: orNull(until.value),
+        name: name.value.trim(), iconAssetId: icon.id, npcPriceMeso: priceOf(price.value), from: orNull(from.value), until: orNull(until.value),
       });
       show(r.ok ? item.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editing = null; load();
     });
@@ -95,17 +104,23 @@ export const HUNT_LOOT_HTML = layout(
 
   document.getElementById('c-add').addEventListener('click', async function () {
     var v = function (id) { return document.getElementById(id).value.trim(); };
-    var body = { key: v('c-key'), kind: v('c-kind'), name: v('c-name'), iconFile: v('c-icon'), npcPriceMeso: v('c-kind') === 'consumable' ? priceOf(v('c-price')) : null, from: orNull(v('c-from')), until: orNull(v('c-until')) };
+    var body = { key: v('c-key'), kind: v('c-kind'), name: v('c-name'), iconAssetId: state.newIcon, npcPriceMeso: v('c-kind') === 'consumable' ? priceOf(v('c-price')) : null, from: orNull(v('c-from')), until: orNull(v('c-until')) };
     var r = await call('POST', '/admin/hunt-loot', body);
     show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
-    if (r.ok) ['c-key', 'c-name', 'c-icon', 'c-price', 'c-from', 'c-until'].forEach(function (id) { document.getElementById(id).value = ''; });
+    if (r.ok) { ['c-key', 'c-name', 'c-price', 'c-from', 'c-until'].forEach(function (id) { document.getElementById(id).value = ''; }); state.newIcon = null; document.getElementById('c-icon').textContent = iconText(null); }
     load();
+  });
+
+  document.getElementById('c-icon-pick').addEventListener('click', function () {
+    pickIcon(state.newIcon, function (id) { state.newIcon = id; document.getElementById('c-icon').textContent = iconText(id); });
   });
 
   async function load() {
     var r = await call('GET', '/admin/hunt-loot/rows');
-    if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
+    var a = await call('GET', '/admin/assets/list');
+    if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     state.data = r.json;
+    state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; });
     document.getElementById('stat-items').textContent = r.json.items.length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
     render();

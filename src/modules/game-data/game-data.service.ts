@@ -18,15 +18,10 @@ import {
   type CrystalPricesSection,
 } from '../crystal-prices/crystal-prices.repository'
 import { DropBoxesRepository, type DropBoxesSection } from '../drop-items/drop-boxes.repository'
-import { DropItemsRepository, type DropItemsSection } from '../drop-items/drop-items.repository'
 import {
   EnhancementCostsRepository,
   type EnhancementCostsSection,
 } from '../enhancement-costs/enhancement-costs.repository'
-import {
-  EquipmentItemsRepository,
-  type EquipmentItemsSection,
-} from '../equipment-items/equipment-items.repository'
 import { FaqsRepository, type FaqsSection } from '../faqs/faqs.repository'
 import {
   HuntingGroundsRepository,
@@ -54,7 +49,6 @@ import { gameDataStamp } from './sections'
  */
 export interface GameDataSnapshot {
   bosses: Catalog
-  dropItems: DropItemsSection
   bossDrops: BossDropsSection
   dropBoxes: DropBoxesSection
   crystalPrices: CrystalPricesSection
@@ -63,7 +57,6 @@ export interface GameDataSnapshot {
   cashbookCategories: CashbookCategoriesSection
   symbolCosts: SymbolCostsSection
   contents: ContentsSection
-  equipmentItems: EquipmentItemsSection
   enhancementCosts: EnhancementCostsSection
   mvpGrades: MvpGradesSection
   huntingGrounds: HuntingGroundsSection
@@ -94,7 +87,6 @@ export class GameDataService {
 
   constructor(
     private readonly bosses: BossesRepository,
-    private readonly dropItems: DropItemsRepository,
     private readonly bossDrops: BossDropsRepository,
     private readonly dropBoxes: DropBoxesRepository,
     private readonly crystalPrices: CrystalPricesRepository,
@@ -102,7 +94,6 @@ export class GameDataService {
     private readonly spendCatalog: SpendCatalogRepository,
     private readonly symbolCosts: SymbolCostsRepository,
     private readonly contents: ContentsRepository,
-    private readonly equipmentItems: EquipmentItemsRepository,
     private readonly enhancementCosts: EnhancementCostsRepository,
     private readonly mvpGrades: MvpGradesRepository,
     private readonly huntingGrounds: HuntingGroundsRepository,
@@ -149,7 +140,6 @@ export class GameDataService {
   async snapshot(): Promise<GameDataSnapshot> {
     const [
       bosses,
-      dropItems,
       bossDrops,
       dropBoxes,
       crystalPrices,
@@ -157,7 +147,6 @@ export class GameDataService {
       spendCatalog,
       symbolCosts,
       contents,
-      equipmentItems,
       enhancementCosts,
       mvpGrades,
       huntingGrounds,
@@ -171,7 +160,6 @@ export class GameDataService {
       items,
     ] = await Promise.all([
       this.bosses.catalog(),
-      this.dropItems.section(),
       this.bossDrops.section(),
       this.dropBoxes.section(),
       this.crystalPrices.section(),
@@ -179,7 +167,6 @@ export class GameDataService {
       this.spendCatalog.section(),
       this.symbolCosts.section(),
       this.contents.section(),
-      this.equipmentItems.section(),
       this.enhancementCosts.section(),
       this.mvpGrades.section(),
       this.huntingGrounds.section(),
@@ -194,7 +181,6 @@ export class GameDataService {
     ])
     return {
       bosses,
-      dropItems,
       bossDrops,
       dropBoxes,
       crystalPrices,
@@ -203,7 +189,6 @@ export class GameDataService {
       cashbookCategories,
       symbolCosts,
       contents,
-      equipmentItems,
       enhancementCosts,
       mvpGrades,
       huntingGrounds,

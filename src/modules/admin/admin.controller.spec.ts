@@ -959,8 +959,8 @@ describe('AdminController', () => {
       ).toEqual({ updatedAt: null, defaultMaxPartySize: 6, pairs: [] })
     })
 
-    it('그림 칸이 그림 표에 없는 그림을 가리키면 400 이고 쓰지 않는다', async () => {
-      assetsRepo.missing.mockResolvedValue(['nobody.png'])
+    it('그림 칸이 그림 표에 없는 그림을 가리키면 400 이다', async () => {
+      huntLootRepo.create.mockRejectedValue(new AssetNotFound(ROW))
       const res = await app.inject({
         method: 'POST',
         url: '/admin/hunt-loot',
@@ -968,14 +968,12 @@ describe('AdminController', () => {
           key: 'reindeer_milk',
           kind: 'consumable',
           name: '순록의 우유',
-          iconFile: 'nobody.png',
+          iconAssetId: ROW,
           npcPriceMeso: 2750,
         },
       })
       expect(res.statusCode).toBe(400)
-      expect(res.json<{ message: string }>().message).toContain('nobody.png')
-      expect(assetsRepo.missing).toHaveBeenCalledWith([{ ref: 'itemIcon', value: 'nobody.png' }])
-      expect(huntLootRepo.create).not.toHaveBeenCalled()
+      expect(res.json<{ message: string }>().message).toContain(ROW)
     })
 
     it('상자의 레벨 범위는 둘 다 있거나 둘 다 없어야 400 이 아니다', async () => {
@@ -1520,14 +1518,14 @@ describe('AdminController', () => {
       key: 'reindeer_milk',
       kind: 'consumable',
       name: '순록의 우유',
-      iconFile: 'reindeer_milk.png',
+      iconAssetId: ROW,
       npcPriceMeso: 2750,
     }
     const magnifier = {
       key: 'suspicious_magnifier',
       kind: 'event',
       name: '수상한 돋보기',
-      iconFile: 'suspicious_magnifier.webp',
+      iconAssetId: ROW,
       from: '2026-10-22',
       until: '2026-11-19',
     }
@@ -1546,19 +1544,18 @@ describe('AdminController', () => {
       expect((await post(milk)).statusCode).toBe(409)
     })
 
-    it('NPC 가격이 분류와 안 맞거나 기간이 거꾸로이거나 그림이 그림 표에 없으면 400 이고 리포지토리를 안 부른다', async () => {
+    it('NPC 가격이 분류와 안 맞거나 기간이 거꾸로이거나 그림이 줄 id 가 아니면 400 이고 리포지토리를 안 부른다', async () => {
       expect((await post({ ...milk, npcPriceMeso: null })).statusCode).toBe(400)
       expect((await post({ ...magnifier, npcPriceMeso: 100 })).statusCode).toBe(400)
       expect(
         (await post({ ...magnifier, from: '2026-11-19', until: '2026-10-22' })).statusCode,
       ).toBe(400)
-      assetsRepo.missing.mockResolvedValue(['reindeer_milk.png'])
-      expect((await post(milk)).statusCode).toBe(400)
+      expect((await post({ ...milk, iconAssetId: 'reindeer_milk.png' })).statusCode).toBe(400)
       expect(huntLootRepo.create).not.toHaveBeenCalled()
     })
 
     it('고치기 · 옮기기는 key 로 찾고 모르면 404, 가격이 분류와 안 맞으면 400 이다', async () => {
-      const body = { name: '순록의 우유', iconFile: 'reindeer_milk.png', npcPriceMeso: 3000 }
+      const body = { name: '순록의 우유', iconAssetId: ROW, npcPriceMeso: 3000 }
       const put = () =>
         app.inject({ method: 'PUT', url: '/admin/hunt-loot/reindeer_milk', payload: body })
       huntLootRepo.update.mockResolvedValue(true)
@@ -1925,18 +1922,18 @@ describe('AdminController', () => {
         payload: {
           key: 'challengers_5',
           name: '챌린저스5',
-          emblem: 'challengers',
-          challengers: true,
+          emblemAssetId: ROW,
+          isChallengers: true,
         },
       })
       expect(created.statusCode).toBe(201)
       expect(worldsRepo.create).toHaveBeenCalledWith({
         key: 'challengers_5',
         name: '챌린저스5',
-        emblem: 'challengers',
-        challengers: true,
-        event: false,
-        priceGroup: 'general',
+        emblemAssetId: ROW,
+        isChallengers: true,
+        isEvent: false,
+        tradeGroupKey: 'general',
       })
       worldsRepo.create.mockRejectedValue(new WorldExists('challengers_5'))
       expect(
@@ -1955,15 +1952,15 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/worlds/special',
-            payload: { name: '스페셜', event: true },
+            payload: { name: '스페셜', isEvent: true },
           })
         ).statusCode,
       ).toBe(204)
       expect(worldsRepo.update).toHaveBeenCalledWith('special', {
         name: '스페셜',
-        emblem: null,
-        challengers: false,
-        event: true,
+        emblemAssetId: null,
+        isChallengers: false,
+        isEvent: true,
       })
       worldsRepo.update.mockResolvedValue(false)
       expect(
@@ -1984,7 +1981,7 @@ describe('AdminController', () => {
     })
 
     it('기간은 POST 201 · 모르는 월드 404 · 겹침과 순서 400 · 틀린 날짜 400, PUT 과 DELETE 는 204 · 모르면 404 다', async () => {
-      const period = { from: '2025-11-20', until: '2025-12-19' }
+      const period = { validFrom: '2025-11-20', validUntil: '2025-12-19' }
       const send = (method: 'POST' | 'PUT' | 'DELETE', url: string, payload?: object) =>
         app.inject({ method, url, ...(payload === undefined ? {} : { payload }) })
 
@@ -2002,10 +1999,10 @@ describe('AdminController', () => {
 
       worldsRepo.addPeriod.mockClear()
       for (const bad of [
-        { from: '2025-11-20T10:00', until: '2025-12-19' },
-        { from: '2025-13-01', until: '2025-12-19' },
-        { from: '2025-12-19', until: '2025-11-20' },
-        { from: '2025-11-20' },
+        { validFrom: '2025-11-20T10:00', validUntil: '2025-12-19' },
+        { validFrom: '2025-13-01', validUntil: '2025-12-19' },
+        { validFrom: '2025-12-19', validUntil: '2025-11-20' },
+        { validFrom: '2025-11-20' },
       ]) {
         expect((await send('POST', '/admin/worlds/special/periods', bad)).statusCode).toBe(400)
       }

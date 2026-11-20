@@ -1,13 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, isNull, ne, or, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { items, dropPrices, nexonAccountMapleIds, worlds } from '../../database/schema'
+import {
+  dropPrices,
+  itemGroups,
+  items,
+  nexonAccountMapleIds,
+  tradeGroups,
+  worlds,
+} from '../../database/schema'
+import { WORLD_BOUND_TYPE } from '../items/items'
 
-/** 장비를 서로 거래할 수 있는 월드들. worlds.price_group 이 같은 월드다. */
+/** 장비를 서로 거래할 수 있는 월드들. 같은 거래권 줄을 가리키는 월드다. */
 export interface PriceGroup {
   key: string
-  /** general 은 일반 월드, 아니면 든 월드 이름을 잇는다. */
+  /** 거래권 표의 이름. */
   name: string
   /** 든 월드 이름. 월드 표의 차례다. */
   worlds: string[]
@@ -46,8 +54,6 @@ export interface MarketKey {
   ringLevel: number | null
 }
 
-const GENERAL_NAME = '일반 월드'
-
 /** 드롭 가격 줄을 시세 범위 단위로 읽는다. 판정과 봉은 fence · candles 가 만든다. */
 @Injectable()
 export class DropMarketRepository {
@@ -56,22 +62,23 @@ export class DropMarketRepository {
   /** 거래권과 월드. 월드 표의 차례이고 거래권은 든 첫 월드의 차례다. */
   async scopes(): Promise<MarketScopes> {
     const rows = await this.db
-      .select({ key: worlds.key, name: worlds.name, priceGroup: worlds.priceGroup })
+      .select({
+        key: worlds.key,
+        name: worlds.name,
+        groupKey: tradeGroups.key,
+        groupName: tradeGroups.name,
+      })
       .from(worlds)
-      .where(isNotNull(worlds.priceGroup))
+      .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
       .orderBy(asc(worlds.sortOrder), asc(worlds.key))
     const groups = new Map<string, PriceGroup>()
     for (const r of rows) {
-      const key = r.priceGroup as string
-      const group = groups.get(key) ?? { key, name: '', worlds: [] }
+      const group = groups.get(r.groupKey) ?? { key: r.groupKey, name: r.groupName, worlds: [] }
       group.worlds.push(r.name)
-      groups.set(key, group)
+      groups.set(r.groupKey, group)
     }
     return {
-      groups: [...groups.values()].map((g) => ({
-        ...g,
-        name: g.key === 'general' ? GENERAL_NAME : g.worlds.join(' · '),
-      })),
+      groups: [...groups.values()],
       worlds: rows.map((r) => ({ key: r.key, name: r.name })),
     }
   }
@@ -99,14 +106,17 @@ export class DropMarketRepository {
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
+      .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
       .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
+      .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
       .leftJoin(nexonAccountMapleIds, eq(nexonAccountMapleIds.mapleId, dropPrices.mapleId))
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),
-          eq(items.worldBound, !equipment),
-          isNotNull(worlds.priceGroup),
-          equipment ? eq(worlds.priceGroup, scope.key) : eq(worlds.key, scope.key),
+          equipment
+            ? or(isNull(itemGroups.type), ne(itemGroups.type, WORLD_BOUND_TYPE))
+            : eq(itemGroups.type, WORLD_BOUND_TYPE),
+          equipment ? eq(tradeGroups.key, scope.key) : eq(worlds.key, scope.key),
           gte(dropPrices.pricedAt, since),
           market === undefined ? undefined : eq(items.key, market.itemKey),
           market === undefined

@@ -9,7 +9,8 @@ import {
   ItemGroupsRepository,
 } from '../items/item-groups.repository'
 import {
-  InvalidItemCategory,
+  FollowingItem,
+  InvalidItemGroup,
   ItemExists,
   ItemNameTaken,
   ItemRoleRemoved,
@@ -19,11 +20,10 @@ import { AdminItemsController } from './admin-items.controller'
 
 const body = {
   name: '거대한 공포',
-  category: 'dark_boss_set',
+  groupKey: 'dark_boss_set',
   iconAssetId: null,
-  valuable: true,
-  worldBound: false,
-  level: 200,
+  isValuable: true,
+  requiredLevel: 200,
   isDrop: true,
   isEquipment: true,
 }
@@ -99,7 +99,7 @@ describe('AdminItemsController', () => {
   it('본문 모양이 틀리면 400 이다. key 는 snake_case, 레벨은 1 이상, 그림은 uuid 다', async () => {
     for (const payload of [
       { key: 'Giant', ...body },
-      { key: 'giant', ...body, level: 0 },
+      { key: 'giant', ...body, requiredLevel: 0 },
       { key: 'giant', ...body, iconAssetId: 'items/giant.png' },
       { key: 'giant', ...body, name: '  ' },
     ])
@@ -118,7 +118,12 @@ describe('AdminItemsController', () => {
         '이름이 같은 아이템이 다른 key 로 있다: great_terror',
       ],
       [new ItemRoleRemoved('isDrop'), 409, '붙은 역할은 뺄 수 없다: 드롭 아이템'],
-      [new InvalidItemCategory('equipment'), 400, '분류 트리에 없는 묶음이다: equipment'],
+      [new InvalidItemGroup('equipment'), 400, '분류 트리에 없는 묶음이다: equipment'],
+      [
+        new FollowingItem('restraint_ring'),
+        409,
+        '원래 아이템 restraint_ring 을 따라 바뀌는 줄이라 직접 못 고친다',
+      ],
       [new AssetNotFound('x'), 400, '그림 표에 없는 그림이다: x'],
     ]
     for (const [error, status, message] of cases) {
@@ -136,12 +141,12 @@ describe('AdminItemsController', () => {
     const created = await app.inject({
       method: 'POST',
       url: '/admin/item-groups',
-      payload: { key: 'boutique', kind: 'consumable', name: ' 부티크 ' },
+      payload: { key: 'boutique', type: 'consumable', name: ' 부티크 ' },
     })
     expect(created.statusCode).toBe(201)
     expect(groups.create).toHaveBeenCalledWith({
       key: 'boutique',
-      kind: 'consumable',
+      type: 'consumable',
       name: '부티크',
     })
 
@@ -149,11 +154,11 @@ describe('AdminItemsController', () => {
       app.inject({
         method: 'PUT',
         url: '/admin/item-groups/boutique',
-        payload: { kind: 'cash', name: '부티크' },
+        payload: { type: 'cash', name: '부티크' },
       })
     groups.update.mockResolvedValue(true)
     expect((await put()).statusCode).toBe(204)
-    expect(groups.update).toHaveBeenCalledWith('boutique', { kind: 'cash', name: '부티크' })
+    expect(groups.update).toHaveBeenCalledWith('boutique', { type: 'cash', name: '부티크' })
     groups.update.mockResolvedValue(false)
     expect((await put()).statusCode).toBe(404)
 
@@ -178,9 +183,9 @@ describe('AdminItemsController', () => {
 
   it('묶음 본문 모양이 틀리면 400 이다. key 는 snake_case, 종류는 코드의 다섯 가운데 하나, 이름은 비지 않는다', async () => {
     for (const payload of [
-      { key: 'Boutique', kind: 'consumable', name: '부티크' },
-      { key: 'boutique', kind: 'weapon', name: '부티크' },
-      { key: 'boutique', kind: 'consumable', name: '  ' },
+      { key: 'Boutique', type: 'consumable', name: '부티크' },
+      { key: 'boutique', type: 'weapon', name: '부티크' },
+      { key: 'boutique', type: 'consumable', name: '  ' },
     ])
       expect(
         (await app.inject({ method: 'POST', url: '/admin/item-groups', payload })).statusCode,
@@ -193,7 +198,7 @@ describe('AdminItemsController', () => {
     const exists = await app.inject({
       method: 'POST',
       url: '/admin/item-groups',
-      payload: { key: 'box', kind: 'consumable', name: '새 상자' },
+      payload: { key: 'box', type: 'consumable', name: '새 상자' },
     })
     expect([exists.statusCode, exists.json<{ message: string }>().message]).toEqual([
       409,
@@ -204,7 +209,7 @@ describe('AdminItemsController', () => {
     const taken = await app.inject({
       method: 'PUT',
       url: '/admin/item-groups/boxes',
-      payload: { kind: 'consumable', name: '상자' },
+      payload: { type: 'consumable', name: '상자' },
     })
     expect([taken.statusCode, taken.json<{ message: string }>().message]).toEqual([
       409,

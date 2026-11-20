@@ -10,7 +10,7 @@ import { migrationFoldersUpTo } from '../database/migration-folders'
 import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
-import { moveOldDb, NotEmpty, UnknownAssetPath } from './move-old-db'
+import { moveOldDb, SwappedDatabases, UnknownAssetPath, UnknownTradeGroup } from './move-old-db'
 
 /** 옛 DB 의 마지막 마이그레이션. 1.0.14 운영 DB 가 여기까지 올라 있다. */
 const OLD_LAST = '0045_market_range_nullable'
@@ -139,7 +139,11 @@ describeDb('moveOldDb', () => {
     const season = await insertOldBoss('meirin', 'event_weekly', portrait)
     const monthly = await insertOldBoss('black_mage', 'monthly', portrait)
 
-    expect(await moveOldDb(oldDb, newDb)).toEqual({ assets: 1, bosses: 3, bossDifficulties: 6 })
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      assets: 1,
+      bosses: 3,
+      bossDifficulties: 6,
+    })
 
     const bosses = await newDb.select().from(schema.bosses)
     expect(bosses.find((b) => b.id === season.bossId)).toMatchObject({
@@ -180,13 +184,204 @@ describeDb('moveOldDb', () => {
     expect(await newDb.select().from(schema.assets)).toEqual([])
   })
 
-  it('새 DB 의 옮길 표에 줄이 있으면 아무것도 옮기지 않는다', async () => {
+  // 옛 마이그레이션 0041 이 빈 DB 에도 묶음 줄을 넣는다. 그 줄은 옛 DB 의 묶음으로 갈아 끼운다.
+  it('다시 돌리면 옮길 표를 비우고 다시 채운다. 새 DB 에 마이그레이션이 넣은 묶음 줄도 옛 DB 의 줄로 바뀐다', async () => {
+    const seeded = await newDb.select({ id: schema.itemGroups.id }).from(schema.itemGroups)
+    expect(seeded.length).toBeGreaterThan(0)
     const portrait = await insertOldAsset('bosses/maerin.webp')
     await insertOldBoss('meirin', 'event_weekly', portrait)
+    await insertOldGroup('spec_ring', 'accessory')
+
+    const first = await moveOldDb(oldDb, newDb)
+    const second = await moveOldDb(oldDb, newDb)
+
+    expect(second).toEqual(first)
+    expect(await newDb.select().from(schema.bosses)).toHaveLength(1)
+    const oldIds = (await oldDb.select().from(oldSchema.itemGroups)).map((g) => g.id).sort()
+    const newIds = (await newDb.select().from(schema.itemGroups)).map((g) => g.id).sort()
+    expect(newIds).toEqual(oldIds)
+    expect(newIds).not.toEqual(seeded.map((g) => g.id).sort())
+  })
+
+  it('옛 DB 와 새 DB 를 바꿔 넣으면 아무것도 하지 않고 멈춘다', async () => {
+    await insertOldAsset('bosses/maerin.webp')
+    const swapped = moveOldDb(
+      newDb as unknown as NodePgDatabase<typeof oldSchema>,
+      oldDb as unknown as NodePgDatabase<typeof schema>,
+    )
+    await expect(swapped).rejects.toBeInstanceOf(SwappedDatabases)
+    expect(await oldDb.select().from(oldSchema.assets)).toHaveLength(1)
+  })
+
+  async function insertOldGroup(key: string, kind: string): Promise<string> {
+    const [row] = await oldDb
+      .insert(oldSchema.itemGroups)
+      .values({ key, kind, name: `${key} 이름`, sortOrder: 0 })
+      .returning({ id: oldSchema.itemGroups.id })
+    if (row === undefined) throw new Error('옛 묶음을 못 넣었다')
+    return row.id
+  }
+
+  async function insertOldItem(
+    key: string,
+    values: Partial<typeof oldSchema.items.$inferInsert> = {},
+  ): Promise<string> {
+    const [row] = await oldDb
+      .insert(oldSchema.items)
+      .values({ key, name: `${key} 이름`, isDrop: true, ...values })
+      .returning({ id: oldSchema.items.id })
+    if (row === undefined) throw new Error('옛 아이템을 못 넣었다')
+    return row.id
+  }
+
+  /** 레벨 범위가 있는 상자 하나와 그 내용물. */
+  async function insertOldBox(
+    key: string,
+    level: [number, number] | null,
+    contents: string[],
+  ): Promise<void> {
+    const boxItem = await insertOldItem(key)
+    const [box] = await oldDb
+      .insert(oldSchema.dropBoxes)
+      .values({ itemId: boxItem, levelMin: level?.[0] ?? null, levelMax: level?.[1] ?? null })
+      .returning({ id: oldSchema.dropBoxes.id })
+    if (box === undefined) throw new Error('옛 상자를 못 넣었다')
+    await oldDb
+      .insert(oldSchema.dropBoxContents)
+      .values(contents.map((itemId, i) => ({ boxId: box.id, itemId, sortOrder: i })))
+  }
+
+  it('아이템은 줄 id 를 그대로 두고 묶음 key 를 묶음 줄 id 로, 고가 · 착용 레벨을 새 칸으로 옮기고 월드 간 거래 불가는 버린다', async () => {
+    const group = await insertOldGroup('spec_pendant', 'accessory')
+    const icon = await insertOldAsset('items/pendant.png')
+    const id = await insertOldItem('dominator', {
+      category: 'spec_pendant',
+      iconAssetId: icon,
+      valuable: true,
+      worldBound: true,
+      level: 140,
+      isEquipment: true,
+    })
+
     await moveOldDb(oldDb, newDb)
 
-    await expect(moveOldDb(oldDb, newDb)).rejects.toBeInstanceOf(NotEmpty)
-    expect(await newDb.select().from(schema.bosses)).toHaveLength(1)
-    expect(await newDb.select().from(schema.assets)).toHaveLength(1)
+    const groups = await newDb.select().from(schema.itemGroups)
+    expect(groups.find((g) => g.id === group)).toMatchObject({
+      key: 'spec_pendant',
+      type: 'accessory',
+    })
+    expect((await newDb.select().from(schema.items)).find((i) => i.id === id)).toMatchObject({
+      key: 'dominator',
+      name: 'dominator 이름',
+      groupId: group,
+      iconAssetId: icon,
+      isValuable: true,
+      requiredLevel: 140,
+      isDrop: true,
+      isEquipment: true,
+    })
+  })
+
+  it('레벨 범위가 있는 상자의 장신구 묶음 아이템은 레벨마다 줄을 더하고, 상자에서도 나오는 연마석은 같은 물건의 줄을 하나 더한다', async () => {
+    const ringGroup = await insertOldGroup('spec_ring', 'accessory')
+    await insertOldGroup('spec_loot', 'consumable')
+    const icon = await insertOldAsset('items/rings/restraint.png')
+    const ring = await insertOldItem('restraint_ring', {
+      name: '리스트레인트 링',
+      category: 'spec_ring',
+      iconAssetId: icon,
+      valuable: true,
+    })
+    const whetstone = await insertOldItem('life_whetstone', {
+      name: '생명의 연마석',
+      category: 'spec_loot',
+      valuable: true,
+    })
+    await insertOldBox('life_boss_ring_box', [3, 4], [ring, whetstone])
+    await insertOldBox('white_boss_ring_box', [1, 3], [ring])
+
+    await moveOldDb(oldDb, newDb)
+
+    const all = await newDb.select().from(schema.items)
+    const levels = await newDb.select().from(schema.ringLevelItems)
+    expect(levels.map((l) => [l.ringItemId, l.ringLevel]).sort()).toEqual([
+      [ring, 1],
+      [ring, 2],
+      [ring, 3],
+      [ring, 4],
+    ])
+    const lv4 = all.find((i) => i.id === levels.find((l) => l.ringLevel === 4)?.itemId)
+    expect(lv4).toMatchObject({
+      key: 'restraint_ring_lv4',
+      name: '리스트레인트 링 lv.4',
+      groupId: ringGroup,
+      iconAssetId: icon,
+      isValuable: true,
+      isDrop: true,
+      isEquipment: false,
+      requiredLevel: null,
+    })
+    expect(all.some((i) => i.key.startsWith('life_whetstone_lv'))).toBe(false)
+
+    const boxed = all.find((i) => i.key === 'life_whetstone_from_box')
+    const original = all.find((i) => i.id === whetstone)
+    expect(boxed && { ...boxed, id: '', key: '', updatedAt: null }).toEqual(
+      original && { ...original, id: '', key: '', updatedAt: null },
+    )
+    expect(
+      (await newDb.select().from(schema.sameItemLinks)).map((l) => [l.itemId, l.originalItemId]),
+    ).toEqual([[boxed?.id, whetstone]])
+  })
+
+  it('거래권 글자를 거래권 줄로 만들어 월드가 가리키게 하고, 월드의 참 · 거짓 칸과 열린 기간을 새 이름으로 옮긴다', async () => {
+    const [scania, eos, special] = await oldDb
+      .insert(oldSchema.worlds)
+      .values([
+        { key: 'scania', name: '스카니아', priceGroup: 'general', sortOrder: 0 },
+        { key: 'eos', name: '에오스', priceGroup: 'helios_eos', challengers: true, sortOrder: 1 },
+        { key: 'special', name: '스페셜', priceGroup: null, event: true, sortOrder: 2 },
+      ])
+      .returning({ id: oldSchema.worlds.id })
+    const [period] = await oldDb
+      .insert(oldSchema.worldPeriods)
+      .values({ worldId: eos?.id ?? '', from: '2026-06-18', until: '2026-09-17' })
+      .returning({ id: oldSchema.worldPeriods.id })
+
+    await moveOldDb(oldDb, newDb)
+
+    const groups = await newDb.select().from(schema.tradeGroups)
+    expect(groups.map((g) => [g.key, g.name]).sort()).toEqual([
+      ['general', '일반 월드'],
+      ['helios_eos', '에오스 · 핼리오스'],
+    ])
+    const groupOf = new Map(groups.map((g) => [g.id, g.key]))
+    const worlds = await newDb.select().from(schema.worlds)
+    const byId = new Map(worlds.map((w) => [w.id, w]))
+    expect(groupOf.get(byId.get(scania?.id ?? '')?.tradeGroupId ?? '')).toBe('general')
+    expect(byId.get(eos?.id ?? '')).toMatchObject({ isChallengers: true, isEvent: false })
+    expect(byId.get(special?.id ?? '')).toMatchObject({ tradeGroupId: null, isEvent: true })
+    expect(
+      (await newDb.select().from(schema.worldOpenPeriods)).map(({ updatedAt, ...p }) => ({
+        ...p,
+        hasUpdatedAt: updatedAt instanceof Date,
+      })),
+    ).toEqual([
+      {
+        id: period?.id,
+        worldId: eos?.id,
+        validFrom: '2026-06-18',
+        validUntil: '2026-09-17',
+        hasUpdatedAt: true,
+      },
+    ])
+  })
+
+  it('이름을 정하지 않은 거래권 글자가 있으면 알리고 아무것도 옮기지 않는다', async () => {
+    await oldDb
+      .insert(oldSchema.worlds)
+      .values({ key: 'nova', name: '노바', priceGroup: 'challengers_5', sortOrder: 0 })
+
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownTradeGroup('challengers_5'))
+    expect(await newDb.select().from(schema.worlds)).toEqual([])
   })
 })

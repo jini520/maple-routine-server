@@ -48,6 +48,8 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   ~/.config/maple-routine-server/fcm-key.json   FCM 서비스 계정 키. compose 가 /run/secrets/fcm-key.json 으로 건다
   ~/.config/maple-routine-server/db.env   DATABASE_URL 하나. psql 을 도커로 띄울 때 쓴다
   /etc/nginx/sites-available/mapleroutine /v1 · /admin 을 127.0.0.1:4000 으로 넘기고, /assets/ 는 아래 디렉터리를 바로 낸다
+  /etc/nginx/nginx.conf                   gzip 설정. JSON 을 줄인다(아래 nginx 압축)
+  /etc/docker/daemon.json                 {"live-restore": true}. 데몬을 다시 켜도 서버 컨테이너가 멈추지 않는다(아래 Docker 데몬)
   /srv/maple-routine-assets/              그림 파일(<sha256>.<확장자>). compose 가 /data/assets 로 건다. 주인은 uid 1000(컨테이너의 node)
   /srv/maple-routine-ota/                 OTA 매니페스트 · latest · releases.json 과 files/(번들 · 에셋). compose 가 /data/ota 로 읽기 전용으로 건다. 주인은 ubuntu
   /srv/maple-routine-maintenance/         점검 파일 maintenance.json. 있으면 점검 중이다. 서버는 읽지 않고 nginx 만 읽는다. 주인은 ubuntu
@@ -72,6 +74,9 @@ docker compose run --rm --no-deps server node dist/cli/seed-game-data.js   # 게
 docker compose up -d --no-build
 curl -s http://127.0.0.1:4000/healthz
 docker logs --since 5m maple-routine-server
+# 정리. 태그 없는 이미지와 빌드 캐시를 지운다. prod · prev 는 태그가 있어 남는다(-a 를 붙이면 prev 까지 지운다)
+docker image prune -f && docker builder prune -af
+rm ~/maple-routine-server-image.tar.gz
 
 # 되돌릴 때
 docker tag maple-routine-server:prev maple-routine-server:prod && docker compose up -d --no-build
@@ -136,6 +141,26 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-ota /srv/maple-routine-ota/files` 로 만든다. 서버는 읽기만
   하므로 주인이 ubuntu 여도 된다. `/v1/` 의 속도 제한은 매니페스트에만 걸리고 `/ota/files/` 에는 안 걸린다.
 
+- **nginx 압축. JSON 응답은 nginx 가 gzip 으로 줄인다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). `game-data` 전체 받기가
+  1,018KB 에서 241KB 로, 앱을 열 때마다 두 번 받는 소식 목록이 23KB 에서 8KB 로 준다. `/etc/nginx/nginx.conf` 의 `http` 블록은 이렇다.
+
+  ```
+  gzip on;
+  gzip_vary on;
+  gzip_proxied any;
+  gzip_comp_level 5;
+  gzip_min_length 1024;
+  gzip_types application/json;
+  ```
+
+  - `location /v1/ota/` 블록에는 `gzip off;` 를 넣는다. 매니페스트는 9KB 라 얻을 것이 적고, 잘못되면 모든 사용자가 업데이트를 못 받는다.
+  - 프렌즈 스트림 블록은 이미 `gzip off;` 다. 서버가 NDJSON 을 줄여 보낸다.
+  - nginx 는 줄이며 ETag 앞에 `W/` 를 붙인다. `game-data` · 시세의 `If-None-Match` 비교는 `W/` 를 떼고 본다. 이 비교를 바꾸면 304 가 사라진다.
+- **Docker 데몬은 `live-restore` 로 두고, 불어나면 다시 켠다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). 2026-11-20 에 데몬이
+  37일 동안 RSS 222MB · 스왑 264MB 까지 불었다. 서버(node)는 91MB 였다. `/etc/docker/daemon.json` 에 `{"live-restore": true}` 를 두면
+  `sudo systemctl restart docker` 를 해도 컨테이너가 멈추지 않는다. 그래도 포트 전달이 끊길 수 있어 재시작은 배포처럼 한국 시각 3 ~ 7시에 하고,
+  끝나면 `curl -s http://127.0.0.1:4000/healthz` 로 확인한다. 끊겼으면 `docker compose up -d --no-build --force-recreate` 다.
+  데몬 메모리가 다시 불어나면 Docker 를 빼고 서버를 systemd 로 직접 돌린다. 그 전환은 1.0.15 서버 전환 · 도메인 분리(앱 저장소 #1090)와 함께 한다.
 - **점검 잠금은 맥에서 `npm run maintenance` 로 켜고 끈다**(앱 저장소 `ADR-261`). 앱 전체를 점검 화면으로 막는다. 서버의 표를 옮길
   때처럼 앱이 서버에 쓰면 안 되는 작업에만 쓴다. 재시작만 하는 배포에는 켜지 않는다.
 
@@ -196,7 +221,8 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 사본은 앱 저장소에서 `node scripts/sync-game-data.mjs` 로 맞춘다
   (앱 저장소 `ADR-349` 정정 1 · `ADR-350`).
 - **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-350`). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
-  든다. 칸은 `bosses` · `dropItems` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `equipmentItems` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열다섯이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
+  든다. 서버는 응답을 메모리에 담아 두고, 칸 시각이 바뀌거나 담은 지 5분이 지나면 다시 만든다(앱 저장소 `ADR-020` 결정 2). 요청마다 만들면
+  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `dropItems` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `equipmentItems` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열다섯이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
   `/admin/items` 하나에서 고친다(앱 저장소 `ADR-187` 결정 6. 분류 트리 · 그림 격자 · 편집 서랍이고, 역할은 붙이기만 한다). 드롭 묶음의 관리 화면은
   `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 지출 카탈로그는 `/admin/spend-catalog`,
   심볼 비용은 `/admin/symbol-costs` 다(ADR-350 정정 3. 묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 컨텐츠는 `/admin/contents` 다(ADR-350 정정 4.

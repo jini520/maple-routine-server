@@ -48,7 +48,6 @@ ${ASSET_PICKER}
   ];
   var state = { images: [], assets: {} };
 
-  function dirOf(path) { return path.slice(0, path.lastIndexOf('/')); }
   // 연출 프레임은 번호가 끝에 있어 글자 차례면 10 이 2 앞에 선다.
   function byKey(a, b) {
     var na = Number(a.key.slice(a.key.lastIndexOf('_') + 1)), nb = Number(b.key.slice(b.key.lastIndexOf('_') + 1));
@@ -57,9 +56,9 @@ ${ASSET_PICKER}
   }
 
   async function change(image, asset) {
-    var dir = asset ? dirOf(asset.path) : 'items';
+    var category = asset ? asset.category : 'item';
     openAssetPicker({
-      dirs: [dir], uploadDir: dir, current: image.assetId,
+      categories: [category], uploadCategory: category, current: image.assetId,
       onPick: async function (f) {
         if (f === null) { show('앱 그림은 비울 수 없다. 다른 그림을 고른다', true); return; }
         var r = await call('PUT', '/admin/app-images/' + image.key, { assetId: f.id });
@@ -75,7 +74,7 @@ ${ASSET_PICKER}
     var img = el('img'); img.alt = ''; img.loading = 'lazy'; if (asset) img.src = '/assets/' + asset.file;
     box.appendChild(img);
     box.appendChild(el('div', image.key, 'key'));
-    box.appendChild(el('div', asset ? asset.path : '그림 표에 없다', 'path'));
+    box.appendChild(el('div', asset ? asset.category + '/' + asset.fileName + '.' + asset.extension : '그림 표에 없다', 'path'));
     var b = button('바꾸기', 'btn ghost sm');
     b.addEventListener('click', function () { change(image, asset); });
     box.appendChild(b);

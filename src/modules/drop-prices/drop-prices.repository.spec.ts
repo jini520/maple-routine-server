@@ -11,7 +11,13 @@ import {
 } from '../../database/schema'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { BossesRepository } from '../bosses/bosses.repository'
-import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  describeDb,
+  insertAsset,
+  insertAssets,
+  openTestDb,
+  type TestDb,
+} from '../../database/test-db'
 import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import {
   type DropPriceInput,
@@ -194,10 +200,10 @@ describeDb('DropPricesRepository', () => {
     await bosses.createBoss({
       key: 'lucid',
       name: '루시드',
-      alias: '루시드',
-      cycle: 'weekly',
-      portraitSlug: 'lucid',
-      difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+      shortName: '루시드',
+      isSeasonBoss: false,
+      portraitAssetId: await insertAsset(db, 'bosses/lucid.webp'),
+      difficulties: [{ difficulty: 'hard', cycle: 'weekly', requiredLevel: 220 }],
     })
     const found = await bosses.findDifficulty('lucid', 'hard')
     expect(found).not.toBeNull()
@@ -330,10 +336,10 @@ describeDb('DropPricesRepository', () => {
       const created = await new BossesRepository(db).createBoss({
         key: 'lucid',
         name: '루시드',
-        alias: '루시드',
-        cycle: 'weekly',
-        portraitSlug: 'lucid',
-        difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+        shortName: '루시드',
+        isSeasonBoss: false,
+        portraitAssetId: await insertAsset(db, 'bosses/lucid.webp'),
+        difficulties: [{ difficulty: 'hard', cycle: 'weekly', requiredLevel: 220 }],
       })
       lucid = created.id
       // 반지 상자. 기기는 상자에서 나온 드롭에 상자의 아이템 key 를 단다.
@@ -538,10 +544,10 @@ describeDb('DropPricesRepository', () => {
       const created = await new BossesRepository(db).createBoss({
         key: 'lucid',
         name: '루시드',
-        alias: '루시드',
-        cycle: 'weekly',
-        portraitSlug: 'lucid',
-        difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+        shortName: '루시드',
+        isSeasonBoss: false,
+        portraitAssetId: await insertAsset(db, 'bosses/lucid.webp'),
+        difficulties: [{ difficulty: 'hard', cycle: 'weekly', requiredLevel: 220 }],
       })
       const [box] = await db
         .insert(items)

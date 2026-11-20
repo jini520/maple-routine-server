@@ -11,7 +11,7 @@ import {
   hexaJobCores,
   hexaStats,
 } from '../../database/schema'
-import { refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface HexaCoreKindView {
@@ -129,7 +129,7 @@ export class HexaMatrixRepository {
           apiType: hexaCoreKinds.apiType,
           isDefault: hexaCoreKinds.isDefault,
           maxLevel: hexaCoreKinds.maxLevel,
-          iconPath: assets.path,
+          iconAsset: assetNameColumns(assets),
           iconAssetId: hexaCoreKinds.iconAssetId,
         })
         .from(hexaCoreKinds)
@@ -160,7 +160,7 @@ export class HexaMatrixRepository {
           job: hexaJobCores.job,
           name: hexaJobCores.name,
           apiType: hexaJobCores.apiType,
-          iconPath: assets.path,
+          iconAsset: assetNameColumns(assets),
           iconAssetId: hexaJobCores.iconAssetId,
         })
         .from(hexaJobCores)
@@ -182,7 +182,7 @@ export class HexaMatrixRepository {
       apiType: r.apiType,
       isDefault: r.isDefault,
       maxLevel: r.maxLevel,
-      iconFile: refValueOf('itemIcon', r.iconPath),
+      iconFile: refValueOf('itemIcon', r.iconAsset),
       iconAssetId: r.iconAssetId,
     }))
     const jobCores = jobCoreRows.map((r) => ({
@@ -190,7 +190,7 @@ export class HexaMatrixRepository {
       job: r.job,
       name: r.name,
       apiType: r.apiType,
-      iconFile: refValueOf('skillIcon', r.iconPath),
+      iconFile: refValueOf('skillIcon', r.iconAsset),
       iconAssetId: r.iconAssetId,
     }))
     return { updatedAt, kinds, levelCosts, nameKinds, jobCores, stats }

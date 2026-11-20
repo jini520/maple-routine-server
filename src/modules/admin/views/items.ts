@@ -276,7 +276,7 @@ ${ASSET_PICKER}
   function showIcon() {
     var box = document.getElementById('ed-icon'); box.innerHTML = '';
     box.appendChild(iconImg(state.icon, 'none'));
-    document.getElementById('ed-path').textContent = state.icon === null ? '그림 없음' : state.icon.path;
+    document.getElementById('ed-path').textContent = state.icon === null ? '그림 없음' : state.icon.fileName + '.' + state.icon.extension;
   }
   function openEditor(it) {
     var isNew = it === null;
@@ -345,8 +345,8 @@ ${ASSET_PICKER}
   document.getElementById('ed-save').addEventListener('click', save);
   document.getElementById('ed-pick').addEventListener('click', function () {
     openAssetPicker({
-      dirs: ['items', 'items/rings'], uploadDir: 'items', current: state.icon && state.icon.id,
-      onPick: function (file) { state.icon = file === null ? null : { id: file.id, path: file.path, file: file.file }; showIcon(); },
+      categories: ['item', 'item_ring'], uploadCategory: 'item', current: state.icon && state.icon.id,
+      onPick: function (file) { state.icon = file === null ? null : { id: file.id, fileName: file.fileName, extension: file.extension, file: file.file }; showIcon(); },
     });
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.editing !== null && !document.getElementById('asset-picker').open) closeEditor(); });

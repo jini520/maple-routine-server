@@ -7,7 +7,7 @@
 
 export const PERIOD_TEXT = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/
 
-export type BossCycle = 'weekly' | 'event_weekly' | 'monthly'
+export type BossCycle = 'weekly' | 'monthly'
 
 /** 글자 모양이 맞고 실제 있는 날짜인가. */
 export function isPeriodText(value: string): boolean {

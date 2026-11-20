@@ -1,21 +1,25 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { assets, imageCrops } from '../../database/schema'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
-import { type AssetRef, parseAssetPath, refCandidates, storedFileName } from './asset-paths'
+import {
+  type AssetKey,
+  assetKeyText,
+  type AssetRef,
+  refCandidates,
+  storedFileName,
+} from './asset-paths'
 import { type AssetUse, assetUses } from './asset-uses'
 
 export interface AssetFileView {
   /** 그림 표의 id. 게임 데이터 표의 그림 칸이 이 값을 든다 */
   id: string
-  /** 앱 `src/assets/` 기준 경로. 옛 앱이 이 경로로 그림을 찾는다 */
-  path: string
   /** nginx `/assets/` 아래의 파일 이름 */
   file: string
   sha256: string
-  size: number
+  sizeBytes: number
   width: number
   height: number
 }
@@ -27,7 +31,7 @@ export interface AssetsSection {
 }
 
 /** 그림 화면의 줄. 앱에는 내지 않는다. */
-export interface AssetAdminRow extends AssetFileView {
+export interface AssetAdminRow extends AssetFileView, AssetKey {
   /** 관리 화면에서 적은 이름. 비어 있을 수 있다. */
   name: string | null
   /** 보이는 이름. 적은 이름, 없으면 첫 쓰는 곳의 이름, 그것도 없으면 확장자를 뗀 파일 이름이다. */
@@ -49,41 +53,34 @@ export class AssetsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<AssetsSection> {
-    const rows = await this.db.select().from(assets).orderBy(asc(assets.path))
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'assets'),
-      files: rows.map((r) => ({
-        id: r.id,
-        path: r.path,
-        file: storedFileName(r.sha256, parseAssetPath(r.path)?.ext ?? 'png'),
-        sha256: r.sha256,
-        size: r.size,
-        width: r.width,
-        height: r.height,
-      })),
+      files: (await this.rows()).map(fileView),
     }
   }
 
   async adminRows(): Promise<AssetAdminRow[]> {
-    const [{ files }, uses] = await Promise.all([this.section(), assetUses(this.db)])
-    const names = new Map(
-      (await this.db.select({ id: assets.id, name: assets.name }).from(assets)).map((r) => [
-        r.id,
-        r.name,
-      ]),
-    )
-    return files.map((f) => {
-      const list = uses.get(f.id) ?? []
-      const name = names.get(f.id) ?? null
-      const base = f.path.slice(f.path.lastIndexOf('/') + 1)
+    const [rows, uses] = await Promise.all([this.rows(), assetUses(this.db)])
+    return rows.map((r) => {
+      const list = uses.get(r.id) ?? []
       return {
-        ...f,
-        name,
-        label: name ?? list[0]?.name ?? base.slice(0, base.lastIndexOf('.')),
+        ...fileView(r),
+        category: r.category,
+        fileName: r.fileName,
+        extension: r.extension as AssetKey['extension'],
+        name: r.name,
+        label: r.name ?? list[0]?.name ?? r.fileName,
         uses: list,
         itemCategory: list.find((u) => u.itemCategory !== null)?.itemCategory ?? null,
       }
     })
+  }
+
+  private rows() {
+    return this.db
+      .select()
+      .from(assets)
+      .orderBy(asc(assets.category), asc(assets.fileName), asc(assets.extension))
   }
 
   /** 관리 화면 이름을 적거나(null 이면) 비운다. 앱에 내지 않는 칸이라 그림 칸의 시각은 그대로다. 모르는 id 는 false 다. */
@@ -117,16 +114,25 @@ export class AssetsRepository {
     })
   }
 
-  /** 경로 하나의 내용을 적는다. 같은 해시면 아무것도 안 바꾼다. 앱이 바뀌지 않은 그림을 다시 받지 않게 하기 위해서다. */
+  /** 그림 하나의 내용을 적는다. 같은 해시면 아무것도 안 바꾼다. 앱이 바뀌지 않은 그림을 다시 받지 않게 하기 위해서다. */
   async put(
-    path: string,
+    key: AssetKey,
     sha256: string,
-    dims: { size: number; width: number; height: number },
+    dims: { sizeBytes: number; width: number; height: number },
   ): Promise<'created' | 'updated' | 'same'> {
     return this.db.transaction(async (tx) => {
-      const [current] = await tx.select().from(assets).where(eq(assets.path, path))
+      const [current] = await tx
+        .select()
+        .from(assets)
+        .where(
+          and(
+            eq(assets.category, key.category),
+            eq(assets.fileName, key.fileName),
+            eq(assets.extension, key.extension),
+          ),
+        )
       if (current?.sha256 === sha256) return 'same'
-      if (current === undefined) await tx.insert(assets).values({ path, sha256, ...dims })
+      if (current === undefined) await tx.insert(assets).values({ ...key, sha256, ...dims })
       else
         await tx
           .update(assets)
@@ -141,12 +147,31 @@ export class AssetsRepository {
   async missing(refs: readonly { ref: AssetRef; value: string }[]): Promise<string[]> {
     if (refs.length === 0) return []
     const candidates = refs.map((r) => refCandidates(r.ref, r.value))
-    const rows = await this.db
-      .select({ path: assets.path })
-      .from(assets)
-      .where(inArray(assets.path, candidates.flat()))
-    const present = new Set(rows.map((r) => r.path))
-    const missing = refs.filter((_, i) => !candidates[i]?.some((c) => present.has(c)))
+    const fileNames = [...new Set(candidates.flat().map((c) => c.fileName))]
+    const rows =
+      fileNames.length === 0
+        ? []
+        : await this.db
+            .select({
+              category: assets.category,
+              fileName: assets.fileName,
+              extension: assets.extension,
+            })
+            .from(assets)
+            .where(inArray(assets.fileName, fileNames))
+    const present = new Set(rows.map(assetKeyText))
+    const missing = refs.filter((_, i) => !candidates[i]?.some((c) => present.has(assetKeyText(c))))
     return [...new Set(missing.map((r) => r.value))]
+  }
+}
+
+function fileView(r: typeof assets.$inferSelect): AssetFileView {
+  return {
+    id: r.id,
+    file: storedFileName(r.sha256, r.extension),
+    sha256: r.sha256,
+    sizeBytes: r.sizeBytes,
+    width: r.width,
+    height: r.height,
   }
 }

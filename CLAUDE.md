@@ -18,4 +18,6 @@
 - CRITICAL: **hotfix 가 표(`src/database/schema.ts`)를 바꾸면, main 을 develop 에 머지할 때 develop 의 `src/database/old-schema.ts` 도 같이 고칠 것.** develop 은 `schema.ts` 를 1.0.15 의 새 표로 바꾸고 있어서 지금 운영 표는 그 사본에만 남는다. 옛 DB 를 새 DB 로 옮기는 `src/cli/move-old-db.ts` 가 그 사본으로 운영 표를 읽으므로, 사본이 운영 표와 다르면 옛 칸을 읽지 못한다(앱 저장소 ADR-099 결정 65)
 - CRITICAL: **새 표는 develop 에서 `src/database/schema.ts` 를 바로 바꾸고, 표 묶음마다 PR 할 것.** 묶음마다 표 · 그 표를 쓰는 모듈과 응답 · 마이그레이션 · 옛 DB 에서 옮기는 몫을 함께 바꿔 develop 이 늘 타입 검사와 테스트를 통과하게 한다. 새 표를 따로 두는 폴더는 만들지 않는다. 스키마가 둘이면 어느 쪽이 지금 것인지 헷갈린다. 차례는 설계 페이지의 묶음 차례이고 다른 묶음이 가리키는 표를 먼저 바꾼다(앱 저장소 ADR-099 결정 65)
 - CRITICAL: **ADR 새 번호는 앱 저장소에서 `node scripts/adr-number.mjs` 로 받을 것.** 서버의 결정도 앱 저장소 ADR 에 적으므로 번호를 손으로 고르면 앱 쪽 작업과 겹친다
+- CRITICAL: **새 표로 바꾼 표의 표와 칸 이름은 설계에서 뽑은 `src/database/design-tables.json` 과 같아야 한다.** `src/database/schema.spec.ts` 가 바꾼 표의 목록(`CONVERTED`)에 든 표의 표 이름 · 칸 이름 · 형 · 가리키는 표 · enum 값을 견준다. 묶음 PR 마다 그 묶음의 표를 목록에 더한다. 설계가 바뀌면 설계 페이지의 원본에서 그 파일부터 다시 뽑는다. 손으로 고치면 설계와 스키마가 서로를 맞다고 보증하게 되어 테스트가 아무것도 잡지 못한다
+- CRITICAL: **묶음 PR 마다 옛 DB 를 새 DB 로 옮기는 `src/cli/move-old-db.ts` 에 그 묶음의 표를 더할 것.** 묶음의 몫이 빠지면 운영 덤프로 옮기기를 미리 연습할 수 없고, 전환 때 그 표가 비어 있다(앱 저장소 ADR-099 결정 65)
 - 커밋 메시지는 conventional commits 형식을 따를 것 (feat:, fix:, docs:, refactor:, chore:)

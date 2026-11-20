@@ -1,0 +1,6409 @@
+{
+ "tables": [
+  {
+   "name": "account_settings",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "nexon_account_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid → 넥슨 계정",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "tracking_type",
+     "type": "enum tracking_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "quick_link_row_count",
+     "type": "smallint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "quick_link_keys",
+     "type": "text[]",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "bar_group_keys",
+     "type": "text[]",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "stats_cumulative_start_date",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "is_mvp_weekly_check_off",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "mvp_last_checked_week_code",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "is_mvp_bulk_apply_asked",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "app_images",
+   "source": "server",
+   "was": null,
+   "group": "그림",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "assets",
+   "source": "server",
+   "was": null,
+   "group": "그림",
+   "unique": [
+    "category · file_name · extension"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sha256",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "size_bytes",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "size"
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "width",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "height",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "category",
+     "type": "enum asset_category",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "file_name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "extension",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    }
+   ]
+  },
+  {
+   "name": "boss_crystal_prices",
+   "source": "server",
+   "was": null,
+   "group": "보스가 쓰는 기준 표",
+   "unique": [
+    "boss_difficulty_id · valid_from"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "boss_difficulty_id",
+     "type": "uuid",
+     "references": "boss_difficulties",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "until"
+    }
+   ]
+  },
+  {
+   "name": "boss_difficulties",
+   "source": "card",
+   "kind": "mod",
+   "group": "보스 · 난이도 표",
+   "unique": [
+    "boss_id · difficulty"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "boss_id",
+     "type": "uuid",
+     "references": "bosses",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "difficulty",
+     "type": "enum boss_difficulty",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "cycle",
+     "type": "enum boss_cycle",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "required_level",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "max_party_size",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "valid_from · valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "boss_difficulty_rewards",
+   "source": "server",
+   "was": "boss_drop_rewards",
+   "group": "보스가 쓰는 기준 표",
+   "unique": [
+    "boss_difficulty_id · item_id · valid_from"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "boss_difficulty_id",
+     "type": "uuid",
+     "references": "boss_difficulties",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "category",
+     "type": "enum drop_category",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "amount"
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "until"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "boss_drops",
+   "source": "card",
+   "kind": "new",
+   "group": "보스",
+   "unique": [
+    "profit_entry_id · item_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "profit_entry_id",
+     "type": "uuid",
+     "references": "boss_profit_entries",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "category",
+     "type": "enum drop_category",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "price_status",
+     "type": "enum drop_price_status",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sale_price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sale_received_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "priced_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sale_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sale_fee_follows_mvp_grade",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_type",
+     "type": "enum split_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "party_size",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_share_millipercent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_follows_mvp_grade",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "boss_manual_completion_periods",
+   "source": "server",
+   "was": "manual_completion_bosses",
+   "group": "보스가 쓰는 기준 표",
+   "unique": [
+    "boss_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "boss_id",
+     "type": "uuid",
+     "references": "bosses",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "from_date",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "opened_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "closed_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "boss_profit_calculator_record_bosses",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "record_character_id · boss_difficulty_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "record_character_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "boss_difficulty_id",
+     "type": "uuid",
+     "references": "boss_difficulties",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "split_type",
+     "type": "enum split_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "party_size",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_share_millipercent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_follows_mvp_grade",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "boss_profit_calculator_record_characters",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "record_id · sort_order"
+   ],
+   "columns": [
+    {
+     "name": "id · record_id · sort_order",
+     "type": "",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "boss_profit_calculator_records",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "id (손으로 적는 기록이라 내용으로 가리지 않습니다)"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid → 넥슨 계정",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "saved_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "boss_profit_entries",
+   "source": "card",
+   "kind": "mod",
+   "group": "보스",
+   "unique": [
+    "모든 줄은 character_id · boss_difficulty_id · period_code. 처치한 줄은 character_id · boss_id · period_code 도"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "boss_id",
+     "type": "uuid",
+     "references": "bosses",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "boss_difficulty_id",
+     "type": "uuid",
+     "references": "boss_difficulties",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "period_code",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "crystal_price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "crystal_received_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_type · party_size · split_share_millipercent · split_fee_percent",
+     "type": "",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_follows_mvp_grade",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "cleared_date",
+     "type": "date",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "clear_recorded_by",
+     "type": "enum clear_recorded_by",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "deleted_at · created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "boss_split_settings",
+   "source": "card",
+   "kind": "new",
+   "group": "보스",
+   "unique": [
+    "character_id · boss_difficulty_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "boss_difficulty_id",
+     "type": "uuid",
+     "references": "boss_difficulties",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "split_type",
+     "type": "enum split_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "party_size",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_share_millipercent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "split_fee_follows_mvp_grade",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "bosses",
+   "source": "card",
+   "kind": "mod",
+   "group": "보스 · 난이도 표",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "short_name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "is_season_boss",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "portrait_asset_id",
+     "type": "uuid → 그림",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "valid_from · valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "bottom_bar_sub_page_orders",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "nexon_account_id · group_key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid → 넥슨 계정",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "group_key",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "sub_page_keys",
+     "type": "text[]",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_categories",
+   "source": "server",
+   "was": null,
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "entry_type · key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "entry_type",
+     "type": "enum cashbook_entry_type",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "card_title",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "description",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "unit",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "cashbook_entries",
+   "source": "card",
+   "kind": "mod",
+   "group": "가계부",
+   "unique": [
+    "id (손으로 적는 기록이라 내용으로 가리지 않습니다)"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "maple_id",
+     "type": "uuid",
+     "references": "maple_ids",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "category_id",
+     "type": "uuid",
+     "references": "cashbook_categories",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "date",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "memo",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "recorded_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "deleted_at · created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_entry_exchange_inputs",
+   "source": "card",
+   "kind": "new",
+   "group": "가계부",
+   "unique": [
+    "entry_id"
+   ],
+   "columns": [
+    {
+     "name": "id · entry_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "sold_meso · sell_maple_point_per_100m_meso",
+     "type": "bigint · integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "bought_meso · buy_maple_point_per_100m_meso",
+     "type": "bigint · integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "meso_market_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_entry_fragment_uses",
+   "source": "card",
+   "kind": "new",
+   "group": "가계부",
+   "unique": [
+    "entry_id · fragment_source · character_id"
+   ],
+   "columns": [
+    {
+     "name": "id · entry_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "fragment_source",
+     "type": "enum fragment_source",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "fragment_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_entry_hunt_inputs",
+   "source": "card",
+   "kind": "new",
+   "group": "가계부",
+   "unique": [
+    "entry_id"
+   ],
+   "columns": [
+    {
+     "name": "id · entry_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "character_level",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "missed_mob_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "uses_wealth_potion · uses_union_wealth",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "union_wealth_tier",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "fragment_quantity · fragment_price_meso",
+     "type": "integer · bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "meso_acquisition_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "typed_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_entry_items",
+   "source": "card",
+   "kind": "mod",
+   "group": "가계부",
+   "unique": [
+    "entry_id · spend_reward_type_id (종류가 없는 기록은 품목이 하나)"
+   ],
+   "columns": [
+    {
+     "name": "id · entry_id",
+     "type": "",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "target_type",
+     "type": "enum cashbook_item_target_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "target_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "item_name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "spend_reward_type_id",
+     "type": "uuid",
+     "references": "spend_reward_types",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "item_type_id",
+     "type": "uuid",
+     "references": "cashbook_item_types",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "quantity · from_level · to_level",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "amount_meso · tariff_meso · sale_fee_percent · sale_fee_meso",
+     "type": "",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "amount_maple_point · maple_point_per_100m_meso · amount_cash",
+     "type": "",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "fragment_quantity · untradable_fragment_quantity · fragment_price_meso",
+     "type": "",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "includes_hexa_activation",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sale_fee_follows_mvp_grade",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "meso_market_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "uses_stored_fragments · counts_stored_fragments_as_spend",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "inventory_item_id",
+     "type": "uuid",
+     "references": "inventory_items",
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_entry_transfer_inputs",
+   "source": "card",
+   "kind": "new",
+   "group": "가계부",
+   "unique": [
+    "entry_id"
+   ],
+   "columns": [
+    {
+     "name": "id · entry_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "receiver_character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "transfer_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "fee_percent · fee_follows_mvp_grade",
+     "type": "integer · boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "cashbook_item_types",
+   "source": "server",
+   "was": "cashbook_item_kinds",
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "unit",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "has_tariff",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "character_world_leaps",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "previous_ocid"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "previous_ocid",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "characters",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "ocid"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "maple_id",
+     "type": "uuid",
+     "references": "maple_ids",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "ocid",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "content_categories",
+   "source": "server",
+   "was": null,
+   "group": "컨텐츠",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "enum content_category",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "count_tag",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "hides_count_tag",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": "hide_count_tag"
+    },
+    {
+     "name": "weekly_max_count",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "weekly_limit"
+    },
+    {
+     "name": "shared_sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "shared_order"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "contents",
+   "source": "server",
+   "was": null,
+   "group": "컨텐츠",
+   "unique": [
+    "api_name",
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "cycle",
+     "type": "enum content_cycle",
+     "references": null,
+     "nullable": false,
+     "was": "section"
+    },
+    {
+     "name": "api_name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "category_id",
+     "type": "uuid",
+     "references": "content_categories",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": "display_name"
+    },
+    {
+     "name": "short_name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "count_tag",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "type",
+     "type": "enum content_type",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "max_count",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "required_level",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "until"
+    },
+    {
+     "name": "share_scope",
+     "type": "enum share_scope",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "background_map_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "background_portrait_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "region_icon_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "check_type",
+     "type": "enum content_check_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    }
+   ]
+  },
+  {
+   "name": "drop_box_contents",
+   "source": "server",
+   "was": null,
+   "group": "보스가 쓰는 기준 표",
+   "unique": [
+    "box_id · item_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "box_id",
+     "type": "uuid",
+     "references": "drop_boxes",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "drop_boxes",
+   "source": "server",
+   "was": null,
+   "group": "보스가 쓰는 기준 표",
+   "unique": [
+    "item_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "ring_level_min",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "level_min"
+    },
+    {
+     "name": "ring_level_max",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "level_max"
+    }
+   ]
+  },
+  {
+   "name": "drop_sale_prices",
+   "source": "card",
+   "kind": "mod",
+   "group": "보스",
+   "unique": [
+    "id (드롭의 id. 같은 드롭인지는 boss_drops 가 판단합니다)"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "user_id",
+     "type": "uuid",
+     "references": "users",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sale_price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "priced_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "enhancement_anomalies",
+   "source": "server",
+   "was": null,
+   "group": "로그",
+   "unique": [
+    "nexon_account_id · history_date · api_type · reason · item_name · detail"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "history_date",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "api_type",
+     "type": "enum enhancement_api_type",
+     "references": null,
+     "nullable": false,
+     "was": "enhancement_type"
+    },
+    {
+     "name": "reason",
+     "type": "enum enhancement_anomaly_reason",
+     "references": null,
+     "nullable": false,
+     "was": "anomaly_type"
+    },
+    {
+     "name": "item_name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "row_count",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "detail",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid",
+     "references": "nexon_accounts",
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "enhancement_settled_days",
+   "source": "card",
+   "kind": "new",
+   "group": "강화",
+   "unique": [
+    "nexon_account_id · api_type · history_date"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid → 넥슨 계정",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "api_type",
+     "type": "enum enhancement_api_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "history_date",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "enhancement_totals",
+   "source": "card",
+   "kind": "mod",
+   "group": "강화",
+   "unique": [
+    "character_id · history_date · category · item_name"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "history_date",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "category",
+     "type": "enum enhancement_category",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "item_name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "attempt_count",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "attempt_cost_meso · destroy_defence_cost_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "superior_cost_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "from_star · to_star",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "is_event_world",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "가계부 제외 표식",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "deleted_at · created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "faq_items",
+   "source": "server",
+   "was": null,
+   "group": "운영 · 게임 규칙 · FAQ",
+   "unique": [],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sheet_id",
+     "type": "uuid",
+     "references": "faq_sheets",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "question",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "answer",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "faq_sheets",
+   "source": "server",
+   "was": null,
+   "group": "운영 · 게임 규칙 · FAQ",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "title",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "game_data_section_updates",
+   "source": "server",
+   "was": "game_data_sections",
+   "group": "운영 · 게임 규칙 · FAQ",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "game_rules",
+   "source": "server",
+   "was": null,
+   "group": "운영 · 게임 규칙 · FAQ",
+   "unique": [
+    "줄이 하나뿐입니다"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "weekly_boss_selection_limit",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "weekly_crystal_sale_limit",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "default_max_party_size",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "spend_tariff_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "reward_coin_price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "meso_market_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "cube_appraisal_free_max_level",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "cube_appraisal_coefficient",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    },
+    {
+     "name": "starforce_destroy_defence_surcharge_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    }
+   ]
+  },
+  {
+   "name": "hexa_core_level_costs",
+   "source": "server",
+   "was": null,
+   "group": "심볼 · 헥사",
+   "unique": [
+    "type_id · from_level"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "type_id",
+     "type": "uuid",
+     "references": "hexa_core_types",
+     "nullable": false,
+     "was": "kind_id"
+    },
+    {
+     "name": "from_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "level"
+    },
+    {
+     "name": "fragment_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "fragments"
+    },
+    {
+     "name": "sol_erda_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "sol_erda"
+    }
+   ]
+  },
+  {
+   "name": "hexa_core_types",
+   "source": "card",
+   "kind": "mod",
+   "group": "직업 · 헥사 코어 표",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "key · name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "api_type",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "is_default",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "max_level · sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid → 그림",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "hexa_cores",
+   "source": "card",
+   "kind": "mod",
+   "group": "직업 · 헥사 코어 표",
+   "unique": [
+    "job_id · name"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "job_id",
+     "type": "uuid",
+     "references": "jobs",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "type_id",
+     "type": "uuid",
+     "references": "hexa_core_types",
+     "nullable": null,
+     "was": null,
+     "key": "add"
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid → 그림",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "hexa_stats",
+   "source": "server",
+   "was": null,
+   "group": "심볼 · 헥사",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "activation_fragment_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "activation_fragments"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "hunt_loot_items",
+   "source": "server",
+   "was": null,
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "item_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "type",
+     "type": "enum hunt_loot_type",
+     "references": null,
+     "nullable": false,
+     "was": "kind"
+    },
+    {
+     "name": "npc_price_meso",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "until"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "hunting_ground_levels",
+   "source": "server",
+   "was": null,
+   "group": "사냥터",
+   "unique": [
+    "ground_id · mob_level"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "ground_id",
+     "type": "uuid",
+     "references": "hunting_grounds",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "mob_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "level"
+    }
+   ]
+  },
+  {
+   "name": "hunting_grounds",
+   "source": "server",
+   "was": null,
+   "group": "사냥터",
+   "unique": [
+    "key",
+    "name"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "region_id",
+     "type": "uuid",
+     "references": "hunting_regions",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "required_force",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "force"
+    },
+    {
+     "name": "mob_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "mobs"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "is_popular",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": "popular"
+    }
+   ]
+  },
+  {
+   "name": "hunting_regions",
+   "source": "server",
+   "was": null,
+   "group": "사냥터",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "force_type",
+     "type": "enum force_type",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": "icon_map_asset_id"
+    }
+   ]
+  },
+  {
+   "name": "image_crops",
+   "source": "server",
+   "was": null,
+   "group": "그림",
+   "unique": [
+    "type · asset_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "type",
+     "type": "enum image_crop_type",
+     "references": null,
+     "nullable": false,
+     "was": "kind"
+    },
+    {
+     "name": "width_percent",
+     "type": "numeric",
+     "references": null,
+     "nullable": false,
+     "was": "size"
+    },
+    {
+     "name": "position_x_percent",
+     "type": "numeric",
+     "references": null,
+     "nullable": false,
+     "was": "position"
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "position_y_percent",
+     "type": "numeric",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    }
+   ]
+  },
+  {
+   "name": "inventory_items",
+   "source": "card",
+   "kind": "new",
+   "group": "가계부",
+   "unique": [
+    "maple_id · world_id · item_id (장비는 id)"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "maple_id",
+     "type": "uuid",
+     "references": "maple_ids",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "cashbook_item_type_id",
+     "type": "uuid",
+     "references": "cashbook_item_types",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "added_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "item_groups",
+   "source": "server",
+   "was": null,
+   "group": "아이템 묶음 · 월드",
+   "unique": [
+    "key",
+    "type · name"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "type",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": "kind"
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "items",
+   "source": "card",
+   "kind": "ref",
+   "group": "아이템 표",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "key · name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "group_id",
+     "type": "uuid",
+     "references": "item_groups",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid → 그림",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "is_valuable · is_drop · is_equipment",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "required_level",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "jobs",
+   "source": "card",
+   "kind": "new",
+   "group": "직업 · 헥사 코어 표",
+   "unique": [
+    "name"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "is_all_jobs",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "manual_tracked_items",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "character_id · type · target_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "type",
+     "type": "enum manual_tracked_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "target_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "maple_id_names",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "maple_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "maple_id",
+     "type": "uuid",
+     "references": "maple_ids",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "maple_ids",
+   "source": "server",
+   "was": "nexon_account_maple_ids",
+   "group": "계정 · 로그인",
+   "unique": [
+    "hash"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid",
+     "references": "nexon_accounts",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "hash",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": "maple_id"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "market_judgements",
+   "source": "server",
+   "was": null,
+   "group": "시세",
+   "unique": [
+    "date · user_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "date",
+     "type": "date",
+     "references": null,
+     "nullable": false,
+     "was": "day"
+    },
+    {
+     "name": "user_id",
+     "type": "uuid",
+     "references": "users",
+     "nullable": false,
+     "was": "person"
+    },
+    {
+     "name": "judged_count",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "judged"
+    },
+    {
+     "name": "excluded_count",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "excluded"
+    },
+    {
+     "name": "is_dummy",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": "dummy"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "market_published_days",
+   "source": "server",
+   "was": "market_runs",
+   "group": "시세",
+   "unique": [
+    "date"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "date",
+     "type": "date",
+     "references": null,
+     "nullable": false,
+     "was": "day"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "market_reference_prices",
+   "source": "server",
+   "was": "market_days",
+   "group": "시세",
+   "unique": [
+    "date · item_id · scope_type · scope_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "date",
+     "type": "date",
+     "references": null,
+     "nullable": false,
+     "was": "day"
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "scope_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": "scope"
+    },
+    {
+     "name": "source",
+     "type": "enum market_reference_source",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "reference_price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": "ref_meso"
+    },
+    {
+     "name": "range_low_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": true,
+     "was": "q1_meso"
+    },
+    {
+     "name": "range_high_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": true,
+     "was": "q3_meso"
+    },
+    {
+     "name": "fence_low_meso",
+     "type": "double",
+     "references": null,
+     "nullable": false,
+     "was": "fence_low"
+    },
+    {
+     "name": "fence_high_meso",
+     "type": "double",
+     "references": null,
+     "nullable": false,
+     "was": "fence_high"
+    },
+    {
+     "name": "fresh_date",
+     "type": "date",
+     "references": null,
+     "nullable": false,
+     "was": "fresh_day"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "scope_type",
+     "type": "enum market_scope_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    }
+   ]
+  },
+  {
+   "name": "market_responses",
+   "source": "server",
+   "was": null,
+   "group": "시세",
+   "unique": [
+    "date · key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "date",
+     "type": "date",
+     "references": null,
+     "nullable": false,
+     "was": "day"
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "body",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "etag",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "maspi_basket_items",
+   "source": "server",
+   "was": "maspi_basket",
+   "group": "시세",
+   "unique": [
+    "item_id · scope_type · scope_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "scope_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": "scope"
+    },
+    {
+     "name": "base_price_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "voter_count",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "persons"
+    },
+    {
+     "name": "index_weight",
+     "type": "double",
+     "references": null,
+     "nullable": false,
+     "was": "weight"
+    },
+    {
+     "name": "from_date",
+     "type": "date",
+     "references": null,
+     "nullable": true,
+     "was": "enters_on"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "scope_type",
+     "type": "enum market_scope_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "added": true
+    }
+   ]
+  },
+  {
+   "name": "maspi_daily_closes",
+   "source": "server",
+   "was": "maspi_days",
+   "group": "시세",
+   "unique": [
+    "date"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "date",
+     "type": "date",
+     "references": null,
+     "nullable": false,
+     "was": "day"
+    },
+    {
+     "name": "close",
+     "type": "double",
+     "references": null,
+     "nullable": false,
+     "was": "value"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "mvp_grade_history",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "maple_id · from_date"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "maple_id",
+     "type": "uuid",
+     "references": "maple_ids",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "from_date",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "grade_id",
+     "type": "uuid",
+     "references": "mvp_grades",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "mvp_grades",
+   "source": "server",
+   "was": null,
+   "group": "강화 비용 · MVP 등급",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "enum mvp_grade",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "auction_fee_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "starforce_discount_percent",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "plate_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "nexon_accounts",
+   "source": "server",
+   "was": null,
+   "group": "계정 · 로그인",
+   "unique": [
+    "uid_hash",
+    "referral_code"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "user_id",
+     "type": "uuid",
+     "references": "users",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "uid_hash",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "nexon_uid"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "referral_code",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "nexon_login_attempts",
+   "source": "server",
+   "was": null,
+   "group": "계정 · 로그인",
+   "unique": [
+    "receipt_hash",
+    "redeem_hash",
+    "state"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "state",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "redeem_hash",
+     "type": "bytea",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "receipt_hash",
+     "type": "bytea",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "platform",
+     "type": "enum platform",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "expires_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "claimed_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "sealed_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "session_sealed",
+     "type": "bytea",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "session_id",
+     "type": "uuid",
+     "references": "nexon_sessions",
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "nexon_sessions",
+   "source": "server",
+   "was": null,
+   "group": "계정 · 로그인",
+   "unique": [
+    "hash"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "hash",
+     "type": "bytea",
+     "references": null,
+     "nullable": false,
+     "was": "session_hash"
+    },
+    {
+     "name": "user_id",
+     "type": "uuid",
+     "references": "users",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "platform",
+     "type": "enum platform",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sealed_access_token",
+     "type": "bytea",
+     "references": null,
+     "nullable": false,
+     "was": "access_sealed"
+    },
+    {
+     "name": "access_expires_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sealed_refresh_token",
+     "type": "bytea",
+     "references": null,
+     "nullable": false,
+     "was": "refresh_sealed"
+    },
+    {
+     "name": "refresh_expires_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "last_used_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "notices",
+   "source": "server",
+   "was": null,
+   "group": "운영 · 게임 규칙 · FAQ",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": "notice_key"
+    },
+    {
+     "name": "type",
+     "type": "enum notice_type",
+     "references": null,
+     "nullable": false,
+     "was": "kind"
+    },
+    {
+     "name": "title",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "body",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "blocks",
+     "type": "jsonb",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "link",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "published_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "starts_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "ends_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "scheduled_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "sent_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "push_title",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "push_body",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "fetched_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "detail_fetched_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "markdown",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "party_appointment_bosses",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "appointment_id · exception_id · sort_order"
+   ],
+   "columns": [
+    {
+     "name": "id · appointment_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "exception_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "boss_difficulty_id",
+     "type": "uuid",
+     "references": "boss_difficulties",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "party_appointment_exceptions",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "appointment_id · week_code"
+   ],
+   "columns": [
+    {
+     "name": "id · appointment_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "week_code",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "date · time",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "duration_minutes · alarm_minutes_before",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "party_appointments",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "id (손으로 적는 기록이라 내용으로 가리지 않습니다)"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid → 넥슨 계정",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "time",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "duration_minutes",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "alarm_minutes_before",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "schedule_type",
+     "type": "enum appointment_schedule_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "date",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "weekday · from_week_code · until_week_code",
+     "type": "smallint · text · text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "memo",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "potential_reset_costs",
+   "source": "server",
+   "was": null,
+   "group": "강화 비용 · MVP 등급",
+   "unique": [
+    "type · min_required_level · grade"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "type",
+     "type": "enum potential_reset_type",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "min_required_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "min_level"
+    },
+    {
+     "name": "grade",
+     "type": "enum potential_grade",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "cost_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "referrals",
+   "source": "server",
+   "was": null,
+   "group": "계정 · 로그인",
+   "unique": [
+    "referred_nexon_account_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "referred_nexon_account_id",
+     "type": "uuid",
+     "references": "nexon_accounts",
+     "nullable": false,
+     "was": "referred_account_id"
+    },
+    {
+     "name": "referrer_nexon_account_id",
+     "type": "uuid",
+     "references": "nexon_accounts",
+     "nullable": true,
+     "was": "referrer_account_id"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "remembered_levels",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "character_id · type · target_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "type",
+     "type": "enum remembered_level_type",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "target_id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "level",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "representative_character_motions",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "character_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "actions",
+     "type": "text[]",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "emotions",
+     "type": "text[]",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "duration_ms",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "rests_between_actions",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "ring_level_items",
+   "source": "card",
+   "kind": "new",
+   "group": "아이템 표",
+   "unique": [
+    "item_id. ring_item_id · ring_level 조합도 하나"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "ring_item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "ring_level",
+     "type": "smallint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "same_item_links",
+   "source": "card",
+   "kind": "new",
+   "group": "아이템 표",
+   "unique": [
+    "item_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "original_item_id",
+     "type": "uuid",
+     "references": "items",
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "shared_content_progress",
+   "source": "card",
+   "kind": "new",
+   "group": "캐릭터 · 메이플 ID 에 붙는 기록",
+   "unique": [
+    "maple_id · world_id · content_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "maple_id",
+     "type": "uuid",
+     "references": "maple_ids",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "content_id",
+     "type": "uuid",
+     "references": "contents",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "is_registered",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "now_count · max_count",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "quest_state",
+     "type": "smallint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "period_code",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "soul_potential_reset_costs",
+   "source": "server",
+   "was": null,
+   "group": "강화 비용 · MVP 등급",
+   "unique": [
+    "grade"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "grade",
+     "type": "enum potential_grade",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "cost_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "spend_groups",
+   "source": "server",
+   "was": null,
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "is_active",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": "active"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "cashbook_category_id",
+     "type": "uuid",
+     "references": "cashbook_categories",
+     "nullable": false,
+     "was": "category_id"
+    },
+    {
+     "name": "card_title",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "spend_item_options",
+   "source": "server",
+   "was": null,
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "item_id · axis"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "spend_items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "axis",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "value",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "spend_item_reward_types",
+   "source": "server",
+   "was": "spend_item_forms",
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "item_id · reward_type_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "item_id",
+     "type": "uuid",
+     "references": "spend_items",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "reward_type_id",
+     "type": "uuid",
+     "references": "spend_reward_types",
+     "nullable": false,
+     "was": "form_id"
+    }
+   ]
+  },
+  {
+   "name": "spend_items",
+   "source": "server",
+   "was": null,
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "group_id",
+     "type": "uuid",
+     "references": "spend_groups",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "tile_id",
+     "type": "uuid",
+     "references": "spend_tiles",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "tier",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "currency",
+     "type": "enum spend_currency",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "unit_price",
+     "type": "bigint",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "unit",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "max_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "reward_coin_quantity",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": "reward_coins"
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "until"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "spend_reward_types",
+   "source": "server",
+   "was": "spend_forms",
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "enum spend_reward_type",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "spend_tiles",
+   "source": "server",
+   "was": null,
+   "group": "가계부가 쓰는 기준 표 · 지출 목록",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "starforce_cost_steps",
+   "source": "server",
+   "was": "starforce_steps",
+   "group": "강화 비용 · MVP 등급",
+   "unique": [
+    "from_star"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "from_star",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "exponent",
+     "type": "double",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "divisor",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "sub_account_registrations",
+   "source": "server",
+   "was": "sub_accounts",
+   "group": "계정 · 로그인",
+   "unique": [
+    "sub_nexon_account_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "login_nexon_account_id",
+     "type": "uuid",
+     "references": "nexon_accounts",
+     "nullable": false,
+     "was": "login_account_id"
+    },
+    {
+     "name": "sub_nexon_account_id",
+     "type": "uuid",
+     "references": "nexon_accounts",
+     "nullable": false,
+     "was": "sub_account_id"
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "superior_items",
+   "source": "server",
+   "was": null,
+   "group": "강화 비용 · MVP 등급",
+   "unique": [
+    "name"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "series_id",
+     "type": "uuid",
+     "references": "superior_series",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "superior_series",
+   "source": "server",
+   "was": null,
+   "group": "강화 비용 · MVP 등급",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "starforce_cost_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "symbol_groups",
+   "source": "server",
+   "was": null,
+   "group": "심볼 · 헥사",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "max_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "default_from_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "default_from"
+    },
+    {
+     "name": "default_to_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "default_to"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "symbol_level_costs",
+   "source": "server",
+   "was": null,
+   "group": "심볼 · 헥사",
+   "unique": [
+    "symbol_id · from_level · valid_from"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "symbol_id",
+     "type": "uuid",
+     "references": "symbols",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "from_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": "level"
+    },
+    {
+     "name": "cost_meso",
+     "type": "bigint",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": true,
+     "was": "until"
+    }
+   ]
+  },
+  {
+   "name": "symbols",
+   "source": "server",
+   "was": null,
+   "group": "심볼 · 헥사",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "group_id",
+     "type": "uuid",
+     "references": "symbol_groups",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "required_level",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "icon_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "tracked_characters",
+   "source": "card",
+   "kind": "new",
+   "group": "넥슨 ID 묶음에 붙는 기록",
+   "unique": [
+    "nexon_account_id · character_id"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "nexon_account_id",
+     "type": "uuid → 넥슨 계정",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "character_id",
+     "type": "uuid",
+     "references": "characters",
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "is_representative",
+     "type": "boolean",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "trade_groups",
+   "source": "card",
+   "kind": "new",
+   "group": "아이템 표",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "key"
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    }
+   ],
+   "was": null
+  },
+  {
+   "name": "usage_events",
+   "source": "server",
+   "was": null,
+   "group": "로그",
+   "unique": [],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "user_id",
+     "type": "uuid",
+     "references": "users",
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "type",
+     "type": "enum usage_event_type",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "duration_ms",
+     "type": "integer",
+     "references": null,
+     "nullable": true,
+     "was": null
+    },
+    {
+     "name": "platform",
+     "type": "enum platform",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "app_version",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "occurred_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "received_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "users",
+   "source": "server",
+   "was": null,
+   "group": "계정 · 로그인",
+   "unique": [],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "deletion_requested_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": true,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "world_open_periods",
+   "source": "server",
+   "was": "world_periods",
+   "group": "아이템 묶음 · 월드",
+   "unique": [
+    "world_id · valid_from"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "world_id",
+     "type": "uuid",
+     "references": "worlds",
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "valid_from",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": "from"
+    },
+    {
+     "name": "valid_until",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": "until"
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    }
+   ]
+  },
+  {
+   "name": "worlds",
+   "source": "server",
+   "was": null,
+   "group": "아이템 묶음 · 월드",
+   "unique": [
+    "key"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "key",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "name",
+     "type": "text",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "is_challengers",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": "challengers"
+    },
+    {
+     "name": "is_event",
+     "type": "boolean",
+     "references": null,
+     "nullable": false,
+     "was": "event"
+    },
+    {
+     "name": "sort_order",
+     "type": "integer",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "updated_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": false,
+     "was": null
+    },
+    {
+     "name": "trade_group_id",
+     "type": "uuid",
+     "references": "trade_groups",
+     "nullable": true,
+     "was": "price_group"
+    },
+    {
+     "name": "emblem_asset_id",
+     "type": "uuid",
+     "references": "assets",
+     "nullable": true,
+     "was": null
+    }
+   ]
+  }
+ ],
+ "enums": {
+  "boss_cycle": {
+   "values": [
+    "weekly",
+    "monthly"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "cut"
+  },
+  "boss_difficulty": {
+   "values": [
+    "easy",
+    "normal",
+    "hard",
+    "chaos",
+    "extreme"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ref"
+  },
+  "cashbook_entry_type": {
+   "values": [
+    "income",
+    "spend"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ref"
+  },
+  "clear_source": {
+   "values": [
+    "auto",
+    "manual"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "content_category": {
+   "values": [
+    "monster_park",
+    "daily_quest",
+    "epic_dungeon",
+    "maple_union",
+    "arcane_river_quest",
+    "weekly_quest",
+    "mu_lung_dojo",
+    "guild"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "content_cycle": {
+   "values": [
+    "daily",
+    "weekly"
+   ],
+   "was": "content_section",
+   "source": "server"
+  },
+  "content_type": {
+   "values": [
+    "contents",
+    "quest"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ref"
+  },
+  "drop_category": {
+   "values": [
+    "fixed",
+    "equipment",
+    "consumable"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ref"
+  },
+  "drop_record_status": {
+   "values": [
+    "pending",
+    "completed",
+    "skipped",
+    "deleted"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "enhancement_anomaly_reason": {
+   "values": [
+    "event_world_unknown",
+    "no_level",
+    "no_grade",
+    "no_star",
+    "no_type",
+    "no_cost"
+   ],
+   "was": "enhancement_anomaly_type",
+   "source": "server"
+  },
+  "enhancement_category": {
+   "values": [
+    "cube_reset",
+    "starforce",
+    "potential",
+    "additional_potential",
+    "soul_potential"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ref"
+  },
+  "enhancement_api_type": {
+   "values": [
+    "cube",
+    "starforce",
+    "potential",
+    "soul_potential"
+   ],
+   "was": "enhancement_type",
+   "source": "card",
+   "kind": "ren"
+  },
+  "force_type": {
+   "values": [
+    "arcane",
+    "authentic"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "hunt_loot_type": {
+   "values": [
+    "fragment · consumable · event"
+   ],
+   "was": "hunt_loot_kind",
+   "source": "card",
+   "kind": "ren"
+  },
+  "identity_source": {
+   "values": [
+    "login",
+    "key"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "image_crop_type": {
+   "values": [
+    "boss_portrait · boss_portrait_icon · boss_portrait_modal · daily_quest_region"
+   ],
+   "was": "image_crop_kind",
+   "source": "card",
+   "kind": "ren"
+  },
+  "market_reference_source": {
+   "values": [
+    "today",
+    "three_day",
+    "carry"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "mvp_grade": {
+   "values": [
+    "normal · bronze · silver · gold · diamond · red · black"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ref"
+  },
+  "notice_type": {
+   "values": [
+    "app · game · event · update · cashshop"
+   ],
+   "was": "notice_kind",
+   "source": "card",
+   "kind": "ren"
+  },
+  "platform": {
+   "values": [
+    "ios",
+    "android"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "potential_grade": {
+   "values": [
+    "rare",
+    "epic",
+    "unique",
+    "legendary"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "potential_reset_type": {
+   "values": [
+    "potential",
+    "additional"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "share_scope": {
+   "values": [
+    "character",
+    "world",
+    "account"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "spend_currency": {
+   "values": [
+    "point",
+    "meso"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "spend_reward_type": {
+   "values": [
+    "exp",
+    "sol_erda"
+   ],
+   "was": "spend_form",
+   "source": "server"
+  },
+  "split_mode": {
+   "values": [
+    "even",
+    "ratio"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "usage_event_type": {
+   "values": [
+    "visit",
+    "screen",
+    "action"
+   ],
+   "was": null,
+   "source": "server"
+  },
+  "split_type": {
+   "values": [
+    "even",
+    "ratio",
+    "excluded"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ren"
+  },
+  "clear_recorded_by": {
+   "values": [
+    "auto",
+    "manual"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "ren"
+  },
+  "drop_price_status": {
+   "values": [
+    "pending",
+    "entered",
+    "skipped"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "fragment_source": {
+   "values": [
+    "hunt",
+    "inventory"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "cashbook_item_target_type": {
+   "values": [
+    "hunting_ground",
+    "item",
+    "spend_item",
+    "symbol",
+    "hexa_core",
+    "hexa_stat"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "item_group_type": {
+   "values": [
+    "equipment",
+    "accessory",
+    "consumable",
+    "etc",
+    "cash"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "remembered_level_type": {
+   "values": [
+    "symbol",
+    "hexa"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "manual_tracked_type": {
+   "values": [
+    "daily",
+    "weekly",
+    "boss"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "content_check_type": {
+   "values": [
+    "state_only",
+    "count_only",
+    "both",
+    "score"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "appointment_schedule_type": {
+   "values": [
+    "once",
+    "weekly"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "market_scope_type": {
+   "values": [
+    "trade_group",
+    "world"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "asset_category": {
+   "values": [
+    "skill",
+    "item",
+    "item_ring",
+    "boss",
+    "map",
+    "map_icon",
+    "world",
+    "mvp",
+    "force",
+    "character",
+    "drop_effect_screen",
+    "drop_effect_pre",
+    "drop_effect_loop",
+    "drop_effect_end"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  },
+  "tracking_type": {
+   "values": [
+    "auto",
+    "manual"
+   ],
+   "was": null,
+   "source": "card",
+   "kind": "new"
+  }
+ }
+}

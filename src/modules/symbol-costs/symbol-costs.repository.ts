@@ -4,7 +4,7 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, symbolGroups, symbolLevelCosts, symbols } from '../../database/schema'
-import { refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { isPeriodText } from '../crystal-prices/period-boundary'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
@@ -381,7 +381,7 @@ export class SymbolCostsRepository {
         group: symbolGroups.key,
         name: symbols.name,
         requiredLevel: symbols.requiredLevel,
-        iconPath: assets.path,
+        iconAsset: assetNameColumns(assets),
         iconAssetId: symbols.iconAssetId,
       })
       .from(symbols)
@@ -394,7 +394,7 @@ export class SymbolCostsRepository {
       group: r.group,
       name: r.name,
       requiredLevel: r.requiredLevel,
-      iconFile: refValueOf('itemIcon', r.iconPath),
+      iconFile: refValueOf('itemIcon', r.iconAsset),
       iconAssetId: r.iconAssetId,
     }))
   }

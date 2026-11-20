@@ -200,7 +200,7 @@ ${ASSET_PICKER}
 
   function changeIcon(item) {
     openAssetPicker({
-      dirs: ['items'], uploadDir: 'items', current: item.iconAssetId,
+      categories: ['item'], uploadCategory: 'item', current: item.iconAssetId,
       onPick: async function (f) {
         if (f === null) { show('그림을 비우는 길은 없다. 다른 그림을 고른다', true); return; }
         var r = await call('PUT', '/admin/enhancement-costs/superior-items/' + encodeURIComponent(item.name) + '/icon', { assetId: f.id });

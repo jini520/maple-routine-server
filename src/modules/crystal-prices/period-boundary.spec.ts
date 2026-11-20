@@ -17,7 +17,7 @@ describe('isPeriodBoundary', () => {
   // 2026-10-22 는 목요일, 2026-10-16 은 금요일이다.
   it('주간 · 시즌 보스는 목요일이어야 한다', () => {
     expect(isPeriodBoundary('2026-10-22', 'weekly')).toBe(true)
-    expect(isPeriodBoundary('2026-10-22T10:00', 'event_weekly')).toBe(true)
+    expect(isPeriodBoundary('2026-10-22T10:00', 'weekly')).toBe(true)
     expect(isPeriodBoundary('2026-10-16', 'weekly')).toBe(false)
   })
 

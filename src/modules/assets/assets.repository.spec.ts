@@ -8,10 +8,13 @@ import {
   openTestDb,
   type TestDb,
 } from '../../database/test-db'
+import type { AssetKey } from './asset-paths'
 import { AssetInUse, AssetsRepository } from './assets.repository'
 
 const SHA_A = 'a'.repeat(64)
 const SHA_B = 'b'.repeat(64)
+const BELLONA: AssetKey = { category: 'boss', fileName: 'bellona', extension: 'webp' }
+const REBOOT: AssetKey = { category: 'world', fileName: 'reboot', extension: 'png' }
 
 describeDb('AssetsRepository', () => {
   let db: TestDb
@@ -26,34 +29,32 @@ describeDb('AssetsRepository', () => {
   beforeEach(() => truncate())
   afterAll(() => close())
 
-  it('빈 표는 updatedAt null 이고, 넣으면 경로 차례로 디스크 파일 이름과 함께 낸다', async () => {
+  it('빈 표는 updatedAt null 이고, 넣으면 분류 · 파일 이름 차례로 디스크 파일 이름과 함께 낸다. 앱에 경로는 내지 않는다', async () => {
     expect(await repo.section()).toEqual({ updatedAt: null, files: [] })
-    await repo.put('worlds/reboot.png', SHA_B, { size: 10, width: 10, height: 20 })
-    await repo.put('bosses/bellona.webp', SHA_A, { size: 20, width: 10, height: 20 })
+    await repo.put(REBOOT, SHA_B, { sizeBytes: 10, width: 10, height: 20 })
+    await repo.put(BELLONA, SHA_A, { sizeBytes: 20, width: 10, height: 20 })
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
     const idOf = new Map(
-      (await db.select({ id: assets.id, path: assets.path }).from(assets)).map((r) => [
-        r.path,
+      (await db.select({ id: assets.id, fileName: assets.fileName }).from(assets)).map((r) => [
+        r.fileName,
         r.id,
       ]),
     )
     expect(section.files).toEqual([
       {
-        id: idOf.get('bosses/bellona.webp'),
-        path: 'bosses/bellona.webp',
+        id: idOf.get('bellona'),
         file: `${SHA_A}.webp`,
         sha256: SHA_A,
-        size: 20,
+        sizeBytes: 20,
         width: 10,
         height: 20,
       },
       {
-        id: idOf.get('worlds/reboot.png'),
-        path: 'worlds/reboot.png',
+        id: idOf.get('reboot'),
         file: `${SHA_B}.png`,
         sha256: SHA_B,
-        size: 10,
+        sizeBytes: 10,
         width: 10,
         height: 20,
       },
@@ -61,25 +62,23 @@ describeDb('AssetsRepository', () => {
   })
 
   it('같은 내용이면 칸 시각을 밀지 않고, 다른 내용이면 해시를 바꾸고 민다', async () => {
-    expect(await repo.put('bosses/bellona.webp', SHA_A, { size: 20, width: 10, height: 20 })).toBe(
-      'created',
-    )
+    expect(await repo.put(BELLONA, SHA_A, { sizeBytes: 20, width: 10, height: 20 })).toBe('created')
     const first = (await repo.section()).updatedAt
-    expect(await repo.put('bosses/bellona.webp', SHA_A, { size: 20, width: 10, height: 20 })).toBe(
-      'same',
-    )
+    expect(await repo.put(BELLONA, SHA_A, { sizeBytes: 20, width: 10, height: 20 })).toBe('same')
     expect((await repo.section()).updatedAt).toBe(first)
-    expect(await repo.put('bosses/bellona.webp', SHA_B, { size: 30, width: 10, height: 20 })).toBe(
-      'updated',
-    )
+    expect(await repo.put(BELLONA, SHA_B, { sizeBytes: 30, width: 10, height: 20 })).toBe('updated')
     const after = await repo.section()
     expect(after.files[0]?.sha256).toBe(SHA_B)
     expect(after.updatedAt).not.toBe(first)
   })
 
   it('칸 값마다 그림이 없는 것만 돌려준다', async () => {
-    await repo.put('bosses/bellona.webp', SHA_A, { size: 20, width: 10, height: 20 })
-    await repo.put('items/rings/ring.png', SHA_A, { size: 20, width: 10, height: 20 })
+    await repo.put(BELLONA, SHA_A, { sizeBytes: 20, width: 10, height: 20 })
+    await repo.put({ category: 'item_ring', fileName: 'ring', extension: 'png' }, SHA_A, {
+      sizeBytes: 20,
+      width: 10,
+      height: 20,
+    })
     expect(
       await repo.missing([
         { ref: 'bossPortrait', value: 'bellona' },
@@ -102,22 +101,29 @@ describeDb('AssetsRepository', () => {
       .update(assets)
       .set({ name: '이름 붙인 보스' })
       .where(eq(assets.id, ids['bosses/named.webp'] ?? ''))
-    const rows = new Map((await repo.adminRows()).map((r) => [r.path, r]))
-    expect(rows.get('items/pendant.png')).toMatchObject({
+    const rows = new Map((await repo.adminRows()).map((r) => [r.id, r]))
+    expect(rows.get(ids['items/pendant.png'] ?? '')).toMatchObject({
+      category: 'item',
+      fileName: 'pendant',
+      extension: 'png',
       label: '그린 펜던트',
       name: null,
       itemCategory: 'pendant',
       uses: [{ kind: '아이템', name: '그린 펜던트', itemCategory: 'pendant' }],
     })
-    expect(rows.get('skills/KAPCL.png')).toMatchObject({ label: 'KAPCL', name: null, uses: [] })
-    expect(rows.get('bosses/named.webp')).toMatchObject({
+    expect(rows.get(ids['skills/KAPCL.png'] ?? '')).toMatchObject({
+      label: 'KAPCL',
+      name: null,
+      uses: [],
+    })
+    expect(rows.get(ids['bosses/named.webp'] ?? '')).toMatchObject({
       label: '이름 붙인 보스',
       name: '이름 붙인 보스',
     })
   })
 
   it('이름은 적고 비울 수 있고, 앱에 내는 그림 칸의 시각은 밀지 않는다', async () => {
-    await repo.put('bosses/bellona.webp', SHA_A, { size: 20, width: 10, height: 20 })
+    await repo.put(BELLONA, SHA_A, { sizeBytes: 20, width: 10, height: 20 })
     const before = (await repo.section()).updatedAt
     const id = (await repo.section()).files[0]?.id ?? ''
     expect(await repo.rename(id, '벨로나')).toBe(true)
@@ -141,7 +147,7 @@ describeDb('AssetsRepository', () => {
       new AssetInUse([{ kind: '아이템', name: '쓰는 아이템', itemCategory: null }]),
     )
     expect(await repo.remove(ids['bosses/old.webp'] ?? '')).toBe(true)
-    expect((await db.select().from(assets)).map((r) => r.path)).toEqual(['items/used.png'])
+    expect((await db.select().from(assets)).map((r) => r.id)).toEqual([ids['items/used.png']])
     expect(await db.select().from(imageCrops)).toEqual([])
     const touched = (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map(
       (r) => r.key,

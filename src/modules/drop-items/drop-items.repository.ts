@@ -3,7 +3,7 @@ import { and, asc, eq } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { assets, items } from '../../database/schema'
-import { optionalRefValueOf } from '../assets/asset-refs'
+import { assetNameColumns, optionalRefValueOf } from '../assets/asset-refs'
 import { sectionUpdatedAt } from '../game-data/sections'
 
 export interface DropItemView {
@@ -56,7 +56,7 @@ export class DropItemsRepository {
       .select({
         key: items.key,
         name: items.name,
-        iconPath: assets.path,
+        iconAsset: assetNameColumns(assets),
         iconAssetId: items.iconAssetId,
         valuable: items.valuable,
         worldBound: items.worldBound,
@@ -68,7 +68,7 @@ export class DropItemsRepository {
     return rows.map((r) => ({
       key: r.key,
       name: r.name,
-      iconFile: optionalRefValueOf('itemIcon', r.iconPath),
+      iconFile: optionalRefValueOf('itemIcon', r.iconAsset),
       iconAssetId: r.iconAssetId,
       valuable: r.valuable,
       worldBound: r.worldBound,

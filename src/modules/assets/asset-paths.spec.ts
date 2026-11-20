@@ -1,47 +1,76 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { imageSize, parseAssetPath, refCandidates, sniffImage } from './asset-paths'
+import {
+  ASSET_CATEGORIES,
+  FOLDER_CATEGORIES,
+  imageSize,
+  parseAssetKey,
+  parseAssetPath,
+  refCandidates,
+  sniffImage,
+} from './asset-paths'
 
-describe('parseAssetPath', () => {
-  it('앱 디렉터리와 그 디렉터리의 확장자만 받는다', () => {
-    expect(parseAssetPath('bosses/bellona.webp')).toEqual({
-      dir: 'bosses',
-      name: 'bellona',
-      ext: 'webp',
+describe('parseAssetKey', () => {
+  it('분류와 그 분류가 받는 확장자만 받는다', () => {
+    expect(parseAssetKey({ category: 'boss', fileName: 'bellona', extension: 'webp' })).toEqual({
+      category: 'boss',
+      fileName: 'bellona',
+      extension: 'webp',
     })
-    expect(parseAssetPath('drop-effect/loop/10.webp')?.dir).toBe('drop-effect/loop')
-    expect(parseAssetPath('items/rings/ring.png')?.dir).toBe('items/rings')
-    expect(parseAssetPath('skills/KFPDKDPEMA.webp')?.dir).toBe('skills')
-    expect(parseAssetPath('skills/KFPDKDPEMA.jpg')).toBeNull()
-    expect(parseAssetPath('mvp/gold.png')).toBeNull()
-    expect(parseAssetPath('themes/hontail-background.webp')).toBeNull()
-    expect(parseAssetPath('guide/a.webp')).toBeNull()
+    expect(
+      parseAssetKey({ category: 'skill', fileName: 'KFPDKDPEMA', extension: 'jpg' }),
+    ).toBeNull()
+    expect(parseAssetKey({ category: 'mvp', fileName: 'gold', extension: 'png' })).toBeNull()
+    expect(parseAssetKey({ category: 'theme', fileName: 'a', extension: 'webp' })).toBeNull()
   })
 
-  it('디렉터리를 벗어나거나 이름이 빈 경로를 받지 않는다', () => {
-    expect(parseAssetPath('bosses/../x.webp')).toBeNull()
-    expect(parseAssetPath('bosses/.webp')).toBeNull()
-    expect(parseAssetPath('bosses/ a.webp')).toBeNull()
-    expect(parseAssetPath('bellona.webp')).toBeNull()
+  it('디렉터리를 벗어나거나 비었거나 공백으로 시작하는 이름을 받지 않는다', () => {
+    for (const fileName of ['../x', 'a/b', '.hidden', ' a', 'a ', ''])
+      expect(parseAssetKey({ category: 'boss', fileName, extension: 'webp' })).toBeNull()
   })
 
   it('NFD 이름을 NFC 로 맞춘다', () => {
-    expect(parseAssetPath('items/가.png'.normalize('NFD'))?.name).toBe('가'.normalize('NFC'))
+    expect(
+      parseAssetKey({ category: 'item', fileName: '가'.normalize('NFD'), extension: 'png' })
+        ?.fileName,
+    ).toBe('가'.normalize('NFC'))
+  })
+})
+
+describe('parseAssetPath', () => {
+  it('옛 경로의 폴더를 분류로 읽는다', () => {
+    expect(parseAssetPath('bosses/bellona.webp')).toEqual({
+      category: 'boss',
+      fileName: 'bellona',
+      extension: 'webp',
+    })
+    expect(parseAssetPath('drop-effect/loop/10.webp')?.category).toBe('drop_effect_loop')
+    expect(parseAssetPath('items/rings/ring.png')?.category).toBe('item_ring')
+    expect(parseAssetPath('maps/icons/roadOfVanishing.png')?.category).toBe('map_icon')
+    expect(parseAssetPath('skills/KFPDKDPEMA.jpg')).toBeNull()
+    expect(parseAssetPath('themes/hontail-background.webp')).toBeNull()
+    expect(parseAssetPath('bellona.webp')).toBeNull()
+    expect(parseAssetPath('bosses/../x.webp')).toBeNull()
+  })
+
+  // 옛 DB 를 옮길 때 폴더가 분류로 읽히지 않는 그림이 있으면 옮기기가 멈춘다.
+  it('분류마다 옛 폴더가 하나씩 있다', () => {
+    expect(Object.values(FOLDER_CATEGORIES).sort()).toEqual(Object.keys(ASSET_CATEGORIES).sort())
   })
 })
 
 describe('refCandidates', () => {
-  it('slug 는 디렉터리 확장자마다, fileName 은 디렉터리마다 후보를 낸다', () => {
+  it('slug 는 분류의 확장자마다, fileName 은 분류마다 후보를 낸다', () => {
     expect(refCandidates('bossPortrait', 'bellona')).toEqual([
-      'bosses/bellona.webp',
-      'bosses/bellona.png',
+      { category: 'boss', fileName: 'bellona', extension: 'webp' },
+      { category: 'boss', fileName: 'bellona', extension: 'png' },
     ])
     expect(refCandidates('itemIcon', 'ring.png')).toEqual([
-      'items/ring.png',
-      'items/rings/ring.png',
+      { category: 'item', fileName: 'ring', extension: 'png' },
+      { category: 'item_ring', fileName: 'ring', extension: 'png' },
     ])
-    expect(refCandidates('skillIcon', 'KFPDKDPEMA.webp')).toEqual(['skills/KFPDKDPEMA.webp'])
+    expect(refCandidates('itemIcon', 'ring')).toEqual([])
   })
 })
 

@@ -58,17 +58,10 @@ describe('AdminAssetsController', () => {
       mock.mockReset()
   })
 
-  it('GET /admin/assets 는 화면, /admin/assets/rows 는 그림 · 크롭 두 칸이다', async () => {
+  it('GET /admin/assets 는 화면이다', async () => {
     const page = await app.inject({ method: 'GET', url: '/admin/assets' })
     expect(page.statusCode).toBe(200)
     expect(page.headers['content-type']).toContain('text/html')
-
-    assets.section.mockResolvedValue({ updatedAt: null, files: [] })
-    crops.section.mockResolvedValue({ updatedAt: null, crops: [] })
-    expect((await app.inject({ method: 'GET', url: '/admin/assets/rows' })).json()).toEqual({
-      assets: { updatedAt: null, files: [] },
-      crops: { updatedAt: null, crops: [] },
-    })
   })
 
   it('PUT /admin/assets/file 은 해시 이름으로 파일을 먼저 쓰고 그다음 표에 적는다', async () => {
@@ -82,35 +75,38 @@ describe('AdminAssetsController', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: `/admin/assets/file?path=${encodeURIComponent('bosses/bellona.webp')}`,
+      url: '/admin/assets/file?category=boss&fileName=bellona&extension=webp',
       headers: { 'content-type': 'image/webp' },
       payload: WEBP,
     })
 
+    const key = { category: 'boss', fileName: 'bellona', extension: 'webp' }
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ path: 'bosses/bellona.webp', sha256: sha, result: 'created' })
+    expect(res.json()).toEqual({ ...key, sha256: sha, result: 'created' })
     expect(store.write).toHaveBeenCalledWith(`${sha}.webp`, WEBP)
-    expect(assets.put).toHaveBeenCalledWith('bosses/bellona.webp', sha, {
-      size: WEBP.length,
+    expect(assets.put).toHaveBeenCalledWith(key, sha, {
+      sizeBytes: WEBP.length,
       width: 1000,
       height: 405,
     })
     expect(order).toEqual(['write', 'put'])
   })
 
-  it('규칙에 없는 경로 · 확장자와 다른 내용 · 그림이 아닌 본문은 400 이고 아무것도 쓰지 않는다', async () => {
-    const put = (path: string, type: string, payload: Buffer) =>
+  it('규칙에 없는 분류 · 확장자, 빠진 칸, 확장자와 다른 내용, 그림이 아닌 본문은 400 이고 아무것도 쓰지 않는다', async () => {
+    const put = (query: string, type: string, payload: Buffer) =>
       app.inject({
         method: 'PUT',
-        url: `/admin/assets/file?path=${encodeURIComponent(path)}`,
+        url: `/admin/assets/file?${query}`,
         headers: { 'content-type': type },
         payload,
       })
-    expect((await put('guide/a.webp', 'image/webp', WEBP)).statusCode).toBe(400)
-    expect((await put('bosses/bellona.webp', 'image/png', PNG)).statusCode).toBe(400)
-    expect((await put('bosses/bellona.webp', 'image/webp', Buffer.from('nope'))).statusCode).toBe(
-      400,
-    )
+    const bellona = 'category=boss&fileName=bellona&extension=webp'
+    expect(
+      (await put('category=guide&fileName=a&extension=webp', 'image/webp', WEBP)).statusCode,
+    ).toBe(400)
+    expect((await put('category=boss&fileName=bellona', 'image/webp', WEBP)).statusCode).toBe(400)
+    expect((await put(bellona, 'image/png', PNG)).statusCode).toBe(400)
+    expect((await put(bellona, 'image/webp', Buffer.from('nope'))).statusCode).toBe(400)
     expect(store.write).not.toHaveBeenCalled()
     expect(assets.put).not.toHaveBeenCalled()
   })

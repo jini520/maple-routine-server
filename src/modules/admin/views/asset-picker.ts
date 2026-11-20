@@ -4,12 +4,12 @@ import { ASSET_REFS } from '../../assets/asset-paths'
  * 그림 고르개. 그림 칸에서 글자 대신 그림을 눌러 고르고, 고른 그림을 돌려준다(앱 저장소 ADR-187 결정 6).
  *
  * 페이지 본문에 이 조각을 넣으면 `openAssetPicker(options)` 와 `assetPickButton(input, rule)` 이 생긴다. 그림 목록은
- * `/admin/assets/list` 에서 읽어 보이는 이름으로 보이고, 새 그림은 그 칸이 받는 폴더에 올린 뒤 바로 고른다. 미리보기는 nginx 가
+ * `/admin/assets/list` 에서 읽어 보이는 이름으로 보이고, 새 그림은 그 칸이 받는 분류에 올린 뒤 바로 고른다. 미리보기는 nginx 가
  * 내는 `/assets/<해시>.<확장자>` 다. 글자 칸 옆 버튼은 고른 그림을 그 칸이 받는 글자(확장자를 뗀 이름 · 파일 이름)로 넣는다.
  * 관리 API 는 지금처럼 그 글자를 그림 id 로 푼다. 규칙은 서버 ASSET_REFS 를 그대로 싣는다.
  *
  * @example
- * openAssetPicker({ dirs: ['items', 'items/rings'], uploadDir: 'items', current: it.icon && it.icon.id, onPick: function (file) { ... } })
+ * openAssetPicker({ categories: ['item', 'item_ring'], uploadCategory: 'item', current: it.icon && it.icon.id, onPick: function (file) { ... } })
  * cell(tr, inline(emblem, assetPickButton(emblem, 'worldEmblem')))
  */
 export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-labelledby="picker-title">
@@ -49,13 +49,14 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
 <script>
   var pickerState = { options: null, files: [] };
   var ASSET_RULES = ${JSON.stringify(ASSET_REFS)};
-  function assetValueOf(rule, path) { var base = path.slice(path.lastIndexOf('/') + 1); return ASSET_RULES[rule].key === 'fileName' ? base : base.slice(0, base.lastIndexOf('.')); }
+  function assetFileText(f) { return f.fileName + '.' + f.extension; }
+  function assetValueOf(rule, f) { return ASSET_RULES[rule].key === 'fileName' ? assetFileText(f) : f.fileName; }
   /** 글자 칸 옆에 붙일 고르기 버튼. 고르면 칸 값을 바꾸고 input 사건을 낸다. 지금 값과 같은 그림이 골라져 열린다. */
   function assetPickButton(field, rule) {
     var b = button('고르기', 'btn ghost sm');
     b.addEventListener('click', function () {
       var r = ASSET_RULES[rule];
-      openAssetPicker({ dirs: r.dirs, uploadDir: r.dirs[0], isCurrent: function (f) { return field.value.trim() !== '' && assetValueOf(rule, f.path) === field.value.trim(); }, onPick: function (f) { field.value = f ? assetValueOf(rule, f.path) : ''; field.dispatchEvent(new Event('input', { bubbles: true })); } });
+      openAssetPicker({ categories: r.categories, uploadCategory: r.categories[0], isCurrent: function (f) { return field.value.trim() !== '' && assetValueOf(rule, f) === field.value.trim(); }, onPick: function (f) { field.value = f ? assetValueOf(rule, f) : ''; field.dispatchEvent(new Event('input', { bubbles: true })); } });
     });
     return b;
   }
@@ -67,7 +68,6 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
     });
   }
   function pickerFileUrl(f) { return '/assets/' + f.file; }
-  function pickerBase(path) { return path.slice(path.lastIndexOf('/') + 1); }
   async function pickerLoad() {
     var r = await call('GET', '/admin/assets/list');
     if (!r.ok) { show(fail('그림 목록을 못 읽었다', r), true); return; }
@@ -78,13 +78,12 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
     var q = document.getElementById('picker-q').value.trim().toLowerCase();
     var grid = document.getElementById('picker-grid'); grid.innerHTML = '';
     var shown = pickerState.files.filter(function (f) {
-      var dir = f.path.slice(0, f.path.lastIndexOf('/'));
-      return o.dirs.indexOf(dir) >= 0 && (!q || f.path.toLowerCase().indexOf(q) >= 0 || f.label.toLowerCase().indexOf(q) >= 0);
+      return o.categories.indexOf(f.category) >= 0 && (!q || assetFileText(f).toLowerCase().indexOf(q) >= 0 || f.label.toLowerCase().indexOf(q) >= 0);
     });
     shown.forEach(function (f) {
-      var b = button(''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(o.isCurrent ? o.isCurrent(f) : f.id === o.current)); b.title = f.path;
+      var b = button(''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', String(o.isCurrent ? o.isCurrent(f) : f.id === o.current)); b.title = f.category + '/' + assetFileText(f);
       var img = el('img'); img.src = pickerFileUrl(f); img.alt = ''; img.loading = 'lazy';
-      b.appendChild(img); b.appendChild(el('b', f.label)); b.appendChild(span(pickerBase(f.path)));
+      b.appendChild(img); b.appendChild(el('b', f.label)); b.appendChild(span(assetFileText(f)));
       b.addEventListener('click', function () { pickerDone(f); });
       grid.appendChild(b);
     });
@@ -97,8 +96,8 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
   }
   async function openAssetPicker(options) {
     pickerState.options = options;
-    document.getElementById('picker-dirs').textContent = options.dirs.join(' · ');
-    document.getElementById('picker-upload-dir').textContent = options.uploadDir + '/';
+    document.getElementById('picker-dirs').textContent = options.categories.join(' · ');
+    document.getElementById('picker-upload-dir').textContent = options.uploadCategory + '/';
     document.getElementById('picker-q').value = '';
     document.getElementById('asset-picker').showModal();
     await pickerLoad();
@@ -113,11 +112,11 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
     var name = document.getElementById('picker-name').value.trim();
     var ext = { 'image/png': 'png', 'image/webp': 'webp', 'image/jpeg': 'jpg' }[file ? file.type : ''];
     if (!file || !ext || name === '') { show('새 그림 이름과 png · webp · jpg 파일을 함께 고른다', true); return; }
-    var path = o.uploadDir + '/' + name + '.' + ext;
-    var res = await fetch('/admin/assets/file?path=' + encodeURIComponent(path), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
+    var key = { category: o.uploadCategory, fileName: name, extension: ext };
+    var res = await fetch('/admin/assets/file?' + new URLSearchParams(key), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
     if (!res.ok) { show('못 올렸다 ' + res.status + '\\n' + (await res.text()), true); return; }
     await pickerLoad();
-    var uploaded = pickerState.files.find(function (f) { return f.path === path; });
+    var uploaded = pickerState.files.find(function (f) { return f.category === key.category && f.fileName === key.fileName && f.extension === key.extension; });
     if (uploaded) pickerDone(uploaded); else pickerRender();
   });
 </script>`

@@ -85,10 +85,10 @@ const ROW = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const newBoss = {
   key: 'kaling',
   name: '카링',
-  alias: '카링',
-  cycle: 'weekly',
-  portraitSlug: 'kaling',
-  difficulties: [{ difficulty: 'easy', requiredLevel: 275 }],
+  shortName: '카링',
+  isSeasonBoss: false,
+  portraitAssetId: ROW,
+  difficulties: [{ difficulty: 'easy', cycle: 'weekly', requiredLevel: 275 }],
 }
 
 describe('AdminController', () => {
@@ -104,7 +104,7 @@ describe('AdminController', () => {
     setMaxPartySize: jest.fn(),
     setPeriod: jest.fn(),
     setDifficultyPeriod: jest.fn(),
-    setAlias: jest.fn(),
+    setShortName: jest.fn(),
   }
   const items = {
     section: jest.fn(),
@@ -413,7 +413,15 @@ describe('AdminController', () => {
     expect(bad.statusCode).toBe(400)
   })
 
-  it('POST /admin/bosses 는 새 보스를 더하고 201, 같은 key 는 409, 난이도 없으면 400 이다', async () => {
+  it('GET /admin/bosses/rows 는 게임 데이터의 bosses 칸 그대로다', async () => {
+    const catalog = { updatedAt: null, rules: {}, bosses: [] }
+    bosses.catalog.mockResolvedValueOnce(catalog)
+    const res = await app.inject({ method: 'GET', url: '/admin/bosses/rows' })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual(catalog)
+  })
+
+  it('POST /admin/bosses 는 새 보스를 더하고 201, 같은 key 는 409, 난이도가 없거나 그림 표에 없는 초상이면 400 이다', async () => {
     bosses.createBoss.mockResolvedValueOnce({ id: 'b1' })
     const ok = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
     expect(ok.statusCode).toBe(201)
@@ -431,6 +439,10 @@ describe('AdminController', () => {
     })
     expect(bad.statusCode).toBe(400)
     expect(bosses.createBoss).toHaveBeenCalledTimes(2)
+
+    bosses.createBoss.mockRejectedValueOnce(new AssetNotFound(ROW))
+    const noPortrait = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
+    expect(noPortrait.statusCode).toBe(400)
   })
 
   it('PUT /admin/bosses/:key/difficulties/:difficulty 는 줄을 적고 204, 모르는 보스는 404, 모르는 난이도는 400 이다', async () => {
@@ -438,28 +450,29 @@ describe('AdminController', () => {
     const ok = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/kaling/difficulties/hard',
-      payload: { requiredLevel: 275 },
+      payload: { cycle: 'weekly', requiredLevel: 275 },
     })
     expect(ok.statusCode).toBe(204)
     expect(bosses.upsertDifficulty).toHaveBeenCalledWith('kaling', {
       difficulty: 'hard',
+      cycle: 'weekly',
       requiredLevel: 275,
-      from: null,
-      until: null,
+      validFrom: null,
+      validUntil: null,
     })
 
     bosses.upsertDifficulty.mockResolvedValueOnce(false)
     const gone = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/nobody/difficulties/hard',
-      payload: { requiredLevel: 275 },
+      payload: { cycle: 'weekly', requiredLevel: 275 },
     })
     expect(gone.statusCode).toBe(404)
 
     const bad = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/kaling/difficulties/hell',
-      payload: { requiredLevel: 275 },
+      payload: { cycle: 'weekly', requiredLevel: 275 },
     })
     expect(bad.statusCode).toBe(400)
   })
@@ -1121,10 +1134,10 @@ describe('AdminController', () => {
     const ok = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/meirin/period',
-      payload: { until: '2026-11-05' },
+      payload: { validUntil: '2026-11-05' },
     })
     expect(ok.statusCode).toBe(204)
-    expect(bosses.setPeriod).toHaveBeenCalledWith('meirin', { until: '2026-11-05' })
+    expect(bosses.setPeriod).toHaveBeenCalledWith('meirin', { validUntil: '2026-11-05' })
 
     bosses.setPeriod.mockResolvedValue(false)
     expect(
@@ -1136,29 +1149,29 @@ describe('AdminController', () => {
         await app.inject({
           method: 'PUT',
           url: '/admin/bosses/meirin/period',
-          payload: { from: '2026-11-05', until: '2026-07-03' },
+          payload: { validFrom: '2026-11-05', validUntil: '2026-07-03' },
         })
       ).statusCode,
     ).toBe(400)
   })
 
-  it('PUT /admin/bosses/:key/alias 는 앞뒤 공백을 걷어 적고 204, 모르는 보스는 404, 빈 별칭은 400 이다', async () => {
-    bosses.setAlias.mockResolvedValue(true)
+  it('PUT /admin/bosses/:key/short-name 은 앞뒤 공백을 걷어 적고 204, 모르는 보스는 404, 빈 이름은 400 이다', async () => {
+    bosses.setShortName.mockResolvedValue(true)
     const ok = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/meirin/alias',
-      payload: { alias: ' 메이린 ' },
+      url: '/admin/bosses/meirin/short-name',
+      payload: { shortName: ' 메이린 ' },
     })
     expect(ok.statusCode).toBe(204)
-    expect(bosses.setAlias).toHaveBeenCalledWith('meirin', '메이린')
+    expect(bosses.setShortName).toHaveBeenCalledWith('meirin', '메이린')
 
-    bosses.setAlias.mockResolvedValue(false)
+    bosses.setShortName.mockResolvedValue(false)
     expect(
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/nobody/alias',
-          payload: { alias: '누구' },
+          url: '/admin/bosses/nobody/short-name',
+          payload: { shortName: '누구' },
         })
       ).statusCode,
     ).toBe(404)
@@ -1166,8 +1179,8 @@ describe('AdminController', () => {
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/meirin/alias',
-          payload: { alias: '  ' },
+          url: '/admin/bosses/meirin/short-name',
+          payload: { shortName: '  ' },
         })
       ).statusCode,
     ).toBe(400)
@@ -1178,11 +1191,11 @@ describe('AdminController', () => {
     const ok = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/lotus/difficulties/extreme/period',
-      payload: { from: '2026-11-05T10:00' },
+      payload: { validFrom: '2026-11-05T10:00' },
     })
     expect(ok.statusCode).toBe(204)
     expect(bosses.setDifficultyPeriod).toHaveBeenCalledWith('lotus', 'extreme', {
-      from: '2026-11-05T10:00',
+      validFrom: '2026-11-05T10:00',
     })
     bosses.setDifficultyPeriod.mockResolvedValue(false)
     expect(
@@ -1205,20 +1218,27 @@ describe('AdminController', () => {
     ).toBe(400)
   })
 
-  it('PUT /admin/bosses/:key/difficulties/:difficulty 는 새 줄의 유효 기간도 함께 넘긴다', async () => {
+  it('PUT /admin/bosses/:key/difficulties/:difficulty 는 새 줄의 주기 · 유효 기간도 함께 넘기고, 주기가 없으면 400 이다', async () => {
     bosses.upsertDifficulty.mockResolvedValue(true)
     const res = await app.inject({
       method: 'PUT',
       url: '/admin/bosses/bardrix/difficulties/extreme',
-      payload: { requiredLevel: 290, from: '2026-10-22T10:00' },
+      payload: { cycle: 'monthly', requiredLevel: 290, validFrom: '2026-10-22T10:00' },
     })
     expect(res.statusCode).toBe(204)
     expect(bosses.upsertDifficulty).toHaveBeenCalledWith('bardrix', {
       difficulty: 'extreme',
+      cycle: 'monthly',
       requiredLevel: 290,
-      from: '2026-10-22T10:00',
-      until: null,
+      validFrom: '2026-10-22T10:00',
+      validUntil: null,
     })
+    const noCycle = await app.inject({
+      method: 'PUT',
+      url: '/admin/bosses/bardrix/difficulties/extreme',
+      payload: { requiredLevel: 290 },
+    })
+    expect(noCycle.statusCode).toBe(400)
   })
 
   describe('지출 카탈로그', () => {

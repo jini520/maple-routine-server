@@ -73,7 +73,7 @@ export interface ItemGroupView {
 export interface ItemsSection {
   updatedAt: string | null
   items: ItemView[]
-  groups: ItemGroupView[]
+  itemGroups: ItemGroupView[]
   ringLevelItems: { itemId: string; ringItemId: string; ringLevel: number }[]
   sameItemLinks: { itemId: string; originalItemId: string }[]
 }
@@ -146,7 +146,13 @@ export class ItemsRepository {
       sectionUpdatedAt(this.db, 'items'),
     ])
     itemRows.sort((a, b) => KO.compare(a.name, b.name) || KO.compare(a.key, b.key))
-    return { updatedAt, items: itemRows, groups, ringLevelItems: ringLevels, sameItemLinks: links }
+    return {
+      updatedAt,
+      items: itemRows,
+      itemGroups: groups,
+      ringLevelItems: ringLevels,
+      sameItemLinks: links,
+    }
   }
 
   async adminRows(): Promise<ItemAdminRow[]> {

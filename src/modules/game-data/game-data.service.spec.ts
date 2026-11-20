@@ -44,7 +44,7 @@ function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): Game
     empty({ rewards: [] }) as unknown as BossDropsRepository,
     empty({ boxes: [] }) as unknown as DropBoxesRepository,
     empty({ prices: [] }) as unknown as CrystalPricesRepository,
-    empty({ worlds: [] }) as unknown as WorldsRepository,
+    empty({ worlds: [], worldOpenPeriods: [] }) as unknown as WorldsRepository,
     empty({
       rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
       groups: [],
@@ -83,7 +83,12 @@ function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): Game
     empty({ files: [] }) as unknown as AssetsRepository,
     empty({ crops: [] }) as unknown as ImageCropsRepository,
     empty({ images: [] }) as unknown as AppImagesRepository,
-    empty({ items: [], groups: [], ringLevelItems: [], sameItemLinks: [] }) as unknown as ItemsRepository,
+    empty({
+      items: [],
+      itemGroups: [],
+      ringLevelItems: [],
+      sameItemLinks: [],
+    }) as unknown as ItemsRepository,
     db,
   )
 }
@@ -103,7 +108,7 @@ describe('GameDataService', () => {
       bossDrops: { updatedAt: null, rewards: [] },
       dropBoxes: { updatedAt: null, boxes: [] },
       crystalPrices: { updatedAt: null, prices: [] },
-      worlds: { updatedAt: null, worlds: [] },
+      worlds: { updatedAt: null, worlds: [], worldOpenPeriods: [] },
       spendCatalog: {
         updatedAt: null,
         rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
@@ -145,7 +150,7 @@ describe('GameDataService', () => {
       assets: { updatedAt: null, files: [] },
       imageCrops: { updatedAt: null, crops: [] },
       appImages: { updatedAt: null, images: [] },
-      items: { updatedAt: null, items: [], groups: [], ringLevelItems: [], sameItemLinks: [] },
+      items: { updatedAt: null, items: [], itemGroups: [], ringLevelItems: [], sameItemLinks: [] },
     })
   })
 
@@ -183,7 +188,9 @@ describe('GameDataService.response', () => {
 
   it('칸 시각이 바뀌면 다음 요청이 다시 읽은 응답이다', async () => {
     const changed: Catalog = { ...catalog, updatedAt: '2026-11-20T01:00:00.000Z' }
-    const bosses = { catalog: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed) }
+    const bosses = {
+      catalog: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed),
+    }
     const stamps = stampDb('a')
     const sut = service(bosses, stamps.db)
 

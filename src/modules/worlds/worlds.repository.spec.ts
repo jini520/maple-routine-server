@@ -60,7 +60,7 @@ describeDb('WorldsRepository', () => {
   }
 
   it('더한 차례로 내고 같은 key 는 WorldExists 다', async () => {
-    expect(await repo.section()).toEqual({ updatedAt: null, worlds: [] })
+    expect(await repo.section()).toEqual({ updatedAt: null, worlds: [], worldOpenPeriods: [] })
     await repo.create(scania)
     await repo.create(challengers5)
     await repo.create(special)
@@ -68,11 +68,7 @@ describeDb('WorldsRepository', () => {
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.worlds).toMatchObject([
-      { ...scania, openPeriods: [] },
-      { ...challengers5, openPeriods: [] },
-      { ...special, openPeriods: [] },
-    ])
+    expect(section.worlds).toMatchObject([scania, challengers5, special])
     expect(section.worlds.map((w) => Object.keys(w).sort())[0]).toEqual([
       'emblemAssetId',
       'id',
@@ -80,7 +76,6 @@ describeDb('WorldsRepository', () => {
       'isEvent',
       'key',
       'name',
-      'openPeriods',
     ])
   })
 
@@ -145,8 +140,8 @@ describeDb('WorldsRepository', () => {
   /** 같은 밀리초에 두 회차가 돌면 칸 시각이 같아 바뀌었는지 가를 수 없다. */
   const tick = () => new Promise((resolve) => setTimeout(resolve, 5))
 
-  // 같은 이름의 월드가 시즌마다 다시 열려 기간이 여러 줄이다. 앱은 시작 차례로 읽고, 기간이 없는 월드도 배열을 받는다.
-  it('월드마다 열린 기간을 시작 차례로 싣고 없으면 빈 배열이며, id 는 adminSection 에만 있다', async () => {
+  // 같은 이름의 월드가 시즌마다 다시 열려 기간이 여러 줄이다. 앱은 월드 줄 id 로 기간을 찾는다.
+  it('열린 기간은 worldOpenPeriods 배열에 월드 줄 id 와 함께 시작 차례로 싣고, 기간 줄 id 는 adminSection 에만 있다', async () => {
     await repo.create(scania)
     await repo.create(special)
     await repo.addPeriod('special', { validFrom: '2026-12-03', validUntil: '2027-01-07' })
@@ -155,15 +150,11 @@ describeDb('WorldsRepository', () => {
       validUntil: '2025-12-19',
     })
 
-    expect((await repo.section()).worlds.map((w) => [w.key, w.openPeriods])).toEqual([
-      ['scania', []],
-      [
-        'special',
-        [
-          { validFrom: '2025-11-20', validUntil: '2025-12-19' },
-          { validFrom: '2026-12-03', validUntil: '2027-01-07' },
-        ],
-      ],
+    const section = await repo.section()
+    const worldId = section.worlds.find((w) => w.key === 'special')?.id
+    expect(section.worldOpenPeriods).toEqual([
+      { worldId, validFrom: '2025-11-20', validUntil: '2025-12-19' },
+      { worldId, validFrom: '2026-12-03', validUntil: '2027-01-07' },
     ])
     const admin = (await repo.adminSection()).worlds.find((w) => w.key === 'special')
     expect(admin?.openPeriods[0]).toEqual({
@@ -191,15 +182,16 @@ describeDb('WorldsRepository', () => {
       true,
     )
     expect(await at()).not.toBe(before)
-    expect((await repo.section()).worlds[0]?.openPeriods).toEqual([
-      { validFrom: '2025-11-20', validUntil: '2025-12-19' },
+    const worldId = (await repo.section()).worlds[0]?.id
+    expect((await repo.section()).worldOpenPeriods).toEqual([
+      { worldId, validFrom: '2025-11-20', validUntil: '2025-12-19' },
     ])
 
     before = await at()
     await tick()
     expect(await repo.removePeriod(id)).toBe(true)
     expect(await at()).not.toBe(before)
-    expect((await repo.section()).worlds[0]?.openPeriods).toEqual([])
+    expect((await repo.section()).worldOpenPeriods).toEqual([])
 
     await expect(
       repo.addPeriod('nobody', { validFrom: '2025-11-20', validUntil: '2025-12-19' }),

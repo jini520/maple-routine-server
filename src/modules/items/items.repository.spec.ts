@@ -149,7 +149,7 @@ describeDb('ItemsRepository', () => {
     expect(row).toMatchObject({ name: '거대한 공포!', groupId: null, isDrop: true })
   })
 
-  it('items 칸은 아이템 전부를 이름 차례로 칸 이름 그대로 내고, 묶음 · 반지 레벨 · 같은 물건 연결을 함께 낸다', async () => {
+  it('items 칸은 아이템 전부를 이름 차례로 칸 이름 그대로 내고, 묶음 · 반지 레벨 · 같은 물건 연결을 표 이름의 배열로 함께 낸다', async () => {
     await linkedRows()
     await repo.create('giant_terror', base)
 
@@ -173,7 +173,7 @@ describeDb('ItemsRepository', () => {
       isEquipment: true,
       requiredLevel: 200,
     })
-    expect(section.groups.find((g) => g.key === 'dark_boss_set')).toMatchObject({
+    expect(section.itemGroups.find((g) => g.key === 'dark_boss_set')).toMatchObject({
       id: await itemGroupId(db, 'dark_boss_set'),
       type: 'accessory',
     })
@@ -267,14 +267,12 @@ describeDb('ItemsRepository', () => {
       groupKey: null,
       isEquipment: false,
     })
-    await db
-      .insert(huntLootItems)
-      .values({
-        itemId: await idOf('reindeer_milk'),
-        kind: 'consumable',
-        npcPriceMeso: 2750,
-        sortOrder: 0,
-      })
+    await db.insert(huntLootItems).values({
+      itemId: await idOf('reindeer_milk'),
+      kind: 'consumable',
+      npcPriceMeso: 2750,
+      sortOrder: 0,
+    })
     await db.delete(gameDataSections)
 
     await repo.update('reindeer_milk', {

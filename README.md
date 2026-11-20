@@ -234,7 +234,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   앱에는 번들 사본이 없다. 처음 켜면 이 서버에서 다 받기 전까지 잠근다(같은 ADR 결정 12).
 - **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-020` 결정 2). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
   든다. 서버는 응답을 메모리에 담아 두고, 칸 시각이 바뀌거나 담은 지 5분이 지나면 다시 만든다(앱 저장소 `ADR-020` 결정 2). 요청마다 만들면
-  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `cashbookCategories` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `huntLoot` · `hexaMatrix` · `faqs` · `assets` · `imageCrops` · `appImages` · `items` 열아홉이다(`game-data/sections.ts` 의 `SECTION_KEYS` 와 `bosses`). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
+  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `gameRules` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `cashbookCategories` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `huntLoot` · `hexaMatrix` · `faqs` · `assets` · `imageCrops` · `appImages` · `items` 스물이다(`game-data/sections.ts` 의 `SECTION_KEYS` 와 `bosses` · `gameRules`). 게임 규칙은 한 줄이라 그 줄의 `updated_at` 을 칸 시각으로 낸다. 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
   `/admin/items` 하나에서 고친다(앱 저장소 `ADR-187` 결정 6. 분류 트리 · 그림 격자 · 편집 서랍이고, 역할은 붙이기만 한다). 드롭 묶음의 관리 화면은
   `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다. 지출 카탈로그는 `/admin/spend-catalog` 다
   (묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 `validUntil` 로 닫는다). 심볼 비용은 `/admin/symbol-costs` 다. 컨텐츠는 `/admin/contents` 다(

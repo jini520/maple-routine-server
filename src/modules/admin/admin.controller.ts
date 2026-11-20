@@ -26,10 +26,9 @@ import {
   difficultyParam,
   type PeriodInput,
   periodInput,
-  type RulesInput,
-  rulesInput,
 } from '../bosses/bosses.dto'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
+import { GameRulesRepository, NoGameRules } from '../game-rules/game-rules.repository'
 import {
   CashbookCategoriesRepository,
   CashbookCategoryExists,
@@ -223,8 +222,6 @@ import {
   spendItemCreateBody,
   type SpendItemUpdateBody,
   spendItemUpdateBody,
-  type SpendRulesBody,
-  spendRulesBody,
   type SpendTileCreateBody,
   spendTileCreateBody,
   type SpendTileUpdateBody,
@@ -240,8 +237,8 @@ import {
   contentUpdateBody,
   type CostBody,
   costBody,
-  type EnhancementRulesBody,
-  enhancementRulesBody,
+  type GameRulesBody,
+  gameRulesBody,
   fromStarParam,
   minRequiredLevelParam,
   mvpGradeParam,
@@ -366,6 +363,7 @@ export class AdminController {
     private readonly hexa: HexaMatrixRepository,
     private readonly faqs: FaqsRepository,
     private readonly dashboard: UsageDashboardService,
+    private readonly rules: GameRulesRepository,
   ) {}
 
   @Get()
@@ -389,11 +387,24 @@ export class AdminController {
     return this.bosses.catalog()
   }
 
-  /** 규칙 둘을 적는다. */
-  @Put('bosses/rules')
+  /** 규칙을 쓰는 화면(보스 · 지출 카탈로그 · 강화 비용)이 읽는다. 게임 데이터의 gameRules 칸과 같다. */
+  @Get('game-rules')
+  @Header('cache-control', 'no-store')
+  gameRules() {
+    return this.rules.section()
+  }
+
+  /** 받은 규칙만 고친다. 화면마다 자기 규칙만 보낸다. 규칙 줄이 없으면 409 다. */
+  @Put('game-rules')
   @HttpCode(204)
-  async setRules(@Body(new ZodValidationPipe(rulesInput)) body: RulesInput): Promise<void> {
-    await this.bosses.setRules(body)
+  async setGameRules(@Body(new ZodValidationPipe(gameRulesBody)) body: GameRulesBody): Promise<void> {
+    try {
+      await this.rules.update(body)
+    } catch (error) {
+      if (error instanceof NoGameRules)
+        throw new ConflictException('규칙 줄이 없다. 옮기는 스크립트가 만든다')
+      throw error
+    }
   }
 
   /** 새 보스를 맨 뒤에 더한다. 같은 key 가 있으면 409, 그림 표에 없는 초상이면 400 이다. */
@@ -949,15 +960,6 @@ export class AdminController {
   @Header('cache-control', 'no-store')
   spendCatalogRows() {
     return this.spend.adminRows()
-  }
-
-  /** 관세율과 주화 판매가를 적는다. */
-  @Put('spend-catalog/rules')
-  @HttpCode(204)
-  async setSpendRules(
-    @Body(new ZodValidationPipe(spendRulesBody)) body: SpendRulesBody,
-  ): Promise<void> {
-    await this.spend.setRules(body)
   }
 
   /** 묶음을 맨 뒤에 더한다. 같은 key 는 409, 지출 갈래가 아니면 404 다. */
@@ -1732,14 +1734,14 @@ export class AdminController {
   @Get('crystal-prices/rows')
   @Header('cache-control', 'no-store')
   async crystalPriceRows() {
-    const [pairs, catalog, section] = await Promise.all([
+    const [pairs, rules, section] = await Promise.all([
       this.crystals.pairs(),
-      this.bosses.catalog(),
+      this.rules.section(),
       this.crystals.section(),
     ])
     return {
       updatedAt: section.updatedAt,
-      defaultMaxPartySize: catalog.rules.defaultMaxPartySize,
+      defaultMaxPartySize: rules.gameRules?.defaultMaxPartySize ?? null,
       pairs,
     }
   }
@@ -1909,15 +1911,6 @@ export class AdminController {
   @Header('cache-control', 'no-store')
   enhancementCostRows() {
     return this.enhancement.adminRows()
-  }
-
-  /** 규칙 셋을 적는다. 셋 다 받는다. */
-  @Put('enhancement-costs/rules')
-  @HttpCode(204)
-  async setEnhancementRules(
-    @Body(new ZodValidationPipe(enhancementRulesBody)) body: EnhancementRulesBody,
-  ): Promise<void> {
-    await this.enhancement.setRules(body)
   }
 
   /** 잠재 재설정의 칸 하나를 고친다. 없는 칸은 404 다. */

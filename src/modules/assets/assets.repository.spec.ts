@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 
-import { assets, gameDataSections, imageCrops } from '../../database/schema'
+import { assets, gameDataSectionUpdates, imageCrops } from '../../database/schema'
 import {
   describeDb,
   insertAssets,
@@ -139,7 +139,7 @@ describeDb('AssetsRepository', () => {
     expect(await repo.remove(ids['bosses/old.webp'] ?? '')).toBe(true)
     expect((await db.select().from(assets)).map((r) => r.id)).toEqual([ids['items/used.png']])
     expect(await db.select().from(imageCrops)).toEqual([])
-    const touched = (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map(
+    const touched = (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)).map(
       (r) => r.key,
     )
     expect(touched).toEqual(expect.arrayContaining(['assets', 'imageCrops']))

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import {
-  gameDataSections,
+  gameDataSectionUpdates,
   huntLootItems,
   items,
   ringLevelItems,
@@ -63,7 +63,7 @@ describeDb('ItemsRepository', () => {
   afterAll(() => close())
 
   const touched = async () =>
-    (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map((r) => r.key).sort()
+    (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)).map((r) => r.key).sort()
   const idOf = async (key: string) =>
     (await db.select({ id: items.id }).from(items).where(eq(items.key, key)))[0]?.id ?? ''
 
@@ -273,7 +273,7 @@ describeDb('ItemsRepository', () => {
       npcPriceMeso: 2750,
       sortOrder: 0,
     })
-    await db.delete(gameDataSections)
+    await db.delete(gameDataSectionUpdates)
 
     await repo.update('reindeer_milk', {
       ...base,

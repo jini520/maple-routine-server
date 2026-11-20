@@ -24,7 +24,17 @@ describeDb('gameDataStamp', () => {
       portraitAssetId: portrait,
       sortOrder: 0,
     })
-    await db.insert(gameRules).values({ key: 'weekly_boss_selection_limit', value: 12 })
+    await db.insert(gameRules).values({
+      weeklyBossSelectionLimit: 12,
+      weeklyCrystalSaleLimit: 90,
+      defaultMaxPartySize: 6,
+      spendTariffPercent: 10,
+      rewardCoinPriceMeso: 40_000_000,
+      mesoMarketFeePercent: 1,
+      cubeAppraisalFreeMaxLevel: 120,
+      cubeAppraisalCoefficient: 20,
+      starforceDestroyDefenceSurchargePercent: 200,
+    })
     await touchSection(db, 'worlds')
 
     const first = await gameDataStamp(db)

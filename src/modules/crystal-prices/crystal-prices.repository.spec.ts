@@ -31,11 +31,6 @@ describeDb('CrystalPricesRepository', () => {
   beforeEach(async () => {
     await truncate()
     await insertAssets(db, SPEC_ASSETS)
-    await bosses.setRules({
-      weeklyBossSelectionLimit: 12,
-      weeklyCrystalSaleLimit: 90,
-      defaultMaxPartySize: 6,
-    })
     await bosses.createBoss({
       key: 'lotus',
       name: '스우',
@@ -127,7 +122,6 @@ describeDb('CrystalPricesRepository', () => {
 
     const catalog = await bosses.catalog()
     expect(catalog.bosses[0]?.difficulties[0]?.maxPartySize).toBe(2)
-    expect(catalog.rules.defaultMaxPartySize).toBe(6)
     expect(catalog.updatedAt).not.toBe(before)
     expect((await repo.pairs())[0]?.maxPartySize).toBe(2)
   })

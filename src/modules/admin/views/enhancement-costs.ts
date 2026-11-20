@@ -8,27 +8,24 @@ const NAV = [
   ['/admin/enhancement-costs/superior', '슈페리얼 장비'],
 ] as const
 
-/** 세 화면이 함께 쓰는 데이터 읽기와 규칙 저장. 규칙 PUT 은 셋을 다 받아, 이 화면에 없는 규칙은 읽은 값 그대로 보낸다. */
+/** 세 화면이 함께 쓰는 데이터 읽기와 규칙 저장. 규칙은 이 화면에 있는 것만 보낸다. 다른 화면의 규칙은 건드리지 않는다. */
 const COMMON_JS = `
   var GRADES = [['rare', '레어'], ['epic', '에픽'], ['unique', '유니크'], ['legendary', '레전드리']];
-  var D = null;
+  var D = null, R = null;
   var batch = editing(function () { load(); });
   async function data() {
     var r = await call('GET', '/admin/enhancement-costs/rows');
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return false; }
     D = r.json;
+    var g = await call('GET', '/admin/game-rules'); R = g.ok ? g.json.gameRules : null;
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
     return true;
   }
   var ruleCells = {};
-  function rulesBody() {
-    var body = {};
-    ['cubeAppraisalFreeMaxLevel', 'cubeAppraisalCoefficient', 'starforceDestroyDefenceSurchargePercent'].forEach(function (k) { body[k] = ruleCells[k] ? ruleCells[k].value() : D.rules[k]; });
-    return body;
-  }
+  function rulesBody() { var body = {}; Object.keys(ruleCells).forEach(function (k) { body[k] = ruleCells[k].value(); }); return body; }
   function ruleCell(label, unit, field) {
     var w = el('span', undefined, 'rule'); w.appendChild(document.createTextNode(label));
-    ruleCells[field] = numCell(batch, '규칙', D.rules[field], function () { return call('PUT', '/admin/enhancement-costs/rules', rulesBody()); }, 'short');
+    ruleCells[field] = numCell(batch, '규칙', R ? R[field] : null, function () { return call('PUT', '/admin/game-rules', rulesBody()); }, 'short');
     w.appendChild(ruleCells[field].input); if (unit) w.appendChild(document.createTextNode(unit));
     return w;
   }

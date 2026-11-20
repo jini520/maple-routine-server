@@ -58,6 +58,8 @@ const CONVERTED = [
   'superior_series',
   'superior_items',
   'mvp_grades',
+  'game_rules',
+  'game_data_section_updates',
 ]
 
 interface DesignColumn {

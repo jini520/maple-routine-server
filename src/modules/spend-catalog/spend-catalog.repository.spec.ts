@@ -1,7 +1,6 @@
 import { spendRewardTypes } from '../../database/schema'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { AssetNotFound } from '../assets/asset-refs'
-import { BossesRepository } from '../bosses/bosses.repository'
 import { CashbookCategoriesRepository } from '../cashbook-categories/cashbook-categories.repository'
 import {
   NoSpendCategory,
@@ -35,7 +34,6 @@ describeDb('SpendCatalogRepository', () => {
   })
   afterAll(() => close())
 
-  const rules = { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null }
   const epic = {
     key: 'epic_dungeon_bonus_reward',
     name: '에픽던전 추가 리워드',
@@ -120,7 +118,6 @@ describeDb('SpendCatalogRepository', () => {
   it('빈 표는 칸 전부가 비고 규칙 셋이 null 이다', async () => {
     expect(await repo.section()).toEqual({
       updatedAt: null,
-      rules,
       spendRewardTypes: [],
       spendGroups: [],
       spendTiles: [],
@@ -128,24 +125,6 @@ describeDb('SpendCatalogRepository', () => {
       spendItemOptions: [],
       spendItemRewardTypes: [],
     })
-  })
-
-  // 앱은 규칙 셋 중 하나라도 비면 지출 표 전체를 받지 않는다. 메소마켓 수수료율도 같은 줄로 적고 낸다.
-  it('규칙 셋을 적으면 칸이 들고 보스 표의 updatedAt 은 안 움직인다', async () => {
-    await repo.setRules({
-      tariffPercent: 10,
-      rewardCoinPriceMeso: 40_000_000,
-      mesoMarketFeePercent: 1,
-    })
-
-    const section = await repo.section()
-    expect(section.rules).toEqual({
-      tariffPercent: 10,
-      rewardCoinPriceMeso: 40_000_000,
-      mesoMarketFeePercent: 1,
-    })
-    expect(section.updatedAt).not.toBeNull()
-    expect((await new BossesRepository(db).catalog()).updatedAt).toBeNull()
   })
 
   it('묶음 · 타일 · 항목을 더하고 더한 차례로 낸다. 같은 key 는 Exists 다', async () => {

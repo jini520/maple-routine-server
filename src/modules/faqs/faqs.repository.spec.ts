@@ -1,6 +1,6 @@
 import { count, eq } from 'drizzle-orm'
 
-import { faqItems, gameDataSections } from '../../database/schema'
+import { faqItems, gameDataSectionUpdates } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { type FaqBlock, FaqSheetExists, FaqsRepository, NoFaqSheet } from './faqs.repository'
 
@@ -124,9 +124,9 @@ describeDb('FaqsRepository', () => {
     /** 칸 시각을 과거로 돌려 두고 쓰기 하나를 부른 뒤 지금 쪽으로 올랐는지 본다. */
     const raises = async (write: () => Promise<unknown>): Promise<boolean> => {
       await db
-        .update(gameDataSections)
+        .update(gameDataSectionUpdates)
         .set({ updatedAt: new Date(0) })
-        .where(eq(gameDataSections.key, 'faqs'))
+        .where(eq(gameDataSectionUpdates.key, 'faqs'))
       await write()
       return (await repo.section()).updatedAt !== past
     }

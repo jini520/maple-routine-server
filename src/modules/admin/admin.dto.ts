@@ -234,14 +234,6 @@ export type WorldPeriodBody = z.infer<typeof worldPeriodBody>
 /* ── 지출 카탈로그 ── */
 
 /** 관세율(%) · 세라자르 주화 판매가 · 메소마켓 수수료율(%). game_rules 의 줄 셋이다. */
-export const spendRulesBody = z.object({
-  tariffPercent: z.number().int().min(0).max(100),
-  rewardCoinPriceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
-  // 100 이면 앱이 메포 지출을 메소로 바꿀 때 0 으로 나눈다.
-  mesoMarketFeePercent: z.number().int().min(0).max(99),
-})
-export type SpendRulesBody = z.infer<typeof spendRulesBody>
-
 export const spendGroupCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
@@ -519,12 +511,6 @@ export type ContentUpdateBody = z.infer<typeof contentUpdateBody>
 /* ── 강화 비용 · MVP 등급 ── */
 
 /** 규칙 셋. 감정비용 무료 상한 · 감정비용 계수 · 파괴 방지 추가분(%). game_rules 의 줄 셋이다. */
-export const enhancementRulesBody = z.object({
-  cubeAppraisalFreeMaxLevel: z.number().int().min(0).max(300),
-  cubeAppraisalCoefficient: z.number().int().min(0),
-  starforceDestroyDefenceSurchargePercent: z.number().int().min(0).max(1000),
-})
-export type EnhancementRulesBody = z.infer<typeof enhancementRulesBody>
 export const potentialTypeParam = z.enum(POTENTIAL_RESET_TYPES)
 export const potentialGradeParam = z.enum(POTENTIAL_GRADES)
 export const minRequiredLevelParam = z.coerce.number().int().min(1)
@@ -634,3 +620,24 @@ export const faqItemBody = z.object({
     .refine((blocks) => blocks.length > 0, { message: '답은 문단이 하나 이상이어야 한다' }),
 })
 export type FaqItemBody = z.infer<typeof faqItemBody>
+
+/* ── 게임 규칙 ── */
+
+/** 규칙 아홉 가운데 바꿀 것만. 하나는 있어야 한다. */
+export const gameRulesBody = z
+  .object({
+    weeklyBossSelectionLimit: z.number().int().min(1),
+    weeklyCrystalSaleLimit: z.number().int().min(1),
+    defaultMaxPartySize: z.number().int().min(1).max(6),
+    spendTariffPercent: z.number().int().min(0).max(100),
+    rewardCoinPriceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+    // 100 이면 앱이 메포 지출을 메소로 바꿀 때 0 으로 나눈다.
+    mesoMarketFeePercent: z.number().int().min(0).max(99),
+    cubeAppraisalFreeMaxLevel: z.number().int().min(0).max(300),
+    cubeAppraisalCoefficient: z.number().int().min(0),
+    starforceDestroyDefenceSurchargePercent: z.number().int().min(0).max(1000),
+  })
+  .partial()
+  .strict()
+  .refine((b) => Object.keys(b).length > 0, { message: '바꿀 규칙이 없다' })
+export type GameRulesBody = z.infer<typeof gameRulesBody>

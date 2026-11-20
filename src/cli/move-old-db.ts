@@ -17,6 +17,7 @@ import { Pool } from 'pg'
 import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { parseAssetPath } from '../modules/assets/asset-paths'
+import { SECTION_KEYS } from '../modules/game-data/sections'
 
 export type OldDb = NodePgDatabase<typeof oldSchema>
 export type NewDb = NodePgDatabase<typeof schema>
@@ -66,7 +67,12 @@ export interface MoveResult {
   superiorSeries: number
   superiorItems: number
   mvpGrades: number
+  gameRules: number
+  gameDataSectionUpdates: number
 }
+
+/** 옛 DB 에 게임 규칙 줄 하나가 없다. message 가 그 key 다. */
+export class MissingGameRule extends Error {}
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
 export class SwappedDatabases extends Error {}
@@ -146,6 +152,8 @@ const MOVED_TABLES = [
   schema.superiorSeries,
   schema.superiorItems,
   schema.mvpGrades,
+  schema.gameRules,
+  schema.gameDataSectionUpdates,
 ]
 
 /**
@@ -320,6 +328,8 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const symbol = await symbolRows(oldDb)
   const hunting = await huntingGroundRows(oldDb)
   const enhancement = await enhancementCostRows(oldDb)
+  const rules = await gameRuleRow(oldDb)
+  const sectionUpdates = await sectionUpdateRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -366,6 +376,8 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.superiorSeries, enhancement.superiorSeries)
     await insertAll(tx, schema.superiorItems, enhancement.superiorItems)
     await insertAll(tx, schema.mvpGrades, enhancement.mvpGrades)
+    await insertAll(tx, schema.gameRules, [rules])
+    await insertAll(tx, schema.gameDataSectionUpdates, sectionUpdates)
   })
   return {
     assets: assets.length,
@@ -411,7 +423,55 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     superiorSeries: enhancement.superiorSeries.length,
     superiorItems: enhancement.superiorItems.length,
     mvpGrades: enhancement.mvpGrades.length,
+    gameRules: 1,
+    gameDataSectionUpdates: sectionUpdates.length,
   }
+}
+
+/** 게임 규칙 칸과 옛 규칙 줄의 key. 옛 표는 규칙마다 한 줄이었다. */
+const GAME_RULE_KEYS = {
+  weeklyBossSelectionLimit: 'weekly_boss_selection_limit',
+  weeklyCrystalSaleLimit: 'weekly_crystal_sale_limit',
+  defaultMaxPartySize: 'default_max_party_size',
+  spendTariffPercent: 'spend_tariff_percent',
+  rewardCoinPriceMeso: 'reward_coin_price_meso',
+  mesoMarketFeePercent: 'meso_market_fee_percent',
+  cubeAppraisalFreeMaxLevel: 'cube_appraisal_free_max_level',
+  cubeAppraisalCoefficient: 'cube_appraisal_coefficient',
+  starforceDestroyDefenceSurchargePercent: 'starforce_destroy_defence_surcharge_percent',
+} as const
+
+/** 옛 규칙 줄 아홉을 한 줄의 칸으로 모은다. 빠진 규칙이 있으면 멈춘다. 새 표의 칸은 비울 수 없다. */
+async function gameRuleRow(oldDb: OldDb) {
+  const rows = await oldDb.select().from(oldSchema.gameRules)
+  const valueOf = (key: string): number => {
+    const row = rows.find((r) => r.key === key)
+    if (row === undefined) throw new MissingGameRule(key)
+    return row.value
+  }
+  const updatedAt = new Date(Math.max(...rows.map((r) => r.updatedAt.getTime())))
+  return {
+    updatedAt,
+    weeklyBossSelectionLimit: valueOf(GAME_RULE_KEYS.weeklyBossSelectionLimit),
+    weeklyCrystalSaleLimit: valueOf(GAME_RULE_KEYS.weeklyCrystalSaleLimit),
+    defaultMaxPartySize: valueOf(GAME_RULE_KEYS.defaultMaxPartySize),
+    spendTariffPercent: valueOf(GAME_RULE_KEYS.spendTariffPercent),
+    rewardCoinPriceMeso: valueOf(GAME_RULE_KEYS.rewardCoinPriceMeso),
+    mesoMarketFeePercent: valueOf(GAME_RULE_KEYS.mesoMarketFeePercent),
+    cubeAppraisalFreeMaxLevel: valueOf(GAME_RULE_KEYS.cubeAppraisalFreeMaxLevel),
+    cubeAppraisalCoefficient: valueOf(GAME_RULE_KEYS.cubeAppraisalCoefficient),
+    starforceDestroyDefenceSurchargePercent: valueOf(
+      GAME_RULE_KEYS.starforceDestroyDefenceSurchargePercent,
+    ),
+  }
+}
+
+/** 칸의 갱신 시각 줄. 지금 응답에 있는 칸의 줄만 옮긴다. 옛 칸(dropItems · equipmentItems)은 items 칸으로 합쳐졌다. */
+async function sectionUpdateRows(oldDb: OldDb) {
+  const keys: readonly string[] = SECTION_KEYS
+  return (await oldDb.select().from(oldSchema.gameDataSections))
+    .filter((r) => keys.includes(r.key))
+    .map((r) => ({ id: r.id, key: r.key, updatedAt: r.updatedAt }))
 }
 
 /**

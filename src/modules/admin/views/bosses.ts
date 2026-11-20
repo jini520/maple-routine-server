@@ -199,7 +199,7 @@ ${ASSET_PICKER}
     state.creating = true; render(); state.newRow.querySelector('input').focus();
   });
   document.getElementById('save-rules').addEventListener('click', async function () {
-    var r = await call('PUT', '/admin/bosses/rules', {
+    var r = await call('PUT', '/admin/game-rules', {
       weeklyBossSelectionLimit: Number(document.getElementById('rule-selection').value),
       weeklyCrystalSaleLimit: Number(document.getElementById('rule-crystal').value),
       defaultMaxPartySize: Number(document.getElementById('rule-party').value),
@@ -213,9 +213,10 @@ ${ASSET_PICKER}
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     var c = r.json; state.table = c;
     state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; });
-    document.getElementById('rule-selection').value = c.rules.weeklyBossSelectionLimit == null ? '' : c.rules.weeklyBossSelectionLimit;
-    document.getElementById('rule-crystal').value = c.rules.weeklyCrystalSaleLimit == null ? '' : c.rules.weeklyCrystalSaleLimit;
-    document.getElementById('rule-party').value = c.rules.defaultMaxPartySize == null ? '' : c.rules.defaultMaxPartySize;
+    var g = await call('GET', '/admin/game-rules'); var rules = g.ok && g.json.gameRules ? g.json.gameRules : {};
+    document.getElementById('rule-selection').value = rules.weeklyBossSelectionLimit == null ? '' : rules.weeklyBossSelectionLimit;
+    document.getElementById('rule-crystal').value = rules.weeklyCrystalSaleLimit == null ? '' : rules.weeklyCrystalSaleLimit;
+    document.getElementById('rule-party').value = rules.defaultMaxPartySize == null ? '' : rules.defaultMaxPartySize;
     var diffCount = 0; c.bosses.forEach(function (b) { diffCount += b.difficulties.length; });
     document.getElementById('stat-bosses').textContent = c.bosses.length;
     document.getElementById('stat-diffs').textContent = diffCount;

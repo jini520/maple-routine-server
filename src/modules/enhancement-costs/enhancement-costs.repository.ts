@@ -1,11 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import {
   assets,
-  gameRules,
   potentialResetCosts,
   soulPotentialResetCosts,
   starforceCostSteps,
@@ -21,14 +20,6 @@ export const POTENTIAL_RESET_TYPES = ['potential', 'additional'] as const
 export type PotentialResetType = (typeof POTENTIAL_RESET_TYPES)[number]
 export const POTENTIAL_GRADES = ['rare', 'epic', 'unique', 'legendary'] as const
 export type PotentialGrade = (typeof POTENTIAL_GRADES)[number]
-
-/** game_rules 의 key 와 응답 필드 이름. 둘이 짝이다. 식(계수 × L², 1000 + L³ · (S+1)^e / d)은 앱 코드가 든다. */
-export const ENHANCEMENT_RULE_KEYS = {
-  cubeAppraisalFreeMaxLevel: 'cube_appraisal_free_max_level',
-  cubeAppraisalCoefficient: 'cube_appraisal_coefficient',
-  starforceDestroyDefenceSurchargePercent: 'starforce_destroy_defence_surcharge_percent',
-} as const
-export type EnhancementRuleField = keyof typeof ENHANCEMENT_RULE_KEYS
 
 export interface PotentialResetCostView {
   type: PotentialResetType
@@ -66,7 +57,6 @@ export interface SuperiorItemView {
 /** GET /v1/game-data 의 enhancementCosts 칸. 기간 줄이 없다. 앱이 수집할 때 이 값으로 합계를 매긴다. */
 export interface EnhancementCostsSection {
   updatedAt: string | null
-  rules: Record<EnhancementRuleField, number | null>
   potentialResetCosts: PotentialResetCostView[]
   soulPotentialResetCosts: SoulPotentialResetCostView[]
   starforceCostSteps: StarforceCostStepView[]
@@ -83,7 +73,6 @@ export type EnhancementCostsAdminRows = Omit<
   superiorItems: (Omit<SuperiorItemView, 'seriesId'> & { seriesKey: string })[]
 }
 
-export type EnhancementRulesInput = Record<EnhancementRuleField, number>
 export type PotentialBandCosts = Record<PotentialGrade, number>
 export type StarforceStepInput = Omit<StarforceCostStepView, 'fromStar'>
 
@@ -143,11 +132,7 @@ export class EnhancementCostsRepository {
   }
 
   private async rows() {
-    const [rules, potential, soul, steps, series, items, updatedAt] = await Promise.all([
-      this.db
-        .select()
-        .from(gameRules)
-        .where(inArray(gameRules.key, Object.values(ENHANCEMENT_RULE_KEYS))),
+    const [potential, soul, steps, series, items, updatedAt] = await Promise.all([
       this.db
         .select({
           type: potentialResetCosts.type,
@@ -197,38 +182,14 @@ export class EnhancementCostsRepository {
         .orderBy(asc(superiorSeries.key), asc(superiorItems.name)),
       sectionUpdatedAt(this.db, 'enhancementCosts'),
     ])
-    const ruleOf = (field: EnhancementRuleField): number | null =>
-      rules.find((r) => r.key === ENHANCEMENT_RULE_KEYS[field])?.value ?? null
     return {
       updatedAt,
-      rules: {
-        cubeAppraisalFreeMaxLevel: ruleOf('cubeAppraisalFreeMaxLevel'),
-        cubeAppraisalCoefficient: ruleOf('cubeAppraisalCoefficient'),
-        starforceDestroyDefenceSurchargePercent: ruleOf('starforceDestroyDefenceSurchargePercent'),
-      },
       potentialResetCosts: potential,
       soulPotentialResetCosts: soul,
       starforceCostSteps: steps,
       series,
       items,
     }
-  }
-
-  /** 규칙 셋을 적는다. 셋 다 받아 셋 다 쓴다. 보스 · 지출 규칙과 같은 표이고 key 가 다르다. */
-  async setRules(rules: EnhancementRulesInput): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const now = new Date()
-      for (const field of Object.keys(ENHANCEMENT_RULE_KEYS) as EnhancementRuleField[]) {
-        await tx
-          .insert(gameRules)
-          .values({ key: ENHANCEMENT_RULE_KEYS[field], value: rules[field], updatedAt: now })
-          .onConflictDoUpdate({
-            target: gameRules.key,
-            set: { value: rules[field], updatedAt: now },
-          })
-      }
-      await touchSection(tx, 'enhancementCosts')
-    })
   }
 
   /** 칸 하나를 고친다. 없는 칸은 false 다. */

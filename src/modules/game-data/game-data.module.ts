@@ -4,6 +4,7 @@ import { AppImagesModule } from '../app-images/app-images.module'
 import { AssetsModule } from '../assets/assets.module'
 import { BossDropsModule } from '../boss-drops/boss-drops.module'
 import { BossesModule } from '../bosses/bosses.module'
+import { GameRulesModule } from '../game-rules/game-rules.module'
 import { CashbookCategoriesModule } from '../cashbook-categories/cashbook-categories.module'
 import { ContentsModule } from '../contents/contents.module'
 import { CrystalPricesModule } from '../crystal-prices/crystal-prices.module'
@@ -25,6 +26,7 @@ import { GameDataService } from './game-data.service'
 @Module({
   imports: [
     BossesModule,
+    GameRulesModule,
     DropItemsModule,
     BossDropsModule,
     CrystalPricesModule,

@@ -284,12 +284,25 @@ export const bossDifficulties = pgTable(
   (t) => [unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty)],
 )
 
-/** 보스가 아니라 규칙인 값. 선택 한도 12 · 결정석 판매 한도 90 · 파티 인원 상한 기본값 6. */
+/**
+ * 게임 규칙. 규칙마다 칸이고 줄은 하나뿐이다. 규칙을 더할 때는 칸을 더한다.
+ *
+ * 줄이 하나라 게임 데이터 `gameRules` 칸의 updatedAt 은 이 줄의 updated_at 이다.
+ */
 export const gameRules = pgTable('game_rules', {
   id: uuid('id').primaryKey().defaultRandom(),
-  key: text('key').notNull().unique(),
-  value: integer('value').notNull(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  weeklyBossSelectionLimit: integer('weekly_boss_selection_limit').notNull(),
+  weeklyCrystalSaleLimit: integer('weekly_crystal_sale_limit').notNull(),
+  defaultMaxPartySize: integer('default_max_party_size').notNull(),
+  spendTariffPercent: integer('spend_tariff_percent').notNull(),
+  rewardCoinPriceMeso: bigint('reward_coin_price_meso', { mode: 'number' }).notNull(),
+  mesoMarketFeePercent: integer('meso_market_fee_percent').notNull(),
+  cubeAppraisalFreeMaxLevel: integer('cube_appraisal_free_max_level').notNull(),
+  cubeAppraisalCoefficient: integer('cube_appraisal_coefficient').notNull(),
+  starforceDestroyDefenceSurchargePercent: integer(
+    'starforce_destroy_defence_surcharge_percent',
+  ).notNull(),
 })
 
 /** 운영자가 한 보스의 직접 완료를 열어 둔 기간 하나. */
@@ -413,7 +426,7 @@ export const dropPrices = pgTable(
  *
  * 줄의 updated_at 최댓값으로 내면 줄을 지운 것이 안 보인다. 그래서 쓰기마다 이 표의 줄을 민다.
  */
-export const gameDataSections = pgTable('game_data_sections', {
+export const gameDataSectionUpdates = pgTable('game_data_section_updates', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),

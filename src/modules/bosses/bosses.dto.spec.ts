@@ -1,4 +1,4 @@
-import { periodInput, bossInput, difficultyInput, rulesInput } from './bosses.dto'
+import { periodInput, bossInput, difficultyInput } from './bosses.dto'
 
 const lotus = {
   key: 'lotus',
@@ -49,18 +49,8 @@ describe('bossInput', () => {
   })
 })
 
-describe('rulesInput · difficultyInput', () => {
-  it('한도 둘과 요구 레벨은 1 이상의 정수다', () => {
-    expect(
-      rulesInput.safeParse({
-        weeklyBossSelectionLimit: 12,
-        weeklyCrystalSaleLimit: 90,
-        defaultMaxPartySize: 6,
-      }).success,
-    ).toBe(true)
-    expect(
-      rulesInput.safeParse({ weeklyBossSelectionLimit: 0, weeklyCrystalSaleLimit: 90 }).success,
-    ).toBe(false)
+describe('difficultyInput · periodInput', () => {
+  it('요구 레벨은 1 이상의 정수다', () => {
     expect(
       difficultyInput.safeParse({ difficulty: 'chaos', cycle: 'weekly', requiredLevel: 265 })
         .success,

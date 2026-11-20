@@ -9,7 +9,6 @@ import { BossesRepository, BossExists, LastDifficulty } from './bosses.repositor
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
 const SPEC_ASSETS = ['bosses/lotus.webp', 'bosses/maerin.webp']
 
-const rules = { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 }
 
 const noPeriod = { maxPartySize: null, validFrom: null, validUntil: null }
 
@@ -57,26 +56,16 @@ describeDb('BossesRepository', () => {
   })
   afterAll(() => close())
 
-  it('빈 표의 catalog 는 updatedAt 과 규칙이 null 이고 목록이 빈다', async () => {
-    expect(await repo.catalog()).toEqual({
-      updatedAt: null,
-      rules: {
-        weeklyBossSelectionLimit: null,
-        weeklyCrystalSaleLimit: null,
-        defaultMaxPartySize: null,
-      },
-      bosses: [],
-    })
+  it('빈 표의 catalog 는 updatedAt 이 null 이고 목록이 빈다', async () => {
+    expect(await repo.catalog()).toEqual({ updatedAt: null, bosses: [] })
   })
 
-  it('규칙을 적고 보스를 더하면 catalog 가 더한 순서로 돌려준다. 난이도는 ENUM 순이고 칸 이름을 그대로 낸다', async () => {
-    await repo.setRules(rules)
+  it('보스를 더하면 catalog 가 더한 순서로 돌려준다. 난이도는 ENUM 순이고 칸 이름을 그대로 낸다', async () => {
     await repo.createBoss(lotus())
     await repo.createBoss(meirin())
 
     const catalog = await repo.catalog()
     expect(catalog.updatedAt).not.toBeNull()
-    expect(catalog.rules).toEqual(rules)
     expect(catalog.bosses.map((b) => b.key)).toEqual(['lotus', 'meirin'])
     expect(catalog.bosses[0]?.difficulties.map((d) => d.difficulty)).toEqual([
       'normal',
@@ -117,13 +106,11 @@ describeDb('BossesRepository', () => {
 
   // 앱이 받는 칸은 배열 이름이 표 이름이라 난이도 줄을 보스 줄 안에 넣지 않는다. 관리 화면은 catalog 의 묶은 꼴을 읽는다.
   it('게임 데이터 칸은 보스 줄과 난이도 줄을 표 이름의 배열 둘로 내고 난이도 줄이 보스 줄 id 를 든다', async () => {
-    await repo.setRules(rules)
     const { id } = await repo.createBoss(meirin())
 
     const section = await repo.section()
     const catalog = await repo.catalog()
     expect(section.updatedAt).toBe(catalog.updatedAt)
-    expect(section.rules).toEqual(catalog.rules)
     expect(section.bosses).toEqual(
       catalog.bosses.map((b) =>
         Object.fromEntries(Object.entries(b).filter(([key]) => key !== 'difficulties')),
@@ -139,17 +126,6 @@ describeDb('BossesRepository', () => {
       repo.createBoss({ ...lotus(), portraitAssetId: '00000000-0000-4000-8000-000000000000' }),
     ).rejects.toBeInstanceOf(AssetNotFound)
     expect(await db.select().from(bosses)).toHaveLength(0)
-  })
-
-  it('규칙을 다시 적으면 덮는다', async () => {
-    await repo.setRules(rules)
-    await repo.setRules({
-      weeklyBossSelectionLimit: 14,
-      weeklyCrystalSaleLimit: 90,
-      defaultMaxPartySize: 6,
-    })
-
-    expect((await repo.catalog()).rules.weeklyBossSelectionLimit).toBe(14)
   })
 
   it('같은 key 를 다시 더하면 BossExists 이고 아무것도 안 바뀐다', async () => {
@@ -232,7 +208,6 @@ describeDb('BossesRepository', () => {
   })
 
   it('유효 기간을 적으면 catalog 의 줄에 실리고 보스의 updated_at 이 움직인다. 모르는 보스는 false 다', async () => {
-    await repo.setRules(rules)
     await repo.createBoss(meirin())
     const before = (await repo.catalog()).updatedAt
     await new Promise((r) => setTimeout(r, 5))
@@ -252,7 +227,6 @@ describeDb('BossesRepository', () => {
   })
 
   it('줄인 이름을 적으면 catalog 의 줄에 실리고 보스의 updated_at 이 움직인다. 모르는 보스는 false 다', async () => {
-    await repo.setRules(rules)
     await repo.createBoss(meirin())
     const before = (await repo.catalog()).updatedAt
     await new Promise((r) => setTimeout(r, 5))
@@ -270,7 +244,6 @@ describeDb('BossesRepository', () => {
   })
 
   it('난이도 줄의 유효 기간을 적으면 catalog 의 난이도 줄에 실리고 보스의 updated_at 이 움직인다', async () => {
-    await repo.setRules(rules)
     await repo.createBoss(lotus())
     const before = (await repo.catalog()).updatedAt
     await new Promise((r) => setTimeout(r, 5))

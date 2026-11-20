@@ -14,4 +14,5 @@
 - CRITICAL: **배포는 main 에서만 할 것.** develop 을 head, main 을 base 로 PR 해 merge commit 으로 머지한 뒤 `README.md` 의 배포 절차를 main 에서 따른다. develop 에 선 채로 빌드하면 검토하지 않은 작업이 운영 박스에 올라간다
 - CRITICAL: **핫픽스는 main 에서 `hotfix/<slug>` 를 딸 것.** develop 에서 따면 아직 배포하지 않은 작업이 함께 나간다. main 에 머지해 배포한 뒤 곧바로 main 을 develop 으로 머지한다. 미루면 다음 배포에서 그 고침이 빠진다. **그 뒤 열려 있는 작업 브랜치는 다음 커밋 전에 develop 을 머지하고 그 위에서 이어 갈 것.** 핫픽스와 겹치는 파일이 없어도 받는다. 작업 브랜치의 테스트가 핫픽스가 든 코드에서 돌아야 하기 때문이다(앱 저장소 ADR-188 결정 7)
 - CRITICAL: **ADR 새 번호는 앱 저장소에서 `node scripts/adr-number.mjs` 로 받을 것.** 서버의 결정도 앱 저장소 ADR 에 적으므로 번호를 손으로 고르면 앱 쪽 작업과 겹친다
+- CRITICAL: **`src/database/next/` 는 1.0.15 의 새 스키마이고 운영 서버는 읽지 않는다.** 지금 운영의 표를 고칠 때는 `src/database/schema.ts` 를 고치고 마이그레이션을 만든다. 새 스키마의 표와 칸 이름은 설계에서 뽑은 `src/database/next/design-tables.json` 과 같아야 하고 `schema.spec.ts` 가 견준다. 설계가 바뀌면 그 파일부터 다시 뽑는다. 서버 모듈을 새 표로 바꾸는 일은 마지막에 긴 브랜치에서 한다. 그 전까지 모듈이 `next/` 를 불러오면 develop 을 배포할 수 없게 된다(앱 저장소 ADR-099 결정 43 · 65)
 - 커밋 메시지는 conventional commits 형식을 따를 것 (feat:, fix:, docs:, refactor:, chore:)

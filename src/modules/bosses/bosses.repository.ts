@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, bossDifficulties, bosses, gameRules } from '../../database/schema'
-import { refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { AssetNotFound } from '../assets/asset-refs'
 import {
   BOSS_DIFFICULTIES,
   type BossInput,
@@ -15,29 +15,31 @@ import {
   type RulesInput,
 } from './bosses.dto'
 
+/** 응답의 칸 이름은 표의 칸 이름을 따른다. id 는 기기의 기록이 보스 · 난이도를 가리키는 값이다. */
 export interface BossView {
+  id: string
   key: string
   name: string
-  alias: string
-  cycle: 'weekly' | 'event_weekly' | 'monthly'
-  /** 옛 앱이 읽는 그림 이름 */
-  portraitSlug: string
+  shortName: string
+  isSeasonBoss: boolean
   portraitAssetId: string
   /** 유효 기간. KST 글자. null 은 없음이다. */
-  from: string | null
-  until: string | null
+  validFrom: string | null
+  validUntil: string | null
   difficulties: {
+    id: string
     difficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme'
+    cycle: 'weekly' | 'monthly'
     requiredLevel: number
     /** 결정석을 나누는 파티 인원 상한. null 이면 rules.defaultMaxPartySize 다. */
     maxPartySize: number | null
     /** 난이도의 유효 기간. null 은 없음이다. 보스의 기간과 겹치는 범위만 유효하다. */
-    from: string | null
-    until: string | null
+    validFrom: string | null
+    validUntil: string | null
   }[]
 }
 
-/** GET /v1/bosses 의 몸체. 한 번도 안 넣었으면 updatedAt 과 규칙이 null 이고 목록이 빈다. */
+/** 게임 데이터의 bosses 칸. 한 번도 안 넣었으면 updatedAt 과 규칙이 null 이고 목록이 빈다. */
 export interface Catalog {
   updatedAt: string | null
   rules: Record<RuleField, number | null>
@@ -65,9 +67,14 @@ export class BossesRepository {
     }
   }
 
-  /** 새 보스를 맨 뒤에 더한다. 난이도 줄도 함께 넣는다. 같은 key 가 있으면 BossExists 다. */
+  /** 새 보스를 맨 뒤에 더한다. 난이도 줄도 함께 넣는다. 같은 key 는 BossExists, 없는 그림은 AssetNotFound 다. */
   async createBoss(input: BossInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
+      const [asset] = await tx
+        .select({ id: assets.id })
+        .from(assets)
+        .where(eq(assets.id, input.portraitAssetId))
+      if (asset === undefined) throw new AssetNotFound(input.portraitAssetId)
       const [last] = await tx
         .select({ max: sql<number | null>`max(${bosses.sortOrder})` })
         .from(bosses)
@@ -79,11 +86,11 @@ export class BossesRepository {
           .values({
             key: input.key,
             name: input.name,
-            alias: input.alias,
-            cycle: input.cycle,
-            portraitAssetId: await resolveAssetId(tx, 'bossPortrait', input.portraitSlug),
-            from: input.from ?? null,
-            until: input.until ?? null,
+            shortName: input.shortName,
+            isSeasonBoss: input.isSeasonBoss,
+            portraitAssetId: input.portraitAssetId,
+            validFrom: input.validFrom ?? null,
+            validUntil: input.validUntil ?? null,
             sortOrder,
             updatedAt: new Date(),
           })
@@ -97,10 +104,11 @@ export class BossesRepository {
         input.difficulties.map((d) => ({
           bossId: row.id,
           difficulty: d.difficulty,
+          cycle: d.cycle,
           requiredLevel: d.requiredLevel,
           maxPartySize: d.maxPartySize ?? null,
-          from: d.from ?? null,
-          until: d.until ?? null,
+          validFrom: d.validFrom ?? null,
+          validUntil: d.validUntil ?? null,
         })),
       )
       return row
@@ -117,10 +125,11 @@ export class BossesRepository {
         .values({
           bossId: boss.id,
           difficulty: input.difficulty,
+          cycle: input.cycle,
           requiredLevel: input.requiredLevel,
           maxPartySize: input.maxPartySize ?? null,
-          from: input.from ?? null,
-          until: input.until ?? null,
+          validFrom: input.validFrom ?? null,
+          validUntil: input.validUntil ?? null,
         })
         .onConflictDoUpdate({
           target: [bossDifficulties.bossId, bossDifficulties.difficulty],
@@ -158,16 +167,14 @@ export class BossesRepository {
         id: bosses.id,
         key: bosses.key,
         name: bosses.name,
-        alias: bosses.alias,
-        cycle: bosses.cycle,
-        portraitPath: assets.path,
+        shortName: bosses.shortName,
+        isSeasonBoss: bosses.isSeasonBoss,
         portraitAssetId: bosses.portraitAssetId,
-        from: bosses.from,
-        until: bosses.until,
+        validFrom: bosses.validFrom,
+        validUntil: bosses.validUntil,
         updatedAt: bosses.updatedAt,
       })
       .from(bosses)
-      .innerJoin(assets, eq(assets.id, bosses.portraitAssetId))
       .orderBy(asc(bosses.sortOrder), asc(bosses.key))
     const ids = rows.map((r) => r.id)
     const difficultyRows =
@@ -197,22 +204,24 @@ export class BossesRepository {
         defaultMaxPartySize: ruleOf('defaultMaxPartySize'),
       },
       bosses: rows.map((r) => ({
+        id: r.id,
         key: r.key,
         name: r.name,
-        alias: r.alias,
-        cycle: r.cycle,
-        portraitSlug: refValueOf('bossPortrait', r.portraitPath),
+        shortName: r.shortName,
+        isSeasonBoss: r.isSeasonBoss,
         portraitAssetId: r.portraitAssetId,
-        from: r.from,
-        until: r.until,
+        validFrom: r.validFrom,
+        validUntil: r.validUntil,
         difficulties: difficultyRows
           .filter((d) => d.bossId === r.id)
           .map((d) => ({
+            id: d.id,
             difficulty: d.difficulty,
+            cycle: d.cycle,
             requiredLevel: d.requiredLevel,
             maxPartySize: d.maxPartySize,
-            from: d.from,
-            until: d.until,
+            validFrom: d.validFrom,
+            validUntil: d.validUntil,
           })),
       })),
     }
@@ -229,7 +238,7 @@ export class BossesRepository {
     await this.db.transaction(async (tx) => {
       await tx
         .update(bossDifficulties)
-        .set({ from: period.from ?? null, until: period.until ?? null })
+        .set({ validFrom: period.validFrom ?? null, validUntil: period.validUntil ?? null })
         .where(eq(bossDifficulties.id, row.id))
       await tx
         .update(bosses)
@@ -243,17 +252,21 @@ export class BossesRepository {
   async setPeriod(key: string, period: PeriodInput): Promise<boolean> {
     const rows = await this.db
       .update(bosses)
-      .set({ from: period.from ?? null, until: period.until ?? null, updatedAt: new Date() })
+      .set({
+        validFrom: period.validFrom ?? null,
+        validUntil: period.validUntil ?? null,
+        updatedAt: new Date(),
+      })
       .where(eq(bosses.key, key))
       .returning({ id: bosses.id })
     return rows.length > 0
   }
 
-  /** 별칭을 갈아 끼운다. 보스의 updated_at 이 움직여 앱이 표를 다시 받는다. 모르는 보스면 false 다. */
-  async setAlias(key: string, alias: string): Promise<boolean> {
+  /** 줄인 이름을 갈아 끼운다. 보스의 updated_at 이 움직여 앱이 표를 다시 받는다. 모르는 보스면 false 다. */
+  async setShortName(key: string, shortName: string): Promise<boolean> {
     const rows = await this.db
       .update(bosses)
-      .set({ alias, updatedAt: new Date() })
+      .set({ shortName, updatedAt: new Date() })
       .where(eq(bosses.key, key))
       .returning({ id: bosses.id })
     return rows.length > 0

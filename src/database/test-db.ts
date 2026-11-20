@@ -9,6 +9,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 
+import { parseAssetPath } from '../modules/assets/asset-paths'
 import * as schema from './schema'
 
 export type TestDb = NodePgDatabase<typeof schema>
@@ -92,7 +93,7 @@ export async function insertItems(
 
 /**
  * 그림 줄을 넣고 경로마다 id 를 돌려준다. 그림 칸이 FK 라 그 칸을 채우는 스펙은 그림부터 넣어야 한다. 해시 · 크기는 가짜다.
- * 같은 경로가 이미 있으면 그 줄의 id 다.
+ * 경로는 옛 폴더 경로(`bosses/bellona.webp`)이고 분류 · 파일 이름 · 확장자로 나눠 넣는다. 같은 그림이 이미 있으면 그 줄의 id 다.
  */
 export async function insertAssets(
   db: TestDb,
@@ -100,15 +101,27 @@ export async function insertAssets(
 ): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   for (const path of paths) {
+    const key = parseAssetPath(path)
+    if (key === null) throw new Error(`그림 경로 규칙에 맞지 않는다: ${path}`)
     const [row] = await db
       .insert(schema.assets)
-      .values({ path, sha256: '0'.repeat(64), size: 1, width: 1, height: 1 })
-      .onConflictDoUpdate({ target: schema.assets.path, set: { path } })
+      .values({ ...key, sha256: '0'.repeat(64), sizeBytes: 1, width: 1, height: 1 })
+      .onConflictDoUpdate({
+        target: [schema.assets.category, schema.assets.fileName, schema.assets.extension],
+        set: { fileName: key.fileName },
+      })
       .returning({ id: schema.assets.id })
     if (row === undefined) throw new Error(`그림 줄을 못 넣었다: ${path}`)
     out[path] = row.id
   }
   return out
+}
+
+/** 그림 한 장을 넣고 그 id. 같은 그림이 이미 있으면 그 줄의 id 다. */
+export async function insertAsset(db: TestDb, path: string): Promise<string> {
+  const id = (await insertAssets(db, [path]))[path]
+  if (id === undefined) throw new Error(`그림 줄을 못 넣었다: ${path}`)
+  return id
 }
 
 /** 사람 · 넥슨 계정 줄을 만들고 메이플 ID 를 단다. 기록 표가 메이플 ID 를 가리키므로 기록보다 먼저 둔다. */

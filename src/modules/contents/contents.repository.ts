@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, contentCategories, contents } from '../../database/schema'
-import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 /** 앱 CONTENT_CATEGORIES 의 key 집합 그대로. 글자 · 태그 · 차례는 표가 든다. */
@@ -97,8 +97,8 @@ const CONTENT_COLUMNS = {
   category: contentCategories.key,
   displayName: contents.displayName,
   shortName: contents.shortName,
-  backgroundMapPath: BACKGROUND_MAP_ASSET.path,
-  backgroundPortraitPath: BACKGROUND_PORTRAIT_ASSET.path,
+  backgroundMapAsset: assetNameColumns(BACKGROUND_MAP_ASSET),
+  backgroundPortraitAsset: assetNameColumns(BACKGROUND_PORTRAIT_ASSET),
   backgroundMapAssetId: contents.backgroundMapAssetId,
   backgroundPortraitAssetId: contents.backgroundPortraitAssetId,
   regionIconAssetId: contents.regionIconAssetId,
@@ -117,7 +117,7 @@ const CONTENT_COLUMNS = {
 }
 
 /**
- * 지도 배경과 같은 이름의 지역 아이콘. 이관 전 앱이 배경 이름으로 `maps/icons/` 를 찾던 차례(webp · png · jpg)다. 없으면
+ * 지도 배경과 같은 이름의 지역 아이콘. 이관 전 앱이 배경 이름으로 지역 아이콘(`map_icon`)을 찾던 차례(webp · png · jpg)다. 없으면
  * null 이다. 아이콘을 고르는 칸이 관리 화면에 생기기 전까지 배경을 바꾸면 아이콘이 따라가게 쓰기마다 부른다.
  */
 export async function regionIconOf(
@@ -125,15 +125,16 @@ export async function regionIconOf(
   backgroundMap: string | null | undefined,
 ): Promise<string | null> {
   if (backgroundMap == null) return null
-  const candidates = ['webp', 'png', 'jpg'].map(
-    (ext) => `maps/icons/${backgroundMap.normalize('NFC')}.${ext}`,
-  )
   const rows = await db
-    .select({ id: assets.id, path: assets.path })
+    .select({ id: assets.id, extension: assets.extension })
     .from(assets)
-    .where(inArray(assets.path, candidates))
+    .where(
+      and(eq(assets.category, 'map_icon'), eq(assets.fileName, backgroundMap.normalize('NFC'))),
+    )
   return (
-    candidates.map((c) => rows.find((r) => r.path === c)?.id).find((id) => id !== undefined) ?? null
+    ['webp', 'png', 'jpg']
+      .map((ext) => rows.find((r) => r.extension === ext)?.id)
+      .find((id) => id !== undefined) ?? null
   )
 }
 
@@ -173,15 +174,15 @@ export class ContentsRepository {
         weeklyLimit: c.weeklyLimit,
         sharedOrder: c.sharedOrder,
       })),
-      contents: rows.map(({ backgroundMapPath, backgroundPortraitPath, ...r }) => ({
+      contents: rows.map(({ backgroundMapAsset, backgroundPortraitAsset, ...r }) => ({
         key: r.key,
         section: r.section,
         apiName: r.apiName,
         category: r.category,
         displayName: r.displayName,
         shortName: r.shortName,
-        backgroundMap: optionalRefValueOf('mapBackground', backgroundMapPath),
-        backgroundPortrait: optionalRefValueOf('bossPortrait', backgroundPortraitPath),
+        backgroundMap: optionalRefValueOf('mapBackground', backgroundMapAsset),
+        backgroundPortrait: optionalRefValueOf('bossPortrait', backgroundPortraitAsset),
         backgroundMapAssetId: r.backgroundMapAssetId,
         backgroundPortraitAssetId: r.backgroundPortraitAssetId,
         regionIconAssetId: r.regionIconAssetId,

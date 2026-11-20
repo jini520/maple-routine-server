@@ -4,7 +4,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, cashbookCategories, cashbookItemKinds } from '../../database/schema'
-import { refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export const CASHBOOK_ENTRY_TYPES = ['income', 'spend'] as const
@@ -56,7 +56,7 @@ export class CashbookCategoriesRepository {
           key: cashbookCategories.key,
           name: cashbookCategories.name,
           cardTitle: cashbookCategories.cardTitle,
-          iconPath: assets.path,
+          iconAsset: assetNameColumns(assets),
           iconAssetId: cashbookCategories.iconAssetId,
           description: cashbookCategories.description,
           unit: cashbookCategories.unit,
@@ -84,7 +84,7 @@ export class CashbookCategoriesRepository {
       key: r.key,
       name: r.name,
       cardTitle: r.cardTitle,
-      iconFile: refValueOf('itemIcon', r.iconPath),
+      iconFile: refValueOf('itemIcon', r.iconAsset),
       iconAssetId: r.iconAssetId,
       description: r.description,
       unit: r.unit,

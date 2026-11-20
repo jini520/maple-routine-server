@@ -4,7 +4,7 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, huntingGroundLevels, huntingGrounds, huntingRegions } from '../../database/schema'
-import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 /** 앱 ForceType 그대로. 이름 · 아이콘은 앱이 든다. */
@@ -68,7 +68,7 @@ export class HuntingGroundsRepository {
           key: huntingRegions.key,
           name: huntingRegions.name,
           forceType: huntingRegions.forceType,
-          iconPath: assets.path,
+          iconAsset: assetNameColumns(assets),
           iconAssetId: huntingRegions.iconMapAssetId,
         })
         .from(huntingRegions)
@@ -109,7 +109,7 @@ export class HuntingGroundsRepository {
       key: r.key,
       name: r.name,
       forceType: r.forceType,
-      iconMap: optionalRefValueOf('mapIcon', r.iconPath),
+      iconMap: optionalRefValueOf('mapIcon', r.iconAsset),
       iconAssetId: r.iconAssetId,
     }))
     return { updatedAt, regions, grounds, groundLevels: levels }

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { BOSS_DIFFICULTIES } from '../bosses/bosses.dto'
+import { BOSS_CYCLES, BOSS_DIFFICULTIES } from '../bosses/bosses.dto'
 import {
   CONTENT_CATEGORIES,
   CONTENT_SECTIONS,
@@ -105,22 +105,26 @@ export const screenQuery = z.object({
 })
 export type ScreenQuery = z.infer<typeof screenQuery>
 
-/** 난이도 줄 하나의 본문. 난이도는 경로가 든다. 유효 기간은 새 줄을 더할 때 함께 적고, 있는 줄은 period 끝점으로 고친다. */
+/**
+ * 난이도 줄 하나의 본문. 난이도는 경로가 든다. 주기와 유효 기간은 새 줄을 더할 때만 적는다. 있는 줄에서는 요구 레벨만
+ * 바뀌고, 유효 기간은 period 끝점으로 고친다.
+ */
 export const requiredLevelBody = z
   .object({
+    cycle: z.enum(BOSS_CYCLES),
     requiredLevel: z.number().int().min(1),
-    from: z.string().regex(PERIOD_TEXT).nullish(),
-    until: z.string().regex(PERIOD_TEXT).nullish(),
+    validFrom: z.string().regex(PERIOD_TEXT).nullish(),
+    validUntil: z.string().regex(PERIOD_TEXT).nullish(),
   })
-  .refine((d) => d.from == null || d.until == null || d.from < d.until, {
+  .refine((d) => d.validFrom == null || d.validUntil == null || d.validFrom < d.validUntil, {
     message: '끝이 시작보다 뒤여야 한다',
-    path: ['until'],
+    path: ['validUntil'],
   })
 export type RequiredLevelBody = z.infer<typeof requiredLevelBody>
 
-/** 보스 별칭 하나의 본문. 앞뒤 공백은 걷는다. 빈 별칭은 앱이 표 전체를 거절한다. */
-export const aliasBody = z.object({ alias: z.string().trim().min(1).max(100) })
-export type AliasBody = z.infer<typeof aliasBody>
+/** 보스 줄인 이름 하나의 본문. 앞뒤 공백은 걷는다. 빈 이름은 앱이 표 전체를 거절한다. */
+export const shortNameBody = z.object({ shortName: z.string().trim().min(1).max(100) })
+export type ShortNameBody = z.infer<typeof shortNameBody>
 
 /** 드롭 시세의 범위. 장비는 거래권(worlds.price_group), 소비는 월드 key 다. */
 export const dropMarketQuery = z.object({

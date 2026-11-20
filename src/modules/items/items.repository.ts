@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { assets, huntLootItems, itemGroups, items } from '../../database/schema'
-import { parseAssetPath, storedFileName } from '../assets/asset-paths'
+import { storedFileName } from '../assets/asset-paths'
 import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, type SectionKey, sectionUpdatedAt, touchSection } from '../game-data/sections'
 import type { HuntLootKind } from '../hunt-loot/hunt-loot.repository'
@@ -21,7 +21,7 @@ export interface ItemAdminRow {
   isEquipment: boolean
   /** 사냥 전리품이면 그 분류. 분류 · NPC 가격 · 기간은 사냥 전리품 화면이 고친다. */
   huntLootKind: HuntLootKind | null
-  icon: { id: string; path: string; file: string } | null
+  icon: { id: string; fileName: string; extension: string; file: string } | null
 }
 
 /** 더하기 · 고치기 본문. key 는 따로 받는다. 기록이 key 를 들어 못 바꾸기 때문이다. */
@@ -105,23 +105,27 @@ export class ItemsRepository {
         isDrop: items.isDrop,
         isEquipment: items.isEquipment,
         huntLootKind: huntLootItems.kind,
-        iconId: assets.id,
-        iconPath: assets.path,
-        iconSha: assets.sha256,
+        icon: {
+          id: assets.id,
+          fileName: assets.fileName,
+          extension: assets.extension,
+          sha256: assets.sha256,
+        },
       })
       .from(items)
       .leftJoin(assets, eq(assets.id, items.iconAssetId))
       .leftJoin(huntLootItems, eq(huntLootItems.itemId, items.id))
       .orderBy(asc(items.key))
-    return rows.map(({ iconId, iconPath, iconSha, ...r }) => ({
+    return rows.map(({ icon, ...r }) => ({
       ...r,
       icon:
-        iconId === null || iconPath === null || iconSha === null
+        icon === null
           ? null
           : {
-              id: iconId,
-              path: iconPath,
-              file: storedFileName(iconSha, parseAssetPath(iconPath)?.ext ?? 'png'),
+              id: icon.id,
+              fileName: icon.fileName,
+              extension: icon.extension,
+              file: storedFileName(icon.sha256, icon.extension),
             },
     }))
   }

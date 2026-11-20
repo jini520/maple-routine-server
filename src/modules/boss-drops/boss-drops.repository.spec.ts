@@ -1,5 +1,6 @@
 import {
   describeDb,
+  insertAsset,
   insertAssets,
   insertItems,
   openTestDb,
@@ -32,12 +33,12 @@ describeDb('BossDropsRepository', () => {
     await new BossesRepository(db).createBoss({
       key: 'lotus',
       name: '스우',
-      alias: '스우',
-      cycle: 'weekly',
-      portraitSlug: 'lotus',
+      shortName: '스우',
+      isSeasonBoss: false,
+      portraitAssetId: await insertAsset(db, 'bosses/lotus.webp'),
       difficulties: [
-        { difficulty: 'hard', requiredLevel: 190, maxPartySize: null },
-        { difficulty: 'extreme', requiredLevel: 190, maxPartySize: null },
+        { difficulty: 'hard', cycle: 'weekly', requiredLevel: 190, maxPartySize: null },
+        { difficulty: 'extreme', cycle: 'weekly', requiredLevel: 190, maxPartySize: null },
       ],
     })
     await insertItems(db, [

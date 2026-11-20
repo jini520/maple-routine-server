@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { bossClears, users, worlds } from '../../database/schema'
 import {
   describeDb,
+  insertAsset,
   insertAssets,
   insertNexonAccount,
   openTestDb,
@@ -69,10 +70,10 @@ describeDb('BossClearsRepository', () => {
       await new BossesRepository(db).createBoss({
         key: 'lucid',
         name: '루시드',
-        alias: '루시드',
-        cycle: 'weekly',
-        portraitSlug: 'lucid',
-        difficulties: [{ difficulty: 'hard', requiredLevel: 220 }],
+        shortName: '루시드',
+        isSeasonBoss: false,
+        portraitAssetId: await insertAsset(db, 'bosses/lucid.webp'),
+        difficulties: [{ difficulty: 'hard', cycle: 'weekly', requiredLevel: 220 }],
       })
     ).id
   })

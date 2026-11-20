@@ -43,7 +43,7 @@ describeDb('ItemsRepository', () => {
   const touched = async () =>
     (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map((r) => r.key).sort()
 
-  it('아이템을 더하고 key 차례로 내며, 그림은 id · 경로 · 파일 이름으로 낸다. 맡은 역할의 칸만 시각을 민다', async () => {
+  it('아이템을 더하고 key 차례로 내며, 그림은 id · 파일 이름 · 확장자 · 디스크 파일 이름으로 낸다. 맡은 역할의 칸만 시각을 민다', async () => {
     await repo.create('giant_terror', {
       ...base,
       iconAssetId: assetIds['items/giant_terror.png'] ?? null,
@@ -71,7 +71,8 @@ describeDb('ItemsRepository', () => {
       huntLootKind: null,
       icon: {
         id: assetIds['items/giant_terror.png'],
-        path: 'items/giant_terror.png',
+        fileName: 'giant_terror',
+        extension: 'png',
         file: `${'0'.repeat(64)}.png`,
       },
     })

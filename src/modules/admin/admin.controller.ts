@@ -142,8 +142,6 @@ import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
 import type { AppNoticeRow } from '../notices/notices.repository'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import {
-  type AliasBody,
-  aliasBody,
   type BossDropCreateBody,
   bossDropCreateBody,
   type BossDropQuery,
@@ -165,6 +163,8 @@ import {
   dropPriceQuery,
   type ScreenQuery,
   screenQuery,
+  type ShortNameBody,
+  shortNameBody,
   type UsageQuery,
   usageQuery,
   type UsersQuery,
@@ -399,6 +399,13 @@ export class AdminController {
     return BOSSES_HTML
   }
 
+  /** 보스 화면의 목록. 게임 데이터의 bosses 칸과 같다. */
+  @Get('bosses/rows')
+  @Header('cache-control', 'no-store')
+  bossRows() {
+    return this.bosses.catalog()
+  }
+
   /** 규칙 둘을 적는다. */
   @Put('bosses/rules')
   @HttpCode(204)
@@ -406,15 +413,16 @@ export class AdminController {
     await this.bosses.setRules(body)
   }
 
-  /** 새 보스를 맨 뒤에 더한다. 같은 key 가 있으면 409 다. */
+  /** 새 보스를 맨 뒤에 더한다. 같은 key 가 있으면 409, 그림 표에 없는 초상이면 400 이다. */
   @Post('bosses')
   @HttpCode(201)
   async createBoss(@Body(new ZodValidationPipe(bossInput)) body: BossInput) {
-    await this.requireAssets([['bossPortrait', body.portraitSlug]])
     try {
       return await this.bosses.createBoss(body)
     } catch (error) {
       if (error instanceof BossExists) throw new ConflictException(`이미 있는 보스다: ${body.key}`)
+      if (error instanceof AssetNotFound)
+        throw new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
       throw error
     }
   }
@@ -430,14 +438,14 @@ export class AdminController {
       throw new NotFoundException(`모르는 보스다: ${key}`)
   }
 
-  /** 별칭을 갈아 끼운다. 이미 있는 보스에서 고칠 수 있는 칸은 이것뿐이다. 모르는 보스는 404 다. */
-  @Put('bosses/:key/alias')
+  /** 줄인 이름을 갈아 끼운다. 이미 있는 보스에서 이름 칸으로 고칠 수 있는 것은 이것뿐이다. 모르는 보스는 404 다. */
+  @Put('bosses/:key/short-name')
   @HttpCode(204)
-  async setBossAlias(
+  async setBossShortName(
     @Param('key', new ZodValidationPipe(bossKeyParam)) key: string,
-    @Body(new ZodValidationPipe(aliasBody)) body: AliasBody,
+    @Body(new ZodValidationPipe(shortNameBody)) body: ShortNameBody,
   ): Promise<void> {
-    if (!(await this.bosses.setAlias(key, body.alias)))
+    if (!(await this.bosses.setShortName(key, body.shortName)))
       throw new NotFoundException(`모르는 보스다: ${key}`)
   }
 
@@ -466,9 +474,10 @@ export class AdminController {
     if (
       !(await this.bosses.upsertDifficulty(key, {
         difficulty,
+        cycle: body.cycle,
         requiredLevel: body.requiredLevel,
-        from: body.from ?? null,
-        until: body.until ?? null,
+        validFrom: body.validFrom ?? null,
+        validUntil: body.validUntil ?? null,
       }))
     ) {
       throw new NotFoundException(`모르는 보스다: ${key}`)

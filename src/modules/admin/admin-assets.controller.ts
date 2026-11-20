@@ -17,7 +17,7 @@ import {
 import { z } from 'zod'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
-import { imageSize, parseAssetPath, sniffImage, storedFileName } from '../assets/asset-paths'
+import { imageSize, parseAssetKey, sniffImage, storedFileName } from '../assets/asset-paths'
 import { AssetNotFound } from '../assets/asset-refs'
 import { AssetStore } from '../assets/asset-store'
 import { AssetInUse, AssetsRepository } from '../assets/assets.repository'
@@ -65,13 +65,6 @@ export class AdminAssetsController {
     return ASSETS_HTML
   }
 
-  @Get('assets/rows')
-  @Header('cache-control', 'no-store')
-  async rows() {
-    const [assets, crops] = await Promise.all([this.assets.section(), this.crops.section()])
-    return { assets, crops }
-  }
-
   /** 그림 화면 목록. 그림마다 보이는 이름 · 쓰는 곳을 들고, 트리를 그릴 아이템 분류와 크롭을 함께 낸다. */
   @Get('assets/list')
   @Header('cache-control', 'no-store')
@@ -113,26 +106,34 @@ export class AdminAssetsController {
   }
 
   /**
-   * 경로 하나에 그림을 올린다. 본문은 파일 그대로다. 파일을 먼저 쓰고 그다음 표에 적는다.
+   * 분류 · 파일 이름 · 확장자 하나에 그림을 올린다. 본문은 파일 그대로다. 파일을 먼저 쓰고 그다음 표에 적는다.
    * 순서가 반대면 앱이 표의 해시를 받고 아직 없는 파일을 부를 수 있다.
    */
   @Put('assets/file')
-  async putFile(@Query('path') rawPath: string | undefined, @Body() body: unknown) {
-    const parsed = rawPath === undefined ? null : parseAssetPath(rawPath)
-    if (parsed === null) throw new BadRequestException(`그림 경로 규칙에 맞지 않는다: ${rawPath}`)
+  async putFile(
+    @Query('category') category: string | undefined,
+    @Query('fileName') fileName: string | undefined,
+    @Query('extension') extension: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const key =
+      category === undefined || fileName === undefined || extension === undefined
+        ? null
+        : parseAssetKey({ category, fileName, extension })
+    if (key === null)
+      throw new BadRequestException(`그림 규칙에 맞지 않는다: ${category}/${fileName}.${extension}`)
     if (!Buffer.isBuffer(body)) throw new BadRequestException('그림 파일을 본문으로 보낸다')
     const sniffed = sniffImage(body)
-    if (sniffed !== parsed.ext)
+    if (sniffed !== key.extension)
       throw new BadRequestException(
-        `내용이 ${sniffed ?? '그림이 아니다'}인데 경로는 .${parsed.ext} 다`,
+        `내용이 ${sniffed ?? '그림이 아니다'}인데 확장자는 .${key.extension} 다`,
       )
     const dims = imageSize(body)
     if (dims === null) throw new BadRequestException('그림 머리에서 가로 · 세로를 읽지 못했다')
-    const path = `${parsed.dir}/${parsed.name}.${parsed.ext}`
     const sha256 = createHash('sha256').update(body).digest('hex')
-    await this.store.write(storedFileName(sha256, parsed.ext), body)
-    const result = await this.assets.put(path, sha256, { size: body.length, ...dims })
-    return { path, sha256, result }
+    await this.store.write(storedFileName(sha256, key.extension), body)
+    const result = await this.assets.put(key, sha256, { sizeBytes: body.length, ...dims })
+    return { ...key, sha256, result }
   }
 
   @Put('image-crops/:kind/:slug')

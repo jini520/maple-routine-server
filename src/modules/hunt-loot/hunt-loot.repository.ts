@@ -4,7 +4,7 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { isCheckViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, huntLootItems, items } from '../../database/schema'
-import { refValueOf, resolveAssetId } from '../assets/asset-refs'
+import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 import { sameNameItem } from '../items/items'
 
@@ -53,7 +53,7 @@ export class HuntLootRepository {
           key: items.key,
           kind: huntLootItems.kind,
           name: items.name,
-          iconPath: assets.path,
+          iconAsset: assetNameColumns(assets),
           iconAssetId: items.iconAssetId,
           npcPriceMeso: huntLootItems.npcPriceMeso,
           from: huntLootItems.from,
@@ -71,7 +71,7 @@ export class HuntLootRepository {
         key: r.key,
         kind: r.kind,
         name: r.name,
-        iconFile: refValueOf('itemIcon', r.iconPath),
+        iconFile: refValueOf('itemIcon', r.iconAsset),
         iconAssetId: r.iconAssetId as string,
         npcPriceMeso: r.npcPriceMeso,
         from: r.from,

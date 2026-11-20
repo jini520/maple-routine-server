@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
 
 export const BOSS_DIFFICULTIES = ['easy', 'normal', 'hard', 'chaos', 'extreme'] as const
-export const BOSS_CYCLES = ['weekly', 'event_weekly', 'monthly'] as const
+export const BOSS_CYCLES = ['weekly', 'monthly'] as const
 
 /** game_rules 의 key 와 응답 필드 이름. 둘이 짝이다. */
 export const RULE_KEYS = {
@@ -21,30 +21,31 @@ export const rulesInput = z.object({
 })
 export type RulesInput = z.infer<typeof rulesInput>
 
-/** 난이도 줄 하나. 요구 레벨과 파티 인원 상한(없으면 기본값), 유효 기간(없으면 보스의 기간 그대로). */
+/** 난이도 줄 하나. 주기, 요구 레벨과 파티 인원 상한(없으면 기본값), 유효 기간(없으면 보스의 기간 그대로). */
 export const difficultyInput = z
   .object({
     difficulty: z.enum(BOSS_DIFFICULTIES),
+    cycle: z.enum(BOSS_CYCLES),
     requiredLevel: z.number().int().min(1),
     maxPartySize: z.number().int().min(1).max(6).nullish(),
-    from: z.string().regex(PERIOD_TEXT).nullish(),
-    until: z.string().regex(PERIOD_TEXT).nullish(),
+    validFrom: z.string().regex(PERIOD_TEXT).nullish(),
+    validUntil: z.string().regex(PERIOD_TEXT).nullish(),
   })
-  .refine((d) => d.from == null || d.until == null || d.from < d.until, {
+  .refine((d) => d.validFrom == null || d.validUntil == null || d.validFrom < d.validUntil, {
     message: '끝이 시작보다 뒤여야 한다',
-    path: ['until'],
+    path: ['validUntil'],
   })
 export type DifficultyInput = z.infer<typeof difficultyInput>
 
 /** 유효 기간 둘. 끝은 시작보다 뒤여야 한다. 기간 경계일 필요는 없다. 시즌이 끝나는 날을 그대로 적는다. */
 export const periodInput = z
   .object({
-    from: z.string().regex(PERIOD_TEXT).nullish(),
-    until: z.string().regex(PERIOD_TEXT).nullish(),
+    validFrom: z.string().regex(PERIOD_TEXT).nullish(),
+    validUntil: z.string().regex(PERIOD_TEXT).nullish(),
   })
-  .refine((p) => p.from == null || p.until == null || p.from < p.until, {
+  .refine((p) => p.validFrom == null || p.validUntil == null || p.validFrom < p.validUntil, {
     message: '끝이 시작보다 뒤여야 한다',
-    path: ['until'],
+    path: ['validUntil'],
   })
 export type PeriodInput = z.infer<typeof periodInput>
 
@@ -57,16 +58,16 @@ export const bossInput = z
   .object({
     key: bossKeyParam,
     name: z.string().min(1).max(100),
-    alias: z.string().min(1).max(100),
-    cycle: z.enum(BOSS_CYCLES),
-    portraitSlug: z.string().min(1).max(100),
+    shortName: z.string().min(1).max(100),
+    isSeasonBoss: z.boolean(),
+    portraitAssetId: z.string().uuid(),
     difficulties: z.array(difficultyInput).min(1),
-    from: z.string().regex(PERIOD_TEXT).nullish(),
-    until: z.string().regex(PERIOD_TEXT).nullish(),
+    validFrom: z.string().regex(PERIOD_TEXT).nullish(),
+    validUntil: z.string().regex(PERIOD_TEXT).nullish(),
   })
-  .refine((b) => b.from == null || b.until == null || b.from < b.until, {
+  .refine((b) => b.validFrom == null || b.validUntil == null || b.validFrom < b.validUntil, {
     message: '끝이 시작보다 뒤여야 한다',
-    path: ['until'],
+    path: ['validUntil'],
   })
   .refine((b) => new Set(b.difficulties.map((d) => d.difficulty)).size === b.difficulties.length, {
     message: '같은 난이도가 두 번 있다',

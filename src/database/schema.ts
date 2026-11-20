@@ -44,8 +44,8 @@ export const bossDifficultyEnum = pgEnum('boss_difficulty', [
   'chaos',
   'extreme',
 ])
-/** 앱 JSON 의 묶음 셋. event_weekly 는 주간 12 한도에서 빠진다. */
-export const bossCycleEnum = pgEnum('boss_cycle', ['weekly', 'event_weekly', 'monthly'])
+/** 난이도의 주기. 시즌 보스인지는 주기가 아니라 `bosses.is_season_boss` 가 말한다. */
+export const bossCycleEnum = pgEnum('boss_cycle', ['weekly', 'monthly'])
 /** 드롭 표의 갈래. 앱 DROP_CATEGORIES 그대로이고 선언 순서가 화면 순서다. */
 export const dropCategoryEnum = pgEnum('drop_category', ['fixed', 'equipment', 'consumable'])
 
@@ -244,20 +244,21 @@ export const notices = pgTable(
 
 export const bosses = pgTable('bosses', {
   id: uuid('id').primaryKey().defaultRandom(),
-  /** 앱의 boss key. 기기 기록이 이 값을 든다. */
+  /** 영어 이름표. 넥슨 응답의 보스 이름을 보스에 맞출 때 쓴다. 기록은 이 값이 아니라 줄 id 로 가리킨다. */
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
-  alias: text('alias').notNull(),
-  cycle: bossCycleEnum('cycle').notNull(),
-  /** 초상 그림. 앱에는 그림 경로의 이름(확장자를 뗀 것)을 portraitSlug 로 낸다. 쓰는 그림은 지울 수 없다. */
+  shortName: text('short_name').notNull(),
+  /** 시즌 보스는 주간 선택 한도에서 빠진다. 난이도가 아니라 보스의 성질이다. */
+  isSeasonBoss: boolean('is_season_boss').notNull(),
+  /** 초상 그림. 쓰는 그림은 지울 수 없다. */
   portraitAssetId: uuid('portrait_asset_id')
     .notNull()
     .references(() => assets.id),
   /** 배열 순서가 곧 화면 순서다. */
   sortOrder: integer('sort_order').notNull(),
-  /** 유효 기간. KST 글자 그대로. 없으면 처음부터 · 끝없이. 시즌 보스가 끝을 든다. 앱이 기간 첫날로 판정한다. */
-  from: text('from'),
-  until: text('until'),
+  /** 유효 기간. KST 글자 그대로. 없으면 처음부터 · 끝없이. 끝난 보스는 지우지 않고 끝을 적는다. 앱이 기간 첫날로 판정한다. */
+  validFrom: text('valid_from'),
+  validUntil: text('valid_until'),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
@@ -270,12 +271,14 @@ export const bossDifficulties = pgTable(
       .notNull()
       .references(() => bosses.id, { onDelete: 'cascade' }),
     difficulty: bossDifficultyEnum('difficulty').notNull(),
+    /** 같은 보스라도 난이도마다 주기가 다를 수 있어 보스가 아니라 난이도에 둔다. */
+    cycle: bossCycleEnum('cycle').notNull(),
     requiredLevel: integer('required_level').notNull(),
     /** 결정석을 나누는 파티 인원 상한. NULL 이면 game_rules 의 default_max_party_size 다. */
     maxPartySize: integer('max_party_size'),
     /** 난이도의 유효 기간. 보스의 기간과 겹치는 범위만 유효하다. 새로 생긴 난이도가 시작을 든다. */
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
   },
   (t) => [unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty)],
 )
@@ -413,23 +416,52 @@ export const gameDataSections = pgTable('game_data_sections', {
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
+/** 그림 분류. 서버 코드의 고정 목록이고 선언 순서에 뜻은 없다. 옛 경로(`bosses/bellona.webp`)의 폴더에서 왔다. */
+export const assetCategoryEnum = pgEnum('asset_category', [
+  'skill',
+  'item',
+  'item_ring',
+  'boss',
+  'map',
+  'map_icon',
+  'world',
+  'mvp',
+  'force',
+  'character',
+  'drop_effect_screen',
+  'drop_effect_pre',
+  'drop_effect_loop',
+  'drop_effect_end',
+])
+
 /**
- * 앱이 받는 그림 한 장. path 는 앱 `src/assets/` 기준 경로이고 게임 데이터 표의 그림 칸이 이 경로를 가리킨다.
- * 파일은 디스크에 내용 해시 이름(`<sha256>.<ext>`)으로 있다. 그림을 바꾸면 이 줄의 해시만 바뀐다.
+ * 앱이 받는 그림 한 장. 게임 데이터 표의 그림 칸이 이 줄의 id 를 가리킨다.
+ * 파일은 디스크에 내용 해시 이름(`<sha256>.<extension>`)으로 있다. 그림을 바꾸면 이 줄의 해시만 바뀐다.
  */
-export const assets = pgTable('assets', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  path: text('path').notNull().unique(),
-  /** 소문자 hex 64글자. */
-  sha256: text('sha256').notNull(),
-  size: integer('size').notNull(),
-  /** 픽셀. 앱이 크롭 · 연출 배치를 원래 크기로 계산한다. 내려받은 파일은 그 자리에서 크기를 모른다. */
-  width: integer('width').notNull(),
-  height: integer('height').notNull(),
-  /** 관리 화면에서 보이는 이름. 비면 그 그림을 쓰는 곳의 이름을 보인다. 앱에는 내지 않는다. */
-  name: text('name'),
-  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
-})
+export const assets = pgTable(
+  'assets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    category: assetCategoryEnum('category').notNull(),
+    /** 확장자를 뗀 파일 이름. 관리 화면이 `name` 과 쓰는 곳의 이름이 모두 없을 때 보인다. */
+    fileName: text('file_name').notNull(),
+    /** `png` · `webp` · `jpg`. 디스크의 파일 이름을 만들 때 쓴다. */
+    extension: text('extension').notNull(),
+    /** 소문자 hex 64글자. 유일하지 않다. 내용이 같은 그림이 여러 줄일 수 있다. */
+    sha256: text('sha256').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    /** 픽셀. 앱이 크롭 · 연출 배치를 원래 크기로 계산한다. 내려받은 파일은 그 자리에서 크기를 모른다. */
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    /** 운영자가 적는 이름. 비면 그 그림을 쓰는 곳의 이름을 보인다. 앱에는 내지 않는다. */
+    name: text('name'),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  // 확장자만 다른 같은 이름의 그림이 있어 확장자까지 기준에 넣는다.
+  (t) => [
+    unique('assets_category_file_name_extension_unique').on(t.category, t.fileName, t.extension),
+  ],
+)
 
 /** 앱의 크롭 표 넷과 일대일. 값이 같은 그림이라도 놓이는 곳마다 잘 보이는 자리가 달라 표가 갈린다. */
 export const imageCropKindEnum = pgEnum('image_crop_kind', [

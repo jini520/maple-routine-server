@@ -1,4 +1,10 @@
-import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  describeDb,
+  insertAsset,
+  insertAssets,
+  openTestDb,
+  type TestDb,
+} from '../../database/test-db'
 import { BossesRepository } from '../bosses/bosses.repository'
 import {
   CrystalPricesRepository,
@@ -33,18 +39,22 @@ describeDb('CrystalPricesRepository', () => {
     await bosses.createBoss({
       key: 'lotus',
       name: '스우',
-      alias: '스우',
-      cycle: 'weekly',
-      portraitSlug: 'lotus',
-      difficulties: [{ difficulty: 'hard', requiredLevel: 190, maxPartySize: null }],
+      shortName: '스우',
+      isSeasonBoss: false,
+      portraitAssetId: await insertAsset(db, 'bosses/lotus.webp'),
+      difficulties: [
+        { difficulty: 'hard', cycle: 'weekly', requiredLevel: 190, maxPartySize: null },
+      ],
     })
     await bosses.createBoss({
       key: 'black_mage',
       name: '검은 마법사',
-      alias: '검은 마법사',
-      cycle: 'monthly',
-      portraitSlug: 'black_mage',
-      difficulties: [{ difficulty: 'hard', requiredLevel: 255, maxPartySize: null }],
+      shortName: '검은 마법사',
+      isSeasonBoss: false,
+      portraitAssetId: await insertAsset(db, 'bosses/black_mage.webp'),
+      difficulties: [
+        { difficulty: 'hard', cycle: 'monthly', requiredLevel: 255, maxPartySize: null },
+      ],
     })
   })
   afterAll(() => close())

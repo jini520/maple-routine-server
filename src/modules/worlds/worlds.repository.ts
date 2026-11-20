@@ -4,7 +4,7 @@ import { and, asc, eq, ne, sql } from 'drizzle-orm'
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, worldPeriods, worlds } from '../../database/schema'
-import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface WorldView {
@@ -101,7 +101,7 @@ export class WorldsRepository {
         id: worlds.id,
         key: worlds.key,
         name: worlds.name,
-        emblemPath: assets.path,
+        emblemAsset: assetNameColumns(assets),
         emblemAssetId: worlds.emblemAssetId,
         challengers: worlds.challengers,
         event: worlds.event,
@@ -113,7 +113,7 @@ export class WorldsRepository {
     return rows.map((r) => ({
       key: r.key,
       name: r.name,
-      emblem: optionalRefValueOf('worldEmblem', r.emblemPath),
+      emblem: optionalRefValueOf('worldEmblem', r.emblemAsset),
       emblemAssetId: r.emblemAssetId,
       challengers: r.challengers,
       event: r.event,

@@ -70,7 +70,6 @@ docker tag maple-routine-server:prod maple-routine-server:prev   # 되돌릴 이
 gunzip -c ~/maple-routine-server-image.tar.gz | docker load
 cd ~/maple-routine-server
 docker compose run --rm --no-deps server node dist/cli/migrate.js   # 새 마이그레이션이 있을 때
-docker compose run --rm --no-deps server node dist/cli/seed-game-data.js   # 게임 데이터 표가 비었을 때. 줄이 있는 표는 건너뛴다
 docker compose up -d --no-build
 curl -s http://127.0.0.1:4000/healthz
 docker logs --since 5m maple-routine-server
@@ -105,14 +104,13 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   - 무중단 전환(새 컨테이너를 옆에 띄우고 nginx 를 넘기는 것)은 아직 안 한다. 공지 폴러 같은 예약 작업이 두 컨테이너에서
     함께 돌면 알림이 두 번 나간다. 예약 작업을 한쪽에서만 돌게 막은 뒤에야 할 수 있다.
 - **그림은 `/admin/assets` 에서 올린다**(앱 저장소 `ADR-103`). 파일은 `/srv/maple-routine-assets/` 에 내용 해시 이름으로 쌓이고,
-  표 `assets` 가 앱 경로(`bosses/bellona.webp`)와 해시를 잇는다. 옛 해시 파일은 지우지 않는다. 옛 목록을 받은 앱이 아직 받는 중일 수
-  있다. 게임 데이터 표의 그림 칸은 그림 표의 `id` 를 FK 로 가리킨다(앱 저장소 `ADR-187` 결정 3). 그래서 쓰이는 그림은 지울 수 없고,
-  관리 화면 API 는 지금처럼 파일 이름 · slug 글자를 받아 그림 id 로 푼다(없으면 400). 앱에 내는 게임 데이터는 그림 경로에서 그 글자를
-  다시 만들어 예전과 같다. 처음 채울 때는 맥에서
-  `npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://mapleroutine.store ~/Developments/maple-routine` 이다.
-  이미 있는 경로와 크롭은 건너뛴다. 분류 확인을 마친 아이템의 분류 · 그림 · 새 아이템은
-  `ADMIN_AUTH=아이디:비밀번호 node dist/cli/apply-item-catalog.js https://mapleroutine.store <폴더> --apply` 로 넣는다. 폴더에는
-  `plan.json` 과 `items/` 그림이 있다. `--apply` 를 빼면 할 일만 보인다. 이미 붙은 그림은 바꾸지 않는다. nginx 는 이렇게 둔다.
+  표 `assets` 의 한 줄이 분류(`category`) · 파일 이름(`file_name`) · 확장자(`extension`)와 해시를 잇는다(앱 저장소 `ADR-099` 결정 61).
+  옛 해시 파일은 지우지 않는다. 옛 목록을 받은 앱이 아직 받는 중일 수 있다. 게임 데이터 표의 그림 칸은 그림 표의 `id` 를 FK 로
+  가리킨다(앱 저장소 `ADR-187` 결정 3). 그래서 쓰이는 그림은 지울 수 없다. 보스의 관리 API 는 그림 id 를 받는다. 아직 새 표로 바꾸지
+  않은 표의 관리 API 는 파일 이름 · slug 글자를 받아 그림 id 로 풀고(없으면 400), 그 표의 게임 데이터는 파일 이름 · 확장자에서 그
+  글자를 다시 만든다(앱 저장소 `ADR-099` 결정 65). 그림 여러 장을 한 번에 올릴 때는 맥에서
+  `npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://mapleroutine.store <그림 폴더>` 이다. 폴더 안의
+  `<폴더>/<이름>.<확장자>`(`bosses/bellona.webp`)를 분류로 읽고, 이미 있는 그림은 건너뛴다. nginx 는 이렇게 둔다.
 
   ```
   location /assets/ {
@@ -218,7 +216,13 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.
-- **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 이미 있는 보스의 별칭, 난이도 줄 더하기 · 레벨 · 지우기다. 보스와 마지막
+- **1.0.15 의 새 DB 는 마이그레이션을 처음부터 적용한 빈 DB 에 옛 DB 의 줄을 옮겨 만든다**(앱 저장소 `ADR-099` 결정 43 · 65).
+  `OLD_DATABASE_URL=<옛 DB> DATABASE_URL=<새 DB> node dist/cli/move-old-db.js` 다. 옛 DB 는 읽기만 하고, 옛 표는
+  `src/database/old-schema.ts` 로 읽는다. 줄 id 는 그대로 옮긴다. 새 DB 의 옮길 표에 줄이 있으면 아무것도 하지 않고 멈춘다. 지금은
+  그림 · 보스 · 난이도 표를 옮기고, 표 묶음 PR 마다 그 묶음의 표를 더한다. 운영 서버의 hotfix 가 표를 바꾸면 main 을 develop 에
+  머지할 때 `old-schema.ts` 도 고친다. 사본이 운영 표와 다르면 옛 칸을 읽지 못한다.
+- **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 이미 있는 보스의 줄인 이름 · 유효 기간, 난이도 줄 더하기 · 레벨 · 유효 기간 · 지우기다.
+  시즌 보스 표시와 난이도의 주기는 보스와 난이도 줄을 더할 때 정한다. 보스와 마지막
   난이도는 못 지운다. 화면은 보스 표 하나이고, 줄의 수정을 누르면 그 아래로 난이도 편집기가 펼쳐지며 새 보스는 같은
   편집기가 표 맨 위에 열린다(2026-10-16 사용자 선택, 구조 시안 셋 중 A). 난이도 표를 따로 두면 보스 이름이 56번
   반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 사본은 앱 저장소에서 `node scripts/sync-game-data.mjs` 로 맞춘다
@@ -230,21 +234,19 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 지출 카탈로그는 `/admin/spend-catalog`,
   심볼 비용은 `/admin/symbol-costs` 다(ADR-350 정정 3. 묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 컨텐츠는 `/admin/contents` 다(ADR-350 정정 4.
   갈래 표 8줄은 ENUM 과 일대일이라 글자 · 태그 · 한도 · 차례만 고치고, 컨텐츠는 섹션 맨 끝에 더하며 API 이름은 공백을 지워도 다른 줄과 달라야 한다. 지우지 않고 until 로 닫는다). 강화 비용은 `/admin/enhancement-costs`, MVP 등급은 `/admin/mvp-grades` 다(ADR-350 정정 5. 비용 표는 기간 줄 없이 지금 값 하나다. 강화 기록은 서버에 안 두고 앱이 합계로 저장하므로 고친 값은 다음 수집분부터 쓰인다. 잠재 구간은 등급 넷을 한 번에 더하고 1 구간은 못 지우며, 스타포스 단계는 끝 성수만 더하고 지운다). 사냥터는 `/admin/hunting-grounds` 다(ADR-350 정정 6. 사냥터 key 는 지역 key 로 시작하고 이름은 전역 유일이며 몬스터 레벨은 줄 표다. 지우지 않는다). 헥사 매트릭스는 `/admin/hexa-matrix` 다(앱 저장소 `ADR-137`. 코어 종류 · 레벨 비용 · 이름 표 · 직업별 코어 · 헥사 스탯 다섯 표를 한 칸으로 낸다. 이름 표에 없는 코어는 그 API 타입의 기본 종류로 보므로 기본 종류는 API 타입마다 하나다. 비용은 기간 줄 없이 레벨 0 부터 만렙 - 1 까지 한 번에 갈아 끼운다). FAQ 는 `/admin/faqs` 다(앱 저장소 `ADR-150`. 앱 화면의 물음표가 여는 시트 문구다. 묶음 목록이 코드가 아니라 표의 줄이라 새 페이지는 같은 key 의 묶음 하나만 더하면 된다. key 는 소문자 · 숫자 · 붙임표이고 못 바꾼다. 문항은 묶음 화면 `/admin/faqs/sheets/<key>` 에서 쓰고, 답은 빈 줄로 문단을 나눈 글로 받아 문단 블록으로 바꾼다. 묶음을 지우면 문항도 지워진다). 결정석의 새 가격은 지금 줄을 닫고 새 줄을 연다. 시작은 그
-  보스의 기간 경계(주간 · 시즌 목요일, 월간 1일)여야 한다. 심볼의 새 비용도 같다. 시작은 KST 날짜이고 지금 줄의 시작보다 뒤면 된다. 새 심볼은 레벨 전부를 한 번에 넣는다. `GET /v1/bosses` 는 옛 OTA 가 불러 당분간 남긴다. 표의 첫
-  채움은 `node dist/cli/seed-game-data.js` 가 `src/database/seed/<표>.json` 으로 한다. 비어 있는 표만 채운다. 씨앗의 그림 이름을
-  그림 id 로 풀기 때문에 그림을 먼저 올린다(`seed-assets`). 그림이 없으면 그 표에서 멈춘다.
+  보스의 기간 경계(주간 · 시즌 목요일, 월간 1일)여야 한다. 심볼의 새 비용도 같다. 시작은 KST 날짜이고 지금 줄의 시작보다 뒤면 된다. 새 심볼은 레벨 전부를 한 번에 넣는다.
 - **드롭 아이템 · 강화 장비 · 사냥 전리품은 아이템 표(`items`) 하나를 나눠 쓴다**(앱 저장소 `ADR-187` 결정 1). key 가 같으면
   한 줄이고 `is_drop` · `is_equipment` 와 사냥 전리품 줄(`hunt_loot_items.item_id`)이 역할을 가른다. `dropItems` · `equipmentItems` ·
   `huntLoot` 칸은 자기 역할의 줄만 내므로 응답 모양은 그대로다. 이름을 NFC 로 맞추고 공백을 지웠을 때 다른 key 의 아이템과
   같으면 더하거나 고칠 수 없다. 한 물건이 두 key 로 서면 기록이 갈려서다.
-- **게임 데이터의 그림 칸은 그림 표의 id 를 함께 낸다**(앱 저장소 `ADR-187` 결정 4). `assets` 칸의 줄은 `id` 를 들고, 그림 칸마다
-  옛 글자 칸(`portraitSlug` · `iconFile` · `emblem` · `backgroundMap` 등) 옆에 `id` 칸(`portraitAssetId` · `iconAssetId` 등)이
-  선다. 크롭 줄은 `assetId` 를 든다. 옛 글자 칸은 이미 깔린 옛 앱이 읽어 남긴다. 칸이 없으면 옛 앱이 게임 데이터를 거절하고
-  잠금 화면에서 멈추기 때문이다. 새 앱이 퍼지고 옛 버전을 잠근 뒤에 지운다.
+- **게임 데이터의 그림 칸은 그림 표의 id 를 낸다**(앱 저장소 `ADR-187` 결정 4). `assets` 칸의 줄은 `id` 와 디스크 파일 이름
+  `file` 을 들고, 그림 칸은 `portraitAssetId` · `iconAssetId` 같은 id 칸이다. 크롭 줄은 `assetId` 를 든다. 옛 앱이 읽던 글자 칸
+  (`iconFile` · `emblem` · `backgroundMap` 등)은 1.0.15 의 서버에서 걷는다. 보스의 `portraitSlug` 는 첫 묶음에서 걷었고, 다른 표의
+  글자 칸은 그 표를 새 표로 바꾸는 묶음에서 걷는다(앱 저장소 `ADR-099` 결정 43 · 65).
 - **앱 코드가 쓰는 그림도 표에 붙어 있다**(앱 저장소 `ADR-187` 결정 8). MVP 명패는 `mvp_grades.plate_asset_id`, 컨텐츠 카드의
   지역 아이콘은 `contents.region_icon_asset_id`, 붙일 표가 없는 72장(결정석 칩 · 강화 다섯 · 메소 주머니 · 포스 · 드롭 연출
   프레임 등)은 `app_images`(key 와 그림 id)이고 게임 데이터 칸 `appImages` 로 나간다. key 는 앱 코드가 그림을 찾는 이름이다.
-  지역 아이콘은 고르는 칸이 아직 없어서, 컨텐츠의 지도 배경을 바꾸면 같은 이름의 `maps/icons/` 그림이 따라간다. `app_images`
+  지역 아이콘은 고르는 칸이 아직 없어서, 컨텐츠의 지도 배경을 바꾸면 같은 파일 이름의 지역 아이콘(`map_icon`) 그림이 따라간다. `app_images`
   를 고치는 화면도 아직 없다.
 - **시각은 timestamptz 로 저장하고, 사람이 보는 글자는 전부 KST `YYYY-MM-DD HH:mm:ss` 다**(앱 저장소 `ADR-347` 정정 2). 관리 화면은
   `layout.ts` 의 `when()` 으로만 시각을 그리고 `datetime-local` 입력도 KST 로 읽는다. CLI 는 `common/kst.ts` 의 `formatKst` 다. 브라우저와

@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { assets, imageCropKindEnum, imageCrops } from '../../database/schema'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 import type { AssetRef } from './asset-paths'
-import { AssetNotFound, refValueOf, resolveAssetId } from './asset-refs'
+import { AssetNotFound, assetNameColumns, refValueOf, resolveAssetId } from './asset-refs'
 
 export const IMAGE_CROP_KINDS = imageCropKindEnum.enumValues
 export type ImageCropKind = (typeof IMAGE_CROP_KINDS)[number]
@@ -33,9 +33,6 @@ function refOf(kind: ImageCropKind): AssetRef {
   return kind === 'daily_quest_region' ? 'mapBackground' : 'bossPortrait'
 }
 
-/** 그림 경로에서 확장자를 뗀 이름. 옛 slug 칸과 같은 값이라 정렬도 옛 칸과 같다. */
-const SLUG_OF_PATH = sql`regexp_replace(regexp_replace(${assets.path}, '^.*/', ''), '\.[^.]*$', '')`
-
 @Injectable()
 export class ImageCropsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -44,19 +41,19 @@ export class ImageCropsRepository {
     const rows = await this.db
       .select({
         kind: imageCrops.kind,
-        path: assets.path,
+        asset: assetNameColumns(assets),
         assetId: imageCrops.assetId,
         size: imageCrops.size,
         position: imageCrops.position,
       })
       .from(imageCrops)
       .innerJoin(assets, eq(assets.id, imageCrops.assetId))
-      .orderBy(asc(imageCrops.kind), asc(SLUG_OF_PATH))
+      .orderBy(asc(imageCrops.kind), asc(assets.fileName))
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'imageCrops'),
       crops: rows.map((r) => ({
         kind: r.kind,
-        slug: refValueOf(refOf(r.kind), r.path),
+        slug: refValueOf(refOf(r.kind), r.asset),
         assetId: r.assetId,
         size: r.size,
         position: r.position,

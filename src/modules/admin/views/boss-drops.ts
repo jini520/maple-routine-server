@@ -99,7 +99,7 @@ export const BOSS_DROPS_HTML = layout(
   });
 
   (async function boot() {
-    var c = await call('GET', '/v1/bosses'); if (!c.ok) { show('보스 표를 못 읽었다 ' + c.status, true); return; }
+    var c = await call('GET', '/admin/bosses/rows'); if (!c.ok) { show('보스 표를 못 읽었다 ' + c.status, true); return; }
     state.catalog = c.json;
     var sel = document.getElementById('boss'); c.json.bosses.forEach(function (b) { var o = document.createElement('option'); o.value = b.key; o.textContent = b.name + ' (' + b.key + ')'; sel.appendChild(o); });
     fillDifficulties();

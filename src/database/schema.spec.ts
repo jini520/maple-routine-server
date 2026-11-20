@@ -1,17 +1,20 @@
 /**
- * 새 스키마(1.0.15)가 설계와 같은지 본다. 표 이름 · 칸 이름 · 형 · 가리키는 표 · enum 의 값을 견준다.
+ * 새 표로 바꾼 표가 설계와 같은지 본다. 표 이름 · 칸 이름 · 형 · 가리키는 표 · enum 의 값을 견준다.
  *
  * `design-tables.json` 은 설계 페이지의 원본에서 뽑은 목록이다(앱 저장소 ADR-099, jini520/maple-routine#947). 설계가 바뀌면 다시
  * 뽑아 이 파일을 바꾼다. 손으로 쓴 카드는 한 줄에 칸 여럿을 `a · b` 로 적거나 형을 비워 둔 곳이 있다. 그런 줄은 이름만 견준다.
  */
 import { is } from 'drizzle-orm'
-import { getTableConfig, isPgEnum, PgTable } from 'drizzle-orm/pg-core'
+import { getTableConfig, PgTable } from 'drizzle-orm/pg-core'
 
 import design from './design-tables.json'
-import * as next from './index'
+import * as schema from './schema'
 
-/** 아직 쓰지 않은 표의 수. 묶음을 더할 때마다 줄인다. 0 이 되면 새 스키마가 다 된 것이다. */
-const REMAINING = 92
+/**
+ * 새 표로 바꾼 표. 묶음 PR 마다 더한다. 아직 바꾸지 않은 표는 설계와 이름이 같아도 옛 칸을 들고 있어 견주지 않는다.
+ * 설계의 표가 모두 여기 들면 새 스키마가 다 된 것이다.
+ */
+const CONVERTED = ['assets', 'bosses', 'boss_difficulties']
 
 interface DesignColumn {
   name: string
@@ -41,14 +44,13 @@ const designTables = new Map(
   design.tables.map((table) => [table.name, table.columns as DesignColumn[]]),
 )
 
-/** 내보낸 것을 표와 enum 으로 가른다. 값의 합 타입으로는 타입 가드가 좁혀지지 않아 unknown 으로 받는다. */
-const exported: unknown[] = Object.values(next)
+/** 값의 합 타입으로는 타입 가드가 좁혀지지 않아 unknown 으로 받는다. */
+const exported: unknown[] = Object.values(schema)
 
 const tables = exported
   .filter((value): value is PgTable => is(value, PgTable))
   .map((table) => getTableConfig(table))
-
-const enums = exported.filter(isPgEnum)
+  .filter((table) => CONVERTED.includes(table.name))
 
 /** 설계의 한 줄을 칸 이름으로 편다. 칸 이름이 아닌 줄은 카드의 설명이라 뺀다. */
 function designNames(columns: DesignColumn[]): string[] {
@@ -61,8 +63,9 @@ function expectedSqlType(type: string): string | undefined {
   return type.startsWith('enum ') ? type.slice('enum '.length) : SQL_TYPE[type]
 }
 
-describe('새 스키마와 설계', () => {
-  it('새 스키마의 표는 모두 설계에 있고 칸 이름이 같다', () => {
+describe('바꾼 표와 설계', () => {
+  it('바꾼 표는 모두 스키마와 설계에 있고 칸 이름이 같다', () => {
+    expect(tables.map((table) => table.name).sort()).toEqual([...CONVERTED].sort())
     for (const table of tables) {
       const columns = designTables.get(table.name)
       expect({ table: table.name, inDesign: columns !== undefined }).toEqual({
@@ -119,19 +122,22 @@ describe('새 스키마와 설계', () => {
     }
   })
 
-  it('새 스키마의 enum 은 설계의 값과 같다', () => {
+  // 바꾼 표의 칸이 쓰는 enum 만 본다. 아직 바꾸지 않은 표만 쓰는 enum 은 옛 값을 들고 있다.
+  it('바꾼 표가 쓰는 enum 은 설계의 값과 같다', () => {
     const designEnums = design.enums as Record<string, { values: string[] }>
-    for (const one of enums) {
-      expect({ enum: one.enumName, values: [...one.enumValues] }).toEqual({
-        enum: one.enumName,
-        values: designEnums[one.enumName]?.values,
-      })
+    const used = new Map(
+      tables.flatMap((table) =>
+        table.columns.flatMap((column) =>
+          column.enumValues === undefined || column.columnType !== 'PgEnumColumn'
+            ? []
+            : [[column.getSQLType(), [...column.enumValues]] as const],
+        ),
+      ),
+    )
+    // 칸에서 enum 을 못 찾으면 아무것도 견주지 않고 통과하므로 하나는 찾았는지 본다.
+    expect(used.size).toBeGreaterThan(0)
+    for (const [name, values] of used) {
+      expect({ enum: name, values }).toEqual({ enum: name, values: designEnums[name]?.values })
     }
-  })
-
-  it('아직 쓰지 않은 표의 수가 적어 둔 것과 같다', () => {
-    const written = new Set(tables.map((table) => table.name))
-    const missing = [...designTables.keys()].filter((name) => !written.has(name))
-    expect(missing).toHaveLength(REMAINING)
   })
 })

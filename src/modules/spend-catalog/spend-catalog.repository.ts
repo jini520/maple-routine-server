@@ -15,7 +15,7 @@ import {
   spendItems,
   spendTiles,
 } from '../../database/schema'
-import { optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export const SPEND_CURRENCIES = ['point', 'meso'] as const
@@ -315,8 +315,8 @@ export class SpendCatalogRepository {
       .select({
         key: spendTiles.key,
         name: spendTiles.name,
-        iconPath: iconAsset.path,
-        iconMapPath: mapAsset.path,
+        iconAsset: assetNameColumns(iconAsset),
+        iconMapAsset: assetNameColumns(mapAsset),
         iconAssetId: spendTiles.iconAssetId,
         iconMapAssetId: spendTiles.iconMapAssetId,
       })
@@ -327,8 +327,8 @@ export class SpendCatalogRepository {
     return rows.map((r) => ({
       key: r.key,
       name: r.name,
-      iconFile: optionalRefValueOf('itemIcon', r.iconPath),
-      iconMap: optionalRefValueOf('mapIcon', r.iconMapPath),
+      iconFile: optionalRefValueOf('itemIcon', r.iconAsset),
+      iconMap: optionalRefValueOf('mapIcon', r.iconMapAsset),
       iconAssetId: r.iconAssetId ?? r.iconMapAssetId,
     }))
   }

@@ -19,8 +19,8 @@ describeDb('gameDataStamp', () => {
     await db.insert(bosses).values({
       key: 'zakum',
       name: '자쿰',
-      alias: '자쿰',
-      cycle: 'weekly',
+      shortName: '자쿰',
+      isSeasonBoss: false,
       portraitAssetId: portrait,
       sortOrder: 0,
     })

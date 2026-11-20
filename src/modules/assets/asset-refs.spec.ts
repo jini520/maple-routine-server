@@ -3,11 +3,10 @@ import { AssetNotFound, refValueOf, resolveAssetId, resolveOptionalAssetId } fro
 
 describe('refValueOf', () => {
   it('파일 이름 칸은 확장자까지, slug 칸은 확장자를 뗀 이름을 돌려준다', () => {
-    expect(refValueOf('itemIcon', 'items/rings/Weapon_Jump_Ring.webp')).toBe(
+    expect(refValueOf('itemIcon', { fileName: 'Weapon_Jump_Ring', extension: 'webp' })).toBe(
       'Weapon_Jump_Ring.webp',
     )
-    expect(refValueOf('bossPortrait', 'bosses/bellona.webp')).toBe('bellona')
-    expect(refValueOf('mapIcon', 'maps/icons/roadOfVanishing.png')).toBe('roadOfVanishing')
+    expect(refValueOf('bossPortrait', { fileName: 'bellona', extension: 'webp' })).toBe('bellona')
   })
 })
 

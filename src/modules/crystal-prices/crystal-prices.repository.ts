@@ -71,7 +71,7 @@ export class CrystalPricesRepository {
         id: bossDifficulties.id,
         boss: bosses.key,
         bossName: bosses.name,
-        cycle: bosses.cycle,
+        cycle: bossDifficulties.cycle,
         difficulty: bossDifficulties.difficulty,
         maxPartySize: bossDifficulties.maxPartySize,
       })
@@ -168,7 +168,7 @@ export class CrystalPricesRepository {
     difficulty: Difficulty,
   ): Promise<{ id: string; cycle: BossCycle } | null> {
     const [row] = await this.db
-      .select({ id: bossDifficulties.id, cycle: bosses.cycle })
+      .select({ id: bossDifficulties.id, cycle: bossDifficulties.cycle })
       .from(bossDifficulties)
       .innerJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
       .where(and(eq(bosses.key, boss), eq(bossDifficulties.difficulty, difficulty)))

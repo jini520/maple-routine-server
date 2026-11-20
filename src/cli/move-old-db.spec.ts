@@ -805,4 +805,125 @@ describeDb('moveOldDb', () => {
     })
     expect(moved.find((c) => c.key === 'mu_lung_dojo')?.shortName).toBe('mu_lung_dojo 짧은')
   })
+
+  it('가계부 기준 표: 줄 id 를 두고 칸을 새 이름으로 옮기며, 타일의 그림 두 칸을 한 칸으로 합치고 항목의 줄인 이름은 버린다', async () => {
+    const icon = await insertOldAsset('items/spec_icon.webp')
+    const mapIcon = await insertOldAsset('maps/icons/specMap.png')
+    const [category] = await oldDb
+      .insert(oldSchema.cashbookCategories)
+      .values({
+        entryType: 'spend',
+        key: 'spec_spend',
+        name: '시험 지출',
+        cardTitle: '시험',
+        iconAssetId: icon,
+        description: '',
+        sortOrder: 99,
+      })
+      .returning({ id: oldSchema.cashbookCategories.id })
+    // 추가 리워드 종류는 옛 마이그레이션 0014 가 넣은 두 줄이다.
+    const forms = await oldDb.select().from(oldSchema.spendForms)
+    const exp = forms.find((f) => f.key === 'exp')
+    const [group] = await oldDb
+      .insert(oldSchema.spendGroups)
+      .values({
+        key: 'spec_group',
+        name: '시험 묶음',
+        categoryId: category?.id ?? '',
+        cardTitle: '시험 묶음',
+        active: false,
+        sortOrder: 0,
+      })
+      .returning({ id: oldSchema.spendGroups.id })
+    const tiles = await oldDb
+      .insert(oldSchema.spendTiles)
+      .values([
+        { key: 'spec_tile_icon', name: '아이템 타일', iconAssetId: icon },
+        { key: 'spec_tile_map', name: '지역 타일', iconMapAssetId: mapIcon },
+        { key: 'spec_tile_none', name: '빈 타일' },
+      ])
+      .returning({ id: oldSchema.spendTiles.id, key: oldSchema.spendTiles.key })
+    const [item] = await oldDb
+      .insert(oldSchema.spendItems)
+      .values({
+        key: 'spec_item',
+        groupId: group?.id ?? '',
+        tileId: tiles[1]?.id ?? '',
+        name: '시험 항목',
+        shortName: '시험',
+        currency: 'point',
+        unitPrice: 7500,
+        unit: '회',
+        rewardCoins: 4,
+        from: '2026-09-17',
+        sortOrder: 0,
+      })
+      .returning({ id: oldSchema.spendItems.id })
+    await oldDb
+      .insert(oldSchema.spendItemOptions)
+      .values({ itemId: item?.id ?? '', axis: '무기', value: '한손무기' })
+    const [link] = await oldDb
+      .insert(oldSchema.spendItemForms)
+      .values({ itemId: item?.id ?? '', formId: exp?.id ?? '' })
+      .returning({ id: oldSchema.spendItemForms.id })
+    const lootItem = await insertOldItem('reindeer_milk')
+    await oldDb.insert(oldSchema.huntLootItems).values({
+      itemId: lootItem,
+      kind: 'consumable',
+      npcPriceMeso: 2750,
+      from: '2026-10-22',
+      sortOrder: 0,
+    })
+    const oldCategories = await oldDb.select().from(oldSchema.cashbookCategories)
+    const oldItemKinds = await oldDb.select().from(oldSchema.cashbookItemKinds)
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      cashbookCategories: oldCategories.length,
+      cashbookItemTypes: oldItemKinds.length,
+      huntLootItems: 1,
+      spendRewardTypes: 2,
+      spendGroups: 1,
+      spendTiles: 3,
+      spendItems: 1,
+      spendItemOptions: 1,
+      spendItemRewardTypes: 1,
+    })
+    expect((await newDb.select().from(schema.cashbookItemTypes)).map((t) => t.id).sort()).toEqual(
+      oldItemKinds.map((t) => t.id).sort(),
+    )
+    expect(
+      (await newDb.select().from(schema.spendRewardTypes)).map((t) => [t.id, t.key]).sort(),
+    ).toEqual(forms.map((f) => [f.id, f.key]).sort())
+    expect(await newDb.select().from(schema.spendGroups)).toEqual([
+      {
+        id: group?.id,
+        key: 'spec_group',
+        name: '시험 묶음',
+        cashbookCategoryId: category?.id,
+        cardTitle: '시험 묶음',
+        isActive: false,
+        sortOrder: 0,
+      },
+    ])
+    expect(
+      Object.fromEntries(
+        (await newDb.select().from(schema.spendTiles)).map((t) => [t.key, t.iconAssetId]),
+      ),
+    ).toEqual({ spec_tile_icon: icon, spec_tile_map: mapIcon, spec_tile_none: null })
+    expect(await newDb.select().from(schema.spendItems)).toMatchObject([
+      {
+        id: item?.id,
+        name: '시험 항목',
+        rewardCoinQuantity: 4,
+        validFrom: '2026-09-17',
+        validUntil: null,
+      },
+    ])
+    expect(await newDb.select().from(schema.spendItemRewardTypes)).toEqual([
+      { id: link?.id, itemId: item?.id, rewardTypeId: exp?.id },
+    ])
+    expect(await newDb.select().from(schema.huntLootItems)).toMatchObject([
+      { itemId: lootItem, type: 'consumable', npcPriceMeso: 2750, validFrom: '2026-10-22' },
+    ])
+  })
 })

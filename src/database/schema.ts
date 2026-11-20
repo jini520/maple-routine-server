@@ -767,7 +767,7 @@ export const cashbookCategories = pgTable(
 )
 
 /** 아이템 구매 · 판매의 종류. 게임 인벤토리 탭 이름이다. 수량과 관세가 이 값으로 갈린다. */
-export const cashbookItemKinds = pgTable('cashbook_item_kinds', {
+export const cashbookItemTypes = pgTable('cashbook_item_types', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
@@ -778,10 +778,10 @@ export const cashbookItemKinds = pgTable('cashbook_item_kinds', {
   sortOrder: integer('sort_order').notNull(),
 })
 
-/** 사냥 전리품의 분류. 앱 코드가 이 값으로 판매 폼을 갈라 ENUM 이다. */
-export const huntLootKindEnum = pgEnum('hunt_loot_kind', ['fragment', 'consumable', 'event'])
+/** 사냥 전리품의 종류. 앱 코드가 이 값으로 판매 폼을 갈라 ENUM 이다. */
+export const huntLootTypeEnum = pgEnum('hunt_loot_type', ['fragment', 'consumable', 'event'])
 
-/** 가계부 사냥 전리품 판매의 아이템. 기록이 key 를 들어 지우지 않고, 이벤트가 끝나면 until 로 닫는다. */
+/** 가계부 사냥 전리품 판매의 아이템. 기록이 아이템 줄을 가리켜 지우지 않고, 이벤트가 끝나면 valid_until 로 닫는다. */
 export const huntLootItems = pgTable(
   'hunt_loot_items',
   {
@@ -791,68 +791,60 @@ export const huntLootItems = pgTable(
       .notNull()
       .unique()
       .references(() => items.id),
-    kind: huntLootKindEnum('kind').notNull(),
+    type: huntLootTypeEnum('type').notNull(),
     /** NPC 에 파는 소비 아이템의 개당 가격. 앱이 단가를 채우고 수수료를 안 뗀다. */
     npcPriceMeso: integer('npc_price_meso'),
     /** KST 글자 그대로. 앱이 적는 날짜로 판정한다. */
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
     check(
       'hunt_loot_items_npc_price',
-      sql`(${t.kind} = 'consumable') = (${t.npcPriceMeso} IS NOT NULL) AND (${t.npcPriceMeso} IS NULL OR ${t.npcPriceMeso} > 0)`,
+      sql`(${t.type} = 'consumable') = (${t.npcPriceMeso} IS NOT NULL) AND (${t.npcPriceMeso} IS NULL OR ${t.npcPriceMeso} > 0)`,
     ),
   ],
 )
 
 export const spendCurrencyEnum = pgEnum('spend_currency', ['point', 'meso'])
-/** 에픽던전 추가 리워드가 값을 받는 형태. 앱 코드가 이 값으로 갈려 ENUM 이다. 이름은 spend_forms 가 든다. */
-export const spendFormEnum = pgEnum('spend_form', ['exp', 'sol_erda'])
+/** 에픽던전 추가 리워드를 받는 종류. 앱 코드가 이 값으로 갈려 ENUM 이다. 이름은 spend_reward_types 가 든다. */
+export const spendRewardTypeEnum = pgEnum('spend_reward_type', ['exp', 'sol_erda'])
 
-/** 형태의 이름. 카드에도 이 이름이 선다. */
-export const spendForms = pgTable('spend_forms', {
+/** 추가 리워드 종류의 이름. 카드에도 이 이름이 선다. */
+export const spendRewardTypes = pgTable('spend_reward_types', {
   id: uuid('id').primaryKey().defaultRandom(),
-  key: spendFormEnum('key').notNull().unique(),
+  key: spendRewardTypeEnum('key').notNull().unique(),
   name: text('name').notNull(),
   sortOrder: integer('sort_order').notNull(),
 })
 
-/** 지출 목록의 제목 한 줄. active 가 열기 · 닫기 스위치다. 날짜로 판정하지 않는다. */
+/** 지출 목록의 제목 한 줄. is_active 가 열기 · 닫기 스위치다. 날짜로 판정하지 않는다. */
 export const spendGroups = pgTable('spend_groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
   /** 지출 갈래만 가리킨다. 리포지토리가 entry_type 을 본다. */
-  categoryId: uuid('category_id')
+  cashbookCategoryId: uuid('cashbook_category_id')
     .notNull()
     .references(() => cashbookCategories.id),
   /** 하루 목록 카드 첫 줄. */
   cardTitle: text('card_title').notNull(),
   /** 앱에서 지금 고를 수 있는 묶음인가. 닫아도 그 묶음으로 적은 기록은 그대로다. */
-  active: boolean('active').notNull().default(true),
+  isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull(),
 })
 
-/** 지출 목록의 한 칸. 같은 타일의 항목이 한 칸으로 접힌다. 그림은 아이템 파일과 지역 아이콘 중 하나다. */
-export const spendTiles = pgTable(
-  'spend_tiles',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    key: text('key').notNull().unique(),
-    name: text('name').notNull(),
-    /** 아이템 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
-    iconAssetId: uuid('icon_asset_id').references(() => assets.id),
-    /** 지역 아이콘 그림. 앱에는 그림 이름(확장자를 뗀 것)을 iconMap 으로 낸다. 에픽던전 넷. */
-    iconMapAssetId: uuid('icon_map_asset_id').references(() => assets.id),
-  },
-  (t) => [
-    check('spend_tiles_icon_one', sql`${t.iconAssetId} IS NULL OR ${t.iconMapAssetId} IS NULL`),
-  ],
-)
+/** 지출 목록의 한 칸. 같은 타일의 항목이 한 칸으로 접힌다. */
+export const spendTiles = pgTable('spend_tiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  /** 아이템 그림이거나 지역 아이콘이다. 앱은 둘을 가르지 않는다. */
+  iconAssetId: uuid('icon_asset_id').references(() => assets.id),
+})
 
-/** 지출 항목. 기록이 key 를 든다. 가격 하나와 그 단위다. 지우지 않고 until 로 닫는다. */
+/** 지출 항목. 기록이 줄을 가리킨다. 가격 하나와 그 단위다. 지우지 않고 valid_until 로 닫는다. */
 export const spendItems = pgTable(
   'spend_items',
   {
@@ -866,8 +858,6 @@ export const spendItems = pgTable(
       .references(() => spendTiles.id),
     /** 원본 이름. 하루 목록 카드에도 이 이름이 선다. */
     name: text('name').notNull(),
-    /** 좁은 자리용으로 줄인 이름. NULL 이면 name 을 쓴다. */
-    shortName: text('short_name'),
     /** 타일 안의 단계. 축 값(spend_item_options)을 든 항목은 NULL 이다. */
     tier: text('tier'),
     currency: spendCurrencyEnum('currency').notNull(),
@@ -877,11 +867,11 @@ export const spendItems = pgTable(
     unit: text('unit').notNull(),
     /** 기록 한 건의 수량 상한. */
     maxQuantity: integer('max_quantity'),
-    /** 한 형태에서 받는 세라자르 주화 개수. 형태를 든 항목만 든다. */
-    rewardCoins: integer('reward_coins'),
+    /** 한 리워드 종류에서 받는 세라자르 주화 개수. 리워드 종류를 든 항목만 든다. */
+    rewardCoinQuantity: integer('reward_coin_quantity'),
     /** KST 글자 그대로. 앱이 적는 날짜가 든 주간 기간의 첫날로 판정한다. */
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
     /** 묶음 안의 차례. 타일 차례는 첫 항목의 차례다. */
     sortOrder: integer('sort_order').notNull(),
   },
@@ -904,19 +894,19 @@ export const spendItemOptions = pgTable(
   (t) => [unique('spend_item_options_item_axis_unique').on(t.itemId, t.axis)],
 )
 
-/** 항목이 값을 받는 형태. 가격을 안 바꾸고 형태마다 단계를 따로 고른다. */
-export const spendItemForms = pgTable(
-  'spend_item_forms',
+/** 항목이 받을 수 있는 추가 리워드 종류. 가격을 안 바꾸고 종류마다 단계를 따로 고른다. */
+export const spendItemRewardTypes = pgTable(
+  'spend_item_reward_types',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     itemId: uuid('item_id')
       .notNull()
       .references(() => spendItems.id, { onDelete: 'cascade' }),
-    formId: uuid('form_id')
+    rewardTypeId: uuid('reward_type_id')
       .notNull()
-      .references(() => spendForms.id),
+      .references(() => spendRewardTypes.id),
   },
-  (t) => [unique('spend_item_forms_item_form_unique').on(t.itemId, t.formId)],
+  (t) => [unique('spend_item_reward_types_item_type_unique').on(t.itemId, t.rewardTypeId)],
 )
 
 /** 심볼 묶음. 아케인 · 어센틱 · 그랜드 어센틱. 만렙과 고르면 서는 기본 범위를 든다. */

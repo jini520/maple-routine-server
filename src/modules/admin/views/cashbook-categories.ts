@@ -28,7 +28,7 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
     <div class="field"><label for="c-key">key</label><input id="c-key" class="mono" placeholder="hexa_skill"></div>
     <div class="field"><label for="c-name">이름</label><input id="c-name" placeholder="헥사 스킬 강화"></div>
     <div class="field"><label for="c-title">카드 제목</label><input id="c-title" placeholder="헥사강화"></div>
-    <div class="field"><label for="c-icon">그림 파일 <small>src/assets/items/</small></label><input id="c-icon" class="mono" placeholder="sol_erda_fragment.webp" data-asset="itemIcon"></div>
+    <div class="field"><label>그림 <small>아이템 분류의 그림</small></label><div class="inline"><span id="c-icon" class="mono dim">고르지 않았다</span><button id="c-icon-pick" class="btn ghost sm" type="button">고르기</button></div></div>
     <div class="field"><label for="c-desc">설명</label><input id="c-desc" placeholder="갈래 카드 한 줄"></div>
     <div class="field w-sm"><label for="c-unit">단위</label><input id="c-unit" placeholder="개"></div>
     <button id="c-add" class="btn" type="button">갈래 추가</button>
@@ -36,11 +36,11 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
 </section>
 <section class="card">
   <header><h2>지출 갈래</h2><p>차례가 곧 앱의 차례</p></header>
-  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>카드 제목</th><th>그림 파일</th><th>설명</th><th>단위</th><th></th></tr></thead><tbody id="spend"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>카드 제목</th><th>그림</th><th>설명</th><th>단위</th><th></th></tr></thead><tbody id="spend"></tbody></table></div>
 </section>
 <section class="card">
   <header><h2>수입 갈래</h2><p>차례가 곧 앱의 차례이고 맨 앞이 기본 갈래다</p></header>
-  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>카드 제목</th><th>그림 파일</th><th>설명</th><th>단위</th><th></th></tr></thead><tbody id="income"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>카드 제목</th><th>그림</th><th>설명</th><th>단위</th><th></th></tr></thead><tbody id="income"></tbody></table></div>
 </section>
 <section class="card">
   <header><h2>아이템 종류</h2><p>게임 인벤토리 탭 이름. 단위가 비면 수량 칸이 없고, 관세는 월드 간 거래가 되는 종류에만 붙는다</p></header>
@@ -48,14 +48,19 @@ export const CASHBOOK_CATEGORIES_HTML = layout(
 </section>
 ${ASSET_PICKER}
 <script>
-  var state = { data: null, editing: null, editingKind: null };
+  // assets 는 그림 id 에서 그림 줄을 찾는 표다. 그림 칸에 파일 이름을 보인다.
+  var state = { data: null, editing: null, editingKind: null, assets: {}, newIcon: null };
+  function iconText(id) { var a = id ? state.assets[id] : null; return id == null ? '고르지 않았다' : a ? a.fileName + '.' + a.extension : '그림 표에 없다'; }
+  function pickIcon(current, onPick) {
+    openAssetPicker({ categories: ['item', 'item_ring'], uploadCategory: 'item', current: current, onPick: function (f) { if (f) onPick(f.id); } });
+  }
 
   function categoryRow(c, i, count) {
     var id = c.entryType + '.' + c.key, editing = state.editing === id;
     var tr = el('tr', undefined, editing ? 'open' : '');
     cell(tr, i + 1, 'n'); cell(tr, c.key, 'mono');
     if (!editing) {
-      cell(tr, c.name); cell(tr, c.cardTitle); cell(tr, c.iconFile, 'mono'); cell(tr, c.description || '-'); cell(tr, c.unit || '-');
+      cell(tr, c.name); cell(tr, c.cardTitle); cell(tr, iconText(c.iconAssetId), 'mono'); cell(tr, c.description || '-'); cell(tr, c.unit || '-');
       var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), edit = button('수정', 'btn ghost sm');
       up.disabled = i === 0; down.disabled = i === count - 1;
       up.addEventListener('click', function () { move(c, 'up'); });
@@ -66,14 +71,15 @@ ${ASSET_PICKER}
     }
     var name = input('text'); name.value = c.name;
     var title = input('text'); title.value = c.cardTitle;
-    var icon = input('text', 'mono'); icon.value = c.iconFile;
+    var icon = { id: c.iconAssetId }; var iconLabel = span(iconText(icon.id), 'mono'); var pick = button('고르기', 'btn ghost sm');
+    pick.addEventListener('click', function () { pickIcon(icon.id, function (id) { icon.id = id; iconLabel.textContent = iconText(id); }); });
     var desc = input('text'); desc.value = c.description;
     var unit = input('text'); unit.value = c.unit || '';
-    cell(tr, name); cell(tr, title); cell(tr, inline(icon, assetPickButton(icon, 'itemIcon'))); cell(tr, desc); cell(tr, unit);
+    cell(tr, name); cell(tr, title); cell(tr, inline(iconLabel, pick)); cell(tr, desc); cell(tr, unit);
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/cashbook-categories/' + c.entryType + '/' + c.key, {
-        name: name.value.trim(), cardTitle: title.value.trim(), iconFile: icon.value.trim(), description: desc.value.trim(), unit: orNull(unit.value),
+        name: name.value.trim(), cardTitle: title.value.trim(), iconAssetId: icon.id, description: desc.value.trim(), unit: orNull(unit.value),
       });
       show(r.ok ? c.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editing = null; load();
     });
@@ -102,7 +108,7 @@ ${ASSET_PICKER}
     cell(tr, name); cell(tr, unit); cell(tr, tariffLabel);
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/cashbook-item-kinds/' + k.key, { name: name.value.trim(), unit: orNull(unit.value), hasTariff: tariff.checked });
+      var r = await call('PUT', '/admin/cashbook-item-types/' + k.key, { name: name.value.trim(), unit: orNull(unit.value), hasTariff: tariff.checked });
       show(r.ok ? k.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editingKind = null; load();
     });
     close.addEventListener('click', function () { state.editingKind = null; render(); });
@@ -113,33 +119,38 @@ ${ASSET_PICKER}
   function render() {
     ['spend', 'income'].forEach(function (type) {
       var body = document.getElementById(type); body.innerHTML = '';
-      var rows = state.data.categories.filter(function (c) { return c.entryType === type; });
+      var rows = state.data.cashbookCategories.filter(function (c) { return c.entryType === type; });
       rows.forEach(function (c, i) { body.appendChild(categoryRow(c, i, rows.length)); });
       if (rows.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 8; body.appendChild(tr); }
     });
     var kinds = document.getElementById('kinds'); kinds.innerHTML = '';
-    state.data.itemKinds.forEach(function (k) { kinds.appendChild(kindRow(k)); });
+    state.data.cashbookItemTypes.forEach(function (k) { kinds.appendChild(kindRow(k)); });
   }
 
   document.getElementById('c-add').addEventListener('click', async function () {
     var v = function (id) { return document.getElementById(id).value.trim(); };
-    var body = { entryType: v('c-type'), key: v('c-key'), name: v('c-name'), cardTitle: v('c-title'), iconFile: v('c-icon'), description: v('c-desc'), unit: orNull(v('c-unit')) };
+    var body = { entryType: v('c-type'), key: v('c-key'), name: v('c-name'), cardTitle: v('c-title'), iconAssetId: state.newIcon, description: v('c-desc'), unit: orNull(v('c-unit')) };
     var r = await call('POST', '/admin/cashbook-categories', body);
     show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
     if (r.ok) ['c-key', 'c-name', 'c-title', 'c-icon', 'c-desc', 'c-unit'].forEach(function (id) { document.getElementById(id).value = ''; });
     load();
   });
 
+  document.getElementById('c-icon-pick').addEventListener('click', function () {
+    pickIcon(state.newIcon, function (id) { state.newIcon = id; document.getElementById('c-icon').textContent = iconText(id); });
+  });
+
   async function load() {
     var r = await call('GET', '/admin/cashbook-categories/rows');
+    var a = await call('GET', '/admin/assets/list');
+    if (a.ok) { state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; }); }
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
     state.data = r.json;
-    document.getElementById('stat-income').textContent = r.json.categories.filter(function (c) { return c.entryType === 'income'; }).length;
-    document.getElementById('stat-spend').textContent = r.json.categories.filter(function (c) { return c.entryType === 'spend'; }).length;
+    document.getElementById('stat-income').textContent = r.json.cashbookCategories.filter(function (c) { return c.entryType === 'income'; }).length;
+    document.getElementById('stat-spend').textContent = r.json.cashbookCategories.filter(function (c) { return c.entryType === 'spend'; }).length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
     render();
   }
   load();
-  attachAssetPickers();
 </script>`,
 )

@@ -45,6 +45,15 @@ export interface MoveResult {
   bossManualCompletionPeriods: number
   contentCategories: number
   contents: number
+  cashbookCategories: number
+  cashbookItemTypes: number
+  huntLootItems: number
+  spendRewardTypes: number
+  spendGroups: number
+  spendTiles: number
+  spendItems: number
+  spendItemOptions: number
+  spendItemRewardTypes: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -104,6 +113,15 @@ const MOVED_TABLES = [
   schema.bossManualCompletionPeriods,
   schema.contentCategories,
   schema.contents,
+  schema.cashbookCategories,
+  schema.cashbookItemTypes,
+  schema.huntLootItems,
+  schema.spendRewardTypes,
+  schema.spendGroups,
+  schema.spendTiles,
+  schema.spendItems,
+  schema.spendItemOptions,
+  schema.spendItemRewardTypes,
 ]
 
 /**
@@ -274,6 +292,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const hexa = await hexaRows(oldDb)
   const boss = await bossReferenceRows(oldDb, boxedCopyOf)
   const content = await contentRows(oldDb)
+  const cashbook = await cashbookReferenceRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -299,6 +318,15 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.bossManualCompletionPeriods, boss.bossManualCompletionPeriods)
     await insertAll(tx, schema.contentCategories, content.contentCategories)
     await insertAll(tx, schema.contents, content.contents)
+    await insertAll(tx, schema.cashbookCategories, cashbook.cashbookCategories)
+    await insertAll(tx, schema.cashbookItemTypes, cashbook.cashbookItemTypes)
+    await insertAll(tx, schema.huntLootItems, cashbook.huntLootItems)
+    await insertAll(tx, schema.spendRewardTypes, cashbook.spendRewardTypes)
+    await insertAll(tx, schema.spendGroups, cashbook.spendGroups)
+    await insertAll(tx, schema.spendTiles, cashbook.spendTiles)
+    await insertAll(tx, schema.spendItems, cashbook.spendItems)
+    await insertAll(tx, schema.spendItemOptions, cashbook.spendItemOptions)
+    await insertAll(tx, schema.spendItemRewardTypes, cashbook.spendItemRewardTypes)
   })
   return {
     assets: assets.length,
@@ -323,6 +351,112 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     bossManualCompletionPeriods: boss.bossManualCompletionPeriods.length,
     contentCategories: content.contentCategories.length,
     contents: content.contents.length,
+    cashbookCategories: cashbook.cashbookCategories.length,
+    cashbookItemTypes: cashbook.cashbookItemTypes.length,
+    huntLootItems: cashbook.huntLootItems.length,
+    spendRewardTypes: cashbook.spendRewardTypes.length,
+    spendGroups: cashbook.spendGroups.length,
+    spendTiles: cashbook.spendTiles.length,
+    spendItems: cashbook.spendItems.length,
+    spendItemOptions: cashbook.spendItemOptions.length,
+    spendItemRewardTypes: cashbook.spendItemRewardTypes.length,
+  }
+}
+
+/**
+ * 가계부 기준 표 · 지출 목록 아홉의 새 줄. 줄 id 는 그대로다. 지출 타일의 그림은 두 칸 가운데 찬 칸을 적는다. 둘이 함께 찬
+ * 줄은 옛 표의 CHECK 가 막았다. 항목의 줄인 이름은 앱이 읽지 않아 옮기지 않는다.
+ */
+async function cashbookReferenceRows(oldDb: OldDb) {
+  const [categories, itemKinds, loot, forms, groups, tiles, items, options, itemForms] =
+    await Promise.all([
+      oldDb.select().from(oldSchema.cashbookCategories),
+      oldDb.select().from(oldSchema.cashbookItemKinds),
+      oldDb.select().from(oldSchema.huntLootItems),
+      oldDb.select().from(oldSchema.spendForms),
+      oldDb.select().from(oldSchema.spendGroups),
+      oldDb.select().from(oldSchema.spendTiles),
+      oldDb.select().from(oldSchema.spendItems),
+      oldDb.select().from(oldSchema.spendItemOptions),
+      oldDb.select().from(oldSchema.spendItemForms),
+    ])
+  return {
+    cashbookCategories: categories.map((c) => ({
+      id: c.id,
+      entryType: c.entryType,
+      key: c.key,
+      name: c.name,
+      cardTitle: c.cardTitle,
+      iconAssetId: c.iconAssetId,
+      description: c.description,
+      unit: c.unit,
+      sortOrder: c.sortOrder,
+    })),
+    cashbookItemTypes: itemKinds.map((k) => ({
+      id: k.id,
+      key: k.key,
+      name: k.name,
+      unit: k.unit,
+      hasTariff: k.hasTariff,
+      sortOrder: k.sortOrder,
+    })),
+    huntLootItems: loot.map((l) => ({
+      id: l.id,
+      itemId: l.itemId,
+      type: l.kind,
+      npcPriceMeso: l.npcPriceMeso,
+      validFrom: l.from,
+      validUntil: l.until,
+      sortOrder: l.sortOrder,
+    })),
+    spendRewardTypes: forms.map((f) => ({
+      id: f.id,
+      key: f.key,
+      name: f.name,
+      sortOrder: f.sortOrder,
+    })),
+    spendGroups: groups.map((g) => ({
+      id: g.id,
+      key: g.key,
+      name: g.name,
+      cashbookCategoryId: g.categoryId,
+      cardTitle: g.cardTitle,
+      isActive: g.active,
+      sortOrder: g.sortOrder,
+    })),
+    spendTiles: tiles.map((t) => ({
+      id: t.id,
+      key: t.key,
+      name: t.name,
+      iconAssetId: t.iconAssetId ?? t.iconMapAssetId,
+    })),
+    spendItems: items.map((i) => ({
+      id: i.id,
+      key: i.key,
+      groupId: i.groupId,
+      tileId: i.tileId,
+      name: i.name,
+      tier: i.tier,
+      currency: i.currency,
+      unitPrice: i.unitPrice,
+      unit: i.unit,
+      maxQuantity: i.maxQuantity,
+      rewardCoinQuantity: i.rewardCoins,
+      validFrom: i.from,
+      validUntil: i.until,
+      sortOrder: i.sortOrder,
+    })),
+    spendItemOptions: options.map((o) => ({
+      id: o.id,
+      itemId: o.itemId,
+      axis: o.axis,
+      value: o.value,
+    })),
+    spendItemRewardTypes: itemForms.map((f) => ({
+      id: f.id,
+      itemId: f.itemId,
+      rewardTypeId: f.formId,
+    })),
   }
 }
 

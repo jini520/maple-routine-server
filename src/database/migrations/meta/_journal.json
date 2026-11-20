@@ -358,6 +358,13 @@
       "when": 1795165970727,
       "tag": "0050_contents_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795172824963,
+      "tag": "0051_cashbook_reference_bundle",
+      "breakpoints": true
     }
   ]
 }

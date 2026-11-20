@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/pg-core'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
@@ -8,21 +7,21 @@ import {
   assets,
   cashbookCategories,
   gameRules,
-  spendForms,
   spendGroups,
-  spendItemForms,
   spendItemOptions,
+  spendItemRewardTypes,
   spendItems,
+  spendRewardTypes,
   spendTiles,
 } from '../../database/schema'
-import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export const SPEND_CURRENCIES = ['point', 'meso'] as const
 export type SpendCurrency = (typeof SPEND_CURRENCIES)[number]
-/** 앱 코드가 이 값으로 갈린다. 이름은 spend_forms 표가 든다. */
-export const SPEND_FORMS = ['exp', 'sol_erda'] as const
-export type SpendForm = (typeof SPEND_FORMS)[number]
+/** 앱 코드가 이 값으로 갈린다. 이름은 spend_reward_types 표가 든다. */
+export const SPEND_REWARD_TYPES = ['exp', 'sol_erda'] as const
+export type SpendRewardType = (typeof SPEND_REWARD_TYPES)[number]
 
 /** game_rules 의 key 와 응답 필드 이름. 둘이 짝이다. */
 export const SPEND_RULE_KEYS = {
@@ -32,74 +31,115 @@ export const SPEND_RULE_KEYS = {
 } as const
 export type SpendRuleField = keyof typeof SPEND_RULE_KEYS
 
-/** category 는 지출 갈래의 key 다. 옛 앱(1.0.12)도 이 칸을 key 글자로 읽는다. */
+export interface SpendRewardTypeView {
+  id: string
+  key: SpendRewardType
+  name: string
+}
+
 export interface SpendGroupView {
+  id: string
   key: string
   name: string
-  category: string
+  cashbookCategoryId: string
   cardTitle: string
-  active: boolean
+  isActive: boolean
 }
 
 export interface SpendTileView {
+  id: string
   key: string
   name: string
-  iconFile: string | null
-  iconMap: string | null
+  iconAssetId: string | null
 }
 
 export interface SpendItemView {
+  id: string
   key: string
-  group: string
-  tile: string
+  groupId: string
+  tileId: string
   name: string
-  shortName: string | null
   tier: string | null
   currency: SpendCurrency
   unitPrice: number | null
   unit: string
   maxQuantity: number | null
-  rewardCoins: number | null
-  from: string | null
-  until: string | null
+  rewardCoinQuantity: number | null
+  validFrom: string | null
+  validUntil: string | null
 }
 
 export interface SpendItemOptionView {
-  item: string
+  itemId: string
   axis: string
   value: string
 }
 
-export interface SpendItemFormView {
-  item: string
-  form: SpendForm
+export interface SpendItemRewardTypeView {
+  itemId: string
+  rewardTypeId: string
 }
 
-export interface SpendFormView {
-  key: SpendForm
-  name: string
-}
-
-/** GET /v1/game-data 의 spendCatalog 칸. 줄 표 그대로 납작하다. 묶는 것은 앱이다. */
+/** GET /v1/game-data 의 spendCatalog 칸. 배열 이름은 표 이름이고 다른 표의 줄은 줄 id 다. */
 export interface SpendCatalogSection {
   updatedAt: string | null
   rules: Record<SpendRuleField, number | null>
-  groups: SpendGroupView[]
-  /** iconFile · iconMap 은 옛 앱이 읽는 그림 이름이고, iconAssetId 는 둘 중 있는 그림이다 */
-  tiles: (SpendTileView & { iconAssetId: string | null })[]
-  items: SpendItemView[]
-  itemOptions: SpendItemOptionView[]
-  itemForms: SpendItemFormView[]
-  forms: SpendFormView[]
+  spendRewardTypes: SpendRewardTypeView[]
+  spendGroups: SpendGroupView[]
+  spendTiles: SpendTileView[]
+  spendItems: SpendItemView[]
+  spendItemOptions: SpendItemOptionView[]
+  spendItemRewardTypes: SpendItemRewardTypeView[]
+}
+
+/** 관리 화면이 고치는 묶음. 갈래는 지출 갈래의 key 다. */
+export interface SpendGroupInput {
+  key: string
+  name: string
+  category: string
+  cardTitle: string
+  isActive: boolean
+}
+
+export interface SpendTileInput {
+  key: string
+  name: string
+  iconAssetId: string | null
+}
+
+/** 관리 화면이 보는 항목. 묶음 · 타일은 key 다. */
+export interface SpendItemAdminRow {
+  key: string
+  group: string
+  tile: string
+  name: string
+  tier: string | null
+  currency: SpendCurrency
+  unitPrice: number | null
+  unit: string
+  maxQuantity: number | null
+  rewardCoinQuantity: number | null
+  validFrom: string | null
+  validUntil: string | null
+}
+
+/** 관리 화면의 본문. 묶음 · 타일 · 항목을 key 로 들고 축 값 · 추가 리워드 종류를 항목 key 로 잇는다. */
+export interface SpendCatalogAdminRows {
+  updatedAt: string | null
+  rules: Record<SpendRuleField, number | null>
+  rewardTypes: { key: SpendRewardType; name: string }[]
+  groups: SpendGroupInput[]
+  tiles: SpendTileInput[]
+  items: SpendItemAdminRow[]
+  itemOptions: { item: string; axis: string; value: string }[]
+  itemRewardTypes: { item: string; rewardType: SpendRewardType }[]
 }
 
 export type SpendRulesInput = Record<SpendRuleField, number>
-export type SpendGroupInput = SpendGroupView
-export type SpendTileInput = SpendTileView
-/** 항목 하나. 축 값과 형태를 함께 받아 통째로 갈아 끼운다. */
-export interface SpendItemInput extends SpendItemView {
+/** 항목 하나. 축 값과 추가 리워드 종류를 함께 받아 통째로 갈아 끼운다. */
+export interface SpendItemInput extends SpendItemAdminRow {
   options: { axis: string; value: string }[]
-  forms: SpendForm[]
+  rewardTypes: SpendRewardType[]
 }
 
 export class SpendGroupExists extends Error {}
@@ -117,9 +157,9 @@ interface ShapeCandidate {
   groupId: string
   tileId: string
   tier: string | null
-  rewardCoins: number | null
+  rewardCoinQuantity: number | null
   options: { axis: string; value: string }[]
-  forms: SpendForm[]
+  rewardTypes: SpendRewardType[]
 }
 
 const axisSignature = (options: { axis: string }[]): string =>
@@ -134,70 +174,161 @@ const valueCombo = (options: { axis: string; value: string }[]): string =>
     .map((o) => `${o.axis}=${o.value}`)
     .join('|')
 
-/** 묶음 · 타일 · 항목은 더하고 고치고 옮기기만 있다. 기록이 key 를 들어 지우지 않는다. 항목은 until 로 닫는다. */
+/** 묶음 · 타일 · 항목은 더하고 고치고 옮기기만 있다. 기록이 줄을 가리켜 지우지 않는다. 항목은 valid_until 로 닫는다. */
 @Injectable()
 export class SpendCatalogRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<SpendCatalogSection> {
-    const [groups, tiles, items, options, itemForms, forms, rules, updatedAt] = await Promise.all([
-      this.db
-        .select({
-          key: spendGroups.key,
-          name: spendGroups.name,
-          category: cashbookCategories.key,
-          cardTitle: spendGroups.cardTitle,
-          active: spendGroups.active,
-        })
-        .from(spendGroups)
-        .innerJoin(cashbookCategories, eq(spendGroups.categoryId, cashbookCategories.id))
-        .orderBy(asc(spendGroups.sortOrder), asc(spendGroups.key)),
-      this.tileRows(),
-      this.itemRows(this.db),
-      this.db
-        .select({
-          item: spendItems.key,
-          axis: spendItemOptions.axis,
-          value: spendItemOptions.value,
-        })
-        .from(spendItemOptions)
-        .innerJoin(spendItems, eq(spendItemOptions.itemId, spendItems.id))
-        .orderBy(asc(spendItems.key), asc(spendItemOptions.axis)),
-      this.db
-        .select({ item: spendItems.key, form: spendForms.key })
-        .from(spendItemForms)
-        .innerJoin(spendItems, eq(spendItemForms.itemId, spendItems.id))
-        .innerJoin(spendForms, eq(spendItemForms.formId, spendForms.id))
-        .orderBy(asc(spendItems.key), asc(spendForms.sortOrder)),
-      this.db
-        .select({ key: spendForms.key, name: spendForms.name })
-        .from(spendForms)
-        .orderBy(asc(spendForms.sortOrder)),
-      this.db
-        .select()
-        .from(gameRules)
-        .where(inArray(gameRules.key, Object.values(SPEND_RULE_KEYS))),
-      sectionUpdatedAt(this.db, 'spendCatalog'),
-    ])
-    const ruleOf = (field: SpendRuleField): number | null =>
-      rules.find((r) => r.key === SPEND_RULE_KEYS[field])?.value ?? null
+    const [rewardTypes, groups, tiles, items, options, itemRewardTypes, rules, updatedAt] =
+      await Promise.all([
+        this.db
+          .select({
+            id: spendRewardTypes.id,
+            key: spendRewardTypes.key,
+            name: spendRewardTypes.name,
+          })
+          .from(spendRewardTypes)
+          .orderBy(asc(spendRewardTypes.sortOrder)),
+        this.db
+          .select({
+            id: spendGroups.id,
+            key: spendGroups.key,
+            name: spendGroups.name,
+            cashbookCategoryId: spendGroups.cashbookCategoryId,
+            cardTitle: spendGroups.cardTitle,
+            isActive: spendGroups.isActive,
+          })
+          .from(spendGroups)
+          .orderBy(asc(spendGroups.sortOrder), asc(spendGroups.key)),
+        this.db
+          .select({
+            id: spendTiles.id,
+            key: spendTiles.key,
+            name: spendTiles.name,
+            iconAssetId: spendTiles.iconAssetId,
+          })
+          .from(spendTiles)
+          .orderBy(asc(spendTiles.key)),
+        this.itemRows(),
+        this.db
+          .select({
+            itemId: spendItemOptions.itemId,
+            axis: spendItemOptions.axis,
+            value: spendItemOptions.value,
+          })
+          .from(spendItemOptions)
+          .innerJoin(spendItems, eq(spendItemOptions.itemId, spendItems.id))
+          .orderBy(asc(spendItems.key), asc(spendItemOptions.axis)),
+        this.db
+          .select({
+            itemId: spendItemRewardTypes.itemId,
+            rewardTypeId: spendItemRewardTypes.rewardTypeId,
+          })
+          .from(spendItemRewardTypes)
+          .innerJoin(spendItems, eq(spendItemRewardTypes.itemId, spendItems.id))
+          .innerJoin(spendRewardTypes, eq(spendItemRewardTypes.rewardTypeId, spendRewardTypes.id))
+          .orderBy(asc(spendItems.key), asc(spendRewardTypes.sortOrder)),
+        this.rules(),
+        sectionUpdatedAt(this.db, 'spendCatalog'),
+      ])
     return {
       updatedAt,
-      rules: {
-        tariffPercent: ruleOf('tariffPercent'),
-        rewardCoinPriceMeso: ruleOf('rewardCoinPriceMeso'),
-        mesoMarketFeePercent: ruleOf('mesoMarketFeePercent'),
-      },
-      groups,
-      tiles,
-      items,
-      itemOptions: options,
-      itemForms,
-      forms,
+      rules,
+      spendRewardTypes: rewardTypes,
+      spendGroups: groups,
+      spendTiles: tiles,
+      spendItems: items.map((r) => ({
+        id: r.id,
+        key: r.key,
+        groupId: r.groupId,
+        tileId: r.tileId,
+        name: r.name,
+        tier: r.tier,
+        currency: r.currency,
+        unitPrice: r.unitPrice,
+        unit: r.unit,
+        maxQuantity: r.maxQuantity,
+        rewardCoinQuantity: r.rewardCoinQuantity,
+        validFrom: r.validFrom,
+        validUntil: r.validUntil,
+      })),
+      spendItemOptions: options,
+      spendItemRewardTypes: itemRewardTypes,
     }
   }
 
-  /** 규칙 둘을 적는다. 둘 다 받아 둘 다 쓴다. 보스 표의 규칙과 같은 표이고 key 가 다르다. */
+  async adminRows(): Promise<SpendCatalogAdminRows> {
+    const [rewardTypes, groups, tiles, items, options, itemRewardTypes, rules, updatedAt] =
+      await Promise.all([
+        this.db
+          .select({ key: spendRewardTypes.key, name: spendRewardTypes.name })
+          .from(spendRewardTypes)
+          .orderBy(asc(spendRewardTypes.sortOrder)),
+        this.db
+          .select({
+            key: spendGroups.key,
+            name: spendGroups.name,
+            category: cashbookCategories.key,
+            cardTitle: spendGroups.cardTitle,
+            isActive: spendGroups.isActive,
+          })
+          .from(spendGroups)
+          .innerJoin(cashbookCategories, eq(spendGroups.cashbookCategoryId, cashbookCategories.id))
+          .orderBy(asc(spendGroups.sortOrder), asc(spendGroups.key)),
+        this.db
+          .select({
+            key: spendTiles.key,
+            name: spendTiles.name,
+            iconAssetId: spendTiles.iconAssetId,
+          })
+          .from(spendTiles)
+          .orderBy(asc(spendTiles.key)),
+        this.itemRows(),
+        this.db
+          .select({
+            item: spendItems.key,
+            axis: spendItemOptions.axis,
+            value: spendItemOptions.value,
+          })
+          .from(spendItemOptions)
+          .innerJoin(spendItems, eq(spendItemOptions.itemId, spendItems.id))
+          .orderBy(asc(spendItems.key), asc(spendItemOptions.axis)),
+        this.db
+          .select({ item: spendItems.key, rewardType: spendRewardTypes.key })
+          .from(spendItemRewardTypes)
+          .innerJoin(spendItems, eq(spendItemRewardTypes.itemId, spendItems.id))
+          .innerJoin(spendRewardTypes, eq(spendItemRewardTypes.rewardTypeId, spendRewardTypes.id))
+          .orderBy(asc(spendItems.key), asc(spendRewardTypes.sortOrder)),
+        this.rules(),
+        sectionUpdatedAt(this.db, 'spendCatalog'),
+      ])
+    return {
+      updatedAt,
+      rules,
+      rewardTypes,
+      groups,
+      tiles,
+      items: items.map((r) => ({
+        key: r.key,
+        group: r.group,
+        tile: r.tile,
+        name: r.name,
+        tier: r.tier,
+        currency: r.currency,
+        unitPrice: r.unitPrice,
+        unit: r.unit,
+        maxQuantity: r.maxQuantity,
+        rewardCoinQuantity: r.rewardCoinQuantity,
+        validFrom: r.validFrom,
+        validUntil: r.validUntil,
+      })),
+      itemOptions: options,
+      itemRewardTypes,
+    }
+  }
+
+  /** 규칙 셋을 적는다. 셋 다 받아 셋 다 쓴다. 보스 표의 규칙과 같은 표이고 key 가 다르다. */
   async setRules(rules: SpendRulesInput): Promise<void> {
     await this.db.transaction(async (tx) => {
       const now = new Date()
@@ -217,8 +348,8 @@ export class SpendCatalogRepository {
   /** 묶음을 맨 뒤에 더한다. 같은 key 는 SpendGroupExists, 지출 갈래가 아니면 NoSpendCategory 다. */
   async createGroup(input: SpendGroupInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
-      const categoryId = await this.categoryId(tx, input.category)
-      if (categoryId === null) throw new NoSpendCategory(input.category)
+      const cashbookCategoryId = await this.categoryId(tx, input.category)
+      if (cashbookCategoryId === null) throw new NoSpendCategory(input.category)
       const [last] = await tx
         .select({ max: sql<number | null>`max(${spendGroups.sortOrder})` })
         .from(spendGroups)
@@ -229,9 +360,9 @@ export class SpendCatalogRepository {
           .values({
             key: input.key,
             name: input.name,
-            categoryId,
+            cashbookCategoryId,
             cardTitle: input.cardTitle,
-            active: input.active,
+            isActive: input.isActive,
             sortOrder: (last?.max ?? -1) + 1,
           })
           .returning({ id: spendGroups.id })
@@ -245,18 +376,18 @@ export class SpendCatalogRepository {
     })
   }
 
-  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. key 는 기록이 들어 못 바꾼다. 모르면 false 다. */
+  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. key 는 못 바꾼다. 모르면 false 다. */
   async updateGroup(key: string, input: Omit<SpendGroupInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const categoryId = await this.categoryId(tx, input.category)
-      if (categoryId === null) throw new NoSpendCategory(input.category)
+      const cashbookCategoryId = await this.categoryId(tx, input.category)
+      if (cashbookCategoryId === null) throw new NoSpendCategory(input.category)
       const rows = await tx
         .update(spendGroups)
         .set({
           name: input.name,
-          categoryId,
+          cashbookCategoryId,
           cardTitle: input.cardTitle,
-          active: input.active,
+          isActive: input.isActive,
         })
         .where(eq(spendGroups.key, key))
         .returning({ id: spendGroups.id })
@@ -266,30 +397,14 @@ export class SpendCatalogRepository {
     })
   }
 
-  /** 씨앗이 쓴다. 형태는 앱 코드가 key 로 갈려 관리 화면에는 더하기가 없다. */
-  async createForm(input: SpendFormView): Promise<{ id: string }> {
-    return this.db.transaction(async (tx) => {
-      const [last] = await tx
-        .select({ max: sql<number | null>`max(${spendForms.sortOrder})` })
-        .from(spendForms)
-      const [row] = await tx
-        .insert(spendForms)
-        .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
-        .returning({ id: spendForms.id })
-      if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
-      await touchSection(tx, 'spendCatalog')
-      return row
-    })
-  }
-
-  /** 형태의 이름을 바꾼다. 카드에도 이 이름이 선다. 모르면 false 다. */
-  async updateForm(key: SpendForm, name: string): Promise<boolean> {
+  /** 추가 리워드 종류의 이름을 바꾼다. 카드에도 이 이름이 선다. 모르면 false 다. */
+  async updateRewardType(key: SpendRewardType, name: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
-        .update(spendForms)
+        .update(spendRewardTypes)
         .set({ name })
-        .where(eq(spendForms.key, key))
-        .returning({ id: spendForms.id })
+        .where(eq(spendRewardTypes.key, key))
+        .returning({ id: spendRewardTypes.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'spendCatalog')
       return true
@@ -307,40 +422,15 @@ export class SpendCatalogRepository {
     })
   }
 
-  /** 타일은 아이템 그림이나 지역 아이콘 중 하나를 든다. 칸마다 그림 표를 따로 붙인다. */
-  private async tileRows(): Promise<(SpendTileView & { iconAssetId: string | null })[]> {
-    const iconAsset = alias(assets, 'icon_asset')
-    const mapAsset = alias(assets, 'icon_map_asset')
-    const rows = await this.db
-      .select({
-        key: spendTiles.key,
-        name: spendTiles.name,
-        iconAsset: assetNameColumns(iconAsset),
-        iconMapAsset: assetNameColumns(mapAsset),
-        iconAssetId: spendTiles.iconAssetId,
-        iconMapAssetId: spendTiles.iconMapAssetId,
-      })
-      .from(spendTiles)
-      .leftJoin(iconAsset, eq(iconAsset.id, spendTiles.iconAssetId))
-      .leftJoin(mapAsset, eq(mapAsset.id, spendTiles.iconMapAssetId))
-      .orderBy(asc(spendTiles.key))
-    return rows.map((r) => ({
-      key: r.key,
-      name: r.name,
-      iconFile: optionalRefValueOf('itemIcon', r.iconAsset),
-      iconMap: optionalRefValueOf('mapIcon', r.iconMapAsset),
-      iconAssetId: r.iconAssetId ?? r.iconMapAssetId,
-    }))
-  }
-
-  /** 타일을 더한다. 같은 key 는 SpendTileExists 다. */
+  /** 타일을 더한다. 같은 key 는 SpendTileExists, 없는 그림은 AssetNotFound 다. */
   async createTile(input: SpendTileInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
+      await requireAsset(tx, input.iconAssetId)
       let row: { id: string } | undefined
       try {
         ;[row] = await tx
           .insert(spendTiles)
-          .values({ key: input.key, ...(await tileImageColumns(tx, input)) })
+          .values({ key: input.key, name: input.name, iconAssetId: input.iconAssetId })
           .returning({ id: spendTiles.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new SpendTileExists(input.key)
@@ -355,9 +445,10 @@ export class SpendCatalogRepository {
   /** 이름 · 그림을 갈아 끼운다. 모르면 false 다. */
   async updateTile(key: string, input: Omit<SpendTileInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
+      await requireAsset(tx, input.iconAssetId)
       const rows = await tx
         .update(spendTiles)
-        .set(await tileImageColumns(tx, input))
+        .set({ name: input.name, iconAssetId: input.iconAssetId })
         .where(eq(spendTiles.key, key))
         .returning({ id: spendTiles.id })
       if (rows.length === 0) return false
@@ -389,16 +480,7 @@ export class SpendCatalogRepository {
             key: input.key,
             groupId,
             tileId,
-            name: input.name,
-            shortName: input.shortName,
-            tier: input.tier,
-            currency: input.currency,
-            unitPrice: input.unitPrice,
-            unit: input.unit,
-            maxQuantity: input.maxQuantity,
-            rewardCoins: input.rewardCoins,
-            from: input.from,
-            until: input.until,
+            ...itemColumns(input),
             sortOrder: (last?.max ?? -1) + 1,
           })
           .returning({ id: spendItems.id })
@@ -407,13 +489,13 @@ export class SpendCatalogRepository {
         throw error
       }
       if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
-      await this.writeAxes(tx, row.id, input.options, input.forms)
+      await this.writeAxes(tx, row.id, input.options, input.rewardTypes)
       await touchSection(tx, 'spendCatalog')
       return row
     })
   }
 
-  /** 항목을 갈아 끼운다. key 와 묶음은 못 바꾼다. 축 값과 형태는 통째로 바뀐다. 모르면 false 다. */
+  /** 항목을 갈아 끼운다. key 와 묶음은 못 바꾼다. 축 값과 추가 리워드 종류는 통째로 바뀐다. 모르면 false 다. */
   async updateItem(key: string, input: Omit<SpendItemInput, 'key' | 'group'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [item] = await tx
@@ -426,23 +508,11 @@ export class SpendCatalogRepository {
       await this.checkShape(tx, { ...input, id: item.id, groupId: item.groupId, tileId })
       await tx
         .update(spendItems)
-        .set({
-          tileId,
-          name: input.name,
-          shortName: input.shortName,
-          tier: input.tier,
-          currency: input.currency,
-          unitPrice: input.unitPrice,
-          unit: input.unit,
-          maxQuantity: input.maxQuantity,
-          rewardCoins: input.rewardCoins,
-          from: input.from,
-          until: input.until,
-        })
+        .set({ tileId, ...itemColumns(input) })
         .where(eq(spendItems.id, item.id))
       await tx.delete(spendItemOptions).where(eq(spendItemOptions.itemId, item.id))
-      await tx.delete(spendItemForms).where(eq(spendItemForms.itemId, item.id))
-      await this.writeAxes(tx, item.id, input.options, input.forms)
+      await tx.delete(spendItemRewardTypes).where(eq(spendItemRewardTypes.itemId, item.id))
+      await this.writeAxes(tx, item.id, input.options, input.rewardTypes)
       await touchSection(tx, 'spendCatalog')
       return true
     })
@@ -465,22 +535,39 @@ export class SpendCatalogRepository {
     })
   }
 
-  private async itemRows(db: DbOrTx): Promise<SpendItemView[]> {
-    const rows = await db
+  private async rules(): Promise<Record<SpendRuleField, number | null>> {
+    const rows = await this.db
+      .select()
+      .from(gameRules)
+      .where(inArray(gameRules.key, Object.values(SPEND_RULE_KEYS)))
+    const ruleOf = (field: SpendRuleField): number | null =>
+      rows.find((r) => r.key === SPEND_RULE_KEYS[field])?.value ?? null
+    return {
+      tariffPercent: ruleOf('tariffPercent'),
+      rewardCoinPriceMeso: ruleOf('rewardCoinPriceMeso'),
+      mesoMarketFeePercent: ruleOf('mesoMarketFeePercent'),
+    }
+  }
+
+  /** 묶음 차례 · 묶음 안 차례로. */
+  private async itemRows() {
+    return this.db
       .select({
+        id: spendItems.id,
         key: spendItems.key,
+        groupId: spendItems.groupId,
+        tileId: spendItems.tileId,
         group: spendGroups.key,
         tile: spendTiles.key,
         name: spendItems.name,
-        shortName: spendItems.shortName,
         tier: spendItems.tier,
         currency: spendItems.currency,
         unitPrice: spendItems.unitPrice,
         unit: spendItems.unit,
         maxQuantity: spendItems.maxQuantity,
-        rewardCoins: spendItems.rewardCoins,
-        from: spendItems.from,
-        until: spendItems.until,
+        rewardCoinQuantity: spendItems.rewardCoinQuantity,
+        validFrom: spendItems.validFrom,
+        validUntil: spendItems.validUntil,
       })
       .from(spendItems)
       .innerJoin(spendGroups, eq(spendItems.groupId, spendGroups.id))
@@ -491,7 +578,6 @@ export class SpendCatalogRepository {
         asc(spendItems.sortOrder),
         asc(spendItems.key),
       )
-    return rows
   }
 
   /** 지출 갈래만 찾는다. 수입 갈래의 key 는 null 이다. */
@@ -523,33 +609,34 @@ export class SpendCatalogRepository {
     db: DbOrTx,
     itemId: string,
     options: { axis: string; value: string }[],
-    forms: SpendForm[],
+    rewardTypes: SpendRewardType[],
   ): Promise<void> {
     if (options.length > 0)
       await db.insert(spendItemOptions).values(options.map((o) => ({ itemId, ...o })))
-    if (forms.length === 0) return
+    if (rewardTypes.length === 0) return
     const rows = await db
-      .select({ id: spendForms.id, key: spendForms.key })
-      .from(spendForms)
-      .where(inArray(spendForms.key, forms))
-    await db.insert(spendItemForms).values(
-      forms.map((form) => {
-        const formId = rows.find((r) => r.key === form)?.id
-        if (formId === undefined) throw new SpendItemShape(`모르는 형태다: ${form}`)
-        return { itemId, formId }
+      .select({ id: spendRewardTypes.id, key: spendRewardTypes.key })
+      .from(spendRewardTypes)
+      .where(inArray(spendRewardTypes.key, rewardTypes))
+    await db.insert(spendItemRewardTypes).values(
+      rewardTypes.map((type) => {
+        const rewardTypeId = rows.find((r) => r.key === type)?.id
+        if (rewardTypeId === undefined)
+          throw new SpendItemShape(`모르는 추가 리워드 종류다: ${type}`)
+        return { itemId, rewardTypeId }
       }),
     )
   }
 
   /**
-   * 앱의 시트가 가를 수 있는 모양인지 본다. 단계와 축 값은 하나만, 주화는 형태를 든 항목만, 같은 타일의 항목은 한
+   * 앱의 시트가 가를 수 있는 모양인지 본다. 단계와 축 값은 하나만, 주화는 추가 리워드 종류를 든 항목만, 같은 타일의 항목은 한
    * 묶음에 들고 전부 단계를 들거나 전부 축 값을 들며, 축 값은 축 이름이 같고 조합이 겹치지 않는다.
    */
   private async checkShape(db: DbOrTx, c: ShapeCandidate): Promise<void> {
     if (c.tier !== null && c.options.length > 0)
       throw new SpendItemShape('단계와 축 값을 함께 못 든다')
-    if (c.rewardCoins !== null && c.forms.length === 0)
-      throw new SpendItemShape('주화는 형태를 든 항목만 든다')
+    if (c.rewardCoinQuantity !== null && c.rewardTypes.length === 0)
+      throw new SpendItemShape('주화는 추가 리워드 종류를 든 항목만 든다')
     if (new Set(c.options.map((o) => o.axis)).size !== c.options.length)
       throw new SpendItemShape('축 이름이 겹친다')
 
@@ -610,11 +697,24 @@ export class SpendCatalogRepository {
   }
 }
 
-/** 타일 입력의 이름과 그림 두 칸. 그림 이름을 그림 id 로 푼다. 그림이 표에 없으면 AssetNotFound 다. */
-async function tileImageColumns(db: DbOrTx, input: Omit<SpendTileInput, 'key'>) {
+/** 항목 입력에서 표의 칸으로 옮기는 몫. 묶음 · 타일은 부르는 쪽이 줄 id 로 푼다. */
+function itemColumns(input: Omit<SpendItemInput, 'key' | 'group'>) {
   return {
     name: input.name,
-    iconAssetId: await resolveOptionalAssetId(db, 'itemIcon', input.iconFile),
-    iconMapAssetId: await resolveOptionalAssetId(db, 'mapIcon', input.iconMap),
+    tier: input.tier,
+    currency: input.currency,
+    unitPrice: input.unitPrice,
+    unit: input.unit,
+    maxQuantity: input.maxQuantity,
+    rewardCoinQuantity: input.rewardCoinQuantity,
+    validFrom: input.validFrom,
+    validUntil: input.validUntil,
   }
+}
+
+/** 그림 표에 없는 그림 id 는 AssetNotFound 다. 비어 있으면 보지 않는다. */
+async function requireAsset(db: DbOrTx, id: string | null): Promise<void> {
+  if (id === null) return
+  const [asset] = await db.select({ id: assets.id }).from(assets).where(eq(assets.id, id))
+  if (asset === undefined) throw new AssetNotFound(id)
 }

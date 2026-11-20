@@ -19,30 +19,30 @@ type Row = Omit<HuntLootInput, 'iconAssetId'> & { icon: string }
 
 const milkRow: Row = {
   key: 'reindeer_milk',
-  kind: 'consumable',
+  type: 'consumable',
   name: '순록의 우유',
   icon: 'items/reindeer_milk.png',
   npcPriceMeso: 2750,
-  from: null,
-  until: null,
+  validFrom: null,
+  validUntil: null,
 }
 const fragmentRow: Row = {
   key: 'sol_erda_fragment',
-  kind: 'fragment',
+  type: 'fragment',
   name: '솔 에르다 조각',
   icon: 'items/sol_erda_fragment.webp',
   npcPriceMeso: null,
-  from: null,
-  until: null,
+  validFrom: null,
+  validUntil: null,
 }
 const magnifierRow: Row = {
   key: 'suspicious_magnifier',
-  kind: 'event',
+  type: 'event',
   name: '수상한 돋보기',
   icon: 'items/suspicious_magnifier.webp',
   npcPriceMeso: null,
-  from: '2026-10-22',
-  until: '2026-11-19',
+  validFrom: '2026-10-22',
+  validUntil: '2026-11-19',
 }
 
 describeDb('HuntLootRepository', () => {
@@ -73,8 +73,8 @@ describeDb('HuntLootRepository', () => {
   })
   afterAll(() => close())
 
-  it('더한 차례로 내고, 고치기는 key · 분류를 빼고 갈아 끼우며 차례를 옮긴다. 모르는 key 는 false 다', async () => {
-    expect(await repo.section()).toEqual({ updatedAt: null, items: [] })
+  it('더한 차례로 내고, 고치기는 key · 종류를 빼고 갈아 끼우며 차례를 옮긴다. 모르는 key 는 false 다', async () => {
+    expect(await repo.section()).toEqual({ updatedAt: null, huntLootItems: [] })
     await repo.create(fragment)
     await repo.create(milk)
     await repo.create(magnifier)
@@ -84,7 +84,7 @@ describeDb('HuntLootRepository', () => {
       await repo.update('suspicious_magnifier', {
         ...magnifier,
         name: '수상한 돋보기!',
-        until: '2026-11-26',
+        validUntil: '2026-11-26',
       }),
     ).toBe(true)
     expect(await repo.update('nobody', milk)).toBe(false)
@@ -92,12 +92,39 @@ describeDb('HuntLootRepository', () => {
     expect(await repo.move('sol_erda_fragment', 'up')).toBe(true)
     expect(await repo.move('nobody', 'up')).toBe(false)
 
-    const section = await repo.section()
-    expect(section.updatedAt).not.toBeNull()
-    expect(section.items).toEqual([
+    const admin = await repo.adminRows()
+    expect(admin.updatedAt).not.toBeNull()
+    expect(admin.items).toEqual([
       fragment,
-      { ...magnifier, name: '수상한 돋보기!', until: '2026-11-26' },
+      { ...magnifier, name: '수상한 돋보기!', validUntil: '2026-11-26' },
       milk,
+    ])
+    // 앱이 받는 칸은 아이템을 줄 id 로 가리키고 이름 · 그림은 items 칸에서 읽는다.
+    const itemIdOf = new Map(
+      (await db.select({ id: items.id, key: items.key }).from(items)).map((r) => [r.key, r.id]),
+    )
+    expect((await repo.section()).huntLootItems).toEqual([
+      {
+        itemId: itemIdOf.get('sol_erda_fragment'),
+        type: 'fragment',
+        npcPriceMeso: null,
+        validFrom: null,
+        validUntil: null,
+      },
+      {
+        itemId: itemIdOf.get('suspicious_magnifier'),
+        type: 'event',
+        npcPriceMeso: null,
+        validFrom: '2026-10-22',
+        validUntil: '2026-11-26',
+      },
+      {
+        itemId: itemIdOf.get('reindeer_milk'),
+        type: 'consumable',
+        npcPriceMeso: 2750,
+        validFrom: null,
+        validUntil: null,
+      },
     ])
   })
 
@@ -112,7 +139,7 @@ describeDb('HuntLootRepository', () => {
     await expect(
       repo.update('reindeer_milk', { ...milk, npcPriceMeso: null }),
     ).rejects.toBeInstanceOf(HuntLootPriceShape)
-    expect((await repo.section()).items).toEqual([milk])
+    expect((await repo.adminRows()).items).toEqual([milk])
   })
 
   it('이름 · 그림을 고치면 아이템 줄이 바뀌므로 사냥 전리품 칸과 items 칸의 시각을 함께 민다', async () => {

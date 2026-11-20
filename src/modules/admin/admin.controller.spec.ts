@@ -155,6 +155,7 @@ describe('AdminController', () => {
   }
   const spendRepo = {
     section: jest.fn(),
+    adminRows: jest.fn(),
     setRules: jest.fn(),
     createGroup: jest.fn(),
     updateGroup: jest.fn(),
@@ -164,14 +165,14 @@ describe('AdminController', () => {
     createItem: jest.fn(),
     updateItem: jest.fn(),
     moveItem: jest.fn(),
-    updateForm: jest.fn(),
+    updateRewardType: jest.fn(),
   }
   const cashbookRepo = {
     section: jest.fn(),
     createCategory: jest.fn(),
     updateCategory: jest.fn(),
     moveCategory: jest.fn(),
-    updateItemKind: jest.fn(),
+    updateItemType: jest.fn(),
   }
   const symbolRepo = {
     adminRows: jest.fn(),
@@ -220,7 +221,13 @@ describe('AdminController', () => {
     setGroundPopular: jest.fn(),
   }
 
-  const huntLootRepo = { section: jest.fn(), create: jest.fn(), update: jest.fn(), move: jest.fn() }
+  const huntLootRepo = {
+    section: jest.fn(),
+    adminRows: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    move: jest.fn(),
+  }
 
   const hexaRepo = {
     section: jest.fn(),
@@ -974,7 +981,7 @@ describe('AdminController', () => {
         url: '/admin/hunt-loot',
         payload: {
           key: 'reindeer_milk',
-          kind: 'consumable',
+          type: 'consumable',
           name: '순록의 우유',
           iconAssetId: ROW,
           npcPriceMeso: 2750,
@@ -1248,17 +1255,18 @@ describe('AdminController', () => {
   })
 
   describe('지출 카탈로그', () => {
-    it('rows 는 칸 그대로이고, 규칙은 204 · 범위 밖은 400, 묶음은 201 · 같은 key 409 · 모르면 404 다', async () => {
+    it('rows 는 관리 줄 그대로이고, 규칙은 204 · 범위 밖은 400, 묶음은 201 · 같은 key 409 · 모르면 404 다', async () => {
       const section = {
         updatedAt: null,
         rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
+        rewardTypes: [],
         groups: [],
         tiles: [],
         items: [],
         itemOptions: [],
-        itemForms: [],
+        itemRewardTypes: [],
       }
-      spendRepo.section.mockResolvedValue(section)
+      spendRepo.adminRows.mockResolvedValue(section)
       expect(
         (await app.inject({ method: 'GET', url: '/admin/spend-catalog/rows' })).json(),
       ).toEqual(section)
@@ -1305,7 +1313,7 @@ describe('AdminController', () => {
         name: '이벤트',
         category: 'event_bm',
         cardTitle: '이벤트',
-        active: true,
+        isActive: true,
       })
       spendRepo.createGroup.mockRejectedValue(new SpendGroupExists('event'))
       expect(
@@ -1333,13 +1341,13 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/spend-catalog/groups/nobody',
-            payload: { name: 'x', category: 'buff', cardTitle: 'x', active: false },
+            payload: { name: 'x', category: 'buff', cardTitle: 'x', isActive: false },
           })
         ).statusCode,
       ).toBe(404)
     })
 
-    it('항목은 nullish 칸을 null 로 넘기고 축 값 · 형태가 비면 빈 배열이다. 모양 오류는 400, 모르는 타일은 404 다', async () => {
+    it('항목은 nullish 칸을 null 로 넘기고 축 값 · 추가 리워드 종류가 비면 빈 배열이다. 모양 오류는 400, 모르는 타일은 404 다', async () => {
       spendRepo.createItem.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
@@ -1360,17 +1368,16 @@ describe('AdminController', () => {
         group: 'boss_buff',
         tile: 'boss_killer_potion',
         name: '보스 킬러 비약',
-        shortName: null,
         tier: null,
         currency: 'meso',
         unitPrice: null,
         unit: '개',
         maxQuantity: null,
-        rewardCoins: null,
-        from: null,
-        until: null,
+        rewardCoinQuantity: null,
+        validFrom: null,
+        validUntil: null,
         options: [],
-        forms: [],
+        rewardTypes: [],
       })
       spendRepo.createItem.mockRejectedValue(new SpendItemShape('단계와 축 값을 함께 못 든다'))
       const shape = await app.inject({
@@ -1409,8 +1416,8 @@ describe('AdminController', () => {
               name: 'x',
               currency: 'meso',
               unit: '개',
-              from: '2026-10-22',
-              until: '2026-10-01',
+              validFrom: '2026-10-22',
+              validUntil: '2026-10-01',
             },
           })
         ).statusCode,
@@ -1424,10 +1431,10 @@ describe('AdminController', () => {
       key: 'hexa_skill',
       name: '헥사 스킬 강화',
       cardTitle: '헥사강화',
-      iconFile: 'sol_erda_fragment.webp',
+      iconAssetId: ROW,
     }
 
-    it('갈래를 더하면 빈 설명 · 단위를 채워 넘기고, 같은 쪽의 같은 key 는 409 다', async () => {
+    it('갈래를 더하면 빈 설명 · 단위를 채워 넘기고, 같은 쪽의 같은 key 는 409, 그림 표에 없는 그림은 400 이다', async () => {
       cashbookRepo.createCategory.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
@@ -1445,6 +1452,11 @@ describe('AdminController', () => {
         (await app.inject({ method: 'POST', url: '/admin/cashbook-categories', payload: hexa }))
           .statusCode,
       ).toBe(409)
+      cashbookRepo.createCategory.mockRejectedValue(new AssetNotFound(ROW))
+      expect(
+        (await app.inject({ method: 'POST', url: '/admin/cashbook-categories', payload: hexa }))
+          .statusCode,
+      ).toBe(400)
       expect(
         (
           await app.inject({
@@ -1461,7 +1473,7 @@ describe('AdminController', () => {
       const body = {
         name: '사냥',
         cardTitle: '사냥',
-        iconFile: 'wealth.webp',
+        iconAssetId: ROW,
         description: '',
         unit: '소재',
       }
@@ -1487,38 +1499,38 @@ describe('AdminController', () => {
       ).toBe(404)
     })
 
-    it('아이템 종류는 단위를 비우면 수량 없음으로 넘기고, 형태는 이름만 바꾼다', async () => {
-      cashbookRepo.updateItemKind.mockResolvedValue(true)
+    it('아이템 종류는 단위를 비우면 수량 없음으로 넘기고, 추가 리워드 종류는 이름만 바꾼다', async () => {
+      cashbookRepo.updateItemType.mockResolvedValue(true)
       expect(
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/cashbook-item-kinds/equipment',
+            url: '/admin/cashbook-item-types/equipment',
             payload: { name: '장비', hasTariff: true },
           })
         ).statusCode,
       ).toBe(204)
-      expect(cashbookRepo.updateItemKind).toHaveBeenCalledWith('equipment', {
+      expect(cashbookRepo.updateItemType).toHaveBeenCalledWith('equipment', {
         name: '장비',
         unit: null,
         hasTariff: true,
       })
-      spendRepo.updateForm.mockResolvedValue(true)
+      spendRepo.updateRewardType.mockResolvedValue(true)
       expect(
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/forms/exp',
+            url: '/admin/spend-catalog/reward-types/exp',
             payload: { name: '경험치' },
           })
         ).statusCode,
       ).toBe(204)
-      expect(spendRepo.updateForm).toHaveBeenCalledWith('exp', '경험치')
+      expect(spendRepo.updateRewardType).toHaveBeenCalledWith('exp', '경험치')
       expect(
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/forms/meso',
+            url: '/admin/spend-catalog/reward-types/meso',
             payload: { name: '메소' },
           })
         ).statusCode,
@@ -1529,18 +1541,18 @@ describe('AdminController', () => {
   describe('사냥 전리품', () => {
     const milk = {
       key: 'reindeer_milk',
-      kind: 'consumable',
+      type: 'consumable',
       name: '순록의 우유',
       iconAssetId: ROW,
       npcPriceMeso: 2750,
     }
     const magnifier = {
       key: 'suspicious_magnifier',
-      kind: 'event',
+      type: 'event',
       name: '수상한 돋보기',
       iconAssetId: ROW,
-      from: '2026-10-22',
-      until: '2026-11-19',
+      validFrom: '2026-10-22',
+      validUntil: '2026-11-19',
     }
     const post = (payload: object) =>
       app.inject({ method: 'POST', url: '/admin/hunt-loot', payload })
@@ -1548,7 +1560,11 @@ describe('AdminController', () => {
     it('더하면 빈 가격 · 기간을 null 로 채워 넘기고, 같은 key 는 409 다', async () => {
       huntLootRepo.create.mockResolvedValue({ id: ROW })
       expect((await post(milk)).statusCode).toBe(201)
-      expect(huntLootRepo.create).toHaveBeenCalledWith({ ...milk, from: null, until: null })
+      expect(huntLootRepo.create).toHaveBeenCalledWith({
+        ...milk,
+        validFrom: null,
+        validUntil: null,
+      })
       expect((await post(magnifier)).statusCode).toBe(201)
       expect(huntLootRepo.create).toHaveBeenLastCalledWith({ ...magnifier, npcPriceMeso: null })
       huntLootRepo.create.mockRejectedValue(new HuntLootExists('reindeer_milk'))
@@ -1557,17 +1573,18 @@ describe('AdminController', () => {
       expect((await post(milk)).statusCode).toBe(409)
     })
 
-    it('NPC 가격이 분류와 안 맞거나 기간이 거꾸로이거나 그림이 줄 id 가 아니면 400 이고 리포지토리를 안 부른다', async () => {
+    it('NPC 가격이 종류와 안 맞거나 기간이 거꾸로이거나 그림이 줄 id 가 아니면 400 이고 리포지토리를 안 부른다', async () => {
       expect((await post({ ...milk, npcPriceMeso: null })).statusCode).toBe(400)
       expect((await post({ ...magnifier, npcPriceMeso: 100 })).statusCode).toBe(400)
       expect(
-        (await post({ ...magnifier, from: '2026-11-19', until: '2026-10-22' })).statusCode,
+        (await post({ ...magnifier, validFrom: '2026-11-19', validUntil: '2026-10-22' }))
+          .statusCode,
       ).toBe(400)
       expect((await post({ ...milk, iconAssetId: 'reindeer_milk.png' })).statusCode).toBe(400)
       expect(huntLootRepo.create).not.toHaveBeenCalled()
     })
 
-    it('고치기 · 옮기기는 key 로 찾고 모르면 404, 가격이 분류와 안 맞으면 400 이다', async () => {
+    it('고치기 · 옮기기는 key 로 찾고 모르면 404, 가격이 종류와 안 맞으면 400 이다', async () => {
       const body = { name: '순록의 우유', iconAssetId: ROW, npcPriceMeso: 3000 }
       const put = () =>
         app.inject({ method: 'PUT', url: '/admin/hunt-loot/reindeer_milk', payload: body })
@@ -1575,8 +1592,8 @@ describe('AdminController', () => {
       expect((await put()).statusCode).toBe(204)
       expect(huntLootRepo.update).toHaveBeenCalledWith('reindeer_milk', {
         ...body,
-        from: null,
-        until: null,
+        validFrom: null,
+        validUntil: null,
       })
       huntLootRepo.update.mockResolvedValue(false)
       expect((await put()).statusCode).toBe(404)

@@ -17,8 +17,8 @@ import { FAQ_KEY, type FaqBlock } from '../faqs/faqs.repository'
 import { FORCE_TYPES } from '../hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
 import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories.repository'
-import { HUNT_LOOT_KINDS } from '../hunt-loot/hunt-loot.repository'
-import { SPEND_CURRENCIES, SPEND_FORMS } from '../spend-catalog/spend-catalog.repository'
+import { HUNT_LOOT_TYPES } from '../hunt-loot/hunt-loot.repository'
+import { SPEND_CURRENCIES, SPEND_REWARD_TYPES } from '../spend-catalog/spend-catalog.repository'
 import { USAGE_RETENTION_DAYS } from '../usage-events/usage-events.purge.job'
 import { platformEnum } from '../../database/schema'
 
@@ -248,52 +248,46 @@ export const spendGroupCreateBody = z.object({
   /** 지출 갈래의 key. 수입 갈래는 리포지토리가 막는다. */
   category: snakeKey,
   cardTitle: z.string().min(1).max(50),
-  active: z.boolean().default(true),
+  isActive: z.boolean().default(true),
 })
 export type SpendGroupCreateBody = z.infer<typeof spendGroupCreateBody>
 export const spendGroupUpdateBody = spendGroupCreateBody.omit({ key: true })
 export type SpendGroupUpdateBody = z.infer<typeof spendGroupUpdateBody>
 
-const spendTileBase = z.object({
+/** 그림은 아이템 그림이거나 지역 아이콘이고 그림 줄 id 로 받는다. */
+export const spendTileCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
-  iconFile: z.string().min(1).max(200).nullish(),
-  iconMap: z.string().min(1).max(100).nullish(),
+  iconAssetId: z.string().uuid().nullish(),
 })
-const oneIcon = (t: { iconFile?: string | null; iconMap?: string | null }) =>
-  t.iconFile == null || t.iconMap == null
-const ICON_MESSAGE = '그림은 아이템 파일과 지역 아이콘 중 하나다'
-export const spendTileCreateBody = spendTileBase.refine(oneIcon, { message: ICON_MESSAGE })
 export type SpendTileCreateBody = z.infer<typeof spendTileCreateBody>
-export const spendTileUpdateBody = spendTileBase
-  .omit({ key: true })
-  .refine(oneIcon, { message: ICON_MESSAGE })
+export const spendTileUpdateBody = spendTileCreateBody.omit({ key: true })
 export type SpendTileUpdateBody = z.infer<typeof spendTileUpdateBody>
 
-/** 항목 하나. 축 값과 형태를 함께 받아 통째로 갈아 끼운다. 모양 검사는 리포지토리가 한다. */
+/** 항목 하나. 축 값과 추가 리워드 종류를 함께 받아 통째로 갈아 끼운다. 모양 검사는 리포지토리가 한다. */
 const spendItemBase = z.object({
   key: snakeKey,
   group: snakeKey,
   tile: snakeKey,
   name: z.string().min(1).max(100),
-  shortName: z.string().min(1).max(50).nullish(),
   tier: z.string().min(1).max(50).nullish(),
   currency: z.enum(SPEND_CURRENCIES),
   unitPrice: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).nullish(),
   unit: z.string().min(1).max(10),
   maxQuantity: z.number().int().min(1).nullish(),
-  rewardCoins: z.number().int().min(1).nullish(),
-  from: periodText,
-  until: periodText,
+  rewardCoinQuantity: z.number().int().min(1).nullish(),
+  validFrom: periodText,
+  validUntil: periodText,
   options: z
     .array(z.object({ axis: z.string().min(1).max(20), value: z.string().min(1).max(50) }))
     .max(5)
     .default([]),
-  forms: z.array(z.enum(SPEND_FORMS)).max(2).default([]),
+  rewardTypes: z.array(z.enum(SPEND_REWARD_TYPES)).max(2).default([]),
 })
-const periodOrder = (d: { from?: string | null; until?: string | null }) =>
-  d.from == null || d.until == null || d.from < d.until
-const PERIOD_MESSAGE = { message: '끝이 시작보다 뒤여야 한다', path: ['until'] }
+/** 유효 기간의 순서. 기간을 든 표가 모두 valid_from · valid_until 칸이다. */
+const periodOrder = (d: { validFrom?: string | null; validUntil?: string | null }) =>
+  d.validFrom == null || d.validUntil == null || d.validFrom < d.validUntil
+const PERIOD_MESSAGE = { message: '끝이 시작보다 뒤여야 한다', path: ['validUntil'] }
 export const spendItemCreateBody = spendItemBase.refine(periodOrder, PERIOD_MESSAGE)
 export type SpendItemCreateBody = z.infer<typeof spendItemCreateBody>
 export const spendItemUpdateBody = spendItemBase
@@ -301,9 +295,9 @@ export const spendItemUpdateBody = spendItemBase
   .refine(periodOrder, PERIOD_MESSAGE)
 export type SpendItemUpdateBody = z.infer<typeof spendItemUpdateBody>
 
-export const spendFormKey = z.enum(SPEND_FORMS)
-export const spendFormUpdateBody = z.object({ name: z.string().min(1).max(20) })
-export type SpendFormUpdateBody = z.infer<typeof spendFormUpdateBody>
+export const spendRewardTypeKey = z.enum(SPEND_REWARD_TYPES)
+export const spendRewardTypeUpdateBody = z.object({ name: z.string().min(1).max(20) })
+export type SpendRewardTypeUpdateBody = z.infer<typeof spendRewardTypeUpdateBody>
 
 /* ── 가계부 갈래 ── */
 
@@ -313,7 +307,7 @@ export const cashbookCategoryCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(30),
   cardTitle: z.string().min(1).max(30),
-  iconFile: z.string().min(1).max(200),
+  iconAssetId: z.string().uuid(),
   description: z.string().max(50).default(''),
   unit: z.string().min(1).max(10).nullish(),
 })
@@ -323,27 +317,27 @@ export const cashbookCategoryUpdateBody = cashbookCategoryCreateBody.omit({
   key: true,
 })
 export type CashbookCategoryUpdateBody = z.infer<typeof cashbookCategoryUpdateBody>
-export const cashbookItemKindUpdateBody = z.object({
+export const cashbookItemTypeUpdateBody = z.object({
   name: z.string().min(1).max(20),
   unit: z.string().min(1).max(10).nullish(),
   hasTariff: z.boolean(),
 })
-export type CashbookItemKindUpdateBody = z.infer<typeof cashbookItemKindUpdateBody>
+export type CashbookItemTypeUpdateBody = z.infer<typeof cashbookItemTypeUpdateBody>
 
 /* ── 사냥 전리품 ── */
 
 const huntLootBase = z.object({
   key: snakeKey,
-  kind: z.enum(HUNT_LOOT_KINDS),
+  type: z.enum(HUNT_LOOT_TYPES),
   name: z.string().min(1).max(30),
   iconAssetId: z.string().uuid(),
   npcPriceMeso: z.number().int().min(1).max(2_000_000_000).nullish(),
-  from: periodText,
-  until: periodText,
+  validFrom: periodText,
+  validUntil: periodText,
 })
 /** NPC 가격은 소비에만 있고 소비에는 반드시 있다. 앱이 이 값으로 단가를 채운다. */
-const npcPriceShape = (b: { kind: string; npcPriceMeso?: number | null }) =>
-  (b.kind === 'consumable') === (b.npcPriceMeso != null)
+const npcPriceShape = (b: { type: string; npcPriceMeso?: number | null }) =>
+  (b.type === 'consumable') === (b.npcPriceMeso != null)
 export const huntLootCreateBody = huntLootBase
   .refine(periodOrder, PERIOD_MESSAGE)
   .refine(npcPriceShape, {
@@ -351,9 +345,9 @@ export const huntLootCreateBody = huntLootBase
     path: ['npcPriceMeso'],
   })
 export type HuntLootCreateBody = z.infer<typeof huntLootCreateBody>
-/** 분류는 기록의 폼을 정해 못 바꾼다. 가격과 분류가 맞는지는 표의 CHECK 가 본다. */
+/** 종류는 기록의 폼을 정해 못 바꾼다. 가격과 종류가 맞는지는 표의 CHECK 가 본다. */
 export const huntLootUpdateBody = huntLootBase
-  .omit({ key: true, kind: true })
+  .omit({ key: true, type: true })
   .refine(periodOrder, PERIOD_MESSAGE)
 export type HuntLootUpdateBody = z.infer<typeof huntLootUpdateBody>
 
@@ -508,10 +502,7 @@ const contentBase = z.object({
 type ContentRuleShape = Omit<z.infer<typeof contentBase>, 'key' | 'cycle'>
 const contentRules = <T extends z.ZodType<ContentRuleShape>>(schema: T) =>
   schema
-    .refine((c) => periodOrder({ from: c.validFrom, until: c.validUntil }), {
-      message: '끝이 시작보다 뒤여야 한다',
-      path: ['validUntil'],
-    })
+    .refine(periodOrder, PERIOD_MESSAGE)
     .refine((c) => c.backgroundMapAssetId == null || c.backgroundPortraitAssetId == null, {
       message: '그림은 지도와 초상 중 하나다',
       path: ['backgroundPortraitAssetId'],

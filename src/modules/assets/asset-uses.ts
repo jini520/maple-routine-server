@@ -34,7 +34,6 @@ export const ASSET_USES = [
     name: "(SELECT name FROM jobs WHERE jobs.id = hexa_cores.job_id) || ' · ' || name",
   },
   { table: 'spend_tiles', column: 'icon_asset_id', kind: '지출 타일', name: 'name' },
-  { table: 'spend_tiles', column: 'icon_map_asset_id', kind: '지출 타일 지도', name: 'name' },
   { table: 'cashbook_categories', column: 'icon_asset_id', kind: '가계부 분류', name: 'name' },
   {
     table: 'contents',

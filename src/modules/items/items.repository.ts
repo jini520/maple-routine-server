@@ -14,7 +14,7 @@ import {
 import { storedFileName } from '../assets/asset-paths'
 import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
-import type { HuntLootKind } from '../hunt-loot/hunt-loot.repository'
+import type { HuntLootType } from '../hunt-loot/hunt-loot.repository'
 import { type ItemKind, sameNameItem } from './items'
 
 /** 관리 화면 아이템 줄. 그림은 미리보기 주소(`/assets/<file>`)를 만들 파일 이름까지 든다. */
@@ -28,7 +28,7 @@ export interface ItemAdminRow {
   isDrop: boolean
   isEquipment: boolean
   /** 사냥 전리품이면 그 분류. 분류 · NPC 가격 · 기간은 사냥 전리품 화면이 고친다. */
-  huntLootKind: HuntLootKind | null
+  huntLootType: HuntLootType | null
   icon: { id: string; fileName: string; extension: string; file: string } | null
   /** 원래 아이템을 따라 바뀌는 줄(반지 레벨 줄 · 같은 물건의 따로 둔 줄)이면 그 원래 아이템의 key. 직접 고치지 않는다. */
   followsKey: string | null
@@ -165,7 +165,7 @@ export class ItemsRepository {
         requiredLevel: items.requiredLevel,
         isDrop: items.isDrop,
         isEquipment: items.isEquipment,
-        huntLootKind: huntLootItems.kind,
+        huntLootType: huntLootItems.type,
         icon: {
           id: assets.id,
           fileName: assets.fileName,

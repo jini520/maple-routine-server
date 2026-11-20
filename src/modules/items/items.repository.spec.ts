@@ -110,7 +110,7 @@ describeDb('ItemsRepository', () => {
       requiredLevel: 200,
       isDrop: true,
       isEquipment: true,
-      huntLootKind: null,
+      huntLootType: null,
       icon: {
         id: assetIds['items/giant_terror.png'],
         fileName: 'giant_terror',
@@ -269,7 +269,7 @@ describeDb('ItemsRepository', () => {
     })
     await db.insert(huntLootItems).values({
       itemId: await idOf('reindeer_milk'),
-      kind: 'consumable',
+      type: 'consumable',
       npcPriceMeso: 2750,
       sortOrder: 0,
     })

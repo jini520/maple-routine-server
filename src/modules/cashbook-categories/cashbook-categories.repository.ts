@@ -3,24 +3,26 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { assets, cashbookCategories, cashbookItemKinds } from '../../database/schema'
-import { assetNameColumns, refValueOf, resolveAssetId } from '../assets/asset-refs'
-import { sectionUpdatedAt, touchSection } from '../game-data/sections'
+import { assets, cashbookCategories, cashbookItemTypes } from '../../database/schema'
+import { AssetNotFound } from '../assets/asset-refs'
+import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export const CASHBOOK_ENTRY_TYPES = ['income', 'spend'] as const
 export type CashbookEntryType = (typeof CASHBOOK_ENTRY_TYPES)[number]
 
 export interface CashbookCategoryView {
+  id: string
   entryType: CashbookEntryType
   key: string
   name: string
   cardTitle: string
-  iconFile: string
+  iconAssetId: string
   description: string
   unit: string | null
 }
 
-export interface CashbookItemKindView {
+export interface CashbookItemTypeView {
+  id: string
   key: string
   name: string
   unit: string | null
@@ -30,39 +32,38 @@ export interface CashbookItemKindView {
 /** GET /v1/game-data 의 cashbookCategories 칸. 갈래는 수입 · 지출 순서이고 그 안은 차례대로다. */
 export interface CashbookCategoriesSection {
   updatedAt: string | null
-  categories: CashbookCategoryView[]
-  itemKinds: CashbookItemKindView[]
+  cashbookCategories: CashbookCategoryView[]
+  cashbookItemTypes: CashbookItemTypeView[]
 }
 
-export type CashbookCategoryInput = CashbookCategoryView
-export type CashbookCategoryUpdate = Omit<CashbookCategoryView, 'entryType' | 'key'>
-export type CashbookItemKindInput = CashbookItemKindView
+export type CashbookCategoryInput = Omit<CashbookCategoryView, 'id'>
+export type CashbookCategoryUpdate = Omit<CashbookCategoryInput, 'entryType' | 'key'>
+export type CashbookItemTypeUpdate = Omit<CashbookItemTypeView, 'id' | 'key'>
 
 export class CashbookCategoryExists extends Error {}
 
 /**
- * 갈래는 더하고 고치고 옮기기만 있다. 기록이 (entry_type, key) 를 들어 지우지 않는다. 아이템 종류는 앱 코드가 key 로
- * 수량 · 관세를 가르므로 관리 화면에서는 고치기만 있다.
+ * 갈래는 더하고 고치고 옮기기만 있다. 기록이 줄을 가리켜 지우지 않는다. 아이템 종류는 앱 코드가 key 로 수량 · 관세를
+ * 가르므로 관리 화면에서는 고치기만 있다.
  */
 @Injectable()
 export class CashbookCategoriesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<CashbookCategoriesSection> {
-    const [categoryRows, itemKinds, updatedAt] = await Promise.all([
+    const [categories, itemTypes, updatedAt] = await Promise.all([
       this.db
         .select({
+          id: cashbookCategories.id,
           entryType: cashbookCategories.entryType,
           key: cashbookCategories.key,
           name: cashbookCategories.name,
           cardTitle: cashbookCategories.cardTitle,
-          iconAsset: assetNameColumns(assets),
           iconAssetId: cashbookCategories.iconAssetId,
           description: cashbookCategories.description,
           unit: cashbookCategories.unit,
         })
         .from(cashbookCategories)
-        .innerJoin(assets, eq(assets.id, cashbookCategories.iconAssetId))
         .orderBy(
           asc(cashbookCategories.entryType),
           asc(cashbookCategories.sortOrder),
@@ -70,31 +71,23 @@ export class CashbookCategoriesRepository {
         ),
       this.db
         .select({
-          key: cashbookItemKinds.key,
-          name: cashbookItemKinds.name,
-          unit: cashbookItemKinds.unit,
-          hasTariff: cashbookItemKinds.hasTariff,
+          id: cashbookItemTypes.id,
+          key: cashbookItemTypes.key,
+          name: cashbookItemTypes.name,
+          unit: cashbookItemTypes.unit,
+          hasTariff: cashbookItemTypes.hasTariff,
         })
-        .from(cashbookItemKinds)
-        .orderBy(asc(cashbookItemKinds.sortOrder), asc(cashbookItemKinds.key)),
+        .from(cashbookItemTypes)
+        .orderBy(asc(cashbookItemTypes.sortOrder), asc(cashbookItemTypes.key)),
       sectionUpdatedAt(this.db, 'cashbookCategories'),
     ])
-    const categories = categoryRows.map((r) => ({
-      entryType: r.entryType,
-      key: r.key,
-      name: r.name,
-      cardTitle: r.cardTitle,
-      iconFile: refValueOf('itemIcon', r.iconAsset),
-      iconAssetId: r.iconAssetId,
-      description: r.description,
-      unit: r.unit,
-    }))
-    return { updatedAt, categories, itemKinds }
+    return { updatedAt, cashbookCategories: categories, cashbookItemTypes: itemTypes }
   }
 
-  /** 같은 수입 · 지출의 맨 뒤에 더한다. 같은 (entryType, key) 는 CashbookCategoryExists 다. */
+  /** 같은 수입 · 지출의 맨 뒤에 더한다. 같은 (entryType, key) 는 CashbookCategoryExists, 없는 그림은 AssetNotFound 다. */
   async createCategory(input: CashbookCategoryInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
+      await requireAsset(tx, input.iconAssetId)
       const [last] = await tx
         .select({ max: sql<number | null>`max(${cashbookCategories.sortOrder})` })
         .from(cashbookCategories)
@@ -108,7 +101,7 @@ export class CashbookCategoriesRepository {
             key: input.key,
             name: input.name,
             cardTitle: input.cardTitle,
-            iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+            iconAssetId: input.iconAssetId,
             description: input.description,
             unit: input.unit,
             sortOrder: (last?.max ?? -1) + 1,
@@ -132,12 +125,13 @@ export class CashbookCategoriesRepository {
     input: CashbookCategoryUpdate,
   ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
+      await requireAsset(tx, input.iconAssetId)
       const rows = await tx
         .update(cashbookCategories)
         .set({
           name: input.name,
           cardTitle: input.cardTitle,
-          iconAssetId: await resolveAssetId(tx, 'itemIcon', input.iconFile),
+          iconAssetId: input.iconAssetId,
           description: input.description,
           unit: input.unit,
         })
@@ -183,33 +177,23 @@ export class CashbookCategoriesRepository {
     })
   }
 
-  /** 씨앗이 쓴다. 관리 화면에는 더하기가 없다. */
-  async createItemKind(input: CashbookItemKindInput): Promise<{ id: string }> {
-    return this.db.transaction(async (tx) => {
-      const [last] = await tx
-        .select({ max: sql<number | null>`max(${cashbookItemKinds.sortOrder})` })
-        .from(cashbookItemKinds)
-      const [row] = await tx
-        .insert(cashbookItemKinds)
-        .values({ ...input, sortOrder: (last?.max ?? -1) + 1 })
-        .returning({ id: cashbookItemKinds.id })
-      if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
-      await touchSection(tx, 'cashbookCategories')
-      return row
-    })
-  }
-
   /** 이름 · 단위 · 관세 여부를 갈아 끼운다. 모르면 false 다. */
-  async updateItemKind(key: string, input: Omit<CashbookItemKindInput, 'key'>): Promise<boolean> {
+  async updateItemType(key: string, input: CashbookItemTypeUpdate): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
-        .update(cashbookItemKinds)
+        .update(cashbookItemTypes)
         .set({ name: input.name, unit: input.unit, hasTariff: input.hasTariff })
-        .where(eq(cashbookItemKinds.key, key))
-        .returning({ id: cashbookItemKinds.id })
+        .where(eq(cashbookItemTypes.key, key))
+        .returning({ id: cashbookItemTypes.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'cashbookCategories')
       return true
     })
   }
+}
+
+/** 그림 표에 없는 그림 id 는 AssetNotFound 다. FK 오류로 두면 관리 화면에 500 이 난다. */
+async function requireAsset(db: DbOrTx, id: string): Promise<void> {
+  const [asset] = await db.select({ id: assets.id }).from(assets).where(eq(assets.id, id))
+  if (asset === undefined) throw new AssetNotFound(id)
 }

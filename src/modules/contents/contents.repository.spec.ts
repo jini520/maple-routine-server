@@ -1,5 +1,6 @@
 import { contentCategories } from '../../database/schema'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import { AssetNotFound } from '../assets/asset-refs'
 import {
   ApiNameTaken,
   comparableApiName,
@@ -16,6 +17,7 @@ const SPEC_ASSETS = [
   'maps/monsterPark.webp',
   'maps/icons/monsterPark.png',
 ]
+const NO_ASSET = '00000000-0000-4000-8000-000000000000'
 
 describe('comparableApiName', () => {
   it('NFC 로 맞추고 공백을 모두 지운다. 앱이 key 를 얻는 모양이다', () => {
@@ -44,122 +46,125 @@ describeDb('ContentsRepository', () => {
         key: 'epic_dungeon',
         name: '에픽 던전',
         countTag: 'ID당 1회',
-        weeklyLimit: 3,
-        sharedOrder: 2,
+        weeklyMaxCount: 3,
+        sharedSortOrder: 2,
         sortOrder: 0,
       },
-      { key: 'monster_park', name: '몬스터파크', sharedOrder: 0, sortOrder: 1 },
+      { key: 'monster_park', name: '몬스터파크', sharedSortOrder: 0, sortOrder: 1 },
     ])
   })
   afterAll(() => close())
 
   const base: ContentInput = {
     key: 'monster_park',
-    section: 'daily',
+    cycle: 'daily',
     apiName: '몬스터파크',
     category: 'monster_park',
-    displayName: '몬스터파크',
-    shortName: '몬스터파크',
-    backgroundMap: 'monsterPark',
-    backgroundPortrait: null,
+    name: '몬스터파크',
+    shortName: '일간',
     countTag: '월드 당 최대 14회',
     type: 'contents',
+    checkType: 'count_only',
     maxCount: 14,
     requiredLevel: 105,
-    from: null,
-    until: null,
+    validFrom: null,
+    validUntil: null,
     shareScope: 'world',
-    sharedShortName: '일간',
-    onlyWhenScheduled: false,
-    trustRegistrationFlag: false,
-    cumulativeScore: false,
-    maxCountOverride: null,
+    backgroundMapAssetId: null,
+    backgroundPortraitAssetId: null,
+    regionIconAssetId: null,
   }
   const highMountain: ContentInput = {
     ...base,
     key: 'epic_dungeon_high_mountain',
-    section: 'weekly',
+    cycle: 'weekly',
     apiName: '에픽 던전 : 하이마운틴',
     category: 'epic_dungeon',
-    displayName: '하이마운틴',
-    shortName: '에픽 던전 : 하이마운틴',
-    backgroundMap: null,
-    backgroundPortrait: 'ancientGodMitra',
+    name: '하이마운틴',
+    shortName: '하이마운틴',
     countTag: null,
     maxCount: 5,
     requiredLevel: 260,
     shareScope: 'account',
-    sharedShortName: '하이마운틴',
   }
   const aurumRegis: ContentInput = {
     ...highMountain,
     key: 'epic_dungeon_aurum_regis',
     apiName: '에픽 던전 : 아우룸 레기스',
-    displayName: '아우룸 레기스',
-    shortName: '에픽 던전 : 아우룸 레기스',
-    backgroundPortrait: 'lesa',
+    name: '아우룸 레기스',
+    shortName: '아우룸레기스',
     requiredLevel: 290,
-    from: '2026-09-17',
-    sharedShortName: '아우룸레기스',
+    validFrom: '2026-09-17',
   }
+  const withAssets = () => ({
+    ...base,
+    backgroundMapAssetId: assetIds['maps/monsterPark.webp'] ?? null,
+    regionIconAssetId: assetIds['maps/icons/monsterPark.png'] ?? null,
+  })
+  const fieldsOf = (input: ContentInput) => {
+    const fields: Partial<ContentInput> = { ...input }
+    delete fields.key
+    delete fields.cycle
+    return fields as Omit<ContentInput, 'key' | 'cycle'>
+  }
+  const categoryId = async (key: 'epic_dungeon' | 'monster_park') =>
+    (await repo.section()).contentCategories.find((c) => c.key === key)?.id
 
-  it('갈래는 sort_order 차례로 내고, 컨텐츠는 일간 뒤 주간이며 섹션 안은 더한 차례다', async () => {
+  it('칸은 표 이름의 배열 둘이고, 컨텐츠는 분류를 줄 id 로 가리키며 일간 뒤 주간 · 그 안은 더한 차례로 선다', async () => {
     expect(await repo.section()).toMatchObject({ updatedAt: null, contents: [] })
-    await repo.createContent(highMountain)
+    const high = await repo.createContent({
+      ...highMountain,
+      backgroundPortraitAssetId: assetIds['bosses/ancientGodMitra.webp'] ?? null,
+    })
     await repo.createContent(aurumRegis)
-    await repo.createContent(base)
+    const park = await repo.createContent(withAssets())
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.categories.map((c) => c.key)).toEqual(['epic_dungeon', 'monster_park'])
-    expect(section.categories[0]).toEqual({
-      key: 'epic_dungeon',
-      name: '에픽 던전',
-      countTag: 'ID당 1회',
-      hideCountTag: false,
-      weeklyLimit: 3,
-      sharedOrder: 2,
-    })
-    expect(section.contents).toEqual([
+    expect(section.contentCategories).toEqual([
       {
-        ...base,
-        backgroundMapAssetId: assetIds['maps/monsterPark.webp'],
-        backgroundPortraitAssetId: null,
-        regionIconAssetId: assetIds['maps/icons/monsterPark.png'],
+        id: await categoryId('epic_dungeon'),
+        key: 'epic_dungeon',
+        name: '에픽 던전',
+        countTag: 'ID당 1회',
+        hidesCountTag: false,
+        weeklyMaxCount: 3,
+        sharedSortOrder: 2,
       },
       {
-        ...highMountain,
-        backgroundMapAssetId: null,
-        backgroundPortraitAssetId: assetIds['bosses/ancientGodMitra.webp'],
-        regionIconAssetId: null,
-      },
-      {
-        ...aurumRegis,
-        backgroundMapAssetId: null,
-        backgroundPortraitAssetId: assetIds['bosses/lesa.webp'],
-        regionIconAssetId: null,
+        id: await categoryId('monster_park'),
+        key: 'monster_park',
+        name: '몬스터파크',
+        countTag: null,
+        hidesCountTag: false,
+        weeklyMaxCount: null,
+        sharedSortOrder: 0,
       },
     ])
-  })
-
-  // 지역 아이콘을 고르는 칸은 아직 관리 화면에 없다. 이관 전 앱처럼 지도 배경과 같은 이름의 아이콘이 따라간다.
-  it('지역 아이콘은 지도 배경과 같은 이름의 maps/icons 그림이고, 배경을 바꾸면 따라간다', async () => {
-    await repo.createContent(base)
-    const iconOf = async () =>
-      (await repo.section()).contents.find((c) => c.key === base.key)?.regionIconAssetId
-    expect(await iconOf()).toBe(assetIds['maps/icons/monsterPark.png'])
-    const fields = { ...base }
-    delete (fields as { key?: string }).key
-    delete (fields as { section?: string }).section
-    await repo.updateContent(base.key, {
-      ...fields,
-      backgroundMap: null,
-      backgroundPortrait: 'lesa',
+    expect(section.contents.map((c) => c.key)).toEqual([
+      'monster_park',
+      'epic_dungeon_high_mountain',
+      'epic_dungeon_aurum_regis',
+    ])
+    const parkFields: Partial<ContentInput> = withAssets()
+    delete parkFields.category
+    expect(section.contents[0]).toEqual({
+      ...parkFields,
+      id: park.id,
+      categoryId: await categoryId('monster_park'),
     })
-    expect(await iconOf()).toBeNull()
+    expect(section.contents[1]).toMatchObject({
+      id: high.id,
+      categoryId: await categoryId('epic_dungeon'),
+      backgroundPortraitAssetId: assetIds['bosses/ancientGodMitra.webp'],
+    })
+    expect((await repo.adminRows()).contents[0]).toMatchObject({
+      key: 'monster_park',
+      category: 'monster_park',
+    })
   })
 
-  it('모르는 갈래는 NoContentCategory, 같은 key 는 ContentExists, 공백만 다른 API 이름은 ApiNameTaken 이다', async () => {
+  it('모르는 갈래는 NoContentCategory, 같은 key 는 ContentExists, 공백만 다른 API 이름은 ApiNameTaken, 없는 그림은 AssetNotFound 다', async () => {
     await repo.createContent(highMountain)
     await expect(repo.createContent({ ...aurumRegis, category: 'guild' })).rejects.toBeInstanceOf(
       NoContentCategory,
@@ -170,21 +175,32 @@ describeDb('ContentsRepository', () => {
     await expect(
       repo.createContent({ ...aurumRegis, apiName: '에픽 던전: 하이마운틴' }),
     ).rejects.toThrow(new ApiNameTaken('epic_dungeon_high_mountain'))
+    await expect(
+      repo.createContent({ ...aurumRegis, regionIconAssetId: NO_ASSET }),
+    ).rejects.toBeInstanceOf(AssetNotFound)
     expect((await repo.section()).contents.map((c) => c.key)).toEqual([
       'epic_dungeon_high_mountain',
     ])
   })
 
-  it('컨텐츠를 고치고 섹션 안에서 옮긴다. key 와 섹션은 그대로이고 자기 API 이름은 겹침이 아니다', async () => {
+  // 완료 조건이 횟수인 줄만 완료로 세는 횟수를 든다. 다른 줄에 값이 있으면 앱이 그 값을 완료 판정에 쓸 수 있다.
+  it('최대 횟수는 완료 조건이 count_only 인 줄에만 있고, 어기면 DB 가 거절한다', async () => {
+    await expect(repo.createContent({ ...base, maxCount: null })).rejects.toThrow()
+    await expect(
+      repo.createContent({ ...base, checkType: 'state_only', type: 'quest' }),
+    ).rejects.toThrow()
+    await repo.createContent({ ...base, checkType: 'both', type: 'quest', maxCount: null })
+    expect((await repo.section()).contents[0]).toMatchObject({ checkType: 'both', maxCount: null })
+  })
+
+  it('컨텐츠를 고치고 같은 주기 안에서 옮긴다. key 와 주기는 그대로이고 자기 API 이름은 겹침이 아니다', async () => {
     await repo.createContent(highMountain)
     await repo.createContent(aurumRegis)
     await repo.createContent(base)
 
-    const fields = { ...aurumRegis }
-    delete (fields as { key?: string }).key
-    delete (fields as { section?: string }).section
+    const fields = fieldsOf(aurumRegis)
     expect(
-      await repo.updateContent('epic_dungeon_aurum_regis', { ...fields, until: '2027-01-01' }),
+      await repo.updateContent('epic_dungeon_aurum_regis', { ...fields, validUntil: '2027-01-01' }),
     ).toBe(true)
     await expect(
       repo.updateContent('epic_dungeon_aurum_regis', {
@@ -199,30 +215,30 @@ describeDb('ContentsRepository', () => {
     expect(await repo.moveContent('nobody', 'up')).toBe(false)
 
     const section = await repo.section()
-    expect(section.contents.map((c) => [c.key, c.until])).toEqual([
+    expect(section.contents.map((c) => [c.key, c.validUntil])).toEqual([
       ['monster_park', null],
       ['epic_dungeon_aurum_regis', '2027-01-01'],
       ['epic_dungeon_high_mountain', null],
     ])
   })
 
-  it('갈래의 글자 · 태그 · 한도 · 공유 차례를 고치고 차례를 옮긴다. 모르는 key 는 false 다', async () => {
+  it('갈래의 글자 · 태그 · 주간 최대 횟수 · 공유 차례를 고치고 차례를 옮긴다. 모르는 key 는 false 다', async () => {
     expect(
       await repo.updateCategory('epic_dungeon', {
         name: '에픽던전',
         countTag: null,
-        hideCountTag: true,
-        weeklyLimit: 4,
-        sharedOrder: null,
+        hidesCountTag: true,
+        weeklyMaxCount: 4,
+        sharedSortOrder: null,
       }),
     ).toBe(true)
     expect(
       await repo.updateCategory('guild', {
         name: '길드',
         countTag: null,
-        hideCountTag: false,
-        weeklyLimit: null,
-        sharedOrder: null,
+        hidesCountTag: false,
+        weeklyMaxCount: null,
+        sharedSortOrder: null,
       }),
     ).toBe(false)
     expect(await repo.moveCategory('monster_park', 'up')).toBe(true)
@@ -231,23 +247,11 @@ describeDb('ContentsRepository', () => {
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.categories).toEqual([
-      {
-        key: 'monster_park',
-        name: '몬스터파크',
-        countTag: null,
-        hideCountTag: false,
-        weeklyLimit: null,
-        sharedOrder: 0,
-      },
-      {
-        key: 'epic_dungeon',
-        name: '에픽던전',
-        countTag: null,
-        hideCountTag: true,
-        weeklyLimit: 4,
-        sharedOrder: null,
-      },
+    expect(
+      section.contentCategories.map((c) => [c.key, c.name, c.hidesCountTag, c.weeklyMaxCount]),
+    ).toEqual([
+      ['monster_park', '몬스터파크', false, null],
+      ['epic_dungeon', '에픽던전', true, 4],
     ])
   })
 })

@@ -35,6 +35,8 @@ const CONVERTED = [
   'drop_box_contents',
   'boss_crystal_prices',
   'boss_manual_completion_periods',
+  'content_categories',
+  'contents',
 ]
 
 interface DesignColumn {

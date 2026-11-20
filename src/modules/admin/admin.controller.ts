@@ -380,13 +380,6 @@ export class AdminController {
       throw new BadRequestException(`그림 표에 없는 그림이다: ${missing.join(', ')}`)
   }
 
-  private requireContentAssets(body: ContentUpdateBody): Promise<void> {
-    return this.requireAssets([
-      ['mapBackground', body.backgroundMap],
-      ['bossPortrait', body.backgroundPortrait],
-    ])
-  }
-
   @Get()
   @Header('content-type', 'text/html; charset=utf-8')
   @Header('cache-control', 'no-store')
@@ -1820,11 +1813,11 @@ export class AdminController {
     return CONTENTS_HTML
   }
 
-  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  /** 화면이 부른다. 앱이 받는 칸에 컨텐츠마다 갈래 key 를 더한 것이다. */
   @Get('contents/rows')
   @Header('cache-control', 'no-store')
   contentRows() {
-    return this.contents.section()
+    return this.contents.adminRows()
   }
 
   /** 갈래의 글자 · 태그 · 한도 · 공유 차례를 갈아 끼운다. 갈래는 ENUM 이라 더하고 지우는 끝점이 없다. 모르면 404 다. */
@@ -1838,9 +1831,9 @@ export class AdminController {
       !(await this.contents.updateCategory(key, {
         name: body.name,
         countTag: body.countTag ?? null,
-        hideCountTag: body.hideCountTag,
-        weeklyLimit: body.weeklyLimit ?? null,
-        sharedOrder: body.sharedOrder ?? null,
+        hidesCountTag: body.hidesCountTag,
+        weeklyMaxCount: body.weeklyMaxCount ?? null,
+        sharedSortOrder: body.sharedSortOrder ?? null,
       }))
     )
       throw new NotFoundException(`모르는 갈래다: ${key}`)
@@ -1856,30 +1849,28 @@ export class AdminController {
       throw new NotFoundException(`모르는 갈래다: ${key}`)
   }
 
-  /** 컨텐츠를 섹션 맨 뒤에 더한다. 모르는 갈래는 404, 같은 key 나 공백만 다른 API 이름은 409 다. */
+  /** 컨텐츠를 같은 주기의 맨 뒤에 더한다. 모르는 갈래는 404, 같은 key 나 공백만 다른 API 이름은 409, 없는 그림은 400 이다. */
   @Post('contents')
   @HttpCode(201)
   async createContent(@Body(new ZodValidationPipe(contentCreateBody)) body: ContentCreateBody) {
-    await this.requireContentAssets(body)
     try {
       return await this.contents.createContent({
         ...contentFields(body),
         key: body.key,
-        section: body.section,
+        cycle: body.cycle,
       })
     } catch (error) {
       throw contentError(error, body.key)
     }
   }
 
-  /** 컨텐츠를 갈아 끼운다. key 와 섹션은 못 바꾼다. 모르면 404 다. */
+  /** 컨텐츠를 갈아 끼운다. key 와 주기는 못 바꾼다. 모르면 404 다. */
   @Put('contents/:key')
   @HttpCode(204)
   async updateContent(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(contentUpdateBody)) body: ContentUpdateBody,
   ): Promise<void> {
-    await this.requireContentAssets(body)
     try {
       if (!(await this.contents.updateContent(key, contentFields(body))))
         throw new NotFoundException(`모르는 컨텐츠다: ${key}`)
@@ -2240,27 +2231,26 @@ function contentFields(body: ContentUpdateBody) {
   return {
     apiName: body.apiName,
     category: body.category,
-    displayName: body.displayName,
+    name: body.name,
     shortName: body.shortName,
-    backgroundMap: body.backgroundMap ?? null,
-    backgroundPortrait: body.backgroundPortrait ?? null,
     countTag: body.countTag ?? null,
     type: body.type,
-    maxCount: body.maxCount,
+    checkType: body.checkType,
+    maxCount: body.maxCount ?? null,
     requiredLevel: body.requiredLevel ?? null,
-    from: body.from ?? null,
-    until: body.until ?? null,
+    validFrom: body.validFrom ?? null,
+    validUntil: body.validUntil ?? null,
     shareScope: body.shareScope,
-    sharedShortName: body.sharedShortName ?? null,
-    onlyWhenScheduled: body.onlyWhenScheduled,
-    trustRegistrationFlag: body.trustRegistrationFlag,
-    cumulativeScore: body.cumulativeScore,
-    maxCountOverride: body.maxCountOverride ?? null,
+    backgroundMapAssetId: body.backgroundMapAssetId ?? null,
+    backgroundPortraitAssetId: body.backgroundPortraitAssetId ?? null,
+    regionIconAssetId: body.regionIconAssetId ?? null,
   }
 }
 
-/** 컨텐츠 쓰기의 실패를 HTTP 로 옮긴다. 모르는 갈래는 404, 같은 key 와 겹치는 API 이름은 409 다. */
+/** 컨텐츠 쓰기의 실패를 HTTP 로 옮긴다. 모르는 갈래는 404, 같은 key 와 겹치는 API 이름은 409, 없는 그림은 400 이다. */
 function contentError(error: unknown, key: string): unknown {
+  if (error instanceof AssetNotFound)
+    return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
   if (error instanceof NoContentCategory)
     return new NotFoundException(`모르는 갈래다: ${error.message}`)
   if (error instanceof ContentKeyExists) return new ConflictException(`이미 있는 컨텐츠다: ${key}`)

@@ -43,6 +43,8 @@ export interface MoveResult {
   dropBoxContents: number
   bossCrystalPrices: number
   bossManualCompletionPeriods: number
+  contentCategories: number
+  contents: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -100,6 +102,8 @@ const MOVED_TABLES = [
   schema.dropBoxContents,
   schema.bossCrystalPrices,
   schema.bossManualCompletionPeriods,
+  schema.contentCategories,
+  schema.contents,
 ]
 
 /**
@@ -269,6 +273,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
 
   const hexa = await hexaRows(oldDb)
   const boss = await bossReferenceRows(oldDb, boxedCopyOf)
+  const content = await contentRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -292,6 +297,8 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.dropBoxContents, boss.dropBoxContents)
     await insertAll(tx, schema.bossCrystalPrices, boss.bossCrystalPrices)
     await insertAll(tx, schema.bossManualCompletionPeriods, boss.bossManualCompletionPeriods)
+    await insertAll(tx, schema.contentCategories, content.contentCategories)
+    await insertAll(tx, schema.contents, content.contents)
   })
   return {
     assets: assets.length,
@@ -314,6 +321,73 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     dropBoxContents: boss.dropBoxContents.length,
     bossCrystalPrices: boss.bossCrystalPrices.length,
     bossManualCompletionPeriods: boss.bossManualCompletionPeriods.length,
+    contentCategories: content.contentCategories.length,
+    contents: content.contents.length,
+  }
+}
+
+/** 점수로 완료를 판정하는 컨텐츠. 점수가 0 보다 크면 완료다. */
+const SCORE_CONTENTS = ['guild_underground_waterway', 'guild_flag_race', 'mu_lung_dojo']
+/** 퀘스트 상태를 먼저 보고 진행 중이면 횟수를 읽는 컨텐츠. */
+const BOTH_CONTENTS = ['weekly_quest_faithful_investigation_reward', 'monster_park_extreme']
+/** 넥슨 type 이 quest 가 아니어도 횟수로 세는 컨텐츠. */
+const COUNT_CONTENTS = ['guild_weekly_mission_points']
+
+/**
+ * 컨텐츠 표 둘의 새 줄. 줄 id 는 그대로다. 완료 조건은 지금 앱이 컨텐츠 key 와 분류로 가르던 것을 표에 적는다. 표에 적힌 key 가
+ * 아니면 넥슨 type 으로 정해, 전환 전에 생긴 새 컨텐츠도 정해진다. 최대 횟수는 횟수로 세는 줄에만 남기고, 넥슨 오류를 덮던 값이
+ * 있으면 그 값을 쓴다. 공유 줄의 짧은 이름 자리에는 공유 위젯의 글자를 적는다. 공유 줄의 지금 짧은 이름은 그리는 곳이 없다.
+ */
+async function contentRows(oldDb: OldDb) {
+  const [categories, rows] = await Promise.all([
+    oldDb.select().from(oldSchema.contentCategories),
+    oldDb.select().from(oldSchema.contents),
+  ])
+  const categoryKey = new Map(categories.map((c) => [c.id, c.key]))
+  const checkTypeOf = (
+    c: (typeof rows)[number],
+  ): (typeof schema.contentCheckTypeEnum.enumValues)[number] => {
+    if (SCORE_CONTENTS.includes(c.key)) return 'score'
+    if (BOTH_CONTENTS.includes(c.key)) return 'both'
+    if (COUNT_CONTENTS.includes(c.key) || categoryKey.get(c.categoryId) === 'epic_dungeon')
+      return 'count_only'
+    return c.type === 'contents' ? 'count_only' : 'state_only'
+  }
+  return {
+    contentCategories: categories.map((c) => ({
+      id: c.id,
+      key: c.key,
+      name: c.name,
+      countTag: c.countTag,
+      hidesCountTag: c.hideCountTag,
+      weeklyMaxCount: c.weeklyLimit,
+      sharedSortOrder: c.sharedOrder,
+      sortOrder: c.sortOrder,
+    })),
+    contents: rows.map((c) => {
+      const checkType = checkTypeOf(c)
+      return {
+        id: c.id,
+        key: c.key,
+        cycle: c.section,
+        apiName: c.apiName,
+        categoryId: c.categoryId,
+        name: c.displayName,
+        shortName: c.shareScope === 'character' ? c.shortName : (c.sharedShortName ?? c.shortName),
+        backgroundMapAssetId: c.backgroundMapAssetId,
+        backgroundPortraitAssetId: c.backgroundPortraitAssetId,
+        regionIconAssetId: c.regionIconAssetId,
+        countTag: c.countTag,
+        type: c.type,
+        checkType,
+        maxCount: checkType === 'count_only' ? (c.maxCountOverride ?? c.maxCount) : null,
+        requiredLevel: c.requiredLevel,
+        validFrom: c.from,
+        validUntil: c.until,
+        shareScope: c.shareScope,
+        sortOrder: c.sortOrder,
+      }
+    }),
   }
 }
 

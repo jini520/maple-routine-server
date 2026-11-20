@@ -55,7 +55,7 @@ function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): Game
       forms: [],
     }) as unknown as SpendCatalogRepository,
     empty({ groups: [], symbols: [], levelCosts: [] }) as unknown as SymbolCostsRepository,
-    empty({ categories: [], contents: [] }) as unknown as ContentsRepository,
+    empty({ contentCategories: [], contents: [] }) as unknown as ContentsRepository,
     empty({
       rules: {
         cubeAppraisalFreeMaxLevel: null,
@@ -122,7 +122,7 @@ describe('GameDataService', () => {
       },
       cashbookCategories: { updatedAt: null, categories: [], itemKinds: [] },
       symbolCosts: { updatedAt: null, groups: [], symbols: [], levelCosts: [] },
-      contents: { updatedAt: null, categories: [], contents: [] },
+      contents: { updatedAt: null, contentCategories: [], contents: [] },
       enhancementCosts: {
         updatedAt: null,
         rules: {

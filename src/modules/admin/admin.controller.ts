@@ -397,7 +397,9 @@ export class AdminController {
   /** 받은 규칙만 고친다. 화면마다 자기 규칙만 보낸다. 규칙 줄이 없으면 409 다. */
   @Put('game-rules')
   @HttpCode(204)
-  async setGameRules(@Body(new ZodValidationPipe(gameRulesBody)) body: GameRulesBody): Promise<void> {
+  async setGameRules(
+    @Body(new ZodValidationPipe(gameRulesBody)) body: GameRulesBody,
+  ): Promise<void> {
     try {
       await this.rules.update(body)
     } catch (error) {

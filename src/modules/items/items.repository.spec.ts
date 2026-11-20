@@ -63,7 +63,9 @@ describeDb('ItemsRepository', () => {
   afterAll(() => close())
 
   const touched = async () =>
-    (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)).map((r) => r.key).sort()
+    (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates))
+      .map((r) => r.key)
+      .sort()
   const idOf = async (key: string) =>
     (await db.select({ id: items.id }).from(items).where(eq(items.key, key)))[0]?.id ?? ''
 

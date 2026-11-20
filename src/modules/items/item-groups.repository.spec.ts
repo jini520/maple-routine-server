@@ -44,7 +44,9 @@ describeDb('ItemGroupsRepository', () => {
   })
 
   const touched = async () =>
-    (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)).map((r) => r.key)
+    (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)).map(
+      (r) => r.key,
+    )
   const groupsOf = async (kind: string) =>
     (await repo.tree()).find((k) => k.key === kind)?.groups.map((g) => g.key)
 

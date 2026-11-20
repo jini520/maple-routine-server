@@ -1,6 +1,8 @@
 /**
  * 옛 DB 를 새 DB 로 옮기는 것을 진짜 Postgres 에서 본다. 옛 DB 는 옛 표의 마지막 마이그레이션까지, 새 DB 는 끝까지 올린다.
  */
+import { randomUUID } from 'node:crypto'
+
 import { eq } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
@@ -23,6 +25,7 @@ import {
   UnknownQuantity,
   UnknownRingLevel,
   UnknownTradeGroup,
+  UnmovedRecords,
 } from './move-old-db'
 
 /** 옛 DB 의 마지막 마이그레이션. 1.0.14 운영 DB 가 여기까지 올라 있다. */
@@ -1574,5 +1577,38 @@ describeDb('moveOldDb', () => {
     expect(await newDb.select().from(schema.appImages)).toEqual([
       { id: image.id, key: 'meso_pouch', assetId: asset },
     ])
+  })
+
+  // 옮기지 않는 표는 운영에 줄이 없다는 전제로 빠져 있다. 줄이 생겼는데 그대로 옮기면 그 기록을 말없이 잃는다.
+  it('옮기지 않는 옛 기록 표에 줄이 있으면 표와 줄 수를 알리고 아무것도 옮기지 않는다', async () => {
+    const [user] = await oldDb
+      .insert(oldSchema.users)
+      .values({})
+      .returning({ id: oldSchema.users.id })
+    const [account] = await oldDb
+      .insert(oldSchema.nexonAccounts)
+      .values({ userId: user.id })
+      .returning({ id: oldSchema.nexonAccounts.id })
+    await oldDb
+      .insert(oldSchema.nexonAccountMapleIds)
+      .values({ nexonAccountId: account.id, mapleId: 'm1' })
+    await oldDb.insert(oldSchema.enhancementTotals).values({
+      identifiedBy: 'key',
+      totalRecordId: randomUUID(),
+      mapleId: 'm1',
+      ocid: 'o1',
+      historyDate: '2026-11-01',
+      enhancementCategory: 'starforce',
+      itemName: '장비',
+      itemGroup: 'name:장비',
+      attempts: 1,
+      attemptCostMeso: 1,
+      destroyDefenceCostMeso: 0,
+    })
+
+    await expect(moveOldDb(oldDb, newDb)).rejects.toThrow(
+      new UnmovedRecords('enhancement_totals 1줄'),
+    )
+    expect(await newDb.select().from(schema.users)).toEqual([])
   })
 })

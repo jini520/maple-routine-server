@@ -7,22 +7,23 @@ import { mapleId, nexonIdHash } from '../identity/me.dto'
 const meso = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 
 /**
- * 강화 합계 한 줄. 앱의 EnhancementTotalPayload 와 칸이 맞는다. 기기의 enhancement_totals 중 이벤트 월드가 아닌 줄이다.
- *
- * 비용 두 칸은 MVP 할인 전이다. ocid 는 그날 그 이름이었던 캐릭터이고, 같은 합계는 ocid · 날짜 · 분류 · 장비 묶음으로 가린다.
+ * 강화 합계 한 줄. 이름은 표의 칸을 따른다. 기기는 캐릭터 줄 id 를 몰라 메이플 ID 해시와 ocid 해시를 싣고, 서버가 캐릭터 줄로
+ * 바꿔 적는다. 이벤트 월드인 줄도 받는다. 기기끼리 맞추려면 모든 줄과 그 판정이 있어야 한다.
  */
 export const enhancementTotalBody = z.object({
-  totalRecordId: uuidLike,
+  id: uuidLike,
   mapleId,
   ocid: nexonIdHash,
   historyDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  enhancementCategory: z.enum(enhancementCategoryEnum.enumValues),
-  /** 장비 key 면 'key:…', 없으면 공백을 지운 이름 'name:…'. */
-  itemGroup: z.string().regex(/^(key|name):.{1,200}$/),
-  itemKey: z.string().min(1).max(200).nullish(),
+  category: z.enum(enhancementCategoryEnum.enumValues),
   itemName: z.string().min(1).max(200),
-  attempts: z.number().int().min(1),
+  attemptCount: z.number().int().min(1),
   attemptCostMeso: meso,
   destroyDefenceCostMeso: meso,
+  worldId: uuidLike.nullable(),
+  superiorCostMeso: meso.nullable(),
+  fromStar: z.number().int().min(0).max(30).nullable(),
+  toStar: z.number().int().min(0).max(30).nullable(),
+  isEventWorld: z.boolean().nullable(),
 })
 export type EnhancementTotalBody = z.infer<typeof enhancementTotalBody>

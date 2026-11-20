@@ -2,13 +2,18 @@ import { eq } from 'drizzle-orm'
 
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
+  accountSettings,
   bossClears,
+  characters,
   dropPrices,
   enhancementAnomalies,
+  enhancementSettledDays,
   items,
   mapleIds,
   nexonAccounts,
+  partyAppointments,
   subAccountRegistrations,
+  trackedCharacters,
   usageEvents,
   users,
 } from '../../database/schema'
@@ -59,6 +64,11 @@ describeDb('NexonAccountsRepository', () => {
       .from(subAccountRegistrations)
       .where(eq(subAccountRegistrations.loginNexonAccountId, loginNexonAccountId))
     return rows.map((row) => row.id)
+  }
+
+  async function mapleIdRowOf(hash: string): Promise<string | undefined> {
+    const [row] = await db.select({ id: mapleIds.id }).from(mapleIds).where(eq(mapleIds.hash, hash))
+    return row?.id
   }
 
   async function mapleIdsOfAccount(nexonAccountId: string): Promise<string[]> {
@@ -200,6 +210,92 @@ describeDb('NexonAccountsRepository', () => {
       ).toEqual([
         ['같은 장비', old.nexonAccountId, '2026-11-02T00:00:00.000Z'],
         ['새 장비', old.nexonAccountId, '2026-11-02T00:00:00.000Z'],
+      ])
+    })
+
+    // 지우는 줄을 가리키는 기록은 함께 지워진다. 옮기지 않으면 키로 쓰던 기기의 설정과 약속이 로그인하자마자 사라진다.
+    it('합칠 때 넥슨 계정에 붙는 기록을 남기는 줄로 옮기고, 계정에 하나인 줄은 늦게 고친 줄을 남긴다', async () => {
+      const old = await users$.upsertByMapleId('m1')
+      await backdate(old.nexonAccountId, '2026-10-01T00:00:00Z')
+      const fresh = await users$.upsertByMapleId('m2')
+      const [mine, other] = await db
+        .insert(characters)
+        .values([
+          { mapleId: (await mapleIdRowOf('m1')) ?? '', ocid: 'o1' },
+          { mapleId: (await mapleIdRowOf('m2')) ?? '', ocid: 'o2' },
+        ])
+        .returning({ id: characters.id })
+      const at = (day: string) => new Date(`2026-11-${day}T00:00:00Z`)
+      await db.insert(accountSettings).values([
+        { nexonAccountId: old.nexonAccountId, trackingType: 'auto', updatedAt: at('01') },
+        { nexonAccountId: fresh.nexonAccountId, trackingType: 'manual', updatedAt: at('02') },
+      ])
+      const tracked = (
+        nexonAccountId: string,
+        characterId: string,
+        isRepresentative: boolean,
+        day: string,
+      ) => ({
+        nexonAccountId,
+        characterId,
+        sortOrder: 0,
+        isRepresentative,
+        updatedAt: at(day),
+      })
+      await db
+        .insert(trackedCharacters)
+        .values([
+          tracked(old.nexonAccountId, mine?.id ?? '', true, '02'),
+          tracked(fresh.nexonAccountId, mine?.id ?? '', false, '01'),
+          tracked(fresh.nexonAccountId, other?.id ?? '', true, '03'),
+        ])
+      const settled = (nexonAccountId: string, historyDate: string) => ({
+        nexonAccountId,
+        apiType: 'cube' as const,
+        historyDate,
+      })
+      await db
+        .insert(enhancementSettledDays)
+        .values([
+          settled(old.nexonAccountId, '2026-11-01'),
+          settled(fresh.nexonAccountId, '2026-11-01'),
+          settled(fresh.nexonAccountId, '2026-11-02'),
+        ])
+      const appointment = crypto.randomUUID()
+      await db.insert(partyAppointments).values({
+        id: appointment,
+        nexonAccountId: fresh.nexonAccountId,
+        time: '21:00',
+        durationMinutes: 60,
+        scheduleType: 'once',
+        date: '2026-11-21',
+      })
+
+      await repo.reportMapleIds(fresh.nexonAccountId, ['m1'])
+
+      expect(
+        (await db.select().from(accountSettings)).map((r) => [r.nexonAccountId, r.trackingType]),
+      ).toEqual([[old.nexonAccountId, 'manual']])
+      expect(
+        (await db.select().from(trackedCharacters))
+          .map((r) => [r.nexonAccountId, r.characterId, r.isRepresentative])
+          .sort(),
+      ).toEqual(
+        [
+          [old.nexonAccountId, mine?.id, true],
+          [old.nexonAccountId, other?.id, false],
+        ].sort(),
+      )
+      expect(
+        (await db.select().from(enhancementSettledDays))
+          .map((r) => [r.nexonAccountId, r.historyDate])
+          .sort(),
+      ).toEqual([
+        [old.nexonAccountId, '2026-11-01'],
+        [old.nexonAccountId, '2026-11-02'],
+      ])
+      expect((await db.select().from(partyAppointments)).map((r) => r.nexonAccountId)).toEqual([
+        old.nexonAccountId,
       ])
     })
 

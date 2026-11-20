@@ -3,10 +3,9 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 import type { Db } from '../../database/database.module'
 import {
   enhancementAnomalies,
-  nexonAccountKeys,
-  nexonAccountMapleIds,
+  mapleIds,
   nexonAccounts,
-  subAccounts,
+  subAccountRegistrations,
   users,
 } from '../../database/schema'
 
@@ -32,26 +31,24 @@ export async function lockNexonAccounts(tx: Tx): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('nexon_accounts'))`)
 }
 
-export async function findAccountByKey(
+export async function findAccountByMapleId(
   tx: Tx | Db,
-  apiKeyHash: Buffer,
+  mapleId: string,
 ): Promise<FoundAccount | null> {
   const [row] = await tx
     .select(ACCOUNT_COLUMNS)
-    .from(nexonAccountKeys)
-    .innerJoin(nexonAccounts, eq(nexonAccounts.id, nexonAccountKeys.nexonAccountId))
-    .where(eq(nexonAccountKeys.apiKeyHash, apiKeyHash))
+    .from(mapleIds)
+    .innerJoin(nexonAccounts, eq(nexonAccounts.id, mapleIds.nexonAccountId))
+    .where(eq(mapleIds.hash, mapleId))
   return row ?? null
 }
 
 /**
- * 키로 넥슨 계정을 찾고, 없으면 사람 · 계정 줄 · 키 줄을 함께 만든다.
- *
- * 같은 키가 동시에 오면 둘 다 사람을 만든다. 키의 UNIQUE 에 진 쪽은 만든 사람을 지우고(계정 줄은 함께 지워진다) 이긴 쪽을
- * 다시 읽는다.
+ * 메이플 ID 로 넥슨 계정을 찾고, 없으면 사람 · 계정 줄 · 메이플 ID 줄을 함께 만든다. `lockNexonAccounts` 안에서 부른다. 잠그지
+ * 않으면 같은 메이플 ID 가 동시에 와 UNIQUE 에 진 쪽이 실패한다.
  */
-export async function findOrCreateKeyAccount(tx: Tx, apiKeyHash: Buffer): Promise<FoundAccount> {
-  const found = await findAccountByKey(tx, apiKeyHash)
+export async function findOrCreateMapleIdAccount(tx: Tx, mapleId: string): Promise<FoundAccount> {
+  const found = await findAccountByMapleId(tx, mapleId)
   if (found !== null) return found
   const [user] = await tx.insert(users).values({}).returning({ id: users.id })
   if (user === undefined) throw new Error('사람을 만들지 못했다')
@@ -60,20 +57,12 @@ export async function findOrCreateKeyAccount(tx: Tx, apiKeyHash: Buffer): Promis
     .values({ userId: user.id })
     .returning(ACCOUNT_COLUMNS)
   if (account === undefined) throw new Error('계정 줄을 만들지 못했다')
-  const [key] = await tx
-    .insert(nexonAccountKeys)
-    .values({ nexonAccountId: account.nexonAccountId, apiKeyHash })
-    .onConflictDoNothing()
-    .returning({ id: nexonAccountKeys.id })
-  if (key !== undefined) return account
-  await tx.delete(users).where(eq(users.id, user.id))
-  const winner = await findAccountByKey(tx, apiKeyHash)
-  if (winner === null) throw new Error('키 줄을 만들지 못했다')
-  return winner
+  await tx.insert(mapleIds).values({ nexonAccountId: account.nexonAccountId, hash: mapleId })
+  return account
 }
 
 /**
- * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 키 · 메이플 ID · 부계정 등록 · 강화 이상 보고를 옮기고 from 을 지운다. 기록은
+ * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 메이플 ID · 부계정 등록 · 강화 이상 보고를 옮기고 from 을 지운다. 기록은
  * 메이플 ID 를 가리키므로 메이플 ID 를 따라 옮겨진다. from 의 사람에게 다른 줄이 없으면 그 사람의 옛 기록을 into 의 사람에게
  * 옮기고 사람도 지운다.
  */
@@ -88,27 +77,23 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     .where(eq(nexonAccounts.id, into))
   if (source === undefined || target === undefined) throw new Error('합칠 넥슨 계정 줄이 없다')
 
-  await tx
-    .update(nexonAccountKeys)
-    .set({ nexonAccountId: into })
-    .where(eq(nexonAccountKeys.nexonAccountId, from))
-  await tx
-    .update(nexonAccountMapleIds)
-    .set({ nexonAccountId: into })
-    .where(eq(nexonAccountMapleIds.nexonAccountId, from))
+  await tx.update(mapleIds).set({ nexonAccountId: into }).where(eq(mapleIds.nexonAccountId, from))
 
   // 합치면 자기 자신을 잇게 되는 등록과, into 가 이미 다른 로그인의 부계정일 때 from 의 등록은 지운다. 부계정은 로그인 하나에만 붙는다.
   await tx.execute(sql`
-    DELETE FROM ${subAccounts}
-     WHERE (login_account_id = ${from} AND sub_account_id = ${into})
-        OR (login_account_id = ${into} AND sub_account_id = ${from})
-        OR (sub_account_id = ${from}
-            AND EXISTS (SELECT 1 FROM ${subAccounts} s WHERE s.sub_account_id = ${into}))`)
-  await tx.update(subAccounts).set({ subAccountId: into }).where(eq(subAccounts.subAccountId, from))
+    DELETE FROM ${subAccountRegistrations}
+     WHERE (login_nexon_account_id = ${from} AND sub_nexon_account_id = ${into})
+        OR (login_nexon_account_id = ${into} AND sub_nexon_account_id = ${from})
+        OR (sub_nexon_account_id = ${from}
+            AND EXISTS (SELECT 1 FROM ${subAccountRegistrations} s WHERE s.sub_nexon_account_id = ${into}))`)
   await tx
-    .update(subAccounts)
-    .set({ loginAccountId: into })
-    .where(eq(subAccounts.loginAccountId, from))
+    .update(subAccountRegistrations)
+    .set({ subNexonAccountId: into })
+    .where(eq(subAccountRegistrations.subNexonAccountId, from))
+  await tx
+    .update(subAccountRegistrations)
+    .set({ loginNexonAccountId: into })
+    .where(eq(subAccountRegistrations.loginNexonAccountId, from))
 
   // 같은 열쇠의 강화 이상 보고가 양쪽에 있으면 늦게 고친 줄만 남긴다. 시각이 같으면 from 쪽을 버린다.
   await tx.execute(sql`
@@ -152,14 +137,14 @@ async function moveLegacyRecords(tx: Tx, from: string, into: string): Promise<vo
 
 interface Holder {
   id: string
-  nexonUid: string | null
+  uidHash: string | null
   createdAt: Date
   deletionRequestedAt: Date | null
 }
 
 const HOLDER_COLUMNS = {
   id: nexonAccounts.id,
-  nexonUid: nexonAccounts.nexonUid,
+  uidHash: nexonAccounts.uidHash,
   createdAt: nexonAccounts.createdAt,
   deletionRequestedAt: users.deletionRequestedAt,
 }
@@ -176,9 +161,9 @@ const byAge = (a: Holder, b: Holder): number =>
 export async function addMapleIds(
   tx: Tx,
   nexonAccountId: string,
-  mapleIds: readonly string[],
+  hashes: readonly string[],
 ): Promise<string> {
-  const unique = [...new Set(mapleIds)]
+  const unique = [...new Set(hashes)]
   const [self] = await tx
     .select(HOLDER_COLUMNS)
     .from(nexonAccounts)
@@ -189,43 +174,38 @@ export async function addMapleIds(
 
   const owners = await tx
     .selectDistinct(HOLDER_COLUMNS)
-    .from(nexonAccountMapleIds)
-    .innerJoin(nexonAccounts, eq(nexonAccounts.id, nexonAccountMapleIds.nexonAccountId))
+    .from(mapleIds)
+    .innerJoin(nexonAccounts, eq(nexonAccounts.id, mapleIds.nexonAccountId))
     .innerJoin(users, eq(users.id, nexonAccounts.userId))
-    .where(
-      and(
-        inArray(nexonAccountMapleIds.mapleId, unique),
-        ne(nexonAccountMapleIds.nexonAccountId, self.id),
-      ),
-    )
+    .where(and(inArray(mapleIds.hash, unique), ne(mapleIds.nexonAccountId, self.id)))
   let group: Holder[] = [
     self,
     ...owners.filter(
       (owner) =>
         self.deletionRequestedAt === null &&
         owner.deletionRequestedAt === null &&
-        !(self.nexonUid !== null && owner.nexonUid !== null),
+        !(self.uidHash !== null && owner.uidHash !== null),
     ),
   ]
-  // 키 줄이 알린 메이플 ID 가 로그인 줄 둘에 걸치면 앞 로그인 줄 하나와만 합친다. 두 로그인 줄은 넥슨 ID 가 달라 합칠 수 없다.
-  const logins = group.filter((holder) => holder.nexonUid !== null).sort(byAge)
-  if (logins.length > 1) group = group.filter((h) => h.nexonUid === null || h.id === logins[0]?.id)
+  // 로그인 없는 줄이 알린 메이플 ID 가 로그인 줄 둘에 걸치면 앞 로그인 줄 하나와만 합친다. 두 로그인 줄은 넥슨 ID 가 달라 합칠 수 없다.
+  const logins = group.filter((holder) => holder.uidHash !== null).sort(byAge)
+  if (logins.length > 1) group = group.filter((h) => h.uidHash === null || h.id === logins[0]?.id)
   const target = logins[0] ?? [...group].sort(byAge)[0] ?? self
   for (const holder of group) {
     if (holder.id !== target.id) await mergeNexonAccounts(tx, holder.id, target.id)
   }
   await tx
-    .insert(nexonAccountMapleIds)
-    .values(unique.map((mapleId) => ({ nexonAccountId: target.id, mapleId })))
+    .insert(mapleIds)
+    .values(unique.map((hash) => ({ nexonAccountId: target.id, hash })))
     .onConflictDoNothing()
   return target.id
 }
 
 export async function mapleIdsOf(tx: Tx | Db, nexonAccountId: string): Promise<string[]> {
   const rows = await tx
-    .select({ mapleId: nexonAccountMapleIds.mapleId })
-    .from(nexonAccountMapleIds)
-    .where(eq(nexonAccountMapleIds.nexonAccountId, nexonAccountId))
-    .orderBy(asc(nexonAccountMapleIds.mapleId))
-  return rows.map((row) => row.mapleId)
+    .select({ hash: mapleIds.hash })
+    .from(mapleIds)
+    .where(eq(mapleIds.nexonAccountId, nexonAccountId))
+    .orderBy(asc(mapleIds.hash))
+  return rows.map((row) => row.hash)
 }

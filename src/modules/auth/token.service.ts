@@ -47,14 +47,14 @@ export class TokenService {
     const session = await this.sessions.findById(sessionId)
     if (session === null) throw new ReloginRequired('세션이 없다')
     if (session.accessExpiresAt.getTime() - Date.now() > REFRESH_AHEAD_MS) {
-      return this.seal.open('access', session.accessSealed)
+      return this.seal.open('access', session.sealedAccessToken)
     }
 
     let tokens
     try {
       tokens = await this.nexon.refresh(
         session.platform,
-        this.seal.open('refresh', session.refreshSealed),
+        this.seal.open('refresh', session.sealedRefreshToken),
       )
     } catch (error) {
       if (error instanceof NexonTokenRejected) {
@@ -66,9 +66,9 @@ export class TokenService {
 
     const now = Date.now()
     await this.sessions.updateTokens(sessionId, {
-      accessSealed: this.seal.seal('access', tokens.accessToken),
+      sealedAccessToken: this.seal.seal('access', tokens.accessToken),
       accessExpiresAt: new Date(now + tokens.expiresIn * 1000),
-      refreshSealed: this.seal.seal('refresh', tokens.refreshToken),
+      sealedRefreshToken: this.seal.seal('refresh', tokens.refreshToken),
       refreshExpiresAt: new Date(now + tokens.refreshExpiresIn * 1000),
     })
     return tokens.accessToken

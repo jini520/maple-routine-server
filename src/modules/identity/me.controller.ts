@@ -1,16 +1,5 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  ForbiddenException,
-  Get,
-  HttpCode,
-  Post,
-  Put,
-  UseGuards,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Put, UseGuards } from '@nestjs/common'
 
-import { sha256 } from '../../common/hash'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { SessionsRepository } from '../auth/sessions.repository'
 import { ACCOUNT_DELETION_GRACE_DAYS } from '../users/account-deletion.job'
@@ -22,11 +11,16 @@ import {
   type IdentityContext,
   IdentityGuard,
 } from './identity.guard'
-import { type ApiKeyLinkBody, apiKeyLinkBody, type MapleIdsBody, mapleIdsBody } from './me.dto'
+import { type MapleIdsBody, mapleIdsBody } from './me.dto'
 
 const DAY_MS = 86_400_000
 
-/** 나. 계정 삭제 예약 · 예약 확인 · 취소, 키를 로그인 계정에 달기, 메이플 ID 알리기다. */
+/**
+ * 나. 계정 삭제 예약 · 예약 확인 · 취소, 메이플 ID 알리기다.
+ *
+ * 키를 로그인 계정에 다는 경로는 없다. 1.0.15 의 키 사용자는 메이플 ID 해시로 밝혀지고, 로그인한 기기가 메이플 ID 를 알리면
+ * 같은 넥슨 ID 의 줄이 메이플 ID 로 합쳐진다.
+ */
 @Controller()
 @UseGuards(IdentityGuard)
 export class MeController {
@@ -64,17 +58,6 @@ export class MeController {
   @AllowDeletionPending()
   async cancelDeletion(@CurrentIdentity() identity: IdentityContext): Promise<void> {
     await this.users.cancelDeletion(identity.userId)
-  }
-
-  /** 키 사용자가 로그인을 붙였을 때, 앱이 그 키를 지우기 전에 보낸다. 키의 사람을 세션의 사람에 합친다. */
-  @Post('v1/me/api-key-links')
-  @HttpCode(204)
-  async linkApiKey(
-    @CurrentIdentity() identity: IdentityContext,
-    @Body(new ZodValidationPipe(apiKeyLinkBody)) body: ApiKeyLinkBody,
-  ): Promise<void> {
-    if (identity.source !== 'login') throw new ForbiddenException({ code: 'login_required' })
-    await this.users.linkApiKey(identity.userId, sha256(body.apiKeyHash))
   }
 
   /**

@@ -3,17 +3,23 @@ import { and, eq, gte, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 
 import { sha256Hex } from '../../common/hash'
 import { DB, type Db } from '../../database/database.module'
-import { nexonAccountKeys, nexonAccounts, users } from '../../database/schema'
+import { nexonAccounts, users } from '../../database/schema'
 import {
   ACCOUNT_COLUMNS,
-  findOrCreateKeyAccount,
+  findAccountByMapleId,
+  findOrCreateMapleIdAccount,
   type FoundAccount,
   lockNexonAccounts,
-  mergeNexonAccounts,
 } from './nexon-account-store'
 import { newReferralCode } from './referral-code'
 
 export type { FoundAccount } from './nexon-account-store'
+
+/** 부계정으로 등록된 계정의 사람이 아니다. 그 사람은 메인과 한 명이라 사용자 수에 따로 세지 않는다. */
+const notSubAccount = sql`not exists (
+  select 1 from sub_account_registrations r
+    join nexon_accounts sa on sa.id = r.sub_nexon_account_id
+   where sa.user_id = ${users.id})`
 
 /** 추천인 코드가 겹쳐 다시 뽑는 횟수의 끝. 코드가 1조 가지가 넘어 한 번 겹치는 일도 드물다. */
 const ACCOUNT_INSERT_ATTEMPTS = 5
@@ -31,8 +37,8 @@ export class UsersRepository {
    */
   upsertByNexonUid(uid: string): Promise<FoundAccount> {
     // 원문은 받은 자리에서 버린다. 서버는 uid 로 줄을 찾기만 하고 넥슨에 uid 를 보내지 않는다.
-    const nexonUid = sha256Hex(uid)
-    const match = eq(nexonAccounts.nexonUid, nexonUid)
+    const uidHash = sha256Hex(uid)
+    const match = eq(nexonAccounts.uidHash, uidHash)
     return this.db.transaction(async (tx) => {
       const [found] = await tx.select(ACCOUNT_COLUMNS).from(nexonAccounts).where(match)
       if (found !== undefined) return found
@@ -41,7 +47,7 @@ export class UsersRepository {
       for (let attempt = 0; attempt < ACCOUNT_INSERT_ATTEMPTS; attempt += 1) {
         const [created] = await tx
           .insert(nexonAccounts)
-          .values({ userId: user.id, nexonUid, referralCode: newReferralCode() })
+          .values({ userId: user.id, uidHash, referralCode: newReferralCode() })
           .onConflictDoNothing()
           .returning(ACCOUNT_COLUMNS)
         if (created !== undefined) return created
@@ -55,58 +61,27 @@ export class UsersRepository {
     })
   }
 
-  /** 키 해시로 넥슨 계정을 찾는다. 처음 보는 해시는 사람과 계정 줄을 만든다. 증명은 없고 표본을 묶는 꼬리표다. */
-  upsertByApiKeyHash(apiKeyHash: Buffer): Promise<FoundAccount> {
-    return this.db.transaction((tx) => findOrCreateKeyAccount(tx, apiKeyHash))
+  /**
+   * 메이플 ID 해시로 넥슨 계정을 찾는다. 처음 보는 메이플 ID 는 사람과 계정 줄을 만든다. 키는 다시 받으면 바뀌지만 메이플 ID 는
+   * 바뀌지 않아, 로그인 없이 쓰는 사람을 이것으로 찾는다. 찾으면 잠그지 않는다. 요청마다 불려서다.
+   */
+  async upsertByMapleId(mapleId: string): Promise<FoundAccount> {
+    const found = await findAccountByMapleId(this.db, mapleId)
+    if (found !== null) return found
+    return this.db.transaction(async (tx) => {
+      await lockNexonAccounts(tx)
+      return findOrCreateMapleIdAccount(tx, mapleId)
+    })
   }
 
-  /** 세션 경로의 계정. 세션은 사람만 가리키므로 그 사람의 로그인 계정 줄(`nexon_uid` 가 있는 줄)을 찾는다. */
+  /** 세션 경로의 계정. 세션은 사람만 가리키므로 그 사람의 로그인 계정 줄(`uid_hash` 가 있는 줄)을 찾는다. */
   async findLoginAccount(userId: string): Promise<Omit<FoundAccount, 'id'> | null> {
     const [row] = await this.db
       .select({ nexonAccountId: nexonAccounts.id })
       .from(nexonAccounts)
-      .where(and(eq(nexonAccounts.userId, userId), isNotNull(nexonAccounts.nexonUid)))
+      .where(and(eq(nexonAccounts.userId, userId), isNotNull(nexonAccounts.uidHash)))
       .limit(1)
     return row ?? null
-  }
-
-  /**
-   * 키 사용자가 로그인을 붙였을 때 키를 로그인 계정 줄에 단다. 앱은 메이플 ID 가 같은 것을 확인한 키만, 기기에서 지우기 전에 보낸다.
-   * 같은 넥슨 ID 라 키의 계정 줄은 로그인 줄로 합친다.
-   *
-   * 키가 다른 로그인 줄에 달려 있거나 그 사람이 삭제를 예약했으면 옮기지 않는다. 앞은 어느 넥슨 ID 인지 가릴 수 없고, 뒤는 합치면
-   * 그 삭제 요청이 사라진다.
-   */
-  async linkApiKey(userId: string, apiKeyHash: Buffer): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      await lockNexonAccounts(tx)
-      const [login] = await tx
-        .select({ id: nexonAccounts.id })
-        .from(nexonAccounts)
-        .where(and(eq(nexonAccounts.userId, userId), isNotNull(nexonAccounts.nexonUid)))
-        .limit(1)
-      if (login === undefined) return
-      const [holder] = await tx
-        .select({
-          id: nexonAccounts.id,
-          nexonUid: nexonAccounts.nexonUid,
-          deletionRequestedAt: users.deletionRequestedAt,
-        })
-        .from(nexonAccountKeys)
-        .innerJoin(nexonAccounts, eq(nexonAccounts.id, nexonAccountKeys.nexonAccountId))
-        .innerJoin(users, eq(users.id, nexonAccounts.userId))
-        .where(eq(nexonAccountKeys.apiKeyHash, apiKeyHash))
-      if (holder === undefined) {
-        await tx
-          .insert(nexonAccountKeys)
-          .values({ nexonAccountId: login.id, apiKeyHash })
-          .onConflictDoNothing()
-        return
-      }
-      if (holder.id === login.id || holder.nexonUid !== null || holder.deletionRequestedAt !== null)
-        return
-      await mergeNexonAccounts(tx, holder.id, login.id)
-    })
   }
 
   /** 계정 삭제를 예약한다. 이미 적힌 시각은 안 덮는다. 덮으면 다시 누를 때마다 유예가 밀린다. */
@@ -142,7 +117,10 @@ export class UsersRepository {
     return deleted.length
   }
 
-  /** 삭제를 예약하지 않은 사람 수. createdBefore 를 주면 그 앞에 만든 사람만 센다. 예약한 사람은 30일 뒤 지워진다. */
+  /**
+   * 삭제를 예약하지 않은 사람 수. 부계정의 사람은 메인과 한 명이라 뺀다. createdBefore 를 주면 그 앞에 만든 사람만 센다. 예약한
+   * 사람은 30일 뒤 지워진다.
+   */
   async countActive(createdBefore?: Date): Promise<number> {
     const [row] = await this.db
       .select({ n: sql<number>`count(*)::int` })
@@ -150,13 +128,14 @@ export class UsersRepository {
       .where(
         and(
           isNull(users.deletionRequestedAt),
+          notSubAccount,
           createdBefore ? lt(users.createdAt, createdBefore) : undefined,
         ),
       )
     return row?.n ?? 0
   }
 
-  /** 날마다(한국 시각) 새로 만든 사람과 그 중 삭제를 예약하지 않은 사람. 오래된 날부터. */
+  /** 날마다(한국 시각) 새로 만든 사람과 그 중 삭제를 예약하지 않은 사람. 부계정의 사람은 뺀다. 오래된 날부터. */
   createdDaily(range: {
     since: Date
     until: Date
@@ -169,7 +148,9 @@ export class UsersRepository {
         active: sql<number>`(count(*) filter (where ${users.deletionRequestedAt} is null))::int`,
       })
       .from(users)
-      .where(and(gte(users.createdAt, range.since), lt(users.createdAt, range.until)))
+      .where(
+        and(gte(users.createdAt, range.since), lt(users.createdAt, range.until), notSubAccount),
+      )
       .groupBy(day)
       .orderBy(sql`1`)
   }

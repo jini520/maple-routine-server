@@ -73,6 +73,12 @@ export interface MoveResult {
   notices: number
   faqSheets: number
   faqItems: number
+  users: number
+  nexonAccounts: number
+  mapleIds: number
+  subAccountRegistrations: number
+  referrals: number
+  nexonSessions: number
 }
 
 /** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
@@ -165,6 +171,13 @@ const MOVED_TABLES = [
   schema.notices,
   schema.faqSheets,
   schema.faqItems,
+  schema.users,
+  schema.nexonAccounts,
+  schema.mapleIds,
+  schema.subAccountRegistrations,
+  schema.referrals,
+  schema.nexonSessions,
+  schema.nexonLoginAttempts,
 ]
 
 /**
@@ -342,6 +355,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const rules = await gameRuleRow(oldDb)
   const sectionUpdates = await sectionUpdateRows(oldDb)
   const ops = await operationRows(oldDb)
+  const accounts = await accountRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -394,6 +408,12 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.notices, ops.notices)
     await insertAll(tx, schema.faqSheets, ops.faqSheets)
     await insertAll(tx, schema.faqItems, ops.faqItems)
+    await insertAll(tx, schema.users, accounts.users)
+    await insertAll(tx, schema.nexonAccounts, accounts.nexonAccounts)
+    await insertAll(tx, schema.mapleIds, accounts.mapleIds)
+    await insertAll(tx, schema.subAccountRegistrations, accounts.subAccountRegistrations)
+    await insertAll(tx, schema.referrals, accounts.referrals)
+    await insertAll(tx, schema.nexonSessions, accounts.nexonSessions)
   })
   return {
     assets: assets.length,
@@ -445,6 +465,71 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     notices: ops.notices.length,
     faqSheets: ops.faqSheets.length,
     faqItems: ops.faqItems.length,
+    users: accounts.users.length,
+    nexonAccounts: accounts.nexonAccounts.length,
+    mapleIds: accounts.mapleIds.length,
+    subAccountRegistrations: accounts.subAccountRegistrations.length,
+    referrals: accounts.referrals.length,
+    nexonSessions: accounts.nexonSessions.length,
+  }
+}
+
+/**
+ * 계정 · 로그인 표의 새 줄. 줄 id 그대로 칸 이름만 바뀐다. 세션을 옮겨야 사용자가 다시 로그인하지 않는다.
+ *
+ * 키 표는 1.0.15 에 두지 않아 옮기지 않는다. 키로만 쓰던 넥슨 계정 줄은 사람과 함께 남는다. 옛 판매가 줄이 그 사람을
+ * 가리키고, 1.0.15 앱은 그 계정을 메이플 ID 해시로 다시 찾는다. 로그인 시도는 10분짜리 줄이라 옮기지 않는다. 전환은 점검
+ * 잠금 안에서 해서 진행 중인 로그인이 없다.
+ */
+async function accountRows(oldDb: OldDb) {
+  const [users, accounts, maples, subs, refs, sessions] = await Promise.all([
+    oldDb.select().from(oldSchema.users),
+    oldDb.select().from(oldSchema.nexonAccounts),
+    oldDb.select().from(oldSchema.nexonAccountMapleIds),
+    oldDb.select().from(oldSchema.subAccounts),
+    oldDb.select().from(oldSchema.referrals),
+    oldDb.select().from(oldSchema.nexonSessions),
+  ])
+  return {
+    users,
+    nexonAccounts: accounts.map((a) => ({
+      id: a.id,
+      userId: a.userId,
+      uidHash: a.nexonUid,
+      referralCode: a.referralCode,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+    })),
+    mapleIds: maples.map((m) => ({
+      id: m.id,
+      nexonAccountId: m.nexonAccountId,
+      hash: m.mapleId,
+      createdAt: m.createdAt,
+    })),
+    subAccountRegistrations: subs.map((r) => ({
+      id: r.id,
+      loginNexonAccountId: r.loginAccountId,
+      subNexonAccountId: r.subAccountId,
+      createdAt: r.createdAt,
+    })),
+    referrals: refs.map((r) => ({
+      id: r.id,
+      referredNexonAccountId: r.referredAccountId,
+      referrerNexonAccountId: r.referrerAccountId,
+      createdAt: r.createdAt,
+    })),
+    nexonSessions: sessions.map((n) => ({
+      id: n.id,
+      hash: n.sessionHash,
+      userId: n.userId,
+      platform: n.platform,
+      sealedAccessToken: n.accessSealed,
+      accessExpiresAt: n.accessExpiresAt,
+      sealedRefreshToken: n.refreshSealed,
+      refreshExpiresAt: n.refreshExpiresAt,
+      createdAt: n.createdAt,
+      lastUsedAt: n.lastUsedAt,
+    })),
   }
 }
 

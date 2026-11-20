@@ -21,12 +21,12 @@ describeDb('AttemptsRepository', () => {
     const [session] = await db
       .insert(nexonSessions)
       .values({
-        sessionHash: sha256(`s${seq}`),
+        hash: sha256(`s${seq}`),
         userId: user.id,
         platform: 'ios',
-        accessSealed: Buffer.from('a'),
+        sealedAccessToken: Buffer.from('a'),
         accessExpiresAt: new Date(),
-        refreshSealed: Buffer.from('r'),
+        sealedRefreshToken: Buffer.from('r'),
         refreshExpiresAt: new Date(),
       })
       .returning({ id: nexonSessions.id })

@@ -6,7 +6,8 @@ import {
   dropPrices,
   itemGroups,
   items,
-  nexonAccountMapleIds,
+  mapleIds,
+  subAccountRegistrations,
   tradeGroups,
   worlds,
 } from '../../database/schema'
@@ -102,14 +103,18 @@ export class DropMarketRepository {
         pricedAt: dropPrices.pricedAt,
         worldKey: worlds.key,
         worldName: worlds.name,
-        person: sql<string>`coalesce('a:' || ${nexonAccountMapleIds.nexonAccountId}::text, 'm:' || ${dropPrices.mapleId}, 'u:' || ${dropPrices.userId}::text, 'r:' || ${dropPrices.id}::text)`,
+        person: sql<string>`coalesce('a:' || coalesce(${subAccountRegistrations.loginNexonAccountId}, ${mapleIds.nexonAccountId})::text, 'm:' || ${dropPrices.mapleId}, 'u:' || ${dropPrices.userId}::text, 'r:' || ${dropPrices.id}::text)`,
       })
       .from(dropPrices)
       .innerJoin(items, eq(dropPrices.itemId, items.id))
       .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
       .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
       .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
-      .leftJoin(nexonAccountMapleIds, eq(nexonAccountMapleIds.mapleId, dropPrices.mapleId))
+      .leftJoin(mapleIds, eq(mapleIds.hash, dropPrices.mapleId))
+      .leftJoin(
+        subAccountRegistrations,
+        eq(subAccountRegistrations.subNexonAccountId, mapleIds.nexonAccountId),
+      )
       .where(
         and(
           eq(dropPrices.recordStatus, 'completed'),

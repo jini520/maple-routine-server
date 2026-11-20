@@ -4,7 +4,7 @@ import {
   dropBoxes,
   dropPrices,
   items,
-  nexonAccountMapleIds,
+  mapleIds,
   nexonAccounts,
   users,
   worlds,
@@ -82,9 +82,9 @@ describeDb('DropPricesRepository', () => {
       .returning({ id: nexonAccounts.id })
     myAccount = accounts[0].id
     otherAccount = accounts[1].id
-    await db.insert(nexonAccountMapleIds).values([
-      { nexonAccountId: myAccount, mapleId: 'm-me' },
-      { nexonAccountId: otherAccount, mapleId: 'm-other' },
+    await db.insert(mapleIds).values([
+      { nexonAccountId: myAccount, hash: 'm-me' },
+      { nexonAccountId: otherAccount, hash: 'm-other' },
     ])
     // 가격 줄이 아이템 · 월드 표의 줄을 가리킨다. 스펙이 쓰는 key 둘과 월드 하나를 먼저 세운다.
     await db.insert(items).values([
@@ -520,7 +520,7 @@ describeDb('DropPricesRepository', () => {
         .insert(nexonAccounts)
         .values({ userId: back.id })
         .returning({ id: nexonAccounts.id })
-      await db.insert(nexonAccountMapleIds).values({ nexonAccountId: account.id, mapleId: 'm-me' })
+      await db.insert(mapleIds).values({ nexonAccountId: account.id, hash: 'm-me' })
       await repo.upsert(drop({ dropRecordId: R1, userId: back.id, nexonAccountId: account.id }))
 
       expect(await rows()).toHaveLength(1)

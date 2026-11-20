@@ -151,8 +151,8 @@ export async function insertNexonAccount(
   if (account === undefined) throw new Error('넥슨 계정 줄을 못 넣었다')
   if (mapleIds.length > 0) {
     await db
-      .insert(schema.nexonAccountMapleIds)
-      .values(mapleIds.map((mapleId) => ({ nexonAccountId: account.id, mapleId })))
+      .insert(schema.mapleIds)
+      .values(mapleIds.map((hash) => ({ nexonAccountId: account.id, hash })))
   }
   return { userId: user.id, nexonAccountId: account.id }
 }

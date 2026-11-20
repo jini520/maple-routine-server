@@ -89,14 +89,14 @@ describe('AuthService', () => {
       {
         userId: string
         platform: string
-        accessSealed: Buffer
-        refreshSealed: Buffer
-        sessionHash: Buffer
+        sealedAccessToken: Buffer
+        sealedRefreshToken: Buffer
+        hash: Buffer
       },
     ]
     expect(created.userId).toBe('uid')
-    expect(seal.open('access', created.accessSealed)).toBe('AT')
-    expect(seal.open('refresh', created.refreshSealed)).toBe('RT')
+    expect(seal.open('access', created.sealedAccessToken)).toBe('AT')
+    expect(seal.open('refresh', created.sealedRefreshToken)).toBe('RT')
     const [aid, sealed] = attempts.seal.mock.calls[0] as [
       string,
       { receiptHash: Buffer; sessionSealed: Buffer; sessionId: string },
@@ -104,7 +104,7 @@ describe('AuthService', () => {
     expect(aid).toBe('aid')
     expect(sealed.sessionId).toBe('sid')
     const sessionValue = seal.open('session', sealed.sessionSealed)
-    expect(created.sessionHash.equals(sha256(sessionValue))).toBe(true)
+    expect(created.hash.equals(sha256(sessionValue))).toBe(true)
     const receipt = new URL(url).searchParams.get('receipt')
     expect(url.startsWith('com.mapleroutine.app://oauth/callback?receipt=')).toBe(true)
     expect(sealed.receiptHash.equals(sha256(receipt!))).toBe(true)

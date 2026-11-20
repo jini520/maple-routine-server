@@ -16,12 +16,12 @@ describeDb('SessionsRepository', () => {
 
   function input(hash = 's') {
     return {
-      sessionHash: sha256(hash),
+      hash: sha256(hash),
       userId,
       platform: 'ios' as const,
-      accessSealed: Buffer.from('a'),
+      sealedAccessToken: Buffer.from('a'),
       accessExpiresAt: future(),
-      refreshSealed: Buffer.from('r'),
+      sealedRefreshToken: Buffer.from('r'),
       refreshExpiresAt: future(),
     }
   }
@@ -44,7 +44,7 @@ describeDb('SessionsRepository', () => {
     expect(row?.id).toBe(id)
     expect(row?.userId).toBe(userId)
     expect(row?.platform).toBe('ios')
-    expect(row?.accessSealed.toString()).toBe('a')
+    expect(row?.sealedAccessToken.toString()).toBe('a')
   })
 
   it('모르는 hash 는 null 이다', async () => {
@@ -56,15 +56,15 @@ describeDb('SessionsRepository', () => {
     const later = new Date(Date.now() + 3_600_000)
 
     await repo.updateTokens(id, {
-      accessSealed: Buffer.from('a2'),
+      sealedAccessToken: Buffer.from('a2'),
       accessExpiresAt: later,
-      refreshSealed: Buffer.from('r2'),
+      sealedRefreshToken: Buffer.from('r2'),
       refreshExpiresAt: later,
     })
 
     const row = await repo.findById(id)
-    expect(row?.accessSealed.toString()).toBe('a2')
-    expect(row?.refreshSealed.toString()).toBe('r2')
+    expect(row?.sealedAccessToken.toString()).toBe('a2')
+    expect(row?.sealedRefreshToken.toString()).toBe('r2')
     expect(row?.accessExpiresAt.getTime()).toBe(later.getTime())
   })
 

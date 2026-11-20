@@ -73,19 +73,19 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
     ])
   })
 
-  it('상자는 아이템을 가리키고 내용물은 더한 차례로 서며 옮기고 뺄 수 있다', async () => {
+  it('상자는 아이템을 가리키고 내용물은 더한 차례로 서며 옮기고 뺄 수 있다. 관리 줄은 아이템 key 로 낸다', async () => {
     await insertItems(db, [
       { key: 'green_boss_ring_box', name: '녹옥의 보스 반지 상자', isDrop: true },
       { key: 'restraint_ring', name: '리스트레인트 링', isDrop: true },
       { key: 'continuous_ring', name: '컨티뉴어스 링', isDrop: true },
     ])
 
-    await expect(boxes.create({ item: 'nobody', levelMin: 1, levelMax: 3 })).rejects.toBeInstanceOf(
-      NoDropItem,
-    )
-    await boxes.create({ item: 'green_boss_ring_box', levelMin: 1, levelMax: 3 })
     await expect(
-      boxes.create({ item: 'green_boss_ring_box', levelMin: 1, levelMax: 3 }),
+      boxes.create({ item: 'nobody', ringLevelMin: 1, ringLevelMax: 3 }),
+    ).rejects.toBeInstanceOf(NoDropItem)
+    await boxes.create({ item: 'green_boss_ring_box', ringLevelMin: 1, ringLevelMax: 3 })
+    await expect(
+      boxes.create({ item: 'green_boss_ring_box', ringLevelMin: 1, ringLevelMax: 3 }),
     ).rejects.toBeInstanceOf(DropBoxExists)
 
     expect(await boxes.addContent('green_boss_ring_box', 'restraint_ring')).toBe(true)
@@ -98,34 +98,49 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
     )
     expect(await boxes.addContent('nobody', 'restraint_ring')).toBe(false)
 
-    expect((await boxes.section()).boxes).toEqual([
+    expect((await boxes.adminRows()).boxes).toEqual([
       {
         item: 'green_boss_ring_box',
-        levelMin: 1,
-        levelMax: 3,
+        ringLevelMin: 1,
+        ringLevelMax: 3,
         contents: ['restraint_ring', 'continuous_ring'],
       },
     ])
     expect(await boxes.moveContent('green_boss_ring_box', 'continuous_ring', 'up')).toBe(true)
-    expect((await boxes.section()).boxes[0]?.contents).toEqual([
+    expect((await boxes.adminRows()).boxes[0]?.contents).toEqual([
       'continuous_ring',
       'restraint_ring',
     ])
+    // 앱이 받는 칸은 상자와 내용물을 표 이름의 배열 둘에 아이템 줄 id 로 내고, 내용물은 상자 안 차례다.
+    const section = await boxes.section()
+    const itemIdOf = new Map(
+      (await db.select({ id: schema.items.id, key: schema.items.key }).from(schema.items)).map(
+        (r) => [r.key, r.id],
+      ),
+    )
+    const boxId = section.dropBoxes[0]?.id
+    expect(section.dropBoxes).toEqual([
+      { id: boxId, itemId: itemIdOf.get('green_boss_ring_box'), ringLevelMin: 1, ringLevelMax: 3 },
+    ])
+    expect(section.dropBoxContents).toEqual([
+      { boxId, itemId: itemIdOf.get('continuous_ring') },
+      { boxId, itemId: itemIdOf.get('restraint_ring') },
+    ])
     expect(await boxes.moveContent('green_boss_ring_box', 'continuous_ring', 'up')).toBe(true)
-    expect((await boxes.section()).boxes[0]?.contents).toEqual([
+    expect((await boxes.adminRows()).boxes[0]?.contents).toEqual([
       'continuous_ring',
       'restraint_ring',
     ])
 
-    expect(await boxes.setLevels('green_boss_ring_box', { levelMin: null, levelMax: null })).toBe(
-      true,
-    )
+    expect(
+      await boxes.setLevels('green_boss_ring_box', { ringLevelMin: null, ringLevelMax: null }),
+    ).toBe(true)
     expect(await boxes.removeContent('green_boss_ring_box', 'restraint_ring')).toBe(true)
     expect(await boxes.removeContent('green_boss_ring_box', 'restraint_ring')).toBe(false)
-    expect((await boxes.section()).boxes[0]).toEqual({
+    expect((await boxes.adminRows()).boxes[0]).toEqual({
       item: 'green_boss_ring_box',
-      levelMin: null,
-      levelMax: null,
+      ringLevelMin: null,
+      ringLevelMax: null,
       contents: ['continuous_ring'],
     })
   })
@@ -135,7 +150,7 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
       { key: 'green_boss_ring_box', name: '녹옥의 보스 반지 상자', isDrop: true },
     ])
     await expect(
-      boxes.create({ item: 'green_boss_ring_box', levelMin: 1, levelMax: null }),
+      boxes.create({ item: 'green_boss_ring_box', ringLevelMin: 1, ringLevelMax: null }),
     ).rejects.toThrow()
   })
 })

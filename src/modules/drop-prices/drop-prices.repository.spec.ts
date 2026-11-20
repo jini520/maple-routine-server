@@ -348,7 +348,7 @@ describeDb('DropPricesRepository', () => {
         .values({ key: 'ring-box', name: '반지 상자', isValuable: false, isDrop: true })
         .returning({ id: items.id })
       ringBox = box.id
-      await db.insert(dropBoxes).values({ itemId: ringBox, levelMin: 1, levelMax: 4 })
+      await db.insert(dropBoxes).values({ itemId: ringBox, ringLevelMin: 1, ringLevelMax: 4 })
     })
 
     const drop = (
@@ -553,7 +553,7 @@ describeDb('DropPricesRepository', () => {
         .insert(items)
         .values({ key: 'ring-box', name: '반지 상자', isValuable: false, isDrop: true })
         .returning({ id: items.id })
-      await db.insert(dropBoxes).values({ itemId: box.id, levelMin: 1, levelMax: 4 })
+      await db.insert(dropBoxes).values({ itemId: box.id, ringLevelMin: 1, ringLevelMax: 4 })
       const owned = (ocid: string) => ({ bossId: created.id, owner: { mapleId: 'm-me', ocid } })
       // 차례대로 옛 줄 · 직접 드롭 · 상자 · 직접 드롭 대기 · 다른 기간의 망토다.
       await repo.upsert(input({ dropRecordId: R[0], priceMeso: 7 }))

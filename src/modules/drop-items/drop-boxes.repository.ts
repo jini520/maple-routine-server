@@ -7,24 +7,36 @@ import { dropBoxContents, dropBoxes, items } from '../../database/schema'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface DropBoxView {
-  /** 상자 아이템 key. */
-  item: string
-  levelMin: number | null
-  levelMax: number | null
-  /** 내용물 아이템 key. 차례가 상자를 열면 서는 후보 차례다. */
-  contents: string[]
+  id: string
+  itemId: string
+  ringLevelMin: number | null
+  ringLevelMax: number | null
 }
 
-/** GET /v1/game-data 의 dropBoxes 칸. */
+export interface DropBoxContentView {
+  boxId: string
+  itemId: string
+}
+
+/** GET /v1/game-data 의 dropBoxes 칸. 내용물의 차례가 상자를 열면 서는 후보 차례다. */
 export interface DropBoxesSection {
   updatedAt: string | null
-  boxes: DropBoxView[]
+  dropBoxes: DropBoxView[]
+  dropBoxContents: DropBoxContentView[]
+}
+
+/** 관리 화면의 상자. 상자와 내용물을 아이템 key 로 든다. */
+export interface DropBoxAdminRow {
+  item: string
+  ringLevelMin: number | null
+  ringLevelMax: number | null
+  contents: string[]
 }
 
 export interface DropBoxInput {
   item: string
-  levelMin: number | null
-  levelMax: number | null
+  ringLevelMin: number | null
+  ringLevelMax: number | null
 }
 
 export class DropBoxExists extends Error {}
@@ -37,34 +49,62 @@ export class DropBoxesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<DropBoxesSection> {
-    const boxes = await this.db
+    const [boxes, contents, updatedAt] = await Promise.all([
+      this.boxes(),
+      this.contents(),
+      sectionUpdatedAt(this.db, 'dropBoxes'),
+    ])
+    return {
+      updatedAt,
+      dropBoxes: boxes.map((b) => ({
+        id: b.id,
+        itemId: b.itemId,
+        ringLevelMin: b.ringLevelMin,
+        ringLevelMax: b.ringLevelMax,
+      })),
+      dropBoxContents: contents.map((c) => ({ boxId: c.boxId, itemId: c.itemId })),
+    }
+  }
+
+  async adminRows(): Promise<{ updatedAt: string | null; boxes: DropBoxAdminRow[] }> {
+    const [boxes, contents, updatedAt] = await Promise.all([
+      this.boxes(),
+      this.contents(),
+      sectionUpdatedAt(this.db, 'dropBoxes'),
+    ])
+    return {
+      updatedAt,
+      boxes: boxes.map((b) => ({
+        item: b.item,
+        ringLevelMin: b.ringLevelMin,
+        ringLevelMax: b.ringLevelMax,
+        contents: contents.filter((c) => c.boxId === b.id).map((c) => c.item),
+      })),
+    }
+  }
+
+  /** 상자 아이템 key 차례. */
+  private async boxes() {
+    return this.db
       .select({
         id: dropBoxes.id,
+        itemId: dropBoxes.itemId,
         item: items.key,
-        levelMin: dropBoxes.levelMin,
-        levelMax: dropBoxes.levelMax,
+        ringLevelMin: dropBoxes.ringLevelMin,
+        ringLevelMax: dropBoxes.ringLevelMax,
       })
       .from(dropBoxes)
       .innerJoin(items, eq(dropBoxes.itemId, items.id))
       .orderBy(asc(items.key))
-    const contents = await this.db
-      .select({
-        boxId: dropBoxContents.boxId,
-        item: items.key,
-        sortOrder: dropBoxContents.sortOrder,
-      })
+  }
+
+  /** 상자 안 차례. */
+  private async contents() {
+    return this.db
+      .select({ boxId: dropBoxContents.boxId, itemId: dropBoxContents.itemId, item: items.key })
       .from(dropBoxContents)
       .innerJoin(items, eq(dropBoxContents.itemId, items.id))
-      .orderBy(asc(dropBoxContents.sortOrder))
-    return {
-      updatedAt: await sectionUpdatedAt(this.db, 'dropBoxes'),
-      boxes: boxes.map((b) => ({
-        item: b.item,
-        levelMin: b.levelMin,
-        levelMax: b.levelMax,
-        contents: contents.filter((c) => c.boxId === b.id).map((c) => c.item),
-      })),
-    }
+      .orderBy(asc(dropBoxContents.boxId), asc(dropBoxContents.sortOrder))
   }
 
   async create(input: DropBoxInput): Promise<{ id: string }> {
@@ -75,7 +115,11 @@ export class DropBoxesRepository {
       try {
         ;[row] = await tx
           .insert(dropBoxes)
-          .values({ itemId: item, levelMin: input.levelMin, levelMax: input.levelMax })
+          .values({
+            itemId: item,
+            ringLevelMin: input.ringLevelMin,
+            ringLevelMax: input.ringLevelMax,
+          })
           .returning({ id: dropBoxes.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new DropBoxExists(input.item)
@@ -90,7 +134,7 @@ export class DropBoxesRepository {
   /** 레벨 범위를 갈아 끼운다. 모르는 상자면 false 다. */
   async setLevels(
     boxItem: string,
-    levels: { levelMin: number | null; levelMax: number | null },
+    levels: { ringLevelMin: number | null; ringLevelMax: number | null },
   ): Promise<boolean> {
     const box = await this.boxId(boxItem)
     if (box === null) return false

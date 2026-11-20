@@ -9,18 +9,17 @@ import { type BossCycle, isPeriodBoundary } from './period-boundary'
 
 type Difficulty = DifficultyInput['difficulty']
 
-export interface CrystalPriceView {
-  boss: string
-  difficulty: Difficulty
+export interface BossCrystalPriceView {
+  bossDifficultyId: string
   priceMeso: number
-  from: string | null
-  until: string | null
+  validFrom: string | null
+  validUntil: string | null
 }
 
 /** GET /v1/game-data 의 crystalPrices 칸. 파티 인원 상한은 bosses 칸의 난이도 줄이 든다. */
 export interface CrystalPricesSection {
   updatedAt: string | null
-  prices: CrystalPriceView[]
+  bossCrystalPrices: BossCrystalPriceView[]
 }
 
 /** 관리 화면의 한 조합. 보스 표의 난이도 줄 전부가 서고 가격이 없는 조합은 prices 가 빈다. */
@@ -30,7 +29,7 @@ export interface CrystalPriceAdminPair {
   cycle: BossCycle
   difficulty: Difficulty
   maxPartySize: number | null
-  prices: { id: string; priceMeso: number; from: string | null; until: string | null }[]
+  prices: { id: string; priceMeso: number; validFrom: string | null; validUntil: string | null }[]
 }
 
 export class NoBossDifficulty extends Error {}
@@ -48,11 +47,10 @@ export class CrystalPricesRepository {
   async section(): Promise<CrystalPricesSection> {
     const rows = await this.db
       .select({
-        boss: bosses.key,
-        difficulty: bossDifficulties.difficulty,
+        bossDifficultyId: bossCrystalPrices.bossDifficultyId,
         priceMeso: bossCrystalPrices.priceMeso,
-        from: bossCrystalPrices.from,
-        until: bossCrystalPrices.until,
+        validFrom: bossCrystalPrices.validFrom,
+        validUntil: bossCrystalPrices.validUntil,
       })
       .from(bossCrystalPrices)
       .innerJoin(bossDifficulties, eq(bossCrystalPrices.bossDifficultyId, bossDifficulties.id))
@@ -60,9 +58,9 @@ export class CrystalPricesRepository {
       .orderBy(
         asc(bosses.sortOrder),
         asc(bossDifficulties.difficulty),
-        sql`${bossCrystalPrices.from} asc nulls first`,
+        sql`${bossCrystalPrices.validFrom} asc nulls first`,
       )
-    return { updatedAt: await sectionUpdatedAt(this.db, 'crystalPrices'), prices: rows }
+    return { updatedAt: await sectionUpdatedAt(this.db, 'crystalPrices'), bossCrystalPrices: rows }
   }
 
   async pairs(): Promise<CrystalPriceAdminPair[]> {
@@ -81,7 +79,7 @@ export class CrystalPricesRepository {
     const prices = await this.db
       .select()
       .from(bossCrystalPrices)
-      .orderBy(sql`${bossCrystalPrices.from} asc nulls first`)
+      .orderBy(sql`${bossCrystalPrices.validFrom} asc nulls first`)
     return pairs.map((p) => ({
       boss: p.boss,
       bossName: p.bossName,
@@ -90,20 +88,25 @@ export class CrystalPricesRepository {
       maxPartySize: p.maxPartySize,
       prices: prices
         .filter((r) => r.bossDifficultyId === p.id)
-        .map((r) => ({ id: r.id, priceMeso: r.priceMeso, from: r.from, until: r.until })),
+        .map((r) => ({
+          id: r.id,
+          priceMeso: r.priceMeso,
+          validFrom: r.validFrom,
+          validUntil: r.validUntil,
+        })),
     }))
   }
 
   /**
-   * 새 가격을 적는다. 지금 가격 줄이 있으면 그 줄의 until 을 새 시작으로 닫고 새 줄을 연다.
+   * 새 가격을 적는다. 지금 가격 줄이 있으면 그 줄의 valid_until 을 새 시작으로 닫고 새 줄을 연다.
    *
-   * 첫 줄은 from 이 없어도 된다(처음부터). 둘째부터는 시작이 있어야 하고, 그 보스의 기간 경계여야 하며, 지금 줄의
+   * 첫 줄은 valid_from 이 없어도 된다(처음부터). 둘째부터는 시작이 있어야 하고, 그 보스의 기간 경계여야 하며, 지금 줄의
    * 시작보다 뒤여야 한다. 과거 기간이 옛 값을 계속 읽으므로 옛 줄은 안 건드린다.
    */
   async addPrice(
     boss: string,
     difficulty: Difficulty,
-    input: { priceMeso: number; from: string | null },
+    input: { priceMeso: number; validFrom: string | null },
   ): Promise<{ id: string }> {
     const pair = await this.pair(boss, difficulty)
     if (pair === null) throw new NoBossDifficulty(`${boss}/${difficulty}`)
@@ -112,26 +115,31 @@ export class CrystalPricesRepository {
         .select()
         .from(bossCrystalPrices)
         .where(
-          and(eq(bossCrystalPrices.bossDifficultyId, pair.id), isNull(bossCrystalPrices.until)),
+          and(
+            eq(bossCrystalPrices.bossDifficultyId, pair.id),
+            isNull(bossCrystalPrices.validUntil),
+          ),
         )
       if (open !== undefined) {
-        if (input.from === null) throw new NotAfterCurrent('지금 가격이 있어 시작이 있어야 한다')
-        if (!isPeriodBoundary(input.from, pair.cycle)) throw new NotBoundary(input.from)
-        if (open.from !== null && input.from <= open.from) throw new NotAfterCurrent(input.from)
+        if (input.validFrom === null)
+          throw new NotAfterCurrent('지금 가격이 있어 시작이 있어야 한다')
+        if (!isPeriodBoundary(input.validFrom, pair.cycle)) throw new NotBoundary(input.validFrom)
+        if (open.validFrom !== null && input.validFrom <= open.validFrom)
+          throw new NotAfterCurrent(input.validFrom)
         await tx
           .update(bossCrystalPrices)
-          .set({ until: input.from })
+          .set({ validUntil: input.validFrom })
           .where(eq(bossCrystalPrices.id, open.id))
-      } else if (input.from !== null && !isPeriodBoundary(input.from, pair.cycle)) {
-        throw new NotBoundary(input.from)
+      } else if (input.validFrom !== null && !isPeriodBoundary(input.validFrom, pair.cycle)) {
+        throw new NotBoundary(input.validFrom)
       }
       const [row] = await tx
         .insert(bossCrystalPrices)
         .values({
           bossDifficultyId: pair.id,
           priceMeso: input.priceMeso,
-          from: input.from,
-          until: null,
+          validFrom: input.validFrom,
+          validUntil: null,
         })
         .returning({ id: bossCrystalPrices.id })
       if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
@@ -145,16 +153,16 @@ export class CrystalPricesRepository {
     return this.db.transaction(async (tx) => {
       const [row] = await tx.select().from(bossCrystalPrices).where(eq(bossCrystalPrices.id, id))
       if (row === undefined) return false
-      if (row.until !== null) throw new NotLatest(id)
+      if (row.validUntil !== null) throw new NotLatest(id)
       await tx.delete(bossCrystalPrices).where(eq(bossCrystalPrices.id, id))
-      if (row.from !== null) {
+      if (row.validFrom !== null) {
         await tx
           .update(bossCrystalPrices)
-          .set({ until: null })
+          .set({ validUntil: null })
           .where(
             and(
               eq(bossCrystalPrices.bossDifficultyId, row.bossDifficultyId),
-              eq(bossCrystalPrices.until, row.from),
+              eq(bossCrystalPrices.validUntil, row.validFrom),
             ),
           )
       }

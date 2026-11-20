@@ -527,7 +527,7 @@ export class AdminController {
     const boss = await this.bosses.findByKey(body.boss)
     if (boss === null) throw new NotFoundException(`모르는 보스다: ${body.boss}`)
     try {
-      return await this.manual.openBoss(boss.id, body.from)
+      return await this.manual.openBoss(boss.id, body.fromDate)
     } catch (error) {
       if (error instanceof AlreadyOpen) throw new ConflictException(`이미 열려 있다: ${body.boss}`)
       throw error
@@ -1566,7 +1566,7 @@ export class AdminController {
   @Get('drop-boxes/rows')
   @Header('cache-control', 'no-store')
   async dropBoxRows() {
-    const [section, items] = await Promise.all([this.boxes.section(), this.items.adminSection()])
+    const [section, items] = await Promise.all([this.boxes.adminRows(), this.items.adminSection()])
     const nameOf = new Map(items.items.map((i) => [i.key, i.name]))
     return {
       updatedAt: section.updatedAt,
@@ -1586,8 +1586,8 @@ export class AdminController {
     try {
       return await this.boxes.create({
         item: body.item,
-        levelMin: body.levelMin ?? null,
-        levelMax: body.levelMax ?? null,
+        ringLevelMin: body.ringLevelMin ?? null,
+        ringLevelMax: body.ringLevelMax ?? null,
       })
     } catch (error) {
       if (error instanceof NoDropItemForBox)
@@ -1605,8 +1605,8 @@ export class AdminController {
   ): Promise<void> {
     if (
       !(await this.boxes.setLevels(item, {
-        levelMin: body.levelMin ?? null,
-        levelMax: body.levelMax ?? null,
+        ringLevelMin: body.ringLevelMin ?? null,
+        ringLevelMax: body.ringLevelMax ?? null,
       }))
     )
       throw new NotFoundException(`모르는 상자다: ${item}`)
@@ -1677,9 +1677,9 @@ export class AdminController {
         difficulty: body.difficulty,
         category: body.category,
         item: body.item,
-        amount: body.amount ?? null,
-        from: body.from ?? null,
-        until: body.until ?? null,
+        quantity: body.quantity ?? null,
+        validFrom: body.validFrom ?? null,
+        validUntil: body.validUntil ?? null,
       })
     } catch (error) {
       if (error instanceof NoBossDifficultyForDrop)
@@ -1687,7 +1687,9 @@ export class AdminController {
       if (error instanceof NoDropItemForDrop)
         throw new NotFoundException(`모르는 아이템이다: ${body.item}`)
       if (error instanceof RewardExists)
-        throw new ConflictException('같은 조합 · 갈래 · 아이템 · 시작의 줄이 이미 있다')
+        throw new ConflictException(
+          '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 갈래가 달라도 같은 줄이다',
+        )
       throw error
     }
   }
@@ -1701,15 +1703,17 @@ export class AdminController {
     try {
       if (
         !(await this.drops.update(id, {
-          amount: body.amount ?? null,
-          from: body.from ?? null,
-          until: body.until ?? null,
+          quantity: body.quantity ?? null,
+          validFrom: body.validFrom ?? null,
+          validUntil: body.validUntil ?? null,
         }))
       )
         throw new NotFoundException()
     } catch (error) {
       if (error instanceof RewardExists)
-        throw new ConflictException('같은 조합 · 갈래 · 아이템 · 시작의 줄이 이미 있다')
+        throw new ConflictException(
+          '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 갈래가 달라도 같은 줄이다',
+        )
       throw error
     }
   }
@@ -1766,7 +1770,7 @@ export class AdminController {
     try {
       return await this.crystals.addPrice(boss, difficulty, {
         priceMeso: body.priceMeso,
-        from: body.from ?? null,
+        validFrom: body.validFrom ?? null,
       })
     } catch (error) {
       if (error instanceof NoBossDifficultyForPrice)

@@ -26,7 +26,7 @@ describeDb('migrateDatabase', () => {
         'drop_prices',
         'notices',
         'users',
-        'manual_completion_bosses',
+        'boss_manual_completion_periods',
       ]),
     )
   })

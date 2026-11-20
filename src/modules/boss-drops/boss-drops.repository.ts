@@ -3,7 +3,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { isForeignKeyViolation, isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { bossDifficulties, bossDropRewards, bosses, items } from '../../database/schema'
+import { bossDifficulties, bossDifficultyRewards, bosses, items } from '../../database/schema'
 import type { DifficultyInput } from '../bosses/bosses.dto'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
@@ -11,26 +11,32 @@ export type DropCategory = 'fixed' | 'equipment' | 'consumable'
 export type Difficulty = DifficultyInput['difficulty']
 
 /** 드롭 표 한 줄. 납작하다. 보스 · 난이도 · 갈래로 묶는 것은 앱이다. */
-export interface BossDropRewardView {
+export interface BossDifficultyRewardView {
+  bossDifficultyId: string
+  category: DropCategory
+  itemId: string
+  quantity: number | null
+  validFrom: string | null
+  validUntil: string | null
+}
+
+/** GET /v1/game-data 의 bossDrops 칸. 배열의 차례가 드롭 시트의 타일 차례다. */
+export interface BossDropsSection {
+  updatedAt: string | null
+  bossDifficultyRewards: BossDifficultyRewardView[]
+}
+
+/** 관리 화면이 보는 줄. 보스 · 난이도 · 아이템은 key 로 보이고 id 로 고치고 지운다. */
+export interface BossDropAdminRow {
+  id: string
   boss: string
   difficulty: Difficulty
   category: DropCategory
   item: string
-  amount: string | null
-  from: string | null
-  until: string | null
-}
-
-/** GET /v1/game-data 의 bossDrops 칸. */
-export interface BossDropsSection {
-  updatedAt: string | null
-  rewards: BossDropRewardView[]
-}
-
-/** 관리 화면이 보는 줄. id 로 고치고 지운다. */
-export interface BossDropAdminRow extends BossDropRewardView {
-  id: string
   itemName: string
+  quantity: number | null
+  validFrom: string | null
+  validUntil: string | null
   sortOrder: number
 }
 
@@ -39,14 +45,14 @@ export interface BossDropInput {
   difficulty: Difficulty
   category: DropCategory
   item: string
-  amount: string | null
-  from: string | null
-  until: string | null
+  quantity: number | null
+  validFrom: string | null
+  validUntil: string | null
 }
 
 export class NoBossDifficulty extends Error {}
 export class NoDropItem extends Error {}
-/** 같은 조합 · 갈래 · 아이템 · 시작의 줄이 이미 있다. */
+/** 같은 조합 · 아이템 · 시작의 줄이 이미 있다. 갈래가 달라도 같은 줄이다. */
 export class RewardExists extends Error {}
 
 @Injectable()
@@ -57,14 +63,13 @@ export class BossDropsRepository {
     const rows = await this.joined()
     return {
       updatedAt: await sectionUpdatedAt(this.db, 'bossDrops'),
-      rewards: rows.map((r) => ({
-        boss: r.boss,
-        difficulty: r.difficulty,
+      bossDifficultyRewards: rows.map((r) => ({
+        bossDifficultyId: r.bossDifficultyId,
         category: r.category,
-        item: r.item,
-        amount: r.amount,
-        from: r.from,
-        until: r.until,
+        itemId: r.itemId,
+        quantity: r.quantity,
+        validFrom: r.validFrom,
+        validUntil: r.validUntil,
       })),
     }
   }
@@ -81,9 +86,9 @@ export class BossDropsRepository {
       category: r.category,
       item: r.item,
       itemName: r.itemName,
-      amount: r.amount,
-      from: r.from,
-      until: r.until,
+      quantity: r.quantity,
+      validFrom: r.validFrom,
+      validUntil: r.validUntil,
       sortOrder: r.sortOrder,
     }))
   }
@@ -96,28 +101,28 @@ export class BossDropsRepository {
     if (item === null) throw new NoDropItem(input.item)
     return this.db.transaction(async (tx) => {
       const [last] = await tx
-        .select({ max: sql<number | null>`max(${bossDropRewards.sortOrder})` })
-        .from(bossDropRewards)
+        .select({ max: sql<number | null>`max(${bossDifficultyRewards.sortOrder})` })
+        .from(bossDifficultyRewards)
         .where(
           and(
-            eq(bossDropRewards.bossDifficultyId, pair),
-            eq(bossDropRewards.category, input.category),
+            eq(bossDifficultyRewards.bossDifficultyId, pair),
+            eq(bossDifficultyRewards.category, input.category),
           ),
         )
       let row: { id: string } | undefined
       try {
         ;[row] = await tx
-          .insert(bossDropRewards)
+          .insert(bossDifficultyRewards)
           .values({
             bossDifficultyId: pair,
             category: input.category,
             itemId: item,
-            amount: input.amount,
-            from: input.from,
-            until: input.until,
+            quantity: input.quantity,
+            validFrom: input.validFrom,
+            validUntil: input.validUntil,
             sortOrder: (last?.max ?? -1) + 1,
           })
-          .returning({ id: bossDropRewards.id })
+          .returning({ id: bossDifficultyRewards.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new RewardExists(input.item)
         throw error
@@ -128,19 +133,19 @@ export class BossDropsRepository {
     })
   }
 
-  /** 수량 · 기간을 갈아 끼운다. 없으면 false 다. 시작을 바꿔 같은 줄이 생기면 RewardExists 다. */
+  /** 개수 · 기간을 갈아 끼운다. 없으면 false 다. 시작을 바꿔 같은 줄이 생기면 RewardExists 다. */
   async update(
     id: string,
-    patch: { amount: string | null; from: string | null; until: string | null },
+    patch: { quantity: number | null; validFrom: string | null; validUntil: string | null },
   ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       let rows: { id: string }[]
       try {
         rows = await tx
-          .update(bossDropRewards)
+          .update(bossDifficultyRewards)
           .set(patch)
-          .where(eq(bossDropRewards.id, id))
-          .returning({ id: bossDropRewards.id })
+          .where(eq(bossDifficultyRewards.id, id))
+          .returning({ id: bossDifficultyRewards.id })
       } catch (error) {
         if (isUniqueViolation(error)) throw new RewardExists(id)
         throw error
@@ -154,9 +159,9 @@ export class BossDropsRepository {
   async remove(id: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
-        .delete(bossDropRewards)
-        .where(eq(bossDropRewards.id, id))
-        .returning({ id: bossDropRewards.id })
+        .delete(bossDifficultyRewards)
+        .where(eq(bossDifficultyRewards.id, id))
+        .returning({ id: bossDifficultyRewards.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'bossDrops')
       return true
@@ -166,29 +171,32 @@ export class BossDropsRepository {
   /** 같은 조합 · 갈래 안에서 한 칸 옮긴다. 끝이면 그대로 true 다. 없으면 false 다. */
   async move(id: string, direction: 'up' | 'down'): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const [mine] = await tx.select().from(bossDropRewards).where(eq(bossDropRewards.id, id))
+      const [mine] = await tx
+        .select()
+        .from(bossDifficultyRewards)
+        .where(eq(bossDifficultyRewards.id, id))
       if (mine === undefined) return false
       const siblings = await tx
-        .select({ id: bossDropRewards.id, sortOrder: bossDropRewards.sortOrder })
-        .from(bossDropRewards)
+        .select({ id: bossDifficultyRewards.id, sortOrder: bossDifficultyRewards.sortOrder })
+        .from(bossDifficultyRewards)
         .where(
           and(
-            eq(bossDropRewards.bossDifficultyId, mine.bossDifficultyId),
-            eq(bossDropRewards.category, mine.category),
+            eq(bossDifficultyRewards.bossDifficultyId, mine.bossDifficultyId),
+            eq(bossDifficultyRewards.category, mine.category),
           ),
         )
-        .orderBy(asc(bossDropRewards.sortOrder))
+        .orderBy(asc(bossDifficultyRewards.sortOrder))
       const at = siblings.findIndex((r) => r.id === id)
       const other = siblings[direction === 'up' ? at - 1 : at + 1]
       if (other === undefined) return true
       await tx
-        .update(bossDropRewards)
+        .update(bossDifficultyRewards)
         .set({ sortOrder: other.sortOrder })
-        .where(eq(bossDropRewards.id, mine.id))
+        .where(eq(bossDifficultyRewards.id, mine.id))
       await tx
-        .update(bossDropRewards)
+        .update(bossDifficultyRewards)
         .set({ sortOrder: mine.sortOrder })
-        .where(eq(bossDropRewards.id, other.id))
+        .where(eq(bossDifficultyRewards.id, other.id))
       await touchSection(tx, 'bossDrops')
       return true
     })
@@ -198,27 +206,29 @@ export class BossDropsRepository {
   private async joined(where?: ReturnType<typeof and>) {
     return this.db
       .select({
-        id: bossDropRewards.id,
+        id: bossDifficultyRewards.id,
         boss: bosses.key,
         difficulty: bossDifficulties.difficulty,
-        category: bossDropRewards.category,
+        bossDifficultyId: bossDifficultyRewards.bossDifficultyId,
+        category: bossDifficultyRewards.category,
+        itemId: bossDifficultyRewards.itemId,
         item: items.key,
         itemName: items.name,
-        amount: bossDropRewards.amount,
-        from: bossDropRewards.from,
-        until: bossDropRewards.until,
-        sortOrder: bossDropRewards.sortOrder,
+        quantity: bossDifficultyRewards.quantity,
+        validFrom: bossDifficultyRewards.validFrom,
+        validUntil: bossDifficultyRewards.validUntil,
+        sortOrder: bossDifficultyRewards.sortOrder,
       })
-      .from(bossDropRewards)
-      .innerJoin(bossDifficulties, eq(bossDropRewards.bossDifficultyId, bossDifficulties.id))
+      .from(bossDifficultyRewards)
+      .innerJoin(bossDifficulties, eq(bossDifficultyRewards.bossDifficultyId, bossDifficulties.id))
       .innerJoin(bosses, eq(bossDifficulties.bossId, bosses.id))
-      .innerJoin(items, eq(bossDropRewards.itemId, items.id))
+      .innerJoin(items, eq(bossDifficultyRewards.itemId, items.id))
       .where(where)
       .orderBy(
         asc(bosses.sortOrder),
         asc(bossDifficulties.difficulty),
-        asc(bossDropRewards.category),
-        asc(bossDropRewards.sortOrder),
+        asc(bossDifficultyRewards.category),
+        asc(bossDifficultyRewards.sortOrder),
       )
   }
 

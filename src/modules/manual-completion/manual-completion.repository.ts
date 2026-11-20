@@ -2,19 +2,19 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { bosses, manualCompletionBosses } from '../../database/schema'
+import { bosses, bossManualCompletionPeriods } from '../../database/schema'
 
-/** 앱 계약 ManualCompletionBoss. 서버는 boss_id 를 key 로 바꿔 낸다. */
-export interface OpenBoss {
-  boss: string
-  from: string
+/** 열린 기간 한 줄. 앱이 보스 줄 id 로 보스를 찾는다. */
+export interface OpenPeriod {
+  bossId: string
+  fromDate: string
 }
 
 export interface ManualCompletionRow {
   id: string
   boss: string
   name: string
-  from: string
+  fromDate: string
   openedAt: string
   closedAt: string | null
 }
@@ -23,12 +23,12 @@ export interface ManualCompletionRow {
 export class AlreadyOpen extends Error {}
 
 const ROW = {
-  id: manualCompletionBosses.id,
+  id: bossManualCompletionPeriods.id,
   boss: bosses.key,
   name: bosses.name,
-  from: manualCompletionBosses.fromDate,
-  openedAt: manualCompletionBosses.openedAt,
-  closedAt: manualCompletionBosses.closedAt,
+  fromDate: bossManualCompletionPeriods.fromDate,
+  openedAt: bossManualCompletionPeriods.openedAt,
+  closedAt: bossManualCompletionPeriods.closedAt,
 }
 
 @Injectable()
@@ -36,13 +36,15 @@ export class ManualCompletionRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   /** 열린 보스. 앱이 읽는다. */
-  async open(): Promise<OpenBoss[]> {
+  async open(): Promise<OpenPeriod[]> {
     const rows = await this.db
-      .select({ boss: bosses.key, from: manualCompletionBosses.fromDate })
-      .from(manualCompletionBosses)
-      .innerJoin(bosses, eq(bosses.id, manualCompletionBosses.bossId))
-      .where(isNull(manualCompletionBosses.closedAt))
-      .orderBy(asc(manualCompletionBosses.openedAt))
+      .select({
+        bossId: bossManualCompletionPeriods.bossId,
+        fromDate: bossManualCompletionPeriods.fromDate,
+      })
+      .from(bossManualCompletionPeriods)
+      .where(isNull(bossManualCompletionPeriods.closedAt))
+      .orderBy(asc(bossManualCompletionPeriods.openedAt))
     return rows
   }
 
@@ -50,9 +52,9 @@ export class ManualCompletionRepository {
   async rows(): Promise<ManualCompletionRow[]> {
     const rows = await this.db
       .select(ROW)
-      .from(manualCompletionBosses)
-      .innerJoin(bosses, eq(bosses.id, manualCompletionBosses.bossId))
-      .orderBy(desc(manualCompletionBosses.openedAt))
+      .from(bossManualCompletionPeriods)
+      .innerJoin(bosses, eq(bosses.id, bossManualCompletionPeriods.bossId))
+      .orderBy(desc(bossManualCompletionPeriods.openedAt))
     return rows.map((r) => ({
       ...r,
       openedAt: r.openedAt.toISOString(),
@@ -64,9 +66,9 @@ export class ManualCompletionRepository {
   async openBoss(bossId: string, fromDate: string): Promise<{ id: string }> {
     try {
       const [row] = await this.db
-        .insert(manualCompletionBosses)
+        .insert(bossManualCompletionPeriods)
         .values({ bossId, fromDate })
-        .returning({ id: manualCompletionBosses.id })
+        .returning({ id: bossManualCompletionPeriods.id })
       if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
       return row
     } catch (error) {
@@ -78,10 +80,12 @@ export class ManualCompletionRepository {
   /** 닫는다. 줄은 남고 closed_at 만 찬다. 이미 닫혔거나 없으면 false 다. */
   async close(id: string): Promise<boolean> {
     const rows = await this.db
-      .update(manualCompletionBosses)
+      .update(bossManualCompletionPeriods)
       .set({ closedAt: sql`now()` })
-      .where(and(eq(manualCompletionBosses.id, id), isNull(manualCompletionBosses.closedAt)))
-      .returning({ id: manualCompletionBosses.id })
+      .where(
+        and(eq(bossManualCompletionPeriods.id, id), isNull(bossManualCompletionPeriods.closedAt)),
+      )
+      .returning({ id: bossManualCompletionPeriods.id })
     return rows.length > 0
   }
 }

@@ -113,6 +113,7 @@ describe('AdminController', () => {
   }
   const boxes = {
     section: jest.fn(),
+    adminRows: jest.fn(),
     create: jest.fn(),
     setLevels: jest.fn(),
     addContent: jest.fn(),
@@ -529,7 +530,7 @@ describe('AdminController', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/admin/manual-completion',
-      payload: { boss: 'kaling', from: '2026-09-17' },
+      payload: { boss: 'kaling', fromDate: '2026-09-17' },
     })
 
     expect(res.statusCode).toBe(201)
@@ -542,7 +543,7 @@ describe('AdminController', () => {
     const unknown = await app.inject({
       method: 'POST',
       url: '/admin/manual-completion',
-      payload: { boss: 'nobody', from: '2026-09-17' },
+      payload: { boss: 'nobody', fromDate: '2026-09-17' },
     })
     expect(unknown.statusCode).toBe(404)
 
@@ -551,14 +552,14 @@ describe('AdminController', () => {
     const dup = await app.inject({
       method: 'POST',
       url: '/admin/manual-completion',
-      payload: { boss: 'kaling', from: '2026-09-17' },
+      payload: { boss: 'kaling', fromDate: '2026-09-17' },
     })
     expect(dup.statusCode).toBe(409)
 
     const bad = await app.inject({
       method: 'POST',
       url: '/admin/manual-completion',
-      payload: { boss: 'kaling', from: '20260917' },
+      payload: { boss: 'kaling', fromDate: '20260917' },
     })
     expect(bad.statusCode).toBe(400)
     expect(bosses.findByKey).toHaveBeenCalledTimes(2)
@@ -912,20 +913,25 @@ describe('AdminController', () => {
       const itemSection = {
         updatedAt: null,
         items: [
-          { key: 'restraint_ring', name: '리스트레인트 링', iconFile: null, valuable: false },
+          { key: 'restraint_ring', name: '리스트레인트 링', iconAssetId: null, isValuable: false },
         ],
       }
       items.section.mockResolvedValue(itemSection)
       items.adminSection.mockResolvedValue(itemSection)
-      boxes.section.mockResolvedValue({
+      boxes.adminRows.mockResolvedValue({
         updatedAt: null,
         boxes: [
-          { item: 'green_boss_ring_box', levelMin: 1, levelMax: 3, contents: ['restraint_ring'] },
+          {
+            item: 'green_boss_ring_box',
+            ringLevelMin: 1,
+            ringLevelMax: 3,
+            contents: ['restraint_ring'],
+          },
         ],
       })
       drops.rows.mockResolvedValue([])
       crystals.pairs.mockResolvedValue([])
-      crystals.section.mockResolvedValue({ updatedAt: null, prices: [] })
+      crystals.section.mockResolvedValue({ updatedAt: null, bossCrystalPrices: [] })
       bosses.catalog.mockResolvedValue({
         updatedAt: null,
         rules: { defaultMaxPartySize: 6 },
@@ -984,7 +990,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/drop-boxes',
-            payload: { item: 'green_boss_ring_box', levelMin: 1 },
+            payload: { item: 'green_boss_ring_box', ringLevelMin: 1 },
           })
         ).statusCode,
       ).toBe(400)
@@ -993,7 +999,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/drop-boxes',
-            payload: { item: 'green_boss_ring_box', levelMin: 3, levelMax: 1 },
+            payload: { item: 'green_boss_ring_box', ringLevelMin: 3, ringLevelMax: 1 },
           })
         ).statusCode,
       ).toBe(400)
@@ -1008,8 +1014,8 @@ describe('AdminController', () => {
       ).toBe(201)
       expect(boxes.create).toHaveBeenCalledWith({
         item: 'chaos_pitch_black_accessory_box',
-        levelMin: null,
-        levelMax: null,
+        ringLevelMin: null,
+        ringLevelMax: null,
       })
     })
 
@@ -1020,18 +1026,18 @@ describe('AdminController', () => {
         difficulty: 'hard',
         category: 'consumable',
         item: 'red_boss_ring_box',
-        from: '2026-09-17T10:00',
+        validFrom: '2026-09-17T10:00',
       }
       expect(
         (await app.inject({ method: 'POST', url: '/admin/boss-drops', payload: body })).statusCode,
       ).toBe(201)
-      expect(drops.create).toHaveBeenCalledWith({ ...body, amount: null, until: null })
+      expect(drops.create).toHaveBeenCalledWith({ ...body, quantity: null, validUntil: null })
       expect(
         (
           await app.inject({
             method: 'POST',
             url: '/admin/boss-drops',
-            payload: { ...body, from: '2026-9-17' },
+            payload: { ...body, validFrom: '2026-9-17' },
           })
         ).statusCode,
       ).toBe(400)
@@ -1041,14 +1047,14 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: `/admin/boss-drops/${ROW}`,
-            payload: { until: '2026-09-17' },
+            payload: { validUntil: '2026-09-17' },
           })
         ).statusCode,
       ).toBe(204)
       expect(drops.update).toHaveBeenCalledWith(ROW, {
-        amount: null,
-        from: null,
-        until: '2026-09-17',
+        quantity: null,
+        validFrom: null,
+        validUntil: '2026-09-17',
       })
       drops.move.mockResolvedValue(true)
       expect(
@@ -1073,13 +1079,13 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/crystal-prices/lotus/hard',
-            payload: { priceMeso: 100, from: '2026-10-22' },
+            payload: { priceMeso: 100, validFrom: '2026-10-22' },
           })
         ).statusCode,
       ).toBe(201)
       expect(crystals.addPrice).toHaveBeenCalledWith('lotus', 'hard', {
         priceMeso: 100,
-        from: '2026-10-22',
+        validFrom: '2026-10-22',
       })
       crystals.addPrice.mockRejectedValue(new NotBoundary('2026-10-23'))
       expect(
@@ -1087,7 +1093,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/crystal-prices/lotus/hard',
-            payload: { priceMeso: 100, from: '2026-10-23' },
+            payload: { priceMeso: 100, validFrom: '2026-10-23' },
           })
         ).statusCode,
       ).toBe(400)

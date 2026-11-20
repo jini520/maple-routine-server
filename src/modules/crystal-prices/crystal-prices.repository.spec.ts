@@ -60,51 +60,61 @@ describeDb('CrystalPricesRepository', () => {
   afterAll(() => close())
 
   it('빈 표는 updatedAt 이 null 이고 조합은 보스 표 그대로 선다', async () => {
-    expect(await repo.section()).toEqual({ updatedAt: null, prices: [] })
+    expect(await repo.section()).toEqual({ updatedAt: null, bossCrystalPrices: [] })
     const pairs = await repo.pairs()
     expect(pairs.map((p) => `${p.boss}/${p.difficulty}`)).toEqual(['lotus/hard', 'black_mage/hard'])
     expect(pairs[0]?.prices).toEqual([])
   })
 
-  it('첫 줄은 시작 없이 열리고, 새 가격은 지금 줄을 닫고 새 줄을 연다', async () => {
-    await repo.addPrice('lotus', 'hard', { priceMeso: 100, from: null })
-    await repo.addPrice('lotus', 'hard', { priceMeso: 200, from: '2026-10-22' })
+  const lotusHard = async () => (await bosses.catalog()).bosses[0]?.difficulties[0]?.id
+
+  it('첫 줄은 시작 없이 열리고, 새 가격은 지금 줄을 닫고 새 줄을 연다. 칸은 난이도 줄 id 로 표 이름의 배열에 난다', async () => {
+    await repo.addPrice('lotus', 'hard', { priceMeso: 100, validFrom: null })
+    await repo.addPrice('lotus', 'hard', { priceMeso: 200, validFrom: '2026-10-22' })
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.prices).toEqual([
-      { boss: 'lotus', difficulty: 'hard', priceMeso: 100, from: null, until: '2026-10-22' },
-      { boss: 'lotus', difficulty: 'hard', priceMeso: 200, from: '2026-10-22', until: null },
+    const bossDifficultyId = await lotusHard()
+    expect(section.bossCrystalPrices).toEqual([
+      { bossDifficultyId, priceMeso: 100, validFrom: null, validUntil: '2026-10-22' },
+      { bossDifficultyId, priceMeso: 200, validFrom: '2026-10-22', validUntil: null },
+    ])
+    expect((await repo.pairs())[0]?.prices.map((p) => [p.priceMeso, p.validUntil])).toEqual([
+      [100, '2026-10-22'],
+      [200, null],
     ])
   })
 
   it('지금 줄이 있는데 시작이 없거나, 시작이 지금 줄보다 앞이거나, 경계가 아니면 던진다', async () => {
-    await repo.addPrice('lotus', 'hard', { priceMeso: 100, from: '2026-10-22' })
+    await repo.addPrice('lotus', 'hard', { priceMeso: 100, validFrom: '2026-10-22' })
 
     await expect(
-      repo.addPrice('lotus', 'hard', { priceMeso: 1, from: null }),
+      repo.addPrice('lotus', 'hard', { priceMeso: 1, validFrom: null }),
     ).rejects.toBeInstanceOf(NotAfterCurrent)
     await expect(
-      repo.addPrice('lotus', 'hard', { priceMeso: 1, from: '2026-10-15' }),
+      repo.addPrice('lotus', 'hard', { priceMeso: 1, validFrom: '2026-10-15' }),
     ).rejects.toBeInstanceOf(NotAfterCurrent)
     await expect(
-      repo.addPrice('lotus', 'hard', { priceMeso: 1, from: '2026-10-23' }),
+      repo.addPrice('lotus', 'hard', { priceMeso: 1, validFrom: '2026-10-23' }),
     ).rejects.toBeInstanceOf(NotBoundary)
     await expect(
-      repo.addPrice('black_mage', 'hard', { priceMeso: 1, from: '2026-10-22' }),
+      repo.addPrice('black_mage', 'hard', { priceMeso: 1, validFrom: '2026-10-22' }),
     ).rejects.toBeInstanceOf(NotBoundary)
-    const monthly = await repo.addPrice('black_mage', 'hard', { priceMeso: 1, from: '2026-11-01' })
+    const monthly = await repo.addPrice('black_mage', 'hard', {
+      priceMeso: 1,
+      validFrom: '2026-11-01',
+    })
     expect(typeof monthly.id).toBe('string')
   })
 
   it('지금 줄을 거두면 바로 앞 줄이 다시 열리고, 지난 줄은 못 거둔다', async () => {
-    const first = await repo.addPrice('lotus', 'hard', { priceMeso: 100, from: null })
-    const second = await repo.addPrice('lotus', 'hard', { priceMeso: 200, from: '2026-10-22' })
+    const first = await repo.addPrice('lotus', 'hard', { priceMeso: 100, validFrom: null })
+    const second = await repo.addPrice('lotus', 'hard', { priceMeso: 200, validFrom: '2026-10-22' })
 
     await expect(repo.removeLatest(first.id)).rejects.toBeInstanceOf(NotLatest)
     expect(await repo.removeLatest(second.id)).toBe(true)
-    expect((await repo.section()).prices).toEqual([
-      { boss: 'lotus', difficulty: 'hard', priceMeso: 100, from: null, until: null },
+    expect((await repo.section()).bossCrystalPrices).toEqual([
+      { bossDifficultyId: await lotusHard(), priceMeso: 100, validFrom: null, validUntil: null },
     ])
     expect(await repo.removeLatest(second.id)).toBe(false)
   })

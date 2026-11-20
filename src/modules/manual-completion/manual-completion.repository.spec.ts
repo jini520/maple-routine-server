@@ -43,13 +43,13 @@ describeDb('ManualCompletionRepository', () => {
   })
   afterAll(() => close())
 
-  it('열면 앱이 읽는 목록에 key 와 from 으로 선다', async () => {
+  it('열면 앱이 읽는 목록에 보스 줄 id 와 시작 날짜로 선다', async () => {
     await repo.openBoss(kaling, '2026-09-17')
     await repo.openBoss(blackMage, '2026-09-01')
 
     expect(await repo.open()).toEqual([
-      { boss: 'kaling', from: '2026-09-17' },
-      { boss: 'black_mage', from: '2026-09-01' },
+      { bossId: kaling, fromDate: '2026-09-17' },
+      { bossId: blackMage, fromDate: '2026-09-01' },
     ])
   })
 
@@ -72,10 +72,10 @@ describeDb('ManualCompletionRepository', () => {
     expect(rows[0]).toMatchObject({
       boss: 'black_mage',
       name: '검은 마법사',
-      from: '2026-10-01',
+      fromDate: '2026-10-01',
       closedAt: null,
     })
-    expect(rows[1]).toMatchObject({ id, from: '2026-09-01' })
+    expect(rows[1]).toMatchObject({ id, fromDate: '2026-09-01' })
     expect(rows[1]?.closedAt).not.toBeNull()
   })
 

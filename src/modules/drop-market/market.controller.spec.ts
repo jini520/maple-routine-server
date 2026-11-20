@@ -7,7 +7,10 @@ const STORED = { body: '{"close":9119}', etag: '"abc"' }
 
 /** 부른 차례대로 상태 코드 · 머리 · 몸을 남기는 응답. */
 function fakeReply() {
-  const sent: { status: number; headers: Record<string, string>; body?: string } = { status: 200, headers: {} }
+  const sent: { status: number; headers: Record<string, string>; body?: string } = {
+    status: 200,
+    headers: {},
+  }
   const reply = {
     header: (k: string, v: string) => ((sent.headers[k] = v), reply),
     code: (s: number) => ((sent.status = s), reply),
@@ -18,11 +21,15 @@ function fakeReply() {
 }
 
 function request(ifNoneMatch?: string): FastifyRequest {
-  return { headers: ifNoneMatch === undefined ? {} : { 'if-none-match': ifNoneMatch } } as FastifyRequest
+  return {
+    headers: ifNoneMatch === undefined ? {} : { 'if-none-match': ifNoneMatch },
+  } as FastifyRequest
 }
 
 function controller(stored: typeof STORED | null) {
-  return new MarketController({ latestResponse: () => Promise.resolve(stored) } as unknown as MarketDailyRepository)
+  return new MarketController({
+    latestResponse: () => Promise.resolve(stored),
+  } as unknown as MarketDailyRepository)
 }
 
 describe('MarketController', () => {
@@ -32,7 +39,11 @@ describe('MarketController', () => {
     const again = fakeReply()
     await controller(STORED).maspi(request('W/"abc"'), again.reply)
 
-    expect(first.sent).toMatchObject({ status: 200, body: STORED.body, headers: { etag: '"abc"', 'cache-control': 'no-cache' } })
+    expect(first.sent).toMatchObject({
+      status: 200,
+      body: STORED.body,
+      headers: { etag: '"abc"', 'cache-control': 'no-cache' },
+    })
     expect(again.sent).toMatchObject({ status: 304, body: undefined })
   })
 
@@ -40,6 +51,11 @@ describe('MarketController', () => {
     const { reply, sent } = fakeReply()
     await controller(null).maspi(request(), reply)
 
-    expect(JSON.parse(sent.body ?? '')).toEqual({ change: null, close: null, date: null, series: [] })
+    expect(JSON.parse(sent.body ?? '')).toEqual({
+      change: null,
+      close: null,
+      date: null,
+      series: [],
+    })
   })
 })

@@ -30,7 +30,12 @@ describeDb('MarketPublishService', () => {
   const world: Record<string, string> = {}
   const person: Record<string, string> = {}
 
-  async function trade(who: string, day: string, priceMeso: number, over: { itemKey?: string; world?: string; ringLevel?: number | null } = {}) {
+  async function trade(
+    who: string,
+    day: string,
+    priceMeso: number,
+    over: { itemKey?: string; world?: string; ringLevel?: number | null } = {},
+  ) {
     await db.insert(dropPrices).values({
       userId: person[who],
       dropRecordId: randomUUID(),
@@ -46,7 +51,12 @@ describeDb('MarketPublishService', () => {
   }
 
   /** from ~ to 날마다 세 사람이 같은 값에 판다. 기준 기간에는 두 사람이 더 판다. */
-  async function steadyMarket(from: string, to: string, price: number, over: { itemKey?: string; world?: string; ringLevel?: number | null } = {}) {
+  async function steadyMarket(
+    from: string,
+    to: string,
+    price: number,
+    over: { itemKey?: string; world?: string; ringLevel?: number | null } = {},
+  ) {
     for (let d = from; d <= to; d = shiftDay(d, 1)) {
       for (const who of ['a', 'b', 'c']) await trade(who, d, price, over)
       if (d <= '2026-10-28') for (const who of ['d', 'e']) await trade(who, d, price, over)
@@ -57,7 +67,8 @@ describeDb('MarketPublishService', () => {
   async function crowdMarket(from: string, to: string, price: number) {
     const spread = [0.99, 0.995, 1, 1, 1, 1.005, 1.01, 1.02]
     for (let d = from; d <= to; d = shiftDay(d, 1)) {
-      for (const [i, who] of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].entries()) await trade(who, d, Math.round(price * spread[i]))
+      for (const [i, who] of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].entries())
+        await trade(who, d, Math.round(price * spread[i]))
     }
   }
 
@@ -76,7 +87,12 @@ describeDb('MarketPublishService', () => {
       .values([
         { key: 'ring', name: '반지', isDrop: true },
         // 소비 묶음의 아이템은 시세를 월드마다 잰다.
-        { key: 'whetstone', name: '연마석', groupId: await itemGroupId(db, 'boss_loot'), isDrop: true },
+        {
+          key: 'whetstone',
+          name: '연마석',
+          groupId: await itemGroupId(db, 'boss_loot'),
+          isDrop: true,
+        },
       ])
       .returning({ id: items.id, key: items.key })
     for (const r of itemRows) item[r.key] = r.id
@@ -100,15 +116,23 @@ describeDb('MarketPublishService', () => {
 
   it('처음 채우면 기준 기간 첫날의 MASPI 가 10,000 이고, 응답에는 판 사람 수와 기준가의 근거가 없다', async () => {
     await steadyMarket('2026-10-22', '2026-11-05', 30 * EOK)
-    await steadyMarket('2026-10-22', '2026-11-05', 8 * EOK, { itemKey: 'whetstone', ringLevel: null })
+    await steadyMarket('2026-10-22', '2026-11-05', 8 * EOK, {
+      itemKey: 'whetstone',
+      ringLevel: null,
+    })
 
     await service.backfill('2026-11-05')
 
     const [base] = await db.select().from(maspiDays).where(sqlDay(maspiDays.day, '2026-10-22'))
     expect(base.value).toBeCloseTo(10_000)
     const list = await repo.latestResponse('items:scania')
-    const body = JSON.parse(list?.body ?? '{}') as { equipment: { itemKey: string; price: number; grade: string }[]; consumable: { items: unknown[] } }
-    expect(body.equipment).toEqual([expect.objectContaining({ itemKey: 'ring', price: 30 * EOK, grade: 'many' })])
+    const body = JSON.parse(list?.body ?? '{}') as {
+      equipment: { itemKey: string; price: number; grade: string }[]
+      consumable: { items: unknown[] }
+    }
+    expect(body.equipment).toEqual([
+      expect.objectContaining({ itemKey: 'ring', price: 30 * EOK, grade: 'many' }),
+    ])
     expect(body.consumable.items).toHaveLength(1)
     expect(list?.body).not.toMatch(/voters|source|persons|fresh/)
     // 에오스는 신뢰 시세가 없어 소비 목록이 비고, 앱은 빈 상태를 그린다.
@@ -173,7 +197,6 @@ describeDb('MarketPublishService', () => {
     expect(first?.etag).toMatch(/^"[0-9a-f]{40}"$/)
   })
 })
-
 
 function sqlDay(column: AnyColumn, day: string) {
   return eq(column, day)

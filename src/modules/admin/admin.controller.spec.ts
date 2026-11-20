@@ -1268,7 +1268,11 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/spend-catalog/rules',
-            payload: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
+            payload: {
+              tariffPercent: 10,
+              rewardCoinPriceMeso: 40_000_000,
+              mesoMarketFeePercent: 1,
+            },
           })
         ).statusCode,
       ).toBe(204)
@@ -1284,7 +1288,8 @@ describe('AdminController', () => {
         { tariffPercent: 10, rewardCoinPriceMeso: 1 },
       ]) {
         expect(
-          (await app.inject({ method: 'PUT', url: '/admin/spend-catalog/rules', payload })).statusCode,
+          (await app.inject({ method: 'PUT', url: '/admin/spend-catalog/rules', payload }))
+            .statusCode,
         ).toBe(400)
       }
 
@@ -1813,22 +1818,22 @@ describe('AdminController', () => {
     it('종류 고치기는 모르면 404, 기본 종류가 겹치거나 만렙이 비용 줄 아래면 409 다', async () => {
       const body = { name: type.name, apiType: type.apiType, isDefault: false, maxLevel: 30 }
       hexaRepo.updateType.mockResolvedValue(true)
-      expect((await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode).toBe(
-        204,
-      )
+      expect(
+        (await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode,
+      ).toBe(204)
       expect(hexaRepo.updateType).toHaveBeenCalledWith('skill_3rd', { ...body, iconAssetId: ROW })
       hexaRepo.updateType.mockResolvedValue(false)
-      expect((await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode).toBe(
-        404,
-      )
+      expect(
+        (await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode,
+      ).toBe(404)
       hexaRepo.updateType.mockRejectedValue(new DefaultTypeTaken('skill'))
-      expect((await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode).toBe(
-        409,
-      )
+      expect(
+        (await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode,
+      ).toBe(409)
       hexaRepo.updateType.mockRejectedValue(new HexaLevelsAboveMax('29'))
-      expect((await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode).toBe(
-        409,
-      )
+      expect(
+        (await send('PUT', '/types/skill_3rd', { ...body, iconAssetId: ROW })).statusCode,
+      ).toBe(409)
     })
 
     it('비용 갈아 끼우기는 레벨이 어긋나면 400 이고 그 이유를 싣는다. 모르는 종류는 404 다', async () => {
@@ -2465,7 +2470,10 @@ describe('AdminController', () => {
 
       enhancementRepo.setSuperiorItemIcon.mockResolvedValue(true)
       expect(await put({ assetId })).toBe(204)
-      expect(enhancementRepo.setSuperiorItemIcon).toHaveBeenCalledWith('타일런트 리카온 벨트', assetId)
+      expect(enhancementRepo.setSuperiorItemIcon).toHaveBeenCalledWith(
+        '타일런트 리카온 벨트',
+        assetId,
+      )
       enhancementRepo.setSuperiorItemIcon.mockResolvedValue(false)
       expect(await put({ assetId })).toBe(404)
       enhancementRepo.setSuperiorItemIcon.mockRejectedValue(new AssetNotFound(assetId))

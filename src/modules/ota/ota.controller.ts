@@ -43,7 +43,10 @@ export class OtaController {
   ): Promise<void> {
     void reply.headers(PROTOCOL_HEADERS)
     const body =
-      platform !== undefined && PLATFORMS.has(platform) && runtimeVersion !== undefined && RUNTIME_VERSION.test(runtimeVersion)
+      platform !== undefined &&
+      PLATFORMS.has(platform) &&
+      runtimeVersion !== undefined &&
+      RUNTIME_VERSION.test(runtimeVersion)
         ? await this.read(`manifest-${platform}-${runtimeVersion}.json`)
         : null
     if (body === null) {
@@ -55,9 +58,15 @@ export class OtaController {
 
   /** 아직 발행 전이면 빈 값이다. 404 면 앱이 확인 실패로 읽는데, 사실은 비교할 대상이 없는 것이다. */
   @Get('v1/ota/latest')
-  async latest(@Query('platform') platform: string | undefined, @Res() reply: FastifyReply): Promise<void> {
-    if (platform === undefined || !PLATFORMS.has(platform)) throw new BadRequestException('bad platform')
-    const body = (await this.read(`latest-${platform}.json`)) ?? JSON.stringify({ runtimeVersion: null, appVersion: null })
+  async latest(
+    @Query('platform') platform: string | undefined,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
+    if (platform === undefined || !PLATFORMS.has(platform))
+      throw new BadRequestException('bad platform')
+    const body =
+      (await this.read(`latest-${platform}.json`)) ??
+      JSON.stringify({ runtimeVersion: null, appVersion: null })
     await reply
       .header('cache-control', 'private, max-age=0')
       .type('application/json; charset=utf-8')

@@ -22,7 +22,9 @@ const WEIGHT_CAP = 0.2
 
 /** 무게를 기준가 × 판 사람 수의 비중으로 매기고, 상한을 넘는 아이템을 잘라 나머지에 다시 나눈다. */
 export function buildBasket(items: Omit<BasketItem, 'weight'>[]): BasketItem[] {
-  const value = new Map(items.map((i) => [i.key, i.scopes.reduce((s, x) => s + x.basePrice * x.persons, 0)]))
+  const value = new Map(
+    items.map((i) => [i.key, i.scopes.reduce((s, x) => s + x.basePrice * x.persons, 0)]),
+  )
   const total = [...value.values()].reduce((s, v) => s + v, 0)
   let weights = new Map([...value].map(([k, v]) => [k, v / total]))
   for (let round = 0; round < items.length; round++) {
@@ -30,7 +32,9 @@ export function buildBasket(items: Omit<BasketItem, 'weight'>[]): BasketItem[] {
     if (![...weights.values()].some((w) => w > WEIGHT_CAP + 1e-12)) break
     const rest = [...weights].filter(([k]) => !capped.has(k)).reduce((s, [, w]) => s + w, 0)
     const left = 1 - WEIGHT_CAP * capped.size
-    weights = new Map([...weights].map(([k, w]) => [k, capped.has(k) ? WEIGHT_CAP : (w / rest) * left]))
+    weights = new Map(
+      [...weights].map(([k, w]) => [k, capped.has(k) ? WEIGHT_CAP : (w / rest) * left]),
+    )
   }
   return items.map((i) => ({ ...i, weight: weights.get(i.key) ?? 0 }))
 }
@@ -39,7 +43,11 @@ export function buildBasket(items: Omit<BasketItem, 'weight'>[]): BasketItem[] {
  * 그날 기준가 ÷ 기준 기간 기준가. 범위마다 구해 판 사람 수로 평균한다(로그 평균). 범위마다 가격 수준이 달라도 등락비는 같은
  * 단위라 섞을 수 있다. 들어오기 전이거나 기준가가 있는 범위가 없으면 `null` 이다.
  */
-export function relativeOf(item: BasketItem, refOf: (scope: string) => number | null, day: string): number | null {
+export function relativeOf(
+  item: BasketItem,
+  refOf: (scope: string) => number | null,
+  day: string,
+): number | null {
   if (item.entersOn !== null && day < item.entersOn) return null
   let num = 0
   let den = 0

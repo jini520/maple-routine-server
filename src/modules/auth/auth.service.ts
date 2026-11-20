@@ -142,8 +142,10 @@ export class AuthService {
   }
 
   private returnUrl(params: { receipt?: string; errorName?: string }): string {
-    if (params.receipt !== undefined) return `${SCHEME_RETURN}?receipt=${encodeURIComponent(params.receipt)}`
-    if (params.errorName) return `${SCHEME_RETURN}?error_name=${encodeURIComponent(params.errorName)}`
+    if (params.receipt !== undefined)
+      return `${SCHEME_RETURN}?receipt=${encodeURIComponent(params.receipt)}`
+    if (params.errorName)
+      return `${SCHEME_RETURN}?error_name=${encodeURIComponent(params.errorName)}`
     return SCHEME_RETURN
   }
 }

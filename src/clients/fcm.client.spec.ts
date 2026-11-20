@@ -14,7 +14,11 @@ describe('FcmClient', () => {
   })
 
   it('iOS 가 무음으로 띄우지 않게 APNs 소리를 싣는다', () => {
-    const payload = toFcmPayload({ topic: 'notice', notification: { title: 't', body: 'b' }, data: {} })
+    const payload = toFcmPayload({
+      topic: 'notice',
+      notification: { title: 't', body: 'b' },
+      data: {},
+    })
 
     expect(payload.apns?.payload?.aps.sound).toBe('default')
   })

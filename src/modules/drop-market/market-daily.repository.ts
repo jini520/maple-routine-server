@@ -23,7 +23,11 @@ export function marketKey(itemId: string, ringLevel: number | null, scope: strin
   return `${itemId}|${ringLevel ?? ''}|${scope}`
 }
 
-export function parseMarketKey(key: string): { itemId: string; ringLevel: number | null; scope: string } {
+export function parseMarketKey(key: string): {
+  itemId: string
+  ringLevel: number | null
+  scope: string
+} {
   const [itemId, ring, scope] = key.split('|')
   return { itemId, ringLevel: ring === '' ? null : Number(ring), scope }
 }
@@ -99,7 +103,13 @@ export class MarketDailyRepository {
     const rows = await this.db
       .select({ day: marketJudgements.day, person: marketJudgements.person })
       .from(marketJudgements)
-      .where(and(eq(marketJudgements.dummy, true), gte(marketJudgements.day, from), lte(marketJudgements.day, to)))
+      .where(
+        and(
+          eq(marketJudgements.dummy, true),
+          gte(marketJudgements.day, from),
+          lte(marketJudgements.day, to),
+        ),
+      )
     return new Set(rows.map((r) => `${r.day}|${r.person}`))
   }
 
@@ -113,7 +123,9 @@ export class MarketDailyRepository {
       .from(marketJudgements)
       .where(and(gte(marketJudgements.day, from), lte(marketJudgements.day, to)))
       .groupBy(marketJudgements.person)
-    return new Map(rows.map((r) => [r.person, { judged: Number(r.judged), excluded: Number(r.excluded) }]))
+    return new Map(
+      rows.map((r) => [r.person, { judged: Number(r.judged), excluded: Number(r.excluded) }]),
+    )
   }
 
   /**
@@ -121,11 +133,21 @@ export class MarketDailyRepository {
    *
    * @param scope 주면 그 범위(거래권 · 월드)의 시세만 읽는다
    */
-  async referencesBetween(from: string, to: string, scope?: string): Promise<Map<string, DayReference[]>> {
+  async referencesBetween(
+    from: string,
+    to: string,
+    scope?: string,
+  ): Promise<Map<string, DayReference[]>> {
     const rows = await this.db
       .select()
       .from(marketDays)
-      .where(and(gte(marketDays.day, from), lte(marketDays.day, to), scope === undefined ? undefined : eq(marketDays.scope, scope)))
+      .where(
+        and(
+          gte(marketDays.day, from),
+          lte(marketDays.day, to),
+          scope === undefined ? undefined : eq(marketDays.scope, scope),
+        ),
+      )
       .orderBy(asc(marketDays.day))
     const out = new Map<string, DayReference[]>()
     for (const r of rows) {
@@ -133,8 +155,15 @@ export class MarketDailyRepository {
       out.set(key, [
         ...(out.get(key) ?? []),
         {
-          day: r.day, source: r.source, ref: r.refMeso, q1: r.q1Meso, q3: r.q3Meso, low: r.fenceLow, high: r.fenceHigh,
-          voters: r.voters, freshDay: r.freshDay,
+          day: r.day,
+          source: r.source,
+          ref: r.refMeso,
+          q1: r.q1Meso,
+          q3: r.q3Meso,
+          low: r.fenceLow,
+          high: r.fenceHigh,
+          voters: r.voters,
+          freshDay: r.freshDay,
         },
       ])
     }
@@ -142,7 +171,10 @@ export class MarketDailyRepository {
   }
 
   async ranDays(): Promise<string[]> {
-    const rows = await this.db.select({ day: marketRuns.day }).from(marketRuns).orderBy(asc(marketRuns.day))
+    const rows = await this.db
+      .select({ day: marketRuns.day })
+      .from(marketRuns)
+      .orderBy(asc(marketRuns.day))
     return rows.map((r) => r.day)
   }
 
@@ -154,20 +186,41 @@ export class MarketDailyRepository {
     dummies: Set<string>,
   ): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const run = await tx.insert(marketRuns).values({ day }).onConflictDoNothing().returning({ id: marketRuns.id })
+      const run = await tx
+        .insert(marketRuns)
+        .values({ day })
+        .onConflictDoNothing()
+        .returning({ id: marketRuns.id })
       if (run.length === 0) return false
       const refRows = [...references]
         .filter((e): e is [string, DayReference] => e[1] !== null)
         .map(([key, r]) => {
           const m = parseMarketKey(key)
           return {
-            day, itemId: m.itemId, ringLevel: m.ringLevel, scope: m.scope, source: r.source, refMeso: r.ref,
-            q1Meso: r.q1, q3Meso: r.q3, fenceLow: r.low, fenceHigh: r.high, voters: r.voters, freshDay: r.freshDay,
+            day,
+            itemId: m.itemId,
+            ringLevel: m.ringLevel,
+            scope: m.scope,
+            source: r.source,
+            refMeso: r.ref,
+            q1Meso: r.q1,
+            q3Meso: r.q3,
+            fenceLow: r.low,
+            fenceHigh: r.high,
+            voters: r.voters,
+            freshDay: r.freshDay,
           }
         })
-      for (let i = 0; i < refRows.length; i += 500) await tx.insert(marketDays).values(refRows.slice(i, i + 500))
-      const judgeRows = [...judged].map(([person, j]) => ({ day, person, ...j, dummy: dummies.has(person) }))
-      for (let i = 0; i < judgeRows.length; i += 500) await tx.insert(marketJudgements).values(judgeRows.slice(i, i + 500))
+      for (let i = 0; i < refRows.length; i += 500)
+        await tx.insert(marketDays).values(refRows.slice(i, i + 500))
+      const judgeRows = [...judged].map(([person, j]) => ({
+        day,
+        person,
+        ...j,
+        dummy: dummies.has(person),
+      }))
+      for (let i = 0; i < judgeRows.length; i += 500)
+        await tx.insert(marketJudgements).values(judgeRows.slice(i, i + 500))
       return true
     })
   }
@@ -195,8 +248,12 @@ export class MarketDailyRepository {
   async basket(): Promise<StoredBasket[]> {
     return this.db
       .select({
-        itemId: maspiBasket.itemId, ringLevel: maspiBasket.ringLevel, scope: maspiBasket.scope,
-        basePriceMeso: maspiBasket.basePriceMeso, persons: maspiBasket.persons, weight: maspiBasket.weight,
+        itemId: maspiBasket.itemId,
+        ringLevel: maspiBasket.ringLevel,
+        scope: maspiBasket.scope,
+        basePriceMeso: maspiBasket.basePriceMeso,
+        persons: maspiBasket.persons,
+        weight: maspiBasket.weight,
         entersOn: maspiBasket.entersOn,
       })
       .from(maspiBasket)
@@ -206,7 +263,10 @@ export class MarketDailyRepository {
     if (rows.length > 0) await this.db.insert(maspiBasket).values(rows).onConflictDoNothing()
   }
 
-  async maspiBetween(from: string, to: string): Promise<{ day: string; value: number; change: number | null }[]> {
+  async maspiBetween(
+    from: string,
+    to: string,
+  ): Promise<{ day: string; value: number; change: number | null }[]> {
     return this.db
       .select({ day: maspiDays.day, value: maspiDays.value, change: maspiDays.change })
       .from(maspiDays)
@@ -216,12 +276,18 @@ export class MarketDailyRepository {
 
   async saveMaspi(rows: { day: string; value: number; change: number | null }[]): Promise<void> {
     for (let i = 0; i < rows.length; i += 500) {
-      await this.db.insert(maspiDays).values(rows.slice(i, i + 500)).onConflictDoNothing()
+      await this.db
+        .insert(maspiDays)
+        .values(rows.slice(i, i + 500))
+        .onConflictDoNothing()
     }
   }
 
   /** 그날 응답을 넣는다. 같은 날 같은 열쇠가 있으면 새 몸으로 바꾼다. 범위를 다시 계산하면 그날 응답도 다시 만든다. */
-  async saveResponses(day: string, responses: { key: string; body: string; etag: string }[]): Promise<void> {
+  async saveResponses(
+    day: string,
+    responses: { key: string; body: string; etag: string }[],
+  ): Promise<void> {
     for (let i = 0; i < responses.length; i += 200) {
       await this.db
         .insert(marketResponses)
@@ -245,7 +311,9 @@ export class MarketDailyRepository {
   }
 
   /** 아이템 id → key · 월드마다 재는지 · 이름. 월드마다 재는지는 아이템이 든 묶음의 종류로 안다. */
-  async itemsById(ids: string[]): Promise<Map<string, { key: string; worldBound: boolean; name: string }>> {
+  async itemsById(
+    ids: string[],
+  ): Promise<Map<string, { key: string; worldBound: boolean; name: string }>> {
     if (ids.length === 0) return new Map()
     const rows = await this.db
       .select({ id: items.id, key: items.key, type: itemGroups.type, name: items.name })
@@ -253,7 +321,10 @@ export class MarketDailyRepository {
       .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
       .where(inArray(items.id, ids))
     return new Map(
-      rows.map((r) => [r.id, { key: r.key, worldBound: r.type === WORLD_BOUND_TYPE, name: r.name }]),
+      rows.map((r) => [
+        r.id,
+        { key: r.key, worldBound: r.type === WORLD_BOUND_TYPE, name: r.name },
+      ]),
     )
   }
 

@@ -558,7 +558,10 @@ export const items = pgTable(
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
   (t) => [
-    check('items_required_level_positive', sql`${t.requiredLevel} IS NULL OR ${t.requiredLevel} >= 1`),
+    check(
+      'items_required_level_positive',
+      sql`${t.requiredLevel} IS NULL OR ${t.requiredLevel} >= 1`,
+    ),
   ],
 )
 

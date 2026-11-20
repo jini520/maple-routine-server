@@ -117,7 +117,9 @@ describeDb('HuntLootRepository', () => {
 
   it('이름 · 그림을 고치면 아이템 줄이 바뀌므로 사냥 전리품 칸과 items 칸의 시각을 함께 민다', async () => {
     const touched = async () =>
-      (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map((r) => r.key).sort()
+      (await db.select({ key: gameDataSections.key }).from(gameDataSections))
+        .map((r) => r.key)
+        .sort()
     await repo.create(milk)
     await db.delete(gameDataSections)
 

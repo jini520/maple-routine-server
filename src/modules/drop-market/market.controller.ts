@@ -22,7 +22,11 @@ export class MarketController {
   }
 
   @Get('v1/market/items')
-  async items(@Query('world') world: string | undefined, @Req() req: FastifyRequest, @Res() reply: FastifyReply): Promise<void> {
+  async items(
+    @Query('world') world: string | undefined,
+    @Req() req: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
     const stored = world === undefined ? null : await this.repo.latestResponse(`items:${world}`)
     if (stored === null) throw new NotFoundException('시세가 없는 월드다')
     await send(req, reply, stored)
@@ -39,13 +43,20 @@ export class MarketController {
     const item = await this.repo.itemByKey(itemKey)
     // 장비는 일반 거래권 하나라 월드를 보지 않는다. 소비 아이템은 월드마다 값이 다르다.
     const scope = item === null ? null : item.worldBound ? (world ?? null) : 'general'
-    const stored = scope === null ? null : await this.repo.latestResponse(`item:${itemKey}:${ring ?? ''}:${scope}`)
+    const stored =
+      scope === null
+        ? null
+        : await this.repo.latestResponse(`item:${itemKey}:${ring ?? ''}:${scope}`)
     if (stored === null) throw new NotFoundException('신뢰할 수 있는 시세가 아니다')
     await send(req, reply, stored)
   }
 }
 
-async function send(req: FastifyRequest, reply: FastifyReply, stored: { body: string; etag: string }): Promise<void> {
+async function send(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  stored: { body: string; etag: string },
+): Promise<void> {
   void reply.header('etag', stored.etag).header('cache-control', 'no-cache')
   if (matches(req.headers['if-none-match'], stored.etag)) {
     await reply.code(304).send()

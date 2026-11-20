@@ -70,7 +70,12 @@ export function rangeOf(input: {
   for (const r of input.rows) {
     const day = input.days.get(r.day)
     if (r.day < from || r.day > input.day || day === undefined) continue
-    if (input.dummies.has(`${r.day}|${r.person}`) || r.priceMeso < day.low || r.priceMeso > day.high) continue
+    if (
+      input.dummies.has(`${r.day}|${r.person}`) ||
+      r.priceMeso < day.low ||
+      r.priceMeso > day.high
+    )
+      continue
     const days = byPerson.get(r.person) ?? new Map<string, number[]>()
     days.set(r.day, [...(days.get(r.day) ?? []), Math.log(r.priceMeso / day.ref)])
     byPerson.set(r.person, days)
@@ -86,7 +91,12 @@ export function rangeOf(input: {
       value: v.value,
       weight:
         v.trust *
-        (1 + votes.reduce((s, o, j) => (j === i ? s : s + Math.exp(-((v.value - o.value) ** 2) / (2 * DENSITY_WIDTH ** 2))), 0)),
+        (1 +
+          votes.reduce(
+            (s, o, j) =>
+              j === i ? s : s + Math.exp(-((v.value - o.value) ** 2) / (2 * DENSITY_WIDTH ** 2)),
+            0,
+          )),
     }))
     .sort((a, b) => a.value - b.value)
   return {

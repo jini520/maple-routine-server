@@ -11,9 +11,22 @@ import {
   type MarketRow,
 } from './daily-reference'
 import { buildBasket, directIndex, linkOf, relativeOf, type BasketItem } from './market-index'
-import { MarketDailyRepository, marketKey, parseMarketKey, type DailyRow, type StoredBasket } from './market-daily.repository'
+import {
+  MarketDailyRepository,
+  marketKey,
+  parseMarketKey,
+  type DailyRow,
+  type StoredBasket,
+} from './market-daily.repository'
 import { RANGE_DAYS, rangeOf, type MarketRange, type RangeDay } from './market-range'
-import { fillSeries, gradeOf, isReliable, toResponse, type FilledPoint, type Grade } from './market-view'
+import {
+  fillSeries,
+  gradeOf,
+  isReliable,
+  toResponse,
+  type FilledPoint,
+  type Grade,
+} from './market-view'
 
 /** MASPI 기준 기간. 이 7일을 10,000 으로 둔다. 목요일에 시작해 주간 초기화와 경계가 같다. */
 export const MASPI_BASE_FROM = '2026-10-22'
@@ -89,7 +102,9 @@ function rangesOf(
       out.set(market, prev?.q1 != null && prev.q3 != null ? { q1: prev.q1, q3: prev.q3 } : null)
       continue
     }
-    const days = new Map<string, RangeDay>([...history, ref].map((r) => [r.day, { ref: r.ref, low: r.low, high: r.high }]))
+    const days = new Map<string, RangeDay>(
+      [...history, ref].map((r) => [r.day, { ref: r.ref, low: r.low, high: r.high }]),
+    )
     out.set(market, rangeOf({ day, rows: rowsByMarket.get(market) ?? [], days, dummies, weightOf }))
   }
   return out
@@ -133,7 +148,8 @@ export class MarketPublishService {
 
   /** 처음 한 번, 그때까지의 줄로 지난 날들을 채운다. 이미 낸 날이 있으면 하지 않는다. */
   async backfill(yesterday: string): Promise<void> {
-    if ((await this.repo.ranDays()).length > 0) throw new Error('이미 낸 날이 있어 처음 채우기를 하지 않는다')
+    if ((await this.repo.ranDays()).length > 0)
+      throw new Error('이미 낸 날이 있어 처음 채우기를 하지 않는다')
     const first = await this.repo.firstDay()
     if (first === null) return
     for (const day of daysFrom(first, yesterday)) await this.computeDay(day)
@@ -174,7 +190,10 @@ export class MarketPublishService {
     const references = new Map<string, DayReference | null>()
     for (const [key, ref] of result.references) {
       const range = ranges.get(key) ?? null
-      references.set(key, ref === null ? null : { ...ref, q1: range?.q1 ?? null, q3: range?.q3 ?? null })
+      references.set(
+        key,
+        ref === null ? null : { ...ref, q1: range?.q1 ?? null, q3: range?.q3 ?? null },
+      )
     }
     return this.repo.saveDay(day, references, result.judged, result.dummies)
   }
@@ -200,7 +219,10 @@ export class MarketPublishService {
         const last = list[list.length - 1]
         if (last.day === day) today.set(key, last)
       }
-      await this.repo.updateRanges(day, rangesOf(day, today, rows, stored, dummies, weightFrom(judgements)))
+      await this.repo.updateRanges(
+        day,
+        rangesOf(day, today, rows, stored, dummies, weightFrom(judgements)),
+      )
     }
     if (ran.length > 0) await this.buildResponses(ran[ran.length - 1])
     return ran.length
@@ -216,14 +238,21 @@ export class MarketPublishService {
       this.repo.judgementSums(shiftDay(MASPI_BASE_TO, -29), MASPI_BASE_TO),
       this.repo.worlds(),
     ])
-    const excluded = new Set([EXCLUDED_GROUP, ...worlds.filter((w) => w.tradeGroupKey === EXCLUDED_GROUP).map((w) => w.key)])
-    const weightOf = (p: string): number => trustWeight(judgements.get(p) ?? { judged: 0, excluded: 0 })
+    const excluded = new Set([
+      EXCLUDED_GROUP,
+      ...worlds.filter((w) => w.tradeGroupKey === EXCLUDED_GROUP).map((w) => w.key),
+    ])
+    const weightOf = (p: string): number =>
+      trustWeight(judgements.get(p) ?? { judged: 0, excluded: 0 })
     const byMarket = new Map<string, MarketRow[]>()
     for (const r of rows) {
-      if (dummies.has(`${r.day}|${r.person}`) || excluded.has(parseMarketKey(r.market).scope)) continue
+      if (dummies.has(`${r.day}|${r.person}`) || excluded.has(parseMarketKey(r.market).scope))
+        continue
       byMarket.set(r.market, [...(byMarket.get(r.market) ?? []), r])
     }
-    const meta = await this.repo.itemsById([...new Set([...byMarket.keys()].map((k) => parseMarketKey(k).itemId))])
+    const meta = await this.repo.itemsById([
+      ...new Set([...byMarket.keys()].map((k) => parseMarketKey(k).itemId)),
+    ])
     const candidates = new Map<string, Omit<BasketItem, 'weight'>>()
     for (const [market, list] of byMarket) {
       const votes = votesOf(list, weightOf)
@@ -233,7 +262,11 @@ export class MarketPublishService {
       const itemKey = meta.get(m.itemId)?.key ?? ''
       const entersOn = LATE_ENTRY.find(([prefix]) => itemKey.startsWith(prefix))?.[1] ?? null
       const item = candidates.get(key) ?? { key, scopes: [], entersOn }
-      item.scopes.push({ scope: m.scope, basePrice: referenceFromVotes(MASPI_BASE_TO, 'today', votes).ref, persons: votes.size })
+      item.scopes.push({
+        scope: m.scope,
+        basePrice: referenceFromVotes(MASPI_BASE_TO, 'today', votes).ref,
+        persons: votes.size,
+      })
       candidates.set(key, item)
     }
     const basket = buildBasket([...candidates.values()])
@@ -242,8 +275,13 @@ export class MarketPublishService {
         b.scopes.map((s) => {
           const [itemId, ring] = b.key.split('|')
           return {
-            itemId, ringLevel: ring === '' ? null : Number(ring), scope: s.scope, basePriceMeso: s.basePrice,
-            persons: s.persons, weight: b.weight, entersOn: b.entersOn,
+            itemId,
+            ringLevel: ring === '' ? null : Number(ring),
+            scope: s.scope,
+            basePriceMeso: s.basePrice,
+            persons: s.persons,
+            weight: b.weight,
+            entersOn: b.entersOn,
           }
         }),
       ),
@@ -251,11 +289,19 @@ export class MarketPublishService {
     return basket
   }
 
-  private relativesFrom(basket: BasketItem[], refs: ReadonlyMap<string, number>, day: string): Map<string, number> {
+  private relativesFrom(
+    basket: BasketItem[],
+    refs: ReadonlyMap<string, number>,
+    day: string,
+  ): Map<string, number> {
     const out = new Map<string, number>()
     for (const b of basket) {
       const [itemId, ring] = b.key.split('|')
-      const rel = relativeOf(b, (scope) => refs.get(marketKey(itemId, ring === '' ? null : Number(ring), scope)) ?? null, day)
+      const rel = relativeOf(
+        b,
+        (scope) => refs.get(marketKey(itemId, ring === '' ? null : Number(ring), scope)) ?? null,
+        day,
+      )
       if (rel !== null) out.set(b.key, rel)
     }
     return out
@@ -278,28 +324,45 @@ export class MarketPublishService {
     if (basket.length === 0 || until < MASPI_BASE_FROM) return
     const weights = new Map(basket.map((b) => [b.key, b.weight]))
     const refs = await this.refsByDay(first, until)
-    const rels = new Map(daysFrom(first, until).map((d) => [d, this.relativesFrom(basket, refs.get(d) ?? NONE, d)]))
+    const rels = new Map(
+      daysFrom(first, until).map((d) => [d, this.relativesFrom(basket, refs.get(d) ?? NONE, d)]),
+    )
     const coverage = (d: string): number => {
       const eligible = basket.filter((b) => b.entersOn === null || d >= b.entersOn)
       const total = eligible.reduce((s, b) => s + b.weight, 0)
-      return total === 0 ? 0 : eligible.filter((b) => rels.get(d)?.has(b.key)).reduce((s, b) => s + b.weight, 0) / total
+      return total === 0
+        ? 0
+        : eligible.filter((b) => rels.get(d)?.has(b.key)).reduce((s, b) => s + b.weight, 0) / total
     }
-    const start = daysFrom(first, MASPI_BASE_FROM).find((d) => coverage(d) >= MASPI_MIN_COVERAGE) ?? MASPI_BASE_FROM
-    const value = new Map<string, number>([[MASPI_BASE_FROM, directIndex(basket, rels.get(MASPI_BASE_FROM) ?? NONE)]])
+    const start =
+      daysFrom(first, MASPI_BASE_FROM).find((d) => coverage(d) >= MASPI_MIN_COVERAGE) ??
+      MASPI_BASE_FROM
+    const value = new Map<string, number>([
+      [MASPI_BASE_FROM, directIndex(basket, rels.get(MASPI_BASE_FROM) ?? NONE)],
+    ])
     for (const d of daysFrom(shiftDay(MASPI_BASE_FROM, 1), until)) {
       const prev = shiftDay(d, -1)
-      value.set(d, (value.get(prev) as number) * (linkOf(weights, rels.get(prev) ?? NONE, rels.get(d) ?? NONE) ?? 1))
+      value.set(
+        d,
+        (value.get(prev) as number) *
+          (linkOf(weights, rels.get(prev) ?? NONE, rels.get(d) ?? NONE) ?? 1),
+      )
     }
     for (let d = shiftDay(MASPI_BASE_FROM, -1); d >= start; d = shiftDay(d, -1)) {
       const next = shiftDay(d, 1)
-      value.set(d, (value.get(next) as number) / (linkOf(weights, rels.get(d) ?? NONE, rels.get(next) ?? NONE) ?? 1))
+      value.set(
+        d,
+        (value.get(next) as number) /
+          (linkOf(weights, rels.get(d) ?? NONE, rels.get(next) ?? NONE) ?? 1),
+      )
     }
     const days = daysFrom(start, until)
     await this.repo.saveMaspi(
       days.map((d, i) => ({
         day: d,
         value: round(value.get(d) as number, 2),
-        change: i === 0 ? null : round((value.get(d) as number) - (value.get(days[i - 1]) as number), 2),
+        change:
+          i === 0 ? null : round((value.get(d) as number) - (value.get(days[i - 1]) as number), 2),
       })),
     )
   }
@@ -317,7 +380,9 @@ export class MarketPublishService {
       this.relativesFrom(basket, refs.get(day) ?? NONE, day),
     )
     const value = prev.value * (link ?? 1)
-    await this.repo.saveMaspi([{ day, value: round(value, 2), change: round(value - prev.value, 2) }])
+    await this.repo.saveMaspi([
+      { day, value: round(value, 2), change: round(value - prev.value, 2) },
+    ])
   }
 
   /** 그날 앱에 줄 응답을 모두 만들어 저장한다. 판 사람 수 · 기준가의 근거 · 빈 날 표시는 싣지 않는다. */
@@ -330,12 +395,22 @@ export class MarketPublishService {
       this.repo.maspiBetween(shiftDay(day, -(SPARK_DAYS - 1)), day),
     ])
     const persons = new Map<string, Set<string>>()
-    for (const r of recent) persons.set(r.market, (persons.get(r.market) ?? new Set()).add(r.person))
-    const meta = await this.repo.itemsById([...new Set([...refs.keys()].map((k) => parseMarketKey(k).itemId))])
+    for (const r of recent)
+      persons.set(r.market, (persons.get(r.market) ?? new Set()).add(r.person))
+    const meta = await this.repo.itemsById([
+      ...new Set([...refs.keys()].map((k) => parseMarketKey(k).itemId)),
+    ])
     const days = daysFrom(from, day)
     const freshFrom = shiftDay(day, -13)
 
-    type Built = { market: string; scope: string; worldBound: boolean; entry: Omit<MarketEntry, 'grade'>; series: FilledPoint[]; persons: number }
+    type Built = {
+      market: string
+      scope: string
+      worldBound: boolean
+      entry: Omit<MarketEntry, 'grade'>
+      series: FilledPoint[]
+      persons: number
+    }
     const built: Built[] = []
     for (const [market, list] of refs) {
       const fresh = list.filter((r) => r.day >= freshFrom && r.source !== 'carry').length
@@ -344,7 +419,13 @@ export class MarketPublishService {
       const series = fillSeries(
         days.map((d) => {
           const r = byDay.get(d)
-          return { day: d, ref: r?.ref ?? null, q1: r?.q1 ?? null, q3: r?.q3 ?? null, fresh: r !== undefined && r.source !== 'carry' }
+          return {
+            day: d,
+            ref: r?.ref ?? null,
+            q1: r?.q1 ?? null,
+            q3: r?.q3 ?? null,
+            fresh: r !== undefined && r.source !== 'carry',
+          }
         }),
       )
       if (series.length === 0) continue
@@ -354,20 +435,34 @@ export class MarketPublishService {
       const last = series[series.length - 1]
       const prev = series[series.length - 2]
       built.push({
-        market, scope: m.scope, worldBound: item.worldBound, series, persons: persons.get(market)?.size ?? 0,
+        market,
+        scope: m.scope,
+        worldBound: item.worldBound,
+        series,
+        persons: persons.get(market)?.size ?? 0,
         entry: {
-          itemKey: item.key, ringLevel: m.ringLevel, price: last.price,
-          changePct: prev === undefined ? null : round((last.price / prev.price - 1) * 100, 1), low: last.low, high: last.high,
+          itemKey: item.key,
+          ringLevel: m.ringLevel,
+          price: last.price,
+          changePct: prev === undefined ? null : round((last.price / prev.price - 1) * 100, 1),
+          low: last.low,
+          high: last.high,
         },
       })
     }
 
     const listOf = (pick: (b: Built) => boolean): (Built & { grade: Grade })[] => {
-      const picked = built.filter(pick).sort((a, b) => b.persons - a.persons || a.entry.itemKey.localeCompare(b.entry.itemKey))
+      const picked = built
+        .filter(pick)
+        .sort((a, b) => b.persons - a.persons || a.entry.itemKey.localeCompare(b.entry.itemKey))
       const leader = picked[0]?.persons ?? 0
       return picked.map((b) => ({ ...b, grade: gradeOf(b.persons, leader) }))
     }
-    const toEntry = (b: Built & { grade: Grade }) => ({ ...b.entry, grade: b.grade, spark: b.series.slice(-SPARK_DAYS).map((p) => p.price) })
+    const toEntry = (b: Built & { grade: Grade }) => ({
+      ...b.entry,
+      grade: b.grade,
+      spark: b.series.slice(-SPARK_DAYS).map((p) => p.price),
+    })
 
     const equipment = listOf((b) => !b.worldBound && b.scope === LISTED_GROUP)
     const responses: { key: string; body: string; etag: string }[] = []
@@ -377,7 +472,12 @@ export class MarketPublishService {
       ...toResponse(
         last === undefined
           ? EMPTY_MASPI
-          : { date: last.day, close: last.value, change: last.change, series: maspi.map((m) => ({ date: m.day, value: m.value })) },
+          : {
+              date: last.day,
+              close: last.value,
+              change: last.change,
+              series: maspi.map((m) => ({ date: m.day, value: m.value })),
+            },
       ),
     })
     const details = [...equipment]
@@ -386,7 +486,11 @@ export class MarketPublishService {
       details.push(...consumable)
       responses.push({
         key: `items:${w.key}`,
-        ...toResponse({ date: day, equipment: equipment.map(toEntry), consumable: { world: w.key, items: consumable.map(toEntry) } }),
+        ...toResponse({
+          date: day,
+          equipment: equipment.map(toEntry),
+          consumable: { world: w.key, items: consumable.map(toEntry) },
+        }),
       })
     }
     for (const b of details) {

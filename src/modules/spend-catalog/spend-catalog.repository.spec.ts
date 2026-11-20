@@ -130,10 +130,18 @@ describeDb('SpendCatalogRepository', () => {
 
   // 앱은 규칙 셋 중 하나라도 비면 지출 표 전체를 받지 않는다. 메소마켓 수수료율도 같은 줄로 적고 낸다.
   it('규칙 셋을 적으면 칸이 들고 보스 표의 updatedAt 은 안 움직인다', async () => {
-    await repo.setRules({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 })
+    await repo.setRules({
+      tariffPercent: 10,
+      rewardCoinPriceMeso: 40_000_000,
+      mesoMarketFeePercent: 1,
+    })
 
     const section = await repo.section()
-    expect(section.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 })
+    expect(section.rules).toEqual({
+      tariffPercent: 10,
+      rewardCoinPriceMeso: 40_000_000,
+      mesoMarketFeePercent: 1,
+    })
     expect(section.updatedAt).not.toBeNull()
     expect((await new BossesRepository(db).catalog()).updatedAt).toBeNull()
   })

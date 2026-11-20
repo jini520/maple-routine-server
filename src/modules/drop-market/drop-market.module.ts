@@ -12,7 +12,13 @@ import { MarketController } from './market.controller'
  */
 @Module({
   controllers: [MarketController],
-  providers: [DropMarketRepository, DropMarketService, MarketDailyRepository, MarketPublishService, MarketPublishJob],
+  providers: [
+    DropMarketRepository,
+    DropMarketService,
+    MarketDailyRepository,
+    MarketPublishService,
+    MarketPublishJob,
+  ],
   exports: [DropMarketService],
 })
 export class DropMarketModule {}

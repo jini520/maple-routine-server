@@ -1560,7 +1560,11 @@ export const enhancementAnomalies = pgTable(
 )
 
 /** 일일 기준가의 근거. 응답에는 싣지 않는다. 거래가 적은 날이 드러나기 때문이다. */
-export const marketReferenceSourceEnum = pgEnum('market_reference_source', ['today', 'three_day', 'carry'])
+export const marketReferenceSourceEnum = pgEnum('market_reference_source', [
+  'today',
+  'three_day',
+  'carry',
+])
 
 /** 시세(아이템 · 반지 레벨 · 범위)마다 날마다 낸 일일 기준가. 하루 작업이 한 번 넣고 다시 쓰지 않는다. 기준가가 빈 날은 줄이 없다. */
 export const marketDays = pgTable(
@@ -1589,7 +1593,12 @@ export const marketDays = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('market_days_market_day_unique').on(t.day, t.itemId, sql`coalesce(${t.ringLevel}, 0)`, t.scope),
+    uniqueIndex('market_days_market_day_unique').on(
+      t.day,
+      t.itemId,
+      sql`coalesce(${t.ringLevel}, 0)`,
+      t.scope,
+    ),
   ],
 )
 
@@ -1633,7 +1642,9 @@ export const maspiBasket = pgTable(
     entersOn: date('enters_on', { mode: 'string' }),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('maspi_basket_unique').on(t.itemId, sql`coalesce(${t.ringLevel}, 0)`, t.scope)],
+  (t) => [
+    uniqueIndex('maspi_basket_unique').on(t.itemId, sql`coalesce(${t.ringLevel}, 0)`, t.scope),
+  ],
 )
 
 /** MASPI 날마다의 종가 */

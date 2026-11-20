@@ -46,6 +46,9 @@ const CONVERTED = [
   'spend_items',
   'spend_item_options',
   'spend_item_reward_types',
+  'symbol_groups',
+  'symbols',
+  'symbol_level_costs',
 ]
 
 interface DesignColumn {

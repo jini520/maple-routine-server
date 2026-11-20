@@ -917,14 +917,15 @@ export const symbolGroups = pgTable(
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
     maxLevel: integer('max_level').notNull(),
-    defaultFrom: integer('default_from').notNull(),
-    defaultTo: integer('default_to').notNull(),
+    /** 심볼을 고르면 폼에 처음 서는 강화 전 · 강화 후 레벨. */
+    defaultFromLevel: integer('default_from_level').notNull(),
+    defaultToLevel: integer('default_to_level').notNull(),
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
     check(
       'symbol_groups_default_range',
-      sql`${t.defaultFrom} < ${t.defaultTo} AND ${t.defaultTo} <= ${t.maxLevel}`,
+      sql`${t.defaultFromLevel} < ${t.defaultToLevel} AND ${t.defaultToLevel} <= ${t.maxLevel}`,
     ),
   ],
 )
@@ -940,14 +941,13 @@ export const symbols = pgTable('symbols', {
   name: text('name').notNull(),
   /** 착용 레벨. 캐릭터 레벨 이하인 것만 드롭다운에 선다. */
   requiredLevel: integer('required_level').notNull(),
-  /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
   iconAssetId: uuid('icon_asset_id')
     .notNull()
     .references(() => assets.id),
   sortOrder: integer('sort_order').notNull(),
 })
 
-/** 심볼 한 레벨의 강화 비용. 결정석 가격처럼 한 조합(심볼 · 레벨)에 기간 줄이 여럿이고 until 이 없는 줄이 지금 값이다. */
+/** 심볼 한 레벨의 강화 비용. 결정석 가격처럼 한 조합(심볼 · 강화 전 레벨)에 기간 줄이 여럿이고 valid_until 이 없는 줄이 지금 값이다. */
 export const symbolLevelCosts = pgTable(
   'symbol_level_costs',
   {
@@ -955,15 +955,17 @@ export const symbolLevelCosts = pgTable(
     symbolId: uuid('symbol_id')
       .notNull()
       .references(() => symbols.id, { onDelete: 'cascade' }),
-    /** 강화 전 레벨. Lv.level → level+1 의 값이다. 1 부터 max_level - 1 까지. */
-    level: integer('level').notNull(),
+    /** 강화 전 레벨. Lv.from_level → from_level+1 의 값이다. 1 부터 max_level - 1 까지. */
+    fromLevel: integer('from_level').notNull(),
     costMeso: bigint('cost_meso', { mode: 'number' }).notNull(),
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
   },
   (t) => [
-    unique('symbol_level_costs_row_unique').on(t.symbolId, t.level, t.from).nullsNotDistinct(),
-    check('symbol_level_costs_level_positive', sql`${t.level} >= 1`),
+    unique('symbol_level_costs_row_unique')
+      .on(t.symbolId, t.fromLevel, t.validFrom)
+      .nullsNotDistinct(),
+    check('symbol_level_costs_from_level_positive', sql`${t.fromLevel} >= 1`),
   ],
 )
 

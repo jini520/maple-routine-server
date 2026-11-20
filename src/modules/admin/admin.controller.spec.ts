@@ -1716,7 +1716,7 @@ describe('AdminController', () => {
   })
 
   describe('심볼 비용', () => {
-    it('rows 는 관리 줄이고, 묶음 수정은 비용 줄 위로 내리면 409, 심볼은 모르는 묶음이면 404 다', async () => {
+    it('rows 는 관리 줄이고, 묶음 수정은 비용 줄 위로 내리면 409, 심볼은 모르는 묶음이면 404 · 그림 표에 없는 그림이면 400 이다', async () => {
       symbolRepo.adminRows.mockResolvedValue({ updatedAt: null, groups: [] })
       expect((await app.inject({ method: 'GET', url: '/admin/symbol-costs/rows' })).json()).toEqual(
         { updatedAt: null, groups: [] },
@@ -1727,16 +1727,35 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/symbol-costs/groups',
-            payload: { key: 'arcane', name: '아케인', maxLevel: 20, defaultFrom: 7, defaultTo: 12 },
+            payload: {
+              key: 'arcane',
+              name: '아케인',
+              maxLevel: 20,
+              defaultFromLevel: 7,
+              defaultToLevel: 12,
+            },
           })
         ).statusCode,
       ).toBe(201)
+      expect(symbolRepo.createGroup).toHaveBeenCalledWith({
+        key: 'arcane',
+        name: '아케인',
+        maxLevel: 20,
+        defaultFromLevel: 7,
+        defaultToLevel: 12,
+      })
       expect(
         (
           await app.inject({
             method: 'POST',
             url: '/admin/symbol-costs/groups',
-            payload: { key: 'arcane', name: '아케인', maxLevel: 20, defaultFrom: 12, defaultTo: 7 },
+            payload: {
+              key: 'arcane',
+              name: '아케인',
+              maxLevel: 20,
+              defaultFromLevel: 12,
+              defaultToLevel: 7,
+            },
           })
         ).statusCode,
       ).toBe(400)
@@ -1746,26 +1765,37 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/symbol-costs/groups/arcane',
-            payload: { name: '아케인', maxLevel: 10, defaultFrom: 1, defaultTo: 2 },
+            payload: { name: '아케인', maxLevel: 10, defaultFromLevel: 1, defaultToLevel: 2 },
           })
         ).statusCode,
       ).toBe(409)
+      const tallahart = {
+        key: 'tallahart',
+        group: 'nobody',
+        name: '탈라하트',
+        requiredLevel: 290,
+        iconAssetId: ROW,
+      }
+      const postSymbol = (payload: object) =>
+        app.inject({ method: 'POST', url: '/admin/symbol-costs/symbols', payload })
       symbolRepo.createSymbol.mockRejectedValue(new NoSymbolGroup('nobody'))
+      expect((await postSymbol(tallahart)).statusCode).toBe(404)
+      expect(symbolRepo.createSymbol).toHaveBeenCalledWith(tallahart)
+      symbolRepo.createSymbol.mockRejectedValue(new AssetNotFound(ROW))
+      const missing = await postSymbol(tallahart)
+      expect(missing.statusCode).toBe(400)
+      expect(missing.json<{ message: string }>().message).toContain(ROW)
+      expect((await postSymbol({ ...tallahart, iconAssetId: 't.webp' })).statusCode).toBe(400)
+      symbolRepo.updateSymbol.mockRejectedValue(new AssetNotFound(ROW))
       expect(
         (
           await app.inject({
-            method: 'POST',
-            url: '/admin/symbol-costs/symbols',
-            payload: {
-              key: 'tallahart',
-              group: 'nobody',
-              name: '탈라하트',
-              requiredLevel: 290,
-              iconFile: 't.webp',
-            },
+            method: 'PUT',
+            url: '/admin/symbol-costs/symbols/tallahart',
+            payload: { name: '탈라하트', requiredLevel: 290, iconAssetId: ROW },
           })
         ).statusCode,
-      ).toBe(404)
+      ).toBe(400)
     })
 
     it('비용은 시작 없이도 넘기고 빠진 레벨은 400, 거두기는 유일한 줄이면 409 · 없으면 404 다', async () => {
@@ -1775,24 +1805,24 @@ describe('AdminController', () => {
         url: '/admin/symbol-costs/symbols/tallahart/costs',
         payload: {
           costs: [
-            { level: 1, costMeso: 100 },
-            { level: 2, costMeso: 200 },
+            { fromLevel: 1, costMeso: 100 },
+            { fromLevel: 2, costMeso: 200 },
           ],
         },
       })
       expect(added.statusCode).toBe(201)
       expect(symbolRepo.addCosts).toHaveBeenCalledWith('tallahart', {
-        from: null,
+        validFrom: null,
         costs: [
-          { level: 1, costMeso: 100 },
-          { level: 2, costMeso: 200 },
+          { fromLevel: 1, costMeso: 100 },
+          { fromLevel: 2, costMeso: 200 },
         ],
       })
       symbolRepo.addCosts.mockRejectedValue(new LevelsIncomplete('3'))
       const incomplete = await app.inject({
         method: 'POST',
         url: '/admin/symbol-costs/symbols/tallahart/costs',
-        payload: { from: '2026-10-22', costs: [{ level: 1, costMeso: 100 }] },
+        payload: { validFrom: '2026-10-22', costs: [{ fromLevel: 1, costMeso: 100 }] },
       })
       expect(incomplete.statusCode).toBe(400)
       expect(incomplete.json<{ message: string }>().message).toContain('레벨 3')

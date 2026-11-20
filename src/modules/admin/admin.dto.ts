@@ -357,11 +357,11 @@ const symbolGroupBase = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
   maxLevel: z.number().int().min(2).max(100),
-  defaultFrom: z.number().int().min(1),
-  defaultTo: z.number().int().min(2),
+  defaultFromLevel: z.number().int().min(1),
+  defaultToLevel: z.number().int().min(2),
 })
-const rangeOk = (g: { maxLevel: number; defaultFrom: number; defaultTo: number }) =>
-  g.defaultFrom < g.defaultTo && g.defaultTo <= g.maxLevel
+const rangeOk = (g: { maxLevel: number; defaultFromLevel: number; defaultToLevel: number }) =>
+  g.defaultFromLevel < g.defaultToLevel && g.defaultToLevel <= g.maxLevel
 const RANGE_MESSAGE = { message: '기본 범위는 시작 < 끝 ≤ 만렙이다' }
 export const symbolGroupCreateBody = symbolGroupBase.refine(rangeOk, RANGE_MESSAGE)
 export type SymbolGroupCreateBody = z.infer<typeof symbolGroupCreateBody>
@@ -375,19 +375,19 @@ export const symbolCreateBody = z.object({
   group: snakeKey,
   name: z.string().min(1).max(50),
   requiredLevel: z.number().int().min(1),
-  iconFile: z.string().min(1).max(200),
+  iconAssetId: z.string().uuid(),
 })
 export type SymbolCreateBody = z.infer<typeof symbolCreateBody>
 export const symbolUpdateBody = symbolCreateBody.omit({ key: true, group: true })
 export type SymbolUpdateBody = z.infer<typeof symbolUpdateBody>
 
-/** 레벨 여럿의 새 비용. 시작은 전부 같다. 첫 줄은 비워도 된다. */
+/** 강화 전 레벨 여럿의 새 비용. 시작은 전부 같다. 첫 줄은 비워도 된다. */
 export const symbolCostsBody = z.object({
-  from: periodText,
+  validFrom: periodText,
   costs: z
     .array(
       z.object({
-        level: z.number().int().min(1),
+        fromLevel: z.number().int().min(1),
         costMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
       }),
     )

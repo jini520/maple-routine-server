@@ -1,4 +1,5 @@
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import { AssetNotFound } from '../assets/asset-refs'
 import {
   LevelOutOfRange,
   LevelsAboveMax,
@@ -14,7 +15,8 @@ import {
 } from './symbol-costs.repository'
 
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
-const SPEC_ASSETS = ['items/g.webp', 'items/grand_authentic_symbol_tallahart.webp', 'items/x.webp']
+const SPEC_ASSETS = ['items/g.webp', 'items/grand_authentic_symbol_tallahart.webp']
+const NO_ASSET = '00000000-0000-4000-8000-000000000000'
 
 describeDb('SymbolCostsRepository', () => {
   let db: TestDb
@@ -37,64 +39,83 @@ describeDb('SymbolCostsRepository', () => {
     key: 'grand_authentic',
     name: '그랜드 어센틱 심볼',
     maxLevel: 4,
-    defaultFrom: 1,
-    defaultTo: 3,
+    defaultFromLevel: 1,
+    defaultToLevel: 3,
   }
-  const tallahart = {
+  const tallahart = () => ({
     key: 'tallahart',
     group: 'grand_authentic',
     name: '탈라하트',
     requiredLevel: 290,
-    iconFile: 'grand_authentic_symbol_tallahart.webp',
-  }
+    iconAssetId: assetIds['items/grand_authentic_symbol_tallahart.webp'] ?? '',
+  })
+  const level2 = (validFrom: string | null, costMeso: number) => ({
+    validFrom,
+    costs: [{ fromLevel: 2, costMeso }],
+  })
   const three = [
-    { level: 1, costMeso: 100 },
-    { level: 2, costMeso: 200 },
-    { level: 3, costMeso: 300 },
+    { fromLevel: 1, costMeso: 100 },
+    { fromLevel: 2, costMeso: 200 },
+    { fromLevel: 3, costMeso: 300 },
   ]
 
-  it('빈 표는 칸 전부가 빈다', async () => {
+  it('빈 표는 표 이름의 배열 셋이 모두 빈다', async () => {
     expect(await repo.section()).toEqual({
       updatedAt: null,
-      groups: [],
+      symbolGroups: [],
       symbols: [],
-      levelCosts: [],
+      symbolLevelCosts: [],
     })
     expect(await repo.adminRows()).toEqual({ updatedAt: null, groups: [] })
   })
 
-  it('묶음과 심볼을 더하고, 비용은 레벨 전부를 한 번에 넣는다. 빠지면 LevelsIncomplete 다', async () => {
-    await repo.createGroup(grand)
+  it('묶음과 심볼을 더하고, 비용은 레벨 전부를 한 번에 넣는다. 빠지면 LevelsIncomplete, 그림 표에 없는 그림은 AssetNotFound 다', async () => {
+    const { id: groupId } = await repo.createGroup(grand)
     await expect(repo.createGroup(grand)).rejects.toBeInstanceOf(SymbolGroupExists)
-    await expect(repo.createSymbol({ ...tallahart, group: 'nobody' })).rejects.toBeInstanceOf(
+    await expect(repo.createSymbol({ ...tallahart(), group: 'nobody' })).rejects.toBeInstanceOf(
       NoSymbolGroup,
     )
-    await repo.createSymbol(tallahart)
-    await expect(repo.createSymbol(tallahart)).rejects.toBeInstanceOf(SymbolExists)
-    await expect(repo.addCosts('nobody', { from: null, costs: three })).rejects.toBeInstanceOf(
+    await expect(
+      repo.createSymbol({ ...tallahart(), iconAssetId: NO_ASSET }),
+    ).rejects.toBeInstanceOf(AssetNotFound)
+    const { id: symbolId } = await repo.createSymbol(tallahart())
+    await expect(repo.createSymbol(tallahart())).rejects.toBeInstanceOf(SymbolExists)
+    await expect(repo.addCosts('nobody', { validFrom: null, costs: three })).rejects.toBeInstanceOf(
       NoSymbol,
     )
     await expect(
-      repo.addCosts('tallahart', { from: null, costs: three.slice(0, 2) }),
+      repo.addCosts('tallahart', { validFrom: null, costs: three.slice(0, 2) }),
     ).rejects.toBeInstanceOf(LevelsIncomplete)
     await expect(
-      repo.addCosts('tallahart', { from: null, costs: [...three, { level: 4, costMeso: 1 }] }),
+      repo.addCosts('tallahart', {
+        validFrom: null,
+        costs: [...three, { fromLevel: 4, costMeso: 1 }],
+      }),
     ).rejects.toBeInstanceOf(LevelOutOfRange)
-    expect(await repo.addCosts('tallahart', { from: '2026-09-17', costs: three })).toEqual({
+    expect(await repo.addCosts('tallahart', { validFrom: '2026-09-17', costs: three })).toEqual({
       inserted: 3,
     })
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.groups).toEqual([grand])
+    expect(section.symbolGroups).toEqual([{ id: groupId, ...grand }])
+    const t = tallahart()
     expect(section.symbols).toEqual([
-      { ...tallahart, iconAssetId: assetIds[`items/${tallahart.iconFile}`] },
+      {
+        id: symbolId,
+        key: t.key,
+        groupId,
+        name: t.name,
+        requiredLevel: t.requiredLevel,
+        iconAssetId: t.iconAssetId,
+      },
     ])
-    expect(section.levelCosts).toEqual(
-      three.map((c) => ({ symbol: 'tallahart', ...c, from: '2026-09-17', until: null })),
+    expect(section.symbolLevelCosts).toEqual(
+      three.map((c) => ({ symbolId, ...c, validFrom: '2026-09-17', validUntil: null })),
     )
     const admin = await repo.adminRows()
-    expect(admin.groups[0]?.symbols[0]?.levels.map((l) => [l.level, l.costs.length])).toEqual([
+    expect(admin.groups[0]?.symbols[0]).toMatchObject(tallahart())
+    expect(admin.groups[0]?.symbols[0]?.levels.map((l) => [l.fromLevel, l.costs.length])).toEqual([
       [1, 1],
       [2, 1],
       [3, 1],
@@ -103,83 +124,111 @@ describeDb('SymbolCostsRepository', () => {
 
   it('새 비용은 지금 줄을 닫고 새 줄을 연다. 시작이 없거나 앞이거나 날짜가 아니면 NotAfterCurrent 다', async () => {
     await repo.createGroup(grand)
-    await repo.createSymbol(tallahart)
-    await repo.addCosts('tallahart', { from: '2026-09-17', costs: three })
+    await repo.createSymbol(tallahart())
+    await repo.addCosts('tallahart', { validFrom: '2026-09-17', costs: three })
 
-    await expect(
-      repo.addCosts('tallahart', { from: null, costs: [{ level: 2, costMeso: 250 }] }),
-    ).rejects.toBeInstanceOf(NotAfterCurrent)
-    await expect(
-      repo.addCosts('tallahart', { from: '2026-09-10', costs: [{ level: 2, costMeso: 250 }] }),
-    ).rejects.toBeInstanceOf(NotAfterCurrent)
-    await expect(
-      repo.addCosts('tallahart', { from: '2026-02-30', costs: [{ level: 2, costMeso: 250 }] }),
-    ).rejects.toBeInstanceOf(NotAfterCurrent)
-    await repo.addCosts('tallahart', { from: '2026-10-22', costs: [{ level: 2, costMeso: 250 }] })
+    await expect(repo.addCosts('tallahart', level2(null, 250))).rejects.toBeInstanceOf(
+      NotAfterCurrent,
+    )
+    await expect(repo.addCosts('tallahart', level2('2026-09-10', 250))).rejects.toBeInstanceOf(
+      NotAfterCurrent,
+    )
+    await expect(repo.addCosts('tallahart', level2('2026-02-30', 250))).rejects.toBeInstanceOf(
+      NotAfterCurrent,
+    )
+    await repo.addCosts('tallahart', level2('2026-10-22', 250))
 
     const section = await repo.section()
-    expect(section.levelCosts.filter((c) => c.level === 2)).toEqual([
-      { symbol: 'tallahart', level: 2, costMeso: 200, from: '2026-09-17', until: '2026-10-22' },
-      { symbol: 'tallahart', level: 2, costMeso: 250, from: '2026-10-22', until: null },
+    const symbolId = section.symbols[0]?.id
+    expect(section.symbolLevelCosts.filter((c) => c.fromLevel === 2)).toEqual([
+      { symbolId, fromLevel: 2, costMeso: 200, validFrom: '2026-09-17', validUntil: '2026-10-22' },
+      { symbolId, fromLevel: 2, costMeso: 250, validFrom: '2026-10-22', validUntil: null },
     ])
   })
 
   it('지금 줄을 거두면 앞 줄이 다시 열리고, 지난 줄과 유일한 줄은 못 거둔다', async () => {
     await repo.createGroup(grand)
-    await repo.createSymbol(tallahart)
-    await repo.addCosts('tallahart', { from: '2026-09-17', costs: three })
-    await repo.addCosts('tallahart', { from: '2026-10-22', costs: [{ level: 2, costMeso: 250 }] })
+    await repo.createSymbol(tallahart())
+    await repo.addCosts('tallahart', { validFrom: '2026-09-17', costs: three })
+    await repo.addCosts('tallahart', level2('2026-10-22', 250))
     const admin = await repo.adminRows()
-    const level2 = admin.groups[0]?.symbols[0]?.levels[1]?.costs ?? []
-    const level1 = admin.groups[0]?.symbols[0]?.levels[0]?.costs ?? []
+    const second = admin.groups[0]?.symbols[0]?.levels[1]?.costs ?? []
+    const first = admin.groups[0]?.symbols[0]?.levels[0]?.costs ?? []
 
-    await expect(repo.removeLatest(level2[0]?.id ?? '')).rejects.toBeInstanceOf(NotLatest)
-    await expect(repo.removeLatest(level1[0]?.id ?? '')).rejects.toBeInstanceOf(OnlyRow)
-    expect(await repo.removeLatest(level2[1]?.id ?? '')).toBe(true)
-    expect(await repo.removeLatest(level2[1]?.id ?? '')).toBe(false)
-    expect((await repo.section()).levelCosts.filter((c) => c.level === 2)).toEqual([
-      { symbol: 'tallahart', level: 2, costMeso: 200, from: '2026-09-17', until: null },
+    await expect(repo.removeLatest(second[0]?.id ?? '')).rejects.toBeInstanceOf(NotLatest)
+    await expect(repo.removeLatest(first[0]?.id ?? '')).rejects.toBeInstanceOf(OnlyRow)
+    expect(await repo.removeLatest(second[1]?.id ?? '')).toBe(true)
+    expect(await repo.removeLatest(second[1]?.id ?? '')).toBe(false)
+    const section = await repo.section()
+    expect(section.symbolLevelCosts.filter((c) => c.fromLevel === 2)).toEqual([
+      {
+        symbolId: section.symbols[0]?.id,
+        fromLevel: 2,
+        costMeso: 200,
+        validFrom: '2026-09-17',
+        validUntil: null,
+      },
     ])
   })
 
   it('묶음을 고치고 심볼을 고치고 옮긴다. 만렙은 비용 줄 위로 못 내린다', async () => {
     await repo.createGroup(grand)
-    await repo.createSymbol(tallahart)
-    await repo.createSymbol({ ...tallahart, key: 'geardrak', name: '기어드락', requiredLevel: 295 })
-    await repo.addCosts('tallahart', { from: null, costs: three })
+    await repo.createSymbol(tallahart())
+    await repo.createSymbol({
+      ...tallahart(),
+      key: 'geardrak',
+      name: '기어드락',
+      requiredLevel: 295,
+    })
+    await repo.addCosts('tallahart', { validFrom: null, costs: three })
 
-    const fields = { name: grand.name, maxLevel: grand.maxLevel, defaultFrom: 1, defaultTo: 3 }
+    const fields = {
+      name: grand.name,
+      maxLevel: grand.maxLevel,
+      defaultFromLevel: 1,
+      defaultToLevel: 3,
+    }
     await expect(
-      repo.updateGroup('grand_authentic', { ...fields, maxLevel: 3, defaultTo: 2 }),
+      repo.updateGroup('grand_authentic', { ...fields, maxLevel: 3, defaultToLevel: 2 }),
     ).rejects.toBeInstanceOf(LevelsAboveMax)
     expect(await repo.updateGroup('grand_authentic', { ...fields, maxLevel: 5 })).toBe(true)
     expect(await repo.updateGroup('nobody', fields)).toBe(false)
+    const g = assetIds['items/g.webp'] ?? ''
     expect(
       await repo.updateSymbol('geardrak', {
         name: '기어드락!',
         requiredLevel: 295,
-        iconFile: 'g.webp',
+        iconAssetId: g,
       }),
     ).toBe(true)
-    expect(
-      await repo.updateSymbol('nobody', { name: 'x', requiredLevel: 1, iconFile: 'x.webp' }),
-    ).toBe(false)
+    await expect(
+      repo.updateSymbol('geardrak', { name: 'x', requiredLevel: 1, iconAssetId: NO_ASSET }),
+    ).rejects.toBeInstanceOf(AssetNotFound)
+    expect(await repo.updateSymbol('nobody', { name: 'x', requiredLevel: 1, iconAssetId: g })).toBe(
+      false,
+    )
     expect(await repo.moveSymbol('geardrak', 'up')).toBe(true)
     expect(await repo.moveSymbol('geardrak', 'up')).toBe(true)
     expect(await repo.moveSymbol('nobody', 'up')).toBe(false)
 
     const section = await repo.section()
-    expect(section.groups[0]?.maxLevel).toBe(5)
-    expect(section.symbols.map((s) => [s.key, s.name])).toEqual([
-      ['geardrak', '기어드락!'],
-      ['tallahart', '탈라하트'],
+    expect(section.symbolGroups[0]?.maxLevel).toBe(5)
+    expect(section.symbols.map((s) => [s.key, s.name, s.iconAssetId])).toEqual([
+      ['geardrak', '기어드락!', g],
+      ['tallahart', '탈라하트', tallahart().iconAssetId],
     ])
     // 만렙을 올리면 레벨 4 가 비어 선다. 화면이 그것을 보이고 addCosts 가 채운다.
     const admin = await repo.adminRows()
     expect(admin.groups[0]?.symbols[1]?.levels.map((l) => l.costs.length)).toEqual([1, 1, 1, 0])
     await expect(
-      repo.addCosts('tallahart', { from: '2026-10-22', costs: [{ level: 3, costMeso: 1 }] }),
+      repo.addCosts('tallahart', {
+        validFrom: '2026-10-22',
+        costs: [{ fromLevel: 3, costMeso: 1 }],
+      }),
     ).rejects.toBeInstanceOf(LevelsIncomplete)
-    await repo.addCosts('tallahart', { from: '2026-10-22', costs: [{ level: 4, costMeso: 400 }] })
+    await repo.addCosts('tallahart', {
+      validFrom: '2026-10-22',
+      costs: [{ fromLevel: 4, costMeso: 400 }],
+    })
   })
 })

@@ -54,7 +54,11 @@ function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): Game
       spendItemOptions: [],
       spendItemRewardTypes: [],
     }) as unknown as SpendCatalogRepository,
-    empty({ groups: [], symbols: [], levelCosts: [] }) as unknown as SymbolCostsRepository,
+    empty({
+      symbolGroups: [],
+      symbols: [],
+      symbolLevelCosts: [],
+    }) as unknown as SymbolCostsRepository,
     empty({ contentCategories: [], contents: [] }) as unknown as ContentsRepository,
     empty({
       rules: {
@@ -124,7 +128,7 @@ describe('GameDataService', () => {
         spendItemRewardTypes: [],
       },
       cashbookCategories: { updatedAt: null, cashbookCategories: [], cashbookItemTypes: [] },
-      symbolCosts: { updatedAt: null, groups: [], symbols: [], levelCosts: [] },
+      symbolCosts: { updatedAt: null, symbolGroups: [], symbols: [], symbolLevelCosts: [] },
       contents: { updatedAt: null, contentCategories: [], contents: [] },
       enhancementCosts: {
         updatedAt: null,

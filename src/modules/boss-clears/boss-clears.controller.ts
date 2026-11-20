@@ -17,32 +17,35 @@ import {
   eachInBatch,
   recordIdOf,
 } from '../../common/batch'
+import { isCheckViolation, isForeignKeyViolation } from '../../common/pg-errors'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
-import { BossesRepository } from '../bosses/bosses.repository'
-import { NoWorld } from '../drop-prices/drop-prices.repository'
-import { uuidLike } from '../drop-prices/drop-prices.dto'
+import { uuidLike } from '../../common/uuid-like'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
 import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type BossClearBody, bossClearBody } from './boss-clears.dto'
-import { BossClearsRepository } from './boss-clears.repository'
+import {
+  BossClearsRepository,
+  NoBossDifficulty,
+  PeriodCycleMismatch,
+} from './boss-clears.repository'
 
 function reasonOf(error: unknown): string | null {
-  if (error instanceof NoWorld) return `모르는 월드 key 다: ${error.message}`
+  if (error instanceof NoBossDifficulty) return `모르는 난이도다: ${error.message}`
+  if (error instanceof PeriodCycleMismatch) return `난이도의 주기와 다른 기간이다: ${error.message}`
+  if (isCheckViolation(error)) return '함께 있을 수 없는 칸 값이다'
+  if (isForeignKeyViolation(error)) return '모르는 월드다'
   if (error instanceof MapleIdNotOwned) return `이 계정의 메이플 ID 가 아니다: ${error.message}`
   return null
 }
 
 /**
- * 보스 처치 기간 기록. 드롭 가격과 같은 규칙이다. 신원이 있어야 하고, 보스 · 난이도는 표의 줄로 바꿔 적되 못 찾으면 NULL,
- * 모르는 월드는 400 이다. DELETE 는 기기에서 처치가 사라진 때다.
+ * 보스 수익 건 기록. 신원이 있어야 하고, 모르는 난이도 · 월드와 칸끼리 맞지 않는 값은 400 이다. DELETE 는 기기에서 그 기간 행이
+ * 사라진 때다.
  */
 @Controller()
 @UseGuards(IdentityGuard)
 export class BossClearsController {
-  constructor(
-    private readonly clears: BossClearsRepository,
-    private readonly bosses: BossesRepository,
-  ) {}
+  constructor(private readonly clears: BossClearsRepository) {}
 
   /** 한 건을 적는다. 같은 값을 다시 보내도 줄이 안 늘고 200 이다. */
   @Post('v1/boss-clears')
@@ -73,46 +76,24 @@ export class BossClearsController {
     const results = await eachInBatch(
       body.items,
       bossClearBody,
-      (raw) => recordIdOf(raw, 'periodRecordId'),
+      (raw) => recordIdOf(raw, 'id'),
       (item) => this.save(identity, item),
       reasonOf,
     )
     return { results }
   }
 
-  /** 기기에서 그 처치가 사라졌다. 줄은 남고 지운 시각이 적힌다. 없어도 204 다. */
-  @Delete('v1/boss-clears/:periodRecordId')
+  /** 기기에서 그 기간 행이 사라졌다. 줄은 남고 지운 시각이 적힌다. 없어도 204 다. */
+  @Delete('v1/boss-clears/:id')
   @HttpCode(204)
   async remove(
     @CurrentIdentity() identity: IdentityContext,
-    @Param('periodRecordId', new ZodValidationPipe(uuidLike)) periodRecordId: string,
+    @Param('id', new ZodValidationPipe(uuidLike)) id: string,
   ): Promise<void> {
-    await this.clears.markDeleted(identity, periodRecordId)
+    await this.clears.markDeleted(identity, id)
   }
 
   private async save(identity: IdentityContext, body: BossClearBody): Promise<void> {
-    const difficulty = await this.bosses.findDifficulty(body.boss, body.difficulty)
-    const boss = await this.bosses.findByKey(body.boss)
-    await this.clears.upsert({
-      nexonAccountId: identity.nexonAccountId,
-      identifiedBy: identity.source,
-      periodRecordId: body.periodRecordId,
-      mapleId: body.mapleId,
-      ocid: body.ocid,
-      bossId: boss?.id ?? null,
-      bossDifficultyId: difficulty?.id ?? null,
-      cycle: body.cycle,
-      periodKey: body.periodKey,
-      worldKey: body.worldKey ?? null,
-      priceMeso: body.priceMeso,
-      payoutMeso: body.payoutMeso,
-      splitMode: body.splitMode,
-      partySize: body.partySize,
-      myShare: body.myShare ?? null,
-      sharesTotal: body.sharesTotal ?? null,
-      splitFeePercent: body.splitFeePercent ?? null,
-      defeatedDate: body.defeatedDate ?? null,
-      source: body.source,
-    })
+    await this.clears.upsert({ ...body, nexonAccountId: identity.nexonAccountId })
   }
 }

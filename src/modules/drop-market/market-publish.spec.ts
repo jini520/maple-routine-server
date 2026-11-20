@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { eq, type AnyColumn } from 'drizzle-orm'
 
 import {
-  dropPrices,
+  dropSalePrices,
   items,
   marketJudgements,
   marketReferencePrices,
@@ -14,7 +14,13 @@ import {
   users,
   worlds,
 } from '../../database/schema'
-import { describeDb, itemGroupId, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  describeDb,
+  itemGroupId,
+  openTestDb,
+  saleItemId,
+  type TestDb,
+} from '../../database/test-db'
 import { shiftDay } from './daily-reference'
 import { MarketDailyRepository } from './market-daily.repository'
 import { MarketPublishService } from './market-publish.service'
@@ -37,16 +43,16 @@ describeDb('MarketPublishService', () => {
     priceMeso: number,
     over: { itemKey?: string; world?: string; ringLevel?: number | null } = {},
   ) {
-    await db.insert(dropPrices).values({
+    await db.insert(dropSalePrices).values({
+      id: randomUUID(),
       userId: person[who],
-      dropRecordId: randomUUID(),
-      identifiedBy: 'key',
-      itemId: item[over.itemKey ?? 'ring'],
-      priceMeso,
-      recordStatus: 'completed',
-      periodKey: '2026-10-22',
+      itemId: await saleItemId(
+        db,
+        item[over.itemKey ?? 'ring'],
+        over.ringLevel === undefined ? 4 : over.ringLevel,
+      ),
+      salePriceMeso: priceMeso,
       worldId: world[over.world ?? 'scania'],
-      ringLevel: over.ringLevel === undefined ? 4 : over.ringLevel,
       pricedAt: new Date(`${day}T12:00:00+09:00`),
     })
   }
@@ -232,15 +238,11 @@ describeDb('MarketPublishService', () => {
   // 판정은 직전 30일 신뢰도를 세는 데만 쓴다. 사람 줄이 없는 익명 줄은 그 값을 물려받을 사람이 없다.
   it('판정은 사람 줄마다 남기고, 사람 줄이 없는 줄의 판정은 남기지 않는다', async () => {
     await steadyMarket('2026-11-01', '2026-11-03', 30 * EOK)
-    await db.insert(dropPrices).values({
-      dropRecordId: randomUUID(),
-      identifiedBy: 'key',
+    await db.insert(dropSalePrices).values({
+      id: randomUUID(),
       itemId: item.ring,
-      priceMeso: 30 * EOK,
-      recordStatus: 'completed',
-      periodKey: '2026-10-22',
+      salePriceMeso: 30 * EOK,
       worldId: world.scania,
-      ringLevel: 4,
       pricedAt: new Date('2026-11-03T12:00:00+09:00'),
     })
 

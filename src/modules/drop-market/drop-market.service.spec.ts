@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto'
 
 import {
-  dropPrices,
+  dropSalePrices,
   items,
   ringLevelItems,
   tradeGroups,
   users,
   worlds,
 } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { describeDb, openTestDb, saleItemId, type TestDb } from '../../database/test-db'
 import { shiftDay } from './daily-reference'
 import { DropMarketRepository } from './drop-market.repository'
 import { DropMarketService } from './drop-market.service'
@@ -38,16 +38,12 @@ describeDb('DropMarketService', () => {
     priceMeso: number,
     time = '12:00',
   ) {
-    await db.insert(dropPrices).values({
+    await db.insert(dropSalePrices).values({
+      id: randomUUID(),
       userId: person[who],
-      dropRecordId: randomUUID(),
-      identifiedBy: 'key',
-      itemId: item[itemKey],
-      priceMeso,
-      recordStatus: 'completed',
-      periodKey: '2026-10-22',
+      itemId: await saleItemId(db, item[itemKey], itemKey === 'ring' ? 4 : null),
+      salePriceMeso: priceMeso,
       worldId: scania,
-      ringLevel: itemKey === 'ring' ? 4 : null,
       pricedAt: new Date(`${day}T${time}:00+09:00`),
     })
   }
@@ -72,6 +68,14 @@ describeDb('DropMarketService', () => {
       ])
       .returning({ id: items.id, key: items.key })
     for (const r of itemRows) item[r.key] = r.id
+    // 판매가 줄은 반지를 레벨 줄로 가리킨다. 반지 거래는 모두 4레벨 줄에 든다.
+    const [level] = await db
+      .insert(items)
+      .values({ key: 'ring_lv4', name: '반지 lv.4', isDrop: true })
+      .returning({ id: items.id })
+    await db
+      .insert(ringLevelItems)
+      .values({ itemId: level.id, ringItemId: item.ring, ringLevel: 4 })
     const [general] = await db
       .insert(tradeGroups)
       .values({ key: 'general', name: '일반 월드' })
@@ -106,15 +110,8 @@ describeDb('DropMarketService', () => {
     expect(rows[0]).not.toHaveProperty('person')
   })
 
-  // 하루 작업은 반지를 그 레벨의 아이템 줄로 잰다. 관리 화면은 판매가 줄의 반지 · 레벨로 그 줄의 울타리를 찾아야 한다.
-  it('반지 레벨에 레벨 아이템 줄이 있으면 그 줄의 기준가 울타리로 판정한다', async () => {
-    const [level] = await db
-      .insert(items)
-      .values({ key: 'ring_lv4', name: '반지 lv.4', isDrop: true })
-      .returning({ id: items.id })
-    await db
-      .insert(ringLevelItems)
-      .values({ itemId: level.id, ringItemId: item.ring, ringLevel: 4 })
+  // 하루 작업은 반지를 그 레벨의 아이템 줄로 잰다. 관리 화면은 원래 반지의 이름과 레벨로 보이고 그 줄의 울타리로 판정한다.
+  it('반지는 레벨 아이템 줄의 기준가 울타리로 판정하고, 줄은 원래 반지의 key 와 레벨로 보인다', async () => {
     await trade('d', 'ring', '2026-11-04', 300 * EOK, '13:00')
 
     await publish.backfill('2026-11-05')
@@ -125,6 +122,7 @@ describeDb('DropMarketService', () => {
       verdict: 'excluded',
       basis: 'today',
     })
+    expect(overview.find((o) => o.itemKey === 'ring')).toMatchObject({ ringLevel: 4 })
     expect(overview.find((o) => o.itemKey === 'ring')?.excludedCount).toBeGreaterThan(0)
   })
 

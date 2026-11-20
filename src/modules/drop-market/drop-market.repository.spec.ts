@@ -1,16 +1,23 @@
 import { randomUUID } from 'node:crypto'
 
 import {
-  dropPrices,
+  dropSalePrices,
   items,
   mapleIds,
   nexonAccounts,
+  ringLevelItems,
   subAccountRegistrations,
   tradeGroups,
   users,
   worlds,
 } from '../../database/schema'
-import { describeDb, itemGroupId, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  describeDb,
+  itemGroupId,
+  openTestDb,
+  saleItemId,
+  type TestDb,
+} from '../../database/test-db'
 import { DropMarketRepository } from './drop-market.repository'
 import { MarketDailyRepository } from './market-daily.repository'
 
@@ -24,29 +31,22 @@ describeDb('DropMarketRepository', () => {
   const world: Record<string, string> = {}
   const since = new Date('2026-10-01T00:00:00Z')
 
-  /** 거래 한 줄. 기본은 스카니아의 반지 4레벨 completed 줄이다. */
+  /** 거래 한 줄. 기본은 스카니아의 반지 4레벨 줄이다. 레벨 줄이 없으면 반지 줄이다. */
   async function trade(
-    priceMeso: number | null,
-    over: {
-      itemKey?: string
-      world?: string | null
-      ringLevel?: number | null
-      status?: 'completed' | 'pending'
-    } = {},
+    priceMeso: number,
+    over: { itemKey?: string; world?: string; ringLevel?: number | null } = {},
   ) {
-    const status = over.status ?? 'completed'
-    const worldKey = over.world === undefined ? 'scania' : over.world
-    await db.insert(dropPrices).values({
+    await db.insert(dropSalePrices).values({
+      id: randomUUID(),
       userId: me,
-      dropRecordId: randomUUID(),
-      identifiedBy: 'key',
-      itemId: item[over.itemKey ?? 'ring'],
-      priceMeso,
-      recordStatus: status,
-      periodKey: '2026-10-15',
-      worldId: worldKey === null ? null : world[worldKey],
-      ringLevel: over.ringLevel === undefined ? 4 : over.ringLevel,
-      pricedAt: status === 'completed' ? new Date('2026-10-17T03:00:00Z') : null,
+      itemId: await saleItemId(
+        db,
+        item[over.itemKey ?? 'ring'],
+        over.ringLevel === undefined ? 4 : over.ringLevel,
+      ),
+      salePriceMeso: priceMeso,
+      worldId: world[over.world ?? 'scania'],
+      pricedAt: new Date('2026-10-17T03:00:00Z'),
     })
   }
 
@@ -121,21 +121,13 @@ describeDb('DropMarketRepository', () => {
     await db
       .insert(subAccountRegistrations)
       .values({ loginNexonAccountId: main.id, subNexonAccountId: sub.id })
-    for (const [userId, mapleId] of [
-      [me, 'm-main'],
-      [other.id, 'm-sub'],
-    ]) {
-      await db.insert(dropPrices).values({
+    for (const userId of [me, other.id]) {
+      await db.insert(dropSalePrices).values({
+        id: randomUUID(),
         userId,
-        mapleId,
-        dropRecordId: randomUUID(),
-        identifiedBy: 'key',
         itemId: item.ring,
-        priceMeso: 100,
-        recordStatus: 'completed',
-        periodKey: '2026-10-15',
+        salePriceMeso: 100,
         worldId: world.scania,
-        ringLevel: 4,
         pricedAt: new Date('2026-10-17T03:00:00Z'),
       })
     }
@@ -171,17 +163,25 @@ describeDb('DropMarketRepository', () => {
     expect(scania.map((r) => [r.itemKey, r.priceMeso])).toEqual([['whetstone', 9]])
   })
 
-  it('거래권이 없는 월드 · 월드 없는 줄 · completed 가 아닌 줄은 안 센다', async () => {
-    await trade(7, { world: null })
+  it('거래권이 없는 월드의 줄은 안 센다', async () => {
     await trade(8, { world: 'special' })
     await trade(9, { itemKey: 'whetstone', ringLevel: null, world: 'special' })
-    await trade(null, { status: 'pending' })
 
     expect(await repo.rows({ kind: 'equipment', key: 'general' }, since)).toEqual([])
     expect(await repo.rows({ kind: 'consumable', key: 'special' }, since)).toEqual([])
   })
 
+  // 판매가 줄은 반지를 레벨 줄로 가리킨다. 화면은 원래 반지의 이름과 레벨로 보인다.
   it('반지 레벨이 다르면 다른 시세이고 아이템 · 레벨로 거를 수 있다', async () => {
+    for (const level of [3, 4]) {
+      const [row] = await db
+        .insert(items)
+        .values({ key: `ring_lv${level}`, name: `반지 lv.${level}`, isDrop: true })
+        .returning({ id: items.id })
+      await db
+        .insert(ringLevelItems)
+        .values({ itemId: row.id, ringItemId: item.ring, ringLevel: level })
+    }
     await trade(100, { ringLevel: 4 })
     await trade(30, { ringLevel: 3 })
 

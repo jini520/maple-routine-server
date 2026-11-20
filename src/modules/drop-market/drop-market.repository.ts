@@ -1,12 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, gte, isNull, ne, or, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 
 import { DB, type Db } from '../../database/database.module'
 import {
-  dropPrices,
+  dropSalePrices,
   itemGroups,
   items,
   ringLevelItems,
+  sameItemLinks,
   tradeGroups,
   worlds,
 } from '../../database/schema'
@@ -34,7 +36,7 @@ export interface MarketScope {
   key: string
 }
 
-/** 시세에 쓰는 거래 한 줄. completed 만 온다. */
+/** 시세에 쓰는 거래 한 줄. 판매가를 적은 줄만 있다. */
 export interface MarketRow {
   id: string
   itemId: string
@@ -57,7 +59,10 @@ export interface MarketKey {
   ringLevel: number | null
 }
 
-/** 드롭 가격 줄을 시세 범위 단위로 읽는다. 판정과 봉은 fence · candles 가 만든다. */
+/** 화면에 보이는 아이템. 반지는 원래 반지, 따로 둔 줄은 원래 아이템이다. 판매가 줄의 아이템과 같은 표라 별칭으로 한 번 더 붙인다. */
+const shownItems = alias(items, 'shown_items')
+
+/** 드롭 판매가 줄을 시세 범위 단위로 읽는다. 판정과 봉은 fence · candles 가 만든다. */
 @Injectable()
 export class DropMarketRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -87,7 +92,8 @@ export class DropMarketRepository {
   }
 
   /**
-   * 범위 안에서 since 뒤에 거래된 completed 줄. 월드를 모르는 줄은 어느 범위에도 없다. 에오스 기록일 수도 있어서다.
+   * 범위 안에서 since 뒤에 거래된 판매가 줄. 반지는 레벨 줄이라 이름과 레벨은 원래 반지와 그 레벨로 보이고, 상자에서 나온
+   * 연마석처럼 따로 둔 줄은 같은 물건 연결을 따라 원래 아이템의 시세에 든다.
    *
    * @param market 주면 그 시세 하나만 읽는다
    */
@@ -96,49 +102,49 @@ export class DropMarketRepository {
     // bigint 는 문자열로 오므로 float8 로 받는다. 시세는 안전한 정수 안이다.
     const rows = await this.db
       .select({
-        id: dropPrices.id,
-        itemId: dropPrices.itemId,
-        marketItemId: sql<string>`coalesce(${ringLevelItems.itemId}, ${dropPrices.itemId})`,
-        itemKey: items.key,
-        itemName: items.name,
-        ringLevel: dropPrices.ringLevel,
-        priceMeso: sql<number>`${dropPrices.priceMeso}::float8`,
-        pricedAt: dropPrices.pricedAt,
+        id: dropSalePrices.id,
+        itemId: dropSalePrices.itemId,
+        marketItemId: sql<string>`coalesce(${sameItemLinks.originalItemId}, ${dropSalePrices.itemId})`,
+        itemKey: shownItems.key,
+        itemName: shownItems.name,
+        ringLevel: ringLevelItems.ringLevel,
+        priceMeso: sql<number>`${dropSalePrices.salePriceMeso}::float8`,
+        pricedAt: dropSalePrices.pricedAt,
         worldKey: worlds.key,
         worldName: worlds.name,
-        person: sql<string>`coalesce('u:' || coalesce(so.owner_user_id, ${dropPrices.userId})::text, 'r:' || ${dropPrices.id}::text)`,
+        person: sql<string>`coalesce('u:' || coalesce(so.owner_user_id, ${dropSalePrices.userId})::text, 'r:' || ${dropSalePrices.id}::text)`,
       })
-      .from(dropPrices)
-      .innerJoin(items, eq(dropPrices.itemId, items.id))
+      .from(dropSalePrices)
+      .innerJoin(items, eq(dropSalePrices.itemId, items.id))
       .leftJoin(itemGroups, eq(itemGroups.id, items.groupId))
-      .innerJoin(worlds, eq(dropPrices.worldId, worlds.id))
-      .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
-      .leftJoin(
-        ringLevelItems,
-        and(
-          eq(ringLevelItems.ringItemId, dropPrices.itemId),
-          eq(ringLevelItems.ringLevel, dropPrices.ringLevel),
+      .leftJoin(ringLevelItems, eq(ringLevelItems.itemId, dropSalePrices.itemId))
+      .leftJoin(sameItemLinks, eq(sameItemLinks.itemId, dropSalePrices.itemId))
+      .innerJoin(
+        shownItems,
+        eq(
+          shownItems.id,
+          sql`coalesce(${ringLevelItems.ringItemId}, ${sameItemLinks.originalItemId}, ${dropSalePrices.itemId})`,
         ),
       )
-      .leftJoin(SUB_OWNERS, subOwnerOf(dropPrices.userId))
+      .innerJoin(worlds, eq(dropSalePrices.worldId, worlds.id))
+      .innerJoin(tradeGroups, eq(tradeGroups.id, worlds.tradeGroupId))
+      .leftJoin(SUB_OWNERS, subOwnerOf(dropSalePrices.userId))
       .where(
         and(
-          eq(dropPrices.recordStatus, 'completed'),
           equipment
             ? or(isNull(itemGroups.type), ne(itemGroups.type, WORLD_BOUND_TYPE))
             : eq(itemGroups.type, WORLD_BOUND_TYPE),
           equipment ? eq(tradeGroups.key, scope.key) : eq(worlds.key, scope.key),
-          gte(dropPrices.pricedAt, since),
-          market === undefined ? undefined : eq(items.key, market.itemKey),
+          gte(dropSalePrices.pricedAt, since),
+          market === undefined ? undefined : eq(shownItems.key, market.itemKey),
           market === undefined
             ? undefined
             : market.ringLevel === null
-              ? isNull(dropPrices.ringLevel)
-              : eq(dropPrices.ringLevel, market.ringLevel),
+              ? isNull(ringLevelItems.ringLevel)
+              : eq(ringLevelItems.ringLevel, market.ringLevel),
         ),
       )
-      .orderBy(asc(dropPrices.pricedAt), asc(dropPrices.id))
-    // completed 줄은 표의 CHECK 가 priced_at 을 채운다.
-    return rows.map((r) => ({ ...r, pricedAt: r.pricedAt as Date }))
+      .orderBy(asc(dropSalePrices.pricedAt), asc(dropSalePrices.id))
+    return rows
   }
 }

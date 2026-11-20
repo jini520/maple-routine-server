@@ -17,7 +17,7 @@ import {
   recordIdOf,
 } from '../../common/batch'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
-import { uuidLike } from '../drop-prices/drop-prices.dto'
+import { uuidLike } from '../../common/uuid-like'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
 import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import { type CashbookEntryBody, cashbookEntryBody } from './cashbook-entries.dto'

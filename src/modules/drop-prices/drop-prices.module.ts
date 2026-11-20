@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common'
 
-import { BossesModule } from '../bosses/bosses.module'
-import { IdentityModule } from '../identity/identity.module'
-import { DropPricesController } from './drop-prices.controller'
 import { DropPricesRepository } from './drop-prices.repository'
 
-/** 드롭 판매가 표본. 신원은 identity 의 가드가 가리고, 보스 · 난이도는 bosses 의 표로 바꿔 적는다. */
+/**
+ * 드롭 판매가의 관리 화면 조회. 판매가 줄은 1.0.15 앱이 올린 드롭을 서버가 받을 때 적고, 1.0.14 까지의 앱이 판매가 표에 바로
+ * 올리던 경로는 없앴다.
+ */
 @Module({
-  imports: [IdentityModule, BossesModule],
-  controllers: [DropPricesController],
   providers: [DropPricesRepository],
   exports: [DropPricesRepository],
 })

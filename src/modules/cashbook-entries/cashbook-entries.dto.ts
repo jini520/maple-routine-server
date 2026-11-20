@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { uuidLike } from '../drop-prices/drop-prices.dto'
+import { uuidLike } from '../../common/uuid-like'
 import { mapleId, nexonIdHash } from '../identity/me.dto'
 
 const amount = z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER).nullish()

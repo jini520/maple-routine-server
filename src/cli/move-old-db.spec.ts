@@ -1579,6 +1579,59 @@ describeDb('moveOldDb', () => {
     ])
   })
 
+  it('드롭 판매가: 가격을 적은 줄만 드롭 id 를 줄 id 로 옮기고, 같은 드롭 id 는 나중에 올라온 줄을, 반지는 레벨 아이템 줄을 남긴다', async () => {
+    await insertOldGroup('spec_ring', 'accessory')
+    const ring = await insertOldItem('ring', { name: '반지', category: 'spec_ring' })
+    const gem = await insertOldItem('gem', { name: '보석' })
+    await insertOldBox('ring_box', [4, 4], [ring])
+    const [world] = await oldDb
+      .insert(oldSchema.worlds)
+      .values({ key: 'scania', name: '스카니아', priceGroup: 'general', sortOrder: 0 })
+      .returning({ id: oldSchema.worlds.id })
+    const [first, second] = await oldDb
+      .insert(oldSchema.users)
+      .values([{}, {}])
+      .returning({ id: oldSchema.users.id })
+    const twice = randomUUID()
+    const sale = (over: Partial<typeof oldSchema.dropPrices.$inferInsert>) => ({
+      userId: first.id,
+      dropRecordId: randomUUID(),
+      identifiedBy: 'key' as const,
+      itemId: gem,
+      priceMeso: 100,
+      recordStatus: 'completed' as const,
+      periodKey: '2026-11-05',
+      worldId: world.id,
+      pricedAt: new Date('2026-11-06T00:00:00Z'),
+      createdAt: new Date('2026-11-06T00:00:00Z'),
+      ...over,
+    })
+    await oldDb.insert(oldSchema.dropPrices).values([
+      sale({ dropRecordId: twice, priceMeso: 1 }),
+      sale({
+        dropRecordId: twice,
+        userId: second.id,
+        priceMeso: 2,
+        createdAt: new Date('2026-11-08T00:00:00Z'),
+      }),
+      sale({ itemId: ring, ringLevel: 4, priceMeso: 300 }),
+      sale({ worldId: null, priceMeso: 50 }),
+      sale({ recordStatus: 'pending', priceMeso: null, pricedAt: null }),
+    ])
+
+    const moved = await moveOldDb(oldDb, newDb)
+
+    const [level] = await newDb
+      .select({ id: schema.items.id })
+      .from(schema.items)
+      .where(eq(schema.items.key, 'ring_lv4'))
+    const rows = await newDb.select().from(schema.dropSalePrices)
+    expect(moved).toMatchObject({ dropSalePrices: 3 })
+    expect(rows.find((r) => r.id === twice)).toMatchObject({ userId: second.id, salePriceMeso: 2 })
+    expect(rows.find((r) => r.salePriceMeso === 300)?.itemId).toBe(level?.id)
+    expect(rows.find((r) => r.salePriceMeso === 50)?.worldId).toBeNull()
+  })
+
   // 옮기지 않는 표는 운영에 줄이 없다는 전제로 빠져 있다. 줄이 생겼는데 그대로 옮기면 그 기록을 말없이 잃는다.
   it('옮기지 않는 옛 기록 표에 줄이 있으면 표와 줄 수를 알리고 아무것도 옮기지 않는다', async () => {
     const [user] = await oldDb

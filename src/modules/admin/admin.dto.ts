@@ -75,9 +75,9 @@ export const snakeKey = z.string().regex(/^[a-z][a-z0-9_]*$/)
  */
 export const dropPriceQuery = z.object({
   itemKey: z.string().min(1).max(200).optional(),
-  periodKey: z
+  periodCode: z
     .string()
-    .regex(/^\d{4}-\d{2}(-\d{2})?$/)
+    .regex(/^[WM]\d{6}$/)
     .optional(),
   source: snakeKey.max(100).default('all'),
   limit: z.coerce.number().int().min(1).max(1000).default(50),

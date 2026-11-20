@@ -1,14 +1,14 @@
 import { layout } from './layout'
 
 /**
- * 드롭 가격 보기. 읽기만 한다. 왼쪽은 아이템 목록이고, 줄을 고르면 오른쪽에 그 아이템의 값 · 가격 분포 점그림 · 기록이 뜬다.
- * 잘못 적은 값과 completed 가 아닌 줄을 눈으로 찾는 자리라 pending · skipped · deleted 도 기록에 남긴다. 값은 completed 만 센다.
+ * 드롭 판매가 보기. 읽기만 한다. 왼쪽은 아이템 목록이고, 줄을 고르면 오른쪽에 그 아이템의 값 · 가격 분포 점그림 · 기록이 뜬다.
+ * 판매가 표에는 가격을 적은 드롭만 있다. 보스 · 기간 · 획득처는 드롭 기록에서 읽어, 드롭 기록이 없는 옛 줄은 비어 보인다.
  * 기간 · 획득처 고르기는 목록과 상세에 함께 걸린다.
  */
 export const DROP_PRICES_HTML = layout(
   '/admin/drop-prices',
   '드롭 가격',
-  `<div class="head"><div><h1>드롭 가격</h1><p>앱이 보낸 드롭 가격 기록이다. 왼쪽에서 아이템을 고르면 오른쪽에 그 아이템의 가격 분포와 기록이 뜬다. 값은 완료된 기록만 센다.</p></div></div>
+  `<div class="head"><div><h1>드롭 가격</h1><p>앱이 올린 드롭의 판매가다. 왼쪽에서 아이템을 고르면 오른쪽에 그 아이템의 가격 분포와 기록이 뜬다. 드롭 기록 없이 옮겨 온 옛 줄은 보스 · 기간 · 획득처가 비어 있다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="toolbar">
   <div class="search">
@@ -27,33 +27,23 @@ export const DROP_PRICES_HTML = layout(
 </section>
 <script>
   var PAGE = 50;
-  var STATUS = { completed: ['완료', 'dim'], pending: ['대기', 'tag accent'], skipped: ['건너뜀', 'tag'], deleted: ['삭제', 'tag danger'] };
-  var ROW_CLASS = { completed: '', pending: 'muted', skipped: 'muted', deleted: 'deleted' };
   var DIFFICULTY = { easy: '이지', normal: '노멀', hard: '하드', chaos: '카오스', extreme: '익스트림' };
   var COLS = [
     { label: '아이템', key: 'itemName', text: true },
     { label: '기록', key: 'count', num: true },
-    { label: '완료', key: 'completed', num: true },
     { label: '중앙값', key: 'median', num: true },
     { label: '최소 ~ 최대', num: true },
   ];
-  var state = { period: thisWeek(), source: 'all', q: '', sort: { key: 'count', dir: -1 }, items: [], sel: null, rows: [], offset: 0 };
+  var state = { period: '', source: 'all', q: '', sort: { key: 'count', dir: -1 }, items: [], sel: null, rows: [], offset: 0 };
 
-  // 이번 주의 기간 key. 처치 기간은 목요일 0시(KST)에 바뀐다.
-  function thisWeek() {
-    var d = new Date(Date.now() + 9 * 3600000);
-    d = new Date(d.getTime() - ((d.getUTCDay() + 3) % 7) * 86400000);
-    return d.toISOString().slice(0, 10);
-  }
-  function periodLabel(key) {
-    var year = Number(key.slice(0, 4)) === new Date(Date.now() + 9 * 3600000).getUTCFullYear() ? '' : key.slice(0, 4) + '-';
-    if (key.length === 7) return year + Number(key.slice(5)) + '월 (월간 보스)';
-    return year + key.slice(5) + ' 주' + (key === thisWeek() ? ' (이번 주)' : '');
+  // 기간 값은 주간 W202647 · 월간 M202611 이다.
+  function periodLabel(code) {
+    return code.slice(1, 5) + '년 ' + Number(code.slice(5)) + (code[0] === 'M' ? '월 (월간 보스)' : '주');
   }
   function sourceLabel(row) { return row.source === 'box' ? row.boxName : row.source === 'direct' ? '직접 드롭' : '획득처 모름'; }
   function query(extra) {
     var q = new URLSearchParams({ source: state.source });
-    if (state.period) q.set('periodKey', state.period);
+    if (state.period) q.set('periodCode', state.period);
     Object.keys(extra || {}).forEach(function (k) { q.set(k, String(extra[k])); });
     return q.toString();
   }
@@ -68,9 +58,9 @@ export const DROP_PRICES_HTML = layout(
       var tr = el('tr', undefined, it.itemKey === state.sel ? 'open' : '');
       var pick = button(it.itemName, 'pick-btn');
       pick.addEventListener('click', function (e) { e.stopPropagation(); choose(it.itemKey); });
-      cell(tr, pick); cell(tr, String(it.count), 'num'); cell(tr, String(it.completed), 'num');
-      cell(tr, money(it.median), 'num price').title = it.median === null ? '' : meso(it.median) + ' 메소';
-      cell(tr, it.min === null ? '-' : it.min === it.max ? money(it.min) : money(it.min) + ' ~ ' + money(it.max), 'num dim');
+      cell(tr, pick); cell(tr, String(it.count), 'num');
+      cell(tr, money(it.median), 'num price').title = meso(it.median) + ' 메소';
+      cell(tr, it.min === it.max ? money(it.min) : money(it.min) + ' ~ ' + money(it.max), 'num dim');
       tr.addEventListener('click', function () { choose(it.itemKey); });
       body.appendChild(tr);
     });
@@ -89,7 +79,7 @@ export const DROP_PRICES_HTML = layout(
 
   // 가로축은 로그 눈금이다. 같은 아이템에 1메소와 수십억이 함께 적히면 고른 눈금으로는 나머지 점이 한쪽 끝에 뭉친다.
   function strip(points, median) {
-    var prices = points.filter(function (p) { return p.priceMeso !== null; });
+    var prices = points;
     var lo = Math.min.apply(null, prices.map(function (p) { return p.priceMeso; }));
     var hi = Math.max.apply(null, prices.map(function (p) { return p.priceMeso; }));
     var x = function (v) { return hi === lo ? 50 : (Math.log(v) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) * 100; };
@@ -100,7 +90,7 @@ export const DROP_PRICES_HTML = layout(
       dot.style.left = x(p.priceMeso) + '%'; dot.title = meso(p.priceMeso) + ' 메소 · ' + sourceLabel(p);
       lane.appendChild(dot);
     });
-    if (median !== null) { var m = el('span', undefined, 'median'); m.style.left = x(median) + '%'; m.title = '중앙값 ' + meso(median) + ' 메소'; lane.appendChild(m); }
+    { var m = el('span', undefined, 'median'); m.style.left = x(median) + '%'; m.title = '중앙값 ' + meso(median) + ' 메소'; lane.appendChild(m); }
     var wrap = el('div', undefined, 'block');
     wrap.appendChild(el('div', '가격 분포', 'hint'));
     wrap.appendChild(box);
@@ -110,13 +100,13 @@ export const DROP_PRICES_HTML = layout(
       var s = el('span'); var i = el('i'); i.style.background = l[1]; s.appendChild(i); s.appendChild(document.createTextNode(l[0])); legend.appendChild(s);
     });
     wrap.appendChild(legend);
-    wrap.appendChild(el('p', '완료된 기록 하나가 점 하나다. 세로 막대가 중앙값이고, 가로축은 로그 눈금이다', 'hint'));
+    wrap.appendChild(el('p', '판매가 하나가 점 하나다. 세로 막대가 중앙값이고, 가로축은 로그 눈금이다', 'hint'));
     return wrap;
   }
 
   function rowLine(r) {
-    var tr = el('tr', undefined, ROW_CLASS[r.recordStatus]);
-    tr.title = (r.identifiedBy === 'login' ? '로그인' : 'API 키') + ' · ' + (r.userId === null ? '삭제된 사람' : r.userId.slice(0, 8));
+    var tr = el('tr');
+    tr.title = r.userId === null ? '삭제된 사람' : (r.identity === 'login' ? '로그인' : 'API 키') + ' · ' + r.userId.slice(0, 8);
     cell(tr, when(r.updatedAt).slice(5, 16), 'mono');
     cell(tr, r.worldName || '-');
     var boss = el('div'); boss.appendChild(document.createTextNode(r.bossName || '-'));
@@ -124,9 +114,8 @@ export const DROP_PRICES_HTML = layout(
     boss.appendChild(el('span', sourceLabel(r), r.source === 'box' ? 'src box' : 'src'));
     cell(tr, boss);
     var price = el('div'); price.appendChild(document.createTextNode(money(r.priceMeso)));
-    if (r.ringLevel !== null) price.appendChild(el('span', r.ringLevel + '레벨', 'lv'));
-    var td = cell(tr, price, 'num'); if (r.priceMeso !== null) td.title = meso(r.priceMeso) + ' 메소';
-    var st = STATUS[r.recordStatus]; cell(tr, span(st[0], st[1]));
+    cell(tr, price, 'num').title = meso(r.priceMeso) + ' 메소';
+    cell(tr, r.periodCode ? periodLabel(r.periodCode) : '-', 'dim');
     return tr;
   }
 
@@ -141,16 +130,16 @@ export const DROP_PRICES_HTML = layout(
     name.appendChild(el('div', order.map(function (l) { return l + ' ' + bySource[l]; }).join(' · '), 'hint'));
     box.appendChild(name);
     var facts = el('div', undefined, 'facts');
-    facts.appendChild(fact('중앙값', money(it.median), it.median === null ? '' : meso(it.median) + ' 메소'));
-    facts.appendChild(fact('최소', money(it.min), it.min === null ? '' : meso(it.min) + ' 메소'));
-    facts.appendChild(fact('최대', money(it.max), it.max === null ? '' : meso(it.max) + ' 메소'));
-    facts.appendChild(fact('완료 / 기록', it.completed + ' / ' + it.count));
+    facts.appendChild(fact('중앙값', money(it.median), meso(it.median) + ' 메소'));
+    facts.appendChild(fact('최소', money(it.min), meso(it.min) + ' 메소'));
+    facts.appendChild(fact('최대', money(it.max), meso(it.max) + ' 메소'));
+    facts.appendChild(fact('기록', String(it.count)));
     box.appendChild(facts);
-    if (it.completed > 0) box.appendChild(strip(points, it.median));
+    box.appendChild(strip(points, it.median));
     var body = el('tbody'); body.id = 'detail-rows';
     var list = el('div', undefined, 'block');
     list.appendChild(el('div', '기록 · 최근 것부터. 줄에 마우스를 올리면 보낸 사람이 보인다', 'hint'));
-    list.appendChild(mini(['고친 때', '월드', '보스 · 획득처', '가격', '상태'], body));
+    list.appendChild(mini(['고친 때', '월드', '보스 · 획득처', '가격', '기간'], body));
     list.querySelectorAll('th')[3].className = 'num';
     var more = button('더 보기', 'more'); more.id = 'more'; more.hidden = true;
     more.addEventListener('click', loadRows);
@@ -191,11 +180,9 @@ export const DROP_PRICES_HTML = layout(
     var res = await Promise.all([call('GET', '/admin/drop-prices/periods'), call('GET', '/admin/drop-boxes/rows')]);
     if (!res[0].ok) { show(fail('기간 목록을 못 읽었다', res[0]), true); return; }
     if (!res[1].ok) { show(fail('상자 표를 못 읽었다', res[1]), true); return; }
-    var periods = res[0].json;
-    if (periods.indexOf(state.period) < 0) periods.unshift(state.period);
     var period = document.getElementById('period');
-    periods.forEach(function (k) { period.appendChild(new Option(periodLabel(k), k)); });
     period.appendChild(new Option('전체 기간', ''));
+    res[0].json.forEach(function (k) { period.appendChild(new Option(periodLabel(k), k)); });
     period.value = state.period;
     var source = document.getElementById('source');
     [['all', '모든 획득처'], ['direct', '직접 드롭'], ['box', '상자 전부']]

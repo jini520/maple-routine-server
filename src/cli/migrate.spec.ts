@@ -23,7 +23,7 @@ describeDb('migrateDatabase', () => {
     expect(names).toEqual(
       expect.arrayContaining([
         'bosses',
-        'drop_prices',
+        'drop_sale_prices',
         'notices',
         'users',
         'boss_manual_completion_periods',

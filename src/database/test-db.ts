@@ -4,7 +4,7 @@
  * 마이그레이션은 advisory lock 안에서 한 번만 돈다. 표를 비우는 것은 스펙이 beforeEach 에서 한다.
  * 스펙 파일이 같은 DB 를 나눠 쓰므로 DB 스펙은 --runInBand 로 돌린다(npm run test:db).
  */
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
@@ -72,8 +72,10 @@ const TABLES = [
   'trade_groups',
   'cashbook_entry_items',
   'cashbook_entries',
-  'boss_clears',
-  'drop_prices',
+  'boss_drops',
+  'boss_profit_entries',
+  'boss_split_settings',
+  'drop_sale_prices',
   'usage_events',
   'nexon_login_attempts',
   'nexon_sessions',
@@ -128,6 +130,28 @@ export async function itemGroupId(db: TestDb, key: string): Promise<string> {
     .where(eq(schema.itemGroups.key, key))
   if (row === undefined) throw new Error(`묶음이 없다: ${key}`)
   return row.id
+}
+
+/**
+ * 반지 판매가 줄이 가리킬 아이템. 그 반지 · 레벨의 레벨 줄이 있으면 그 줄, 없으면 반지 줄이다. 판매가 줄은 반지를 레벨 줄로
+ * 가리키므로 레벨 줄을 둔 스펙만 레벨로 갈린다.
+ */
+export async function saleItemId(
+  db: TestDb,
+  itemId: string,
+  ringLevel: number | null,
+): Promise<string> {
+  if (ringLevel === null) return itemId
+  const [row] = await db
+    .select({ id: schema.ringLevelItems.itemId })
+    .from(schema.ringLevelItems)
+    .where(
+      and(
+        eq(schema.ringLevelItems.ringItemId, itemId),
+        eq(schema.ringLevelItems.ringLevel, ringLevel),
+      ),
+    )
+  return row?.id ?? itemId
 }
 
 /** 그림 한 장을 넣고 그 id. 같은 그림이 이미 있으면 그 줄의 id 다. */

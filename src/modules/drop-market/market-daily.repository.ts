@@ -69,8 +69,9 @@ export class MarketDailyRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   /**
-   * from ~ to(KST 날짜, 둘 다 포함)에 거래된 completed 줄. 거래권이 없는 월드와 월드를 모르는 줄은 어느 시세에도 넣지 않는다.
-   * 반지는 그 레벨의 아이템 줄로 센다. 사람은 사람 줄이고, 부계정의 사람은 그 계정을 등록한 로그인의 사람으로 센다.
+   * from ~ to(KST 날짜, 둘 다 포함)에 거래된 판매가 줄. 거래권이 없는 월드는 어느 시세에도 넣지 않는다. 반지는 그 레벨의 아이템
+   * 줄로, 따로 둔 줄(상자에서 나온 연마석)은 같은 물건 연결을 따라 원래 아이템으로 센다. 사람은 사람 줄이고, 부계정의 사람은 그
+   * 계정을 등록한 로그인의 사람으로 센다.
    */
   async rowsBetween(from: string, to: string): Promise<DailyRow[]> {
     const result = await this.db.execute<{
@@ -80,21 +81,20 @@ export class MarketDailyRepository {
       day: string
       price: number
     }>(sql`
-      select coalesce(rl.item_id, dp.item_id) as item_id,
+      select coalesce(sl.original_item_id, sp.item_id) as item_id,
              case when g.type = ${WORLD_BOUND_TYPE} then w.key else tg.key end as scope,
-             coalesce('u:' || coalesce(so.owner_user_id, dp.user_id)::text, 'r:' || dp.id::text) as person,
-             to_char((dp.priced_at at time zone 'Asia/Seoul')::date, 'YYYY-MM-DD') as day,
-             dp.price_meso::float8 as price
-      from drop_prices dp
-      join items i on i.id = dp.item_id
+             coalesce('u:' || coalesce(so.owner_user_id, sp.user_id)::text, 'r:' || sp.id::text) as person,
+             to_char((sp.priced_at at time zone 'Asia/Seoul')::date, 'YYYY-MM-DD') as day,
+             sp.sale_price_meso::float8 as price
+      from drop_sale_prices sp
+      join items i on i.id = sp.item_id
       left join item_groups g on g.id = i.group_id
-      left join ring_level_items rl on rl.ring_item_id = dp.item_id and rl.ring_level = dp.ring_level
-      join worlds w on w.id = dp.world_id
+      left join same_item_links sl on sl.item_id = sp.item_id
+      join worlds w on w.id = sp.world_id
       join trade_groups tg on tg.id = w.trade_group_id
-      left join ${SUB_OWNERS} on so.sub_user_id = dp.user_id
-      where dp.record_status = 'completed'
-        and dp.priced_at >= (${from}::date)::timestamp at time zone 'Asia/Seoul'
-        and dp.priced_at < ((${to}::date + 1)::timestamp at time zone 'Asia/Seoul')
+      left join ${SUB_OWNERS} on so.sub_user_id = sp.user_id
+      where sp.priced_at >= (${from}::date)::timestamp at time zone 'Asia/Seoul'
+        and sp.priced_at < ((${to}::date + 1)::timestamp at time zone 'Asia/Seoul')
     `)
     return result.rows.map((r) => ({
       market: marketKey(r.item_id, r.scope),
@@ -109,7 +109,7 @@ export class MarketDailyRepository {
   async firstDay(): Promise<string | null> {
     const result = await this.db.execute<{ day: string | null }>(sql`
       select to_char(min((priced_at at time zone 'Asia/Seoul')::date), 'YYYY-MM-DD') as day
-      from drop_prices where record_status = 'completed'
+      from drop_sale_prices
     `)
     return result.rows[0]?.day ?? null
   }

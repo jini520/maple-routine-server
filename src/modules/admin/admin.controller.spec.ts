@@ -838,8 +838,8 @@ describe('AdminController', () => {
   })
 
   describe('드롭 가격', () => {
-    const FILTER = { itemKey: 'ring', periodKey: '2026-10-08', source: 'ring_box' }
-    const QUERY = 'itemKey=ring&periodKey=2026-10-08&source=ring_box'
+    const FILTER = { itemKey: 'ring', periodCode: 'W202641', source: 'ring_box' }
+    const QUERY = 'itemKey=ring&periodCode=W202641&source=ring_box'
 
     // 한 줄 더 읽어 다음 쪽이 있는지 안다. 줄 수를 따로 세지 않는다.
     it('GET /admin/drop-prices/rows 는 필터와 쪽을 넘기고, 한 줄 더 읽어 더 있는지 알린다', async () => {
@@ -862,12 +862,12 @@ describe('AdminController', () => {
       expect(res.statusCode).toBe(200)
       expect(res.json()).toEqual({ rows: [], hasMore: false })
       expect(prices.recent).toHaveBeenCalledWith(
-        { itemKey: null, periodKey: null, source: 'all' },
+        { itemKey: null, periodCode: null, source: 'all' },
         51,
         0,
       )
 
-      for (const bad of ['periodKey=oct', 'limit=5000', 'source=Ring-Box']) {
+      for (const bad of ['periodCode=2026-10-08', 'limit=5000', 'source=Ring-Box']) {
         const r = await app.inject({ method: 'GET', url: `/admin/drop-prices/rows?${bad}` })
         expect(r.statusCode).toBe(400)
       }
@@ -876,7 +876,7 @@ describe('AdminController', () => {
     it('아이템 목록과 점그림은 같은 필터로 읽고, 기간 목록을 따로 낸다', async () => {
       prices.items.mockResolvedValue([{ itemKey: 'ring' }])
       prices.points.mockResolvedValue([{ priceMeso: 1 }])
-      prices.periods.mockResolvedValue(['2026-10-08'])
+      prices.periods.mockResolvedValue(['W202641'])
 
       const items = await app.inject({ method: 'GET', url: `/admin/drop-prices/items?${QUERY}` })
       const points = await app.inject({ method: 'GET', url: `/admin/drop-prices/points?${QUERY}` })
@@ -885,7 +885,7 @@ describe('AdminController', () => {
       expect([items.json(), points.json(), periods.json()]).toEqual([
         [{ itemKey: 'ring' }],
         [{ priceMeso: 1 }],
-        ['2026-10-08'],
+        ['W202641'],
       ])
       expect(prices.items).toHaveBeenCalledWith(FILTER)
       expect(prices.points).toHaveBeenCalledWith(FILTER)

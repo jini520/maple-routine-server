@@ -30,6 +30,11 @@ const CONVERTED = [
   'hexa_core_types',
   'hexa_core_level_costs',
   'hexa_stats',
+  'boss_difficulty_rewards',
+  'drop_boxes',
+  'drop_box_contents',
+  'boss_crystal_prices',
+  'boss_manual_completion_periods',
 ]
 
 interface DesignColumn {

@@ -292,8 +292,9 @@ export const gameRules = pgTable('game_rules', {
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
-export const manualCompletionBosses = pgTable(
-  'manual_completion_bosses',
+/** 운영자가 한 보스의 직접 완료를 열어 둔 기간 하나. */
+export const bossManualCompletionPeriods = pgTable(
+  'boss_manual_completion_periods',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     bossId: uuid('boss_id')
@@ -307,7 +308,7 @@ export const manualCompletionBosses = pgTable(
   },
   (t) => [
     // 열린 줄만 보스당 하나다. 닫은 줄은 남아 이력이 된다.
-    uniqueIndex('manual_completion_bosses_open_unique')
+    uniqueIndex('boss_manual_completion_periods_open_unique')
       .on(t.bossId)
       .where(sql`${t.closedAt} IS NULL`),
   ],
@@ -601,8 +602,8 @@ export const sameItemLinks = pgTable(
 )
 
 /** 드롭 표. 보스 한 난이도의 보상 한 줄. sort_order 가 드롭 시트의 타일 차례다. */
-export const bossDropRewards = pgTable(
-  'boss_drop_rewards',
+export const bossDifficultyRewards = pgTable(
+  'boss_difficulty_rewards',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     bossDifficultyId: uuid('boss_difficulty_id')
@@ -612,16 +613,17 @@ export const bossDropRewards = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id),
-    /** 고정 보상의 수량 글자. '160개'. */
-    amount: text('amount'),
+    /** 고정 보상의 개수. 다른 갈래는 NULL 이다. */
+    quantity: integer('quantity'),
     /** KST 글자 그대로. YYYY-MM-DD 또는 YYYY-MM-DDTHH:mm. 앱의 기간 판정이 문자열 비교다. */
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
-    unique('boss_drop_rewards_row_unique')
-      .on(t.bossDifficultyId, t.category, t.itemId, t.from)
+    // 드롭 기록은 한 수익 건에서 같은 아이템이 한 줄이라 갈래만 다른 줄을 두면 둘을 가르지 못한다.
+    unique('boss_difficulty_rewards_row_unique')
+      .on(t.bossDifficultyId, t.itemId, t.validFrom)
       .nullsNotDistinct(),
   ],
 )
@@ -635,12 +637,15 @@ export const dropBoxes = pgTable(
       .notNull()
       .unique()
       .references(() => items.id),
-    levelMin: integer('level_min'),
-    levelMax: integer('level_max'),
+    ringLevelMin: integer('ring_level_min'),
+    ringLevelMax: integer('ring_level_max'),
   },
   (t) => [
-    check('drop_boxes_level_pair', sql`(${t.levelMin} IS NULL) = (${t.levelMax} IS NULL)`),
-    check('drop_boxes_level_order', sql`${t.levelMin} IS NULL OR ${t.levelMin} <= ${t.levelMax}`),
+    check('drop_boxes_level_pair', sql`(${t.ringLevelMin} IS NULL) = (${t.ringLevelMax} IS NULL)`),
+    check(
+      'drop_boxes_level_order',
+      sql`${t.ringLevelMin} IS NULL OR ${t.ringLevelMin} <= ${t.ringLevelMax}`,
+    ),
   ],
 )
 
@@ -670,12 +675,12 @@ export const bossCrystalPrices = pgTable(
       .references(() => bossDifficulties.id, { onDelete: 'cascade' }),
     /** 1인 기준 정가. 모르는 조합은 줄을 안 넣는다. */
     priceMeso: bigint('price_meso', { mode: 'number' }).notNull(),
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
   },
   (t) => [
     unique('boss_crystal_prices_pair_from_unique')
-      .on(t.bossDifficultyId, t.from)
+      .on(t.bossDifficultyId, t.validFrom)
       .nullsNotDistinct(),
   ],
 )

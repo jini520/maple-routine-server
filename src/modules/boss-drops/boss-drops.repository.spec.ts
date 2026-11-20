@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm'
+
+import { bossDifficulties, items } from '../../database/schema'
 import {
   describeDb,
   insertAsset,
@@ -59,34 +62,47 @@ describeDb('BossDropsRepository', () => {
     difficulty: 'hard' as const,
     category: 'equipment' as const,
     item: 'loose_control_machine_mark',
-    amount: null,
-    from: null,
-    until: null,
+    quantity: null,
+    validFrom: null,
+    validUntil: null,
     ...over,
   })
+  const itemId = async (key: string) =>
+    (await db.select({ id: items.id }).from(items).where(eq(items.key, key)))[0]?.id
+  const difficultyId = async (difficulty: 'hard' | 'extreme') =>
+    (
+      await db
+        .select({ id: bossDifficulties.id })
+        .from(bossDifficulties)
+        .where(eq(bossDifficulties.difficulty, difficulty))
+    )[0]?.id
 
-  it('줄을 더하면 그 조합 · 갈래의 맨 뒤에 서고 칸은 갈래 ENUM 순 · 줄 순으로 난다', async () => {
+  it('줄을 더하면 그 조합 · 갈래의 맨 뒤에 서고, 칸은 표 이름의 배열에 난이도 · 아이템 줄 id 로 갈래 ENUM 순 · 줄 순으로 난다', async () => {
     await repo.create(row({ category: 'consumable', item: 'red_boss_ring_box' }))
-    await repo.create(row({ category: 'fixed', item: 'spell_trace', amount: '160개' }))
+    await repo.create(row({ category: 'fixed', item: 'spell_trace', quantity: 160 }))
     await repo.create(row())
     await repo.create(row({ difficulty: 'extreme' }))
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.rewards.map((r) => `${r.difficulty}/${r.category}/${r.item}`)).toEqual([
-      'hard/fixed/spell_trace',
-      'hard/equipment/loose_control_machine_mark',
-      'hard/consumable/red_boss_ring_box',
-      'extreme/equipment/loose_control_machine_mark',
+    const hard = await difficultyId('hard')
+    const extreme = await difficultyId('extreme')
+    const mark = await itemId('loose_control_machine_mark')
+    expect(
+      section.bossDifficultyRewards.map((r) => [r.bossDifficultyId, r.category, r.itemId]),
+    ).toEqual([
+      [hard, 'fixed', await itemId('spell_trace')],
+      [hard, 'equipment', mark],
+      [hard, 'consumable', await itemId('red_boss_ring_box')],
+      [extreme, 'equipment', mark],
     ])
-    expect(section.rewards[0]).toEqual({
-      boss: 'lotus',
-      difficulty: 'hard',
+    expect(section.bossDifficultyRewards[0]).toEqual({
+      bossDifficultyId: hard,
       category: 'fixed',
-      item: 'spell_trace',
-      amount: '160개',
-      from: null,
-      until: null,
+      itemId: await itemId('spell_trace'),
+      quantity: 160,
+      validFrom: null,
+      validUntil: null,
     })
     expect((await repo.rows('lotus', 'hard')).map((r) => r.itemName)).toEqual([
       '주문의 흔적',
@@ -95,12 +111,14 @@ describeDb('BossDropsRepository', () => {
     ])
   })
 
-  it('모르는 조합 · 아이템과 같은 줄은 던진다. 시작이 다르면 같은 아이템이 둘 설 수 있다', async () => {
+  // 드롭 기록은 한 수익 건에서 같은 아이템이 한 줄이라 갈래만 다른 줄을 두면 둘을 가르지 못한다.
+  it('모르는 조합 · 아이템과 같은 줄은 던지고, 갈래만 다른 같은 아이템도 같은 줄로 본다. 시작이 다르면 같은 아이템이 둘 설 수 있다', async () => {
     await expect(repo.create(row({ difficulty: 'easy' }))).rejects.toBeInstanceOf(NoBossDifficulty)
     await expect(repo.create(row({ item: 'nobody' }))).rejects.toBeInstanceOf(NoDropItem)
     await repo.create(row())
     await expect(repo.create(row())).rejects.toBeInstanceOf(RewardExists)
-    const later = await repo.create(row({ from: '2026-09-17T10:00' }))
+    await expect(repo.create(row({ category: 'consumable' }))).rejects.toBeInstanceOf(RewardExists)
+    const later = await repo.create(row({ validFrom: '2026-09-17T10:00' }))
     expect(typeof later.id).toBe('string')
   })
 
@@ -108,18 +126,20 @@ describeDb('BossDropsRepository', () => {
     const a = await repo.create(row({ category: 'consumable', item: 'red_boss_ring_box' }))
     const b = await repo.create(row({ category: 'consumable', item: 'spell_trace' }))
 
-    expect(await repo.update(a.id, { amount: null, from: null, until: '2026-09-17T10:00' })).toBe(
-      true,
-    )
+    expect(
+      await repo.update(a.id, { quantity: null, validFrom: null, validUntil: '2026-09-17T10:00' }),
+    ).toBe(true)
     expect(await repo.move(b.id, 'up')).toBe(true)
-    expect((await repo.rows('lotus', 'hard')).map((r) => [r.item, r.until])).toEqual([
+    expect((await repo.rows('lotus', 'hard')).map((r) => [r.item, r.validUntil])).toEqual([
       ['spell_trace', null],
       ['red_boss_ring_box', '2026-09-17T10:00'],
     ])
     expect(await repo.move(b.id, 'up')).toBe(true)
     expect(await repo.remove(a.id)).toBe(true)
     expect(await repo.remove(a.id)).toBe(false)
-    expect(await repo.update(a.id, { amount: null, from: null, until: null })).toBe(false)
+    expect(await repo.update(a.id, { quantity: null, validFrom: null, validUntil: null })).toBe(
+      false,
+    )
     expect(await repo.move(a.id, 'down')).toBe(false)
   })
 })

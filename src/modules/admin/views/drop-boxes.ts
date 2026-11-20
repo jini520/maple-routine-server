@@ -37,13 +37,13 @@ export const DROP_BOXES_HTML = layout(
   function boxCard(b) {
     var card = el('section', undefined, 'card');
     var header = el('header'); var h = el('h2', b.name + ' '); h.appendChild(span(b.item, 'mono dim')); header.appendChild(h);
-    header.appendChild(el('p', b.contents.length + '개 · ' + (b.levelMin == null ? '레벨 없음' : 'Lv ' + b.levelMin + '~' + b.levelMax)));
+    header.appendChild(el('p', b.contents.length + '개 · ' + (b.ringLevelMin == null ? '레벨 없음' : 'Lv ' + b.ringLevelMin + '~' + b.ringLevelMax)));
     card.appendChild(header);
     var body = el('div', undefined, 'body');
-    var min = input('number'); min.min = '1'; min.value = b.levelMin == null ? '' : b.levelMin; var max = input('number'); max.min = '1'; max.value = b.levelMax == null ? '' : b.levelMax;
+    var min = input('number'); min.min = '1'; min.value = b.ringLevelMin == null ? '' : b.ringLevelMin; var max = input('number'); max.min = '1'; max.value = b.ringLevelMax == null ? '' : b.ringLevelMax;
     var saveLv = button('레벨 저장', 'btn ghost sm');
     saveLv.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/drop-boxes/' + b.item, { levelMin: numOrNull(min.value), levelMax: numOrNull(max.value) });
+      var r = await call('PUT', '/admin/drop-boxes/' + b.item, { ringLevelMin: numOrNull(min.value), ringLevelMax: numOrNull(max.value) });
       show(r.ok ? b.item + ' 레벨 범위를 적었다' : fail('못 적었다', r), !r.ok); load();
     });
     var row = el('div', undefined, 'row'); row.appendChild(field('레벨 min', '', min)); row.appendChild(field('레벨 max', '', max)); row.appendChild(saveLv); body.appendChild(row);
@@ -67,7 +67,7 @@ export const DROP_BOXES_HTML = layout(
   }
 
   document.getElementById('b-add').addEventListener('click', async function () {
-    var r = await call('POST', '/admin/drop-boxes', { item: document.getElementById('b-item').value.trim(), levelMin: numOrNull(document.getElementById('b-min').value), levelMax: numOrNull(document.getElementById('b-max').value) });
+    var r = await call('POST', '/admin/drop-boxes', { item: document.getElementById('b-item').value.trim(), ringLevelMin: numOrNull(document.getElementById('b-min').value), ringLevelMax: numOrNull(document.getElementById('b-max').value) });
     show(r.ok ? '상자를 더했다' : fail('더하지 못했다', r), !r.ok); load();
   });
 

@@ -7,7 +7,7 @@ import { AppImagesRepository, type AppImagesSection } from '../app-images/app-im
 import { AssetsRepository, type AssetsSection } from '../assets/assets.repository'
 import { ImageCropsRepository, type ImageCropsSection } from '../assets/image-crops.repository'
 import { BossDropsRepository, type BossDropsSection } from '../boss-drops/boss-drops.repository'
-import { BossesRepository, type Catalog } from '../bosses/bosses.repository'
+import { BossesRepository, type BossesSection } from '../bosses/bosses.repository'
 import {
   CashbookCategoriesRepository,
   type CashbookCategoriesSection,
@@ -48,7 +48,7 @@ import { gameDataStamp } from './sections'
  * 표가 비어도 칸을 빼지 않는다. 앱은 칸 하나라도 읽지 못하면 응답 전체를 버린다.
  */
 export interface GameDataSnapshot {
-  bosses: Catalog
+  bosses: BossesSection
   bossDrops: BossDropsSection
   dropBoxes: DropBoxesSection
   crystalPrices: CrystalPricesSection
@@ -159,7 +159,7 @@ export class GameDataService {
       appImages,
       items,
     ] = await Promise.all([
-      this.bosses.catalog(),
+      this.bosses.section(),
       this.bossDrops.section(),
       this.dropBoxes.section(),
       this.crystalPrices.section(),

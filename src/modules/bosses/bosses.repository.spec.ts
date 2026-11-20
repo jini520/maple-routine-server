@@ -115,6 +115,25 @@ describeDb('BossesRepository', () => {
     expect(view?.difficulties).toHaveLength(rows.length)
   })
 
+  // 앱이 받는 칸은 배열 이름이 표 이름이라 난이도 줄을 보스 줄 안에 넣지 않는다. 관리 화면은 catalog 의 묶은 꼴을 읽는다.
+  it('게임 데이터 칸은 보스 줄과 난이도 줄을 표 이름의 배열 둘로 내고 난이도 줄이 보스 줄 id 를 든다', async () => {
+    await repo.setRules(rules)
+    const { id } = await repo.createBoss(meirin())
+
+    const section = await repo.section()
+    const catalog = await repo.catalog()
+    expect(section.updatedAt).toBe(catalog.updatedAt)
+    expect(section.rules).toEqual(catalog.rules)
+    expect(section.bosses).toEqual(
+      catalog.bosses.map((b) =>
+        Object.fromEntries(Object.entries(b).filter(([key]) => key !== 'difficulties')),
+      ),
+    )
+    expect(section.bossDifficulties).toEqual(
+      (catalog.bosses[0]?.difficulties ?? []).map((d) => ({ ...d, bossId: id })),
+    )
+  })
+
   it('없는 그림 id 로 더하면 AssetNotFound 이고 아무것도 안 바뀐다', async () => {
     await expect(
       repo.createBoss({ ...lotus(), portraitAssetId: '00000000-0000-4000-8000-000000000000' }),

@@ -24,7 +24,7 @@ import { platformEnum } from '../../database/schema'
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
   boss: z.string().min(1),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
 export type OpenBody = z.infer<typeof openBody>
 
@@ -141,23 +141,25 @@ export type DropMarketItemQuery = z.infer<typeof dropMarketItemQuery>
 
 /** KST 기간 글자. 없으면 null 이다. */
 const periodText = z.string().regex(PERIOD_TEXT).nullish()
-const levelRange = <T extends { levelMin?: number | null; levelMax?: number | null }>(b: T) =>
-  (b.levelMin == null) === (b.levelMax == null) &&
-  (b.levelMin == null || b.levelMin <= (b.levelMax ?? 0))
+const levelRange = <T extends { ringLevelMin?: number | null; ringLevelMax?: number | null }>(
+  b: T,
+) =>
+  (b.ringLevelMin == null) === (b.ringLevelMax == null) &&
+  (b.ringLevelMin == null || b.ringLevelMin <= (b.ringLevelMax ?? 0))
 const LEVEL_MESSAGE = '레벨 범위는 둘 다 있거나 둘 다 없고, min 이 max 를 안 넘는다'
 
 export const dropBoxCreateBody = z
   .object({
     item: snakeKey,
-    levelMin: z.number().int().min(1).nullish(),
-    levelMax: z.number().int().min(1).nullish(),
+    ringLevelMin: z.number().int().min(1).nullish(),
+    ringLevelMax: z.number().int().min(1).nullish(),
   })
   .refine(levelRange, { message: LEVEL_MESSAGE })
 export type DropBoxCreateBody = z.infer<typeof dropBoxCreateBody>
 export const dropBoxLevelsBody = z
   .object({
-    levelMin: z.number().int().min(1).nullish(),
-    levelMax: z.number().int().min(1).nullish(),
+    ringLevelMin: z.number().int().min(1).nullish(),
+    ringLevelMax: z.number().int().min(1).nullish(),
   })
   .refine(levelRange, { message: LEVEL_MESSAGE })
 export type DropBoxLevelsBody = z.infer<typeof dropBoxLevelsBody>
@@ -172,17 +174,22 @@ export const bossDropCreateBody = z.object({
   difficulty: z.enum(BOSS_DIFFICULTIES),
   category: z.enum(['fixed', 'equipment', 'consumable']),
   item: snakeKey,
-  amount: z.string().min(1).max(50).nullish(),
-  from: periodText,
-  until: periodText,
+  /** 고정 보상의 개수. */
+  quantity: z.number().int().min(1).max(1_000_000).nullish(),
+  validFrom: periodText,
+  validUntil: periodText,
 })
 export type BossDropCreateBody = z.infer<typeof bossDropCreateBody>
-export const bossDropUpdateBody = bossDropCreateBody.pick({ amount: true, from: true, until: true })
+export const bossDropUpdateBody = bossDropCreateBody.pick({
+  quantity: true,
+  validFrom: true,
+  validUntil: true,
+})
 export type BossDropUpdateBody = z.infer<typeof bossDropUpdateBody>
 
 export const crystalPriceBody = z.object({
   priceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
-  from: periodText,
+  validFrom: periodText,
 })
 export type CrystalPriceBody = z.infer<typeof crystalPriceBody>
 export const maxPartySizeBody = z.object({

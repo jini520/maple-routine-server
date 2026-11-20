@@ -16,6 +16,7 @@ import {
   SwappedDatabases,
   UnknownAssetPath,
   UnknownHexaCoreType,
+  UnknownQuantity,
   UnknownTradeGroup,
 } from './move-old-db'
 
@@ -338,6 +339,124 @@ describeDb('moveOldDb', () => {
     expect(
       (await newDb.select().from(schema.sameItemLinks)).map((l) => [l.itemId, l.originalItemId]),
     ).toEqual([[boxed?.id, whetstone]])
+
+    // 상자는 줄 id 를 두고 레벨 범위를 새 칸에 옮긴다. 연마석을 가리키던 상자 내용물은 상자에서 나온 줄을 가리킨다.
+    const boxes = await newDb.select().from(schema.dropBoxes)
+    const boxKey = new Map(all.map((i) => [i.id, i.key]))
+    expect(boxes.map((b) => [boxKey.get(b.itemId), b.ringLevelMin, b.ringLevelMax]).sort()).toEqual(
+      [
+        ['life_boss_ring_box', 3, 4],
+        ['white_boss_ring_box', 1, 3],
+      ],
+    )
+    const lifeBox = boxes.find((b) => boxKey.get(b.itemId) === 'life_boss_ring_box')?.id
+    const contents = await newDb.select().from(schema.dropBoxContents)
+    expect(
+      contents
+        .filter((c) => c.boxId === lifeBox)
+        .sort((x, y) => x.sortOrder - y.sortOrder)
+        .map((c) => boxKey.get(c.itemId)),
+    ).toEqual(['restraint_ring', 'life_whetstone_from_box'])
+    expect(contents).toHaveLength(3)
+  })
+
+  it('드롭 표는 갈래 · 기간 칸을 새 이름으로, 고정 보상 개수는 `개` 를 뗀 정수로 옮긴다. 결정석 가격 · 직접 완료 기간도 줄 id 를 두고 옮긴다', async () => {
+    const portrait = await insertOldAsset('bosses/lucid.webp')
+    const { bossId, difficultyIds } = await insertOldBoss('lucid', 'weekly', portrait)
+    const [hard] = difficultyIds
+    const trace = await insertOldItem('spell_trace')
+    const mark = await insertOldItem('mark')
+    const fragment = await insertOldItem('fragment')
+    const rewards = await oldDb
+      .insert(oldSchema.bossDropRewards)
+      .values([
+        {
+          bossDifficultyId: hard ?? '',
+          category: 'fixed',
+          itemId: trace,
+          amount: '160개',
+          sortOrder: 0,
+        },
+        {
+          bossDifficultyId: hard ?? '',
+          category: 'fixed',
+          itemId: fragment,
+          amount: '200',
+          sortOrder: 1,
+        },
+        {
+          bossDifficultyId: hard ?? '',
+          category: 'equipment',
+          itemId: mark,
+          from: '2026-09-17T10:00',
+          until: '2026-11-05',
+          sortOrder: 0,
+        },
+      ])
+      .returning({ id: oldSchema.bossDropRewards.id })
+    const [price] = await oldDb
+      .insert(oldSchema.bossCrystalPrices)
+      .values({ bossDifficultyId: hard ?? '', priceMeso: 1000, from: '2026-10-22', until: null })
+      .returning({ id: oldSchema.bossCrystalPrices.id })
+    const [period] = await oldDb
+      .insert(oldSchema.manualCompletionBosses)
+      .values({ bossId, fromDate: '2026-09-17' })
+      .returning({ id: oldSchema.manualCompletionBosses.id })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      bossDifficultyRewards: 3,
+      dropBoxes: 0,
+      dropBoxContents: 0,
+      bossCrystalPrices: 1,
+      bossManualCompletionPeriods: 1,
+    })
+    const moved = await newDb.select().from(schema.bossDifficultyRewards)
+    expect(
+      moved
+        .map((r) => [
+          r.id,
+          r.category,
+          r.itemId,
+          r.quantity,
+          r.validFrom,
+          r.validUntil,
+          r.sortOrder,
+        ])
+        .sort(),
+    ).toEqual(
+      [
+        [rewards[0]?.id, 'fixed', trace, 160, null, null, 0],
+        [rewards[1]?.id, 'fixed', fragment, 200, null, null, 1],
+        [rewards[2]?.id, 'equipment', mark, null, '2026-09-17T10:00', '2026-11-05', 0],
+      ].sort(),
+    )
+    expect(await newDb.select().from(schema.bossCrystalPrices)).toEqual([
+      {
+        id: price?.id,
+        bossDifficultyId: hard,
+        priceMeso: 1000,
+        validFrom: '2026-10-22',
+        validUntil: null,
+      },
+    ])
+    expect(await newDb.select().from(schema.bossManualCompletionPeriods)).toMatchObject([
+      { id: period?.id, bossId, fromDate: '2026-09-17', closedAt: null },
+    ])
+  })
+
+  it('고정 보상 개수가 숫자나 숫자 뒤 `개` 가 아니면 알리고 아무것도 옮기지 않는다', async () => {
+    const portrait = await insertOldAsset('bosses/lucid.webp')
+    const { difficultyIds } = await insertOldBoss('lucid', 'weekly', portrait)
+    await oldDb.insert(oldSchema.bossDropRewards).values({
+      bossDifficultyId: difficultyIds[0] ?? '',
+      category: 'fixed',
+      itemId: await insertOldItem('spell_trace'),
+      amount: '160~200개',
+      sortOrder: 0,
+    })
+
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownQuantity('160~200개'))
+    expect(await newDb.select().from(schema.bossDifficultyRewards)).toEqual([])
   })
 
   it('거래권 글자를 거래권 줄로 만들어 월드가 가리키게 하고, 월드의 참 · 거짓 칸과 열린 기간을 새 이름으로 옮긴다', async () => {

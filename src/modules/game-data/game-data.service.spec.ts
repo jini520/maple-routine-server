@@ -5,7 +5,7 @@ import type { AppImagesRepository } from '../app-images/app-images.repository'
 import type { AssetsRepository } from '../assets/assets.repository'
 import type { ImageCropsRepository } from '../assets/image-crops.repository'
 import type { BossDropsRepository } from '../boss-drops/boss-drops.repository'
-import type { BossesRepository, Catalog } from '../bosses/bosses.repository'
+import type { BossesRepository, BossesSection } from '../bosses/bosses.repository'
 import type { CashbookCategoriesRepository } from '../cashbook-categories/cashbook-categories.repository'
 import type { ContentsRepository } from '../contents/contents.repository'
 import type { CrystalPricesRepository } from '../crystal-prices/crystal-prices.repository'
@@ -38,12 +38,12 @@ function stampDb(initial: string): { db: Db; set: (stamp: string) => void } {
   }
 }
 
-function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): GameDataService {
+function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): GameDataService {
   return new GameDataService(
     bosses as unknown as BossesRepository,
-    empty({ rewards: [] }) as unknown as BossDropsRepository,
-    empty({ boxes: [] }) as unknown as DropBoxesRepository,
-    empty({ prices: [] }) as unknown as CrystalPricesRepository,
+    empty({ bossDifficultyRewards: [] }) as unknown as BossDropsRepository,
+    empty({ dropBoxes: [], dropBoxContents: [] }) as unknown as DropBoxesRepository,
+    empty({ bossCrystalPrices: [] }) as unknown as CrystalPricesRepository,
     empty({ worlds: [], worldOpenPeriods: [] }) as unknown as WorldsRepository,
     empty({
       rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
@@ -93,21 +93,22 @@ function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): Game
   )
 }
 
-const catalog: Catalog = {
+const catalog: BossesSection = {
   updatedAt: '2026-10-15T01:00:00.000Z',
   rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
   bosses: [],
+  bossDifficulties: [],
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열여덟은 각 리포지토리의 section 이다', async () => {
-    const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 section 그대로이고 나머지 열여덟은 각 리포지토리의 section 이다', async () => {
+    const bosses = { section: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
       bosses: catalog,
-      bossDrops: { updatedAt: null, rewards: [] },
-      dropBoxes: { updatedAt: null, boxes: [] },
-      crystalPrices: { updatedAt: null, prices: [] },
+      bossDrops: { updatedAt: null, bossDifficultyRewards: [] },
+      dropBoxes: { updatedAt: null, dropBoxes: [], dropBoxContents: [] },
+      crystalPrices: { updatedAt: null, bossCrystalPrices: [] },
       worlds: { updatedAt: null, worlds: [], worldOpenPeriods: [] },
       spendCatalog: {
         updatedAt: null,
@@ -156,7 +157,7 @@ describe('GameDataService', () => {
 
   // 아직 한 번도 안 넣은 표의 모양이다. 칸을 빼지 않고 updatedAt 이 null 인 채로 준다. 앱은 그 칸을 버린다.
   it('빈 표도 칸을 뺀 채 주지 않는다', async () => {
-    const emptyCatalog: Catalog = {
+    const emptyCatalog: BossesSection = {
       updatedAt: null,
       rules: {
         weeklyBossSelectionLimit: null,
@@ -164,8 +165,9 @@ describe('GameDataService', () => {
         defaultMaxPartySize: null,
       },
       bosses: [],
+      bossDifficulties: [],
     }
-    const bosses = { catalog: jest.fn().mockResolvedValue(emptyCatalog) }
+    const bosses = { section: jest.fn().mockResolvedValue(emptyCatalog) }
 
     await expect(service(bosses).snapshot()).resolves.toMatchObject({ bosses: emptyCatalog })
   })
@@ -176,20 +178,20 @@ describe('GameDataService.response', () => {
   afterEach(() => jest.restoreAllMocks())
 
   it('칸 시각이 같으면 칸을 다시 읽지 않고 담아 둔 응답을 낸다', async () => {
-    const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
+    const bosses = { section: jest.fn().mockResolvedValue(catalog) }
     const sut = service(bosses, stampDb('a').db)
 
     const first = await sut.response()
     const second = await sut.response()
 
     expect(second).toEqual(first)
-    expect(bosses.catalog).toHaveBeenCalledTimes(1)
+    expect(bosses.section).toHaveBeenCalledTimes(1)
   })
 
   it('칸 시각이 바뀌면 다음 요청이 다시 읽은 응답이다', async () => {
-    const changed: Catalog = { ...catalog, updatedAt: '2026-11-20T01:00:00.000Z' }
+    const changed: BossesSection = { ...catalog, updatedAt: '2026-11-20T01:00:00.000Z' }
     const bosses = {
-      catalog: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed),
+      section: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed),
     }
     const stamps = stampDb('a')
     const sut = service(bosses, stamps.db)
@@ -198,7 +200,7 @@ describe('GameDataService.response', () => {
     stamps.set('b')
     const second = await sut.response()
 
-    expect(bosses.catalog).toHaveBeenCalledTimes(2)
+    expect(bosses.section).toHaveBeenCalledTimes(2)
     expect(JSON.parse(second.body)).toMatchObject({ bosses: changed })
     expect(second.etag).not.toBe(first.etag)
   })
@@ -206,25 +208,25 @@ describe('GameDataService.response', () => {
   // 칸 시각을 안 올리는 쓰기(빠진 경로 · SQL 직접 수정)도 이 간격 안에 앱에 닿아야 한다.
   it('담은 지 5분이 지나면 칸 시각이 같아도 다시 만든다', async () => {
     const now = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-20T03:00:00.000Z'))
-    const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
+    const bosses = { section: jest.fn().mockResolvedValue(catalog) }
     const sut = service(bosses, stampDb('a').db)
 
     await sut.response()
     now.mockReturnValue(Date.parse('2026-11-20T03:04:59.999Z'))
     await sut.response()
-    expect(bosses.catalog).toHaveBeenCalledTimes(1)
+    expect(bosses.section).toHaveBeenCalledTimes(1)
 
     now.mockReturnValue(Date.parse('2026-11-20T03:05:00.000Z'))
     await sut.response()
-    expect(bosses.catalog).toHaveBeenCalledTimes(2)
+    expect(bosses.section).toHaveBeenCalledTimes(2)
   })
 
   it('동시에 온 요청은 응답을 한 번만 만들고 같은 응답을 받는다', async () => {
-    let release: (value: Catalog) => void = () => undefined
+    let release: (value: BossesSection) => void = () => undefined
     const bosses = {
-      catalog: jest.fn(
+      section: jest.fn(
         () =>
-          new Promise<Catalog>((resolve) => {
+          new Promise<BossesSection>((resolve) => {
             release = resolve
           }),
       ),
@@ -236,13 +238,13 @@ describe('GameDataService.response', () => {
     release(catalog)
     const results = await Promise.all(pending)
 
-    expect(bosses.catalog).toHaveBeenCalledTimes(1)
+    expect(bosses.section).toHaveBeenCalledTimes(1)
     expect(new Set(results.map((r) => r.etag)).size).toBe(1)
   })
 
   // 시각으로 ETag 를 만들면 기기들이 든 ETag 가 배포 직후 모두 어긋나 1MB 를 한꺼번에 다시 받는다.
   it('ETag 는 담아 둔 몸의 해시다', async () => {
-    const sut = service({ catalog: jest.fn().mockResolvedValue(catalog) }, stampDb('a').db)
+    const sut = service({ section: jest.fn().mockResolvedValue(catalog) }, stampDb('a').db)
 
     const { body, etag } = await sut.response()
 

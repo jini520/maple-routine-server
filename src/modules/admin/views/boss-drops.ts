@@ -24,20 +24,21 @@ export const BOSS_DROPS_HTML = layout(
 </section>
 <section class="card">
   <header><h2 id="title">보상</h2><p id="count"></p></header>
-  <div class="table"><table><thead><tr><th>갈래</th><th>#</th><th>아이템</th><th>수량</th><th>from</th><th>until</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>갈래</th><th>#</th><th>아이템</th><th>개수</th><th>validFrom</th><th>validUntil</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <section class="card">
   <header><h2>줄 추가</h2><p>그 갈래의 맨 뒤에 선다</p></header>
   <div class="body"><div class="row">
     <div class="field w-sm"><label for="a-category">갈래</label><select id="a-category"><option value="fixed">fixed</option><option value="equipment">equipment</option><option value="consumable">consumable</option></select></div>
     <div class="field"><label for="a-item">아이템 key</label><input id="a-item" class="mono" list="item-keys"></div>
-    <div class="field w-sm"><label for="a-amount">수량 <small>고정 보상만</small></label><input id="a-amount" placeholder="160개"></div>
-    <div class="field w-sm"><label for="a-from">from</label><input id="a-from" class="mono" placeholder="2026-09-17T10:00"></div>
-    <div class="field w-sm"><label for="a-until">until</label><input id="a-until" class="mono"></div>
+    <div class="field w-sm"><label for="a-quantity">개수 <small>고정 보상만</small></label><input id="a-quantity" type="number" min="1" placeholder="160"></div>
+    <div class="field w-sm"><label for="a-from">validFrom</label><input id="a-from" class="mono" placeholder="2026-09-17T10:00"></div>
+    <div class="field w-sm"><label for="a-until">validUntil</label><input id="a-until" class="mono"></div>
     <button id="a-add" class="btn" type="button">줄 추가</button>
   </div></div>
 </section>
 <script>
+  function intOrNull(v) { v = (v || '').trim(); return v === '' ? null : Number(v); }
   var state = { catalog: null, rows: [], editing: null };
   var CATS = ['fixed', 'equipment', 'consumable'];
 
@@ -48,7 +49,7 @@ export const BOSS_DROPS_HTML = layout(
     cell(tr, span(r.category, r.category === 'fixed' ? 'tag' : 'tag accent')); cell(tr, index + 1, 'n');
     var name = span(r.itemName + ' '); name.appendChild(span(r.item, 'mono dim')); cell(tr, name);
     if (state.editing !== r.id) {
-      cell(tr, r.amount || '-'); cell(tr, r.from || '-', 'mono'); cell(tr, r.until || '-', 'mono');
+      cell(tr, r.quantity === null ? '-' : r.quantity, 'num'); cell(tr, r.validFrom || '-', 'mono'); cell(tr, r.validUntil || '-', 'mono');
       var up = button('↑', 'btn ghost sm'); var down = button('↓', 'btn ghost sm'); var edit = button('수정', 'btn ghost sm'); var del = button('지우기', 'btn danger sm');
       up.addEventListener('click', async function () { var x = await call('POST', '/admin/boss-drops/' + r.id + '/move', { direction: 'up' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
       down.addEventListener('click', async function () { var x = await call('POST', '/admin/boss-drops/' + r.id + '/move', { direction: 'down' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
@@ -57,10 +58,10 @@ export const BOSS_DROPS_HTML = layout(
       cell(tr, inline(up, down, edit, del), 'act');
       return tr;
     }
-    var amount = input('text'); amount.value = r.amount || ''; var from = input('text', 'mono'); from.value = r.from || ''; var until = input('text', 'mono'); until.value = r.until || '';
-    cell(tr, amount); cell(tr, from); cell(tr, until);
+    var quantity = input('number'); quantity.min = '1'; quantity.value = r.quantity === null ? '' : r.quantity; var from = input('text', 'mono'); from.value = r.validFrom || ''; var until = input('text', 'mono'); until.value = r.validUntil || '';
+    cell(tr, quantity); cell(tr, from); cell(tr, until);
     var save = button('저장', 'btn sm'); var close = button('닫기', 'btn ghost sm');
-    save.addEventListener('click', async function () { var x = await call('PUT', '/admin/boss-drops/' + r.id, { amount: orNull(amount.value), from: orNull(from.value), until: orNull(until.value) }); show(x.ok ? '적었다' : fail('못 적었다', x), !x.ok); if (x.ok) state.editing = null; load(); });
+    save.addEventListener('click', async function () { var x = await call('PUT', '/admin/boss-drops/' + r.id, { quantity: intOrNull(quantity.value), validFrom: orNull(from.value), validUntil: orNull(until.value) }); show(x.ok ? '적었다' : fail('못 적었다', x), !x.ok); if (x.ok) state.editing = null; load(); });
     close.addEventListener('click', function () { state.editing = null; render(); });
     cell(tr, inline(save, close), 'act');
     return tr;
@@ -93,7 +94,7 @@ export const BOSS_DROPS_HTML = layout(
   document.getElementById('difficulty').addEventListener('change', function () { state.editing = null; loadRows(); });
   document.getElementById('a-add').addEventListener('click', async function () {
     var s = selected();
-    var body = { boss: s.boss, difficulty: s.difficulty, category: document.getElementById('a-category').value, item: document.getElementById('a-item').value.trim(), amount: orNull(document.getElementById('a-amount').value), from: orNull(document.getElementById('a-from').value), until: orNull(document.getElementById('a-until').value) };
+    var body = { boss: s.boss, difficulty: s.difficulty, category: document.getElementById('a-category').value, item: document.getElementById('a-item').value.trim(), quantity: intOrNull(document.getElementById('a-quantity').value), validFrom: orNull(document.getElementById('a-from').value), validUntil: orNull(document.getElementById('a-until').value) };
     var r = await call('POST', '/admin/boss-drops', body);
     show(r.ok ? body.item + ' 줄을 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) document.getElementById('a-item').value = ''; load();
   });

@@ -41,7 +41,7 @@ export const MANUAL_COMPLETION_HTML = layout(
     var openCount = 0, closedCount = 0;
     data.rows.forEach(function (row) {
       var tr = document.createElement('tr');
-      who(tr, row); cell(tr, row.from, 'mono'); cell(tr, when(row.openedAt), 'mono');
+      who(tr, row); cell(tr, row.fromDate, 'mono'); cell(tr, when(row.openedAt), 'mono');
       if (row.closedAt === null) {
         openCount += 1;
         var td = cell(tr, '', 'act'); var b = document.createElement('button'); b.type = 'button'; b.className = 'btn danger sm'; b.textContent = '닫기';
@@ -61,7 +61,7 @@ export const MANUAL_COMPLETION_HTML = layout(
   document.getElementById('open').addEventListener('click', async function () {
     var boss = document.getElementById('boss').value;
     var from = document.getElementById('from').value;
-    var r = await call('POST', '/admin/manual-completion', { boss: boss, from: from });
+    var r = await call('POST', '/admin/manual-completion', { boss: boss, fromDate: from });
     if (!r.ok) { show('못 열었다 ' + r.status + '\\n' + r.text, true); return; }
     show(boss + ' 을 ' + from + ' 부터 열었다', false);
     load();

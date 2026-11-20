@@ -38,6 +38,11 @@ export interface MoveResult {
   hexaCores: number
   hexaCoreLevelCosts: number
   hexaStats: number
+  bossDifficultyRewards: number
+  dropBoxes: number
+  dropBoxContents: number
+  bossCrystalPrices: number
+  bossManualCompletionPeriods: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -54,6 +59,9 @@ export class SharedCoreMismatch extends Error {}
 
 /** 이름 표에도 없고 그 넥슨 타입의 기본 종류도 없어 코어의 종류를 정하지 못했다. message 가 `직업 · 코어 이름` 이다. */
 export class UnknownHexaCoreType extends Error {}
+
+/** 고정 보상의 개수 글자가 숫자나 숫자 뒤 `개` 가 아니다. message 가 그 글자다. */
+export class UnknownQuantity extends Error {}
 
 /** 한 번에 넣는 줄 수. Postgres 의 자리 표시자 상한(65535)을 넘지 않게 나눈다. */
 const CHUNK = 1000
@@ -87,6 +95,11 @@ const MOVED_TABLES = [
   schema.hexaCores,
   schema.hexaCoreLevelCosts,
   schema.hexaStats,
+  schema.bossDifficultyRewards,
+  schema.dropBoxes,
+  schema.dropBoxContents,
+  schema.bossCrystalPrices,
+  schema.bossManualCompletionPeriods,
 ]
 
 /**
@@ -244,15 +257,18 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   }
   const boxedItems: (typeof items)[number][] = []
   const sameItemLinks: (typeof schema.sameItemLinks.$inferInsert)[] = []
+  const boxedCopyOf = new Map<string, string>()
   for (const copy of BOXED_COPIES) {
     const original = items.find((i) => i.key === copy.originalKey)
     if (original === undefined) continue
     const id = randomUUID()
     boxedItems.push({ ...original, id, key: copy.key })
     sameItemLinks.push({ itemId: id, originalItemId: original.id })
+    boxedCopyOf.set(original.id, id)
   }
 
   const hexa = await hexaRows(oldDb)
+  const boss = await bossReferenceRows(oldDb, boxedCopyOf)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -271,6 +287,11 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.hexaCores, hexa.hexaCores)
     await insertAll(tx, schema.hexaCoreLevelCosts, hexa.hexaCoreLevelCosts)
     await insertAll(tx, schema.hexaStats, hexa.hexaStats)
+    await insertAll(tx, schema.bossDifficultyRewards, boss.bossDifficultyRewards)
+    await insertAll(tx, schema.dropBoxes, boss.dropBoxes)
+    await insertAll(tx, schema.dropBoxContents, boss.dropBoxContents)
+    await insertAll(tx, schema.bossCrystalPrices, boss.bossCrystalPrices)
+    await insertAll(tx, schema.bossManualCompletionPeriods, boss.bossManualCompletionPeriods)
   })
   return {
     assets: assets.length,
@@ -288,7 +309,73 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     hexaCores: hexa.hexaCores.length,
     hexaCoreLevelCosts: hexa.hexaCoreLevelCosts.length,
     hexaStats: hexa.hexaStats.length,
+    bossDifficultyRewards: boss.bossDifficultyRewards.length,
+    dropBoxes: boss.dropBoxes.length,
+    dropBoxContents: boss.dropBoxContents.length,
+    bossCrystalPrices: boss.bossCrystalPrices.length,
+    bossManualCompletionPeriods: boss.bossManualCompletionPeriods.length,
   }
+}
+
+/**
+ * 보스가 쓰는 기준 표 다섯의 새 줄. 줄 id 는 그대로다. 고정 보상의 개수는 글자 끝의 `개` 를 떼고 정수로 바꾼다. 상자 내용물
+ * 가운데 같은 물건으로 따로 둔 원래 아이템을 가리키는 줄은 상자에서 나온 줄을 가리키게 바꾼다. 보스가 직접 떨구는 드롭 표의
+ * 줄은 원래 아이템을 그대로 가리킨다.
+ */
+async function bossReferenceRows(oldDb: OldDb, boxedCopyOf: ReadonlyMap<string, string>) {
+  const [rewards, boxes, contents, prices, periods] = await Promise.all([
+    oldDb.select().from(oldSchema.bossDropRewards),
+    oldDb.select().from(oldSchema.dropBoxes),
+    oldDb.select().from(oldSchema.dropBoxContents),
+    oldDb.select().from(oldSchema.bossCrystalPrices),
+    oldDb.select().from(oldSchema.manualCompletionBosses),
+  ])
+  return {
+    bossDifficultyRewards: rewards.map((r) => ({
+      id: r.id,
+      bossDifficultyId: r.bossDifficultyId,
+      category: r.category,
+      itemId: r.itemId,
+      quantity: quantityOf(r.amount),
+      validFrom: r.from,
+      validUntil: r.until,
+      sortOrder: r.sortOrder,
+    })),
+    dropBoxes: boxes.map((b) => ({
+      id: b.id,
+      itemId: b.itemId,
+      ringLevelMin: b.levelMin,
+      ringLevelMax: b.levelMax,
+    })),
+    dropBoxContents: contents.map((c) => ({
+      id: c.id,
+      boxId: c.boxId,
+      itemId: boxedCopyOf.get(c.itemId) ?? c.itemId,
+      sortOrder: c.sortOrder,
+    })),
+    bossCrystalPrices: prices.map((p) => ({
+      id: p.id,
+      bossDifficultyId: p.bossDifficultyId,
+      priceMeso: p.priceMeso,
+      validFrom: p.from,
+      validUntil: p.until,
+    })),
+    bossManualCompletionPeriods: periods.map((p) => ({
+      id: p.id,
+      bossId: p.bossId,
+      fromDate: p.fromDate,
+      openedAt: p.openedAt,
+      closedAt: p.closedAt,
+    })),
+  }
+}
+
+/** 옛 개수 글자 `160개` · `200` 을 정수로. 비었으면 null 이다. */
+function quantityOf(amount: string | null): number | null {
+  if (amount === null) return null
+  const match = /^(\d+)개?$/.exec(amount)
+  if (match?.[1] === undefined) throw new UnknownQuantity(amount)
+  return Number(match[1])
 }
 
 /**

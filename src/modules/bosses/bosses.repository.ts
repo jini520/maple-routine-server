@@ -39,11 +39,21 @@ export interface BossView {
   }[]
 }
 
-/** 게임 데이터의 bosses 칸. 한 번도 안 넣었으면 updatedAt 과 규칙이 null 이고 목록이 빈다. */
+/** 관리 화면이 읽는 보스 목록. 난이도 줄을 보스 줄 안에 묶는다. 한 번도 안 넣었으면 updatedAt 과 규칙이 null 이고 목록이 빈다. */
 export interface Catalog {
   updatedAt: string | null
   rules: Record<RuleField, number | null>
   bosses: BossView[]
+}
+
+export type BossDifficultyView = BossView['difficulties'][number] & { bossId: string }
+
+/** 게임 데이터의 bosses 칸. 배열 이름은 표 이름이고 난이도 줄은 보스 줄 id 를 든다. */
+export interface BossesSection {
+  updatedAt: string | null
+  rules: Record<RuleField, number | null>
+  bosses: Omit<BossView, 'difficulties'>[]
+  bossDifficulties: BossDifficultyView[]
 }
 
 /** 같은 key 의 보스가 이미 있다. */
@@ -224,6 +234,27 @@ export class BossesRepository {
             validUntil: d.validUntil,
           })),
       })),
+    }
+  }
+
+  async section(): Promise<BossesSection> {
+    const catalog = await this.catalog()
+    return {
+      updatedAt: catalog.updatedAt,
+      rules: catalog.rules,
+      bosses: catalog.bosses.map((b) => ({
+        id: b.id,
+        key: b.key,
+        name: b.name,
+        shortName: b.shortName,
+        isSeasonBoss: b.isSeasonBoss,
+        portraitAssetId: b.portraitAssetId,
+        validFrom: b.validFrom,
+        validUntil: b.validUntil,
+      })),
+      bossDifficulties: catalog.bosses.flatMap((b) =>
+        b.difficulties.map((d) => ({ ...d, bossId: b.id })),
+      ),
     }
   }
 

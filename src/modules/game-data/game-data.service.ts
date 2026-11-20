@@ -40,6 +40,7 @@ import {
   type SymbolCostsSection,
 } from '../symbol-costs/symbol-costs.repository'
 import { WorldsRepository, type WorldsSection } from '../worlds/worlds.repository'
+import { GameRulesRepository, type GameRulesSection } from '../game-rules/game-rules.repository'
 import { gameDataStamp } from './sections'
 
 /**
@@ -49,6 +50,7 @@ import { gameDataStamp } from './sections'
  */
 export interface GameDataSnapshot {
   bosses: BossesSection
+  gameRules: GameRulesSection
   bossDrops: BossDropsSection
   dropBoxes: DropBoxesSection
   crystalPrices: CrystalPricesSection
@@ -87,6 +89,7 @@ export class GameDataService {
 
   constructor(
     private readonly bosses: BossesRepository,
+    private readonly gameRules: GameRulesRepository,
     private readonly bossDrops: BossDropsRepository,
     private readonly dropBoxes: DropBoxesRepository,
     private readonly crystalPrices: CrystalPricesRepository,
@@ -146,6 +149,7 @@ export class GameDataService {
   async snapshot(): Promise<GameDataSnapshot> {
     const [
       bosses,
+      gameRules,
       bossDrops,
       dropBoxes,
       crystalPrices,
@@ -166,6 +170,7 @@ export class GameDataService {
       items,
     ] = await Promise.all([
       this.bosses.section(),
+      this.gameRules.section(),
       this.bossDrops.section(),
       this.dropBoxes.section(),
       this.crystalPrices.section(),
@@ -187,6 +192,7 @@ export class GameDataService {
     ])
     return {
       bosses,
+      gameRules,
       bossDrops,
       dropBoxes,
       crystalPrices,

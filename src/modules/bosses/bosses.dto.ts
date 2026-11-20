@@ -5,22 +5,6 @@ import { PERIOD_TEXT } from '../crystal-prices/period-boundary'
 export const BOSS_DIFFICULTIES = ['easy', 'normal', 'hard', 'chaos', 'extreme'] as const
 export const BOSS_CYCLES = ['weekly', 'monthly'] as const
 
-/** game_rules 의 key 와 응답 필드 이름. 둘이 짝이다. */
-export const RULE_KEYS = {
-  weeklyBossSelectionLimit: 'weekly_boss_selection_limit',
-  weeklyCrystalSaleLimit: 'weekly_crystal_sale_limit',
-  defaultMaxPartySize: 'default_max_party_size',
-} as const
-export type RuleField = keyof typeof RULE_KEYS
-
-/** 규칙 셋. 보스가 아니라 규칙이라 따로 받는다. */
-export const rulesInput = z.object({
-  weeklyBossSelectionLimit: z.number().int().min(1),
-  weeklyCrystalSaleLimit: z.number().int().min(1),
-  defaultMaxPartySize: z.number().int().min(1).max(6),
-})
-export type RulesInput = z.infer<typeof rulesInput>
-
 /** 난이도 줄 하나. 주기, 요구 레벨과 파티 인원 상한(없으면 기본값), 유효 기간(없으면 보스의 기간 그대로). */
 export const difficultyInput = z
   .object({

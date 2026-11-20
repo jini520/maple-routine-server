@@ -3,16 +3,13 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { assets, bossDifficulties, bosses, gameRules } from '../../database/schema'
+import { assets, bossDifficulties, bosses } from '../../database/schema'
 import { AssetNotFound } from '../assets/asset-refs'
 import {
   BOSS_DIFFICULTIES,
   type BossInput,
   type DifficultyInput,
   type PeriodInput,
-  RULE_KEYS,
-  type RuleField,
-  type RulesInput,
 } from './bosses.dto'
 
 /** 응답의 칸 이름은 표의 칸 이름을 따른다. id 는 기기의 기록이 보스 · 난이도를 가리키는 값이다. */
@@ -31,7 +28,7 @@ export interface BossView {
     difficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme'
     cycle: 'weekly' | 'monthly'
     requiredLevel: number
-    /** 결정석을 나누는 파티 인원 상한. null 이면 rules.defaultMaxPartySize 다. */
+    /** 결정석을 나누는 파티 인원 상한. null 이면 게임 규칙의 defaultMaxPartySize 다. */
     maxPartySize: number | null
     /** 난이도의 유효 기간. null 은 없음이다. 보스의 기간과 겹치는 범위만 유효하다. */
     validFrom: string | null
@@ -39,10 +36,9 @@ export interface BossView {
   }[]
 }
 
-/** 관리 화면이 읽는 보스 목록. 난이도 줄을 보스 줄 안에 묶는다. 한 번도 안 넣었으면 updatedAt 과 규칙이 null 이고 목록이 빈다. */
+/** 관리 화면이 읽는 보스 목록. 난이도 줄을 보스 줄 안에 묶는다. 한 번도 안 넣었으면 updatedAt 이 null 이고 목록이 빈다. */
 export interface Catalog {
   updatedAt: string | null
-  rules: Record<RuleField, number | null>
   bosses: BossView[]
 }
 
@@ -51,7 +47,6 @@ export type BossDifficultyView = BossView['difficulties'][number] & { bossId: st
 /** 게임 데이터의 bosses 칸. 배열 이름은 표 이름이고 난이도 줄은 보스 줄 id 를 든다. */
 export interface BossesSection {
   updatedAt: string | null
-  rules: Record<RuleField, number | null>
   bosses: Omit<BossView, 'difficulties'>[]
   bossDifficulties: BossDifficultyView[]
 }
@@ -65,17 +60,6 @@ export class LastDifficulty extends Error {}
 @Injectable()
 export class BossesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
-
-  /** 규칙 둘을 적는다. 둘 다 받아 둘 다 쓴다. */
-  async setRules(rules: RulesInput): Promise<void> {
-    const now = new Date()
-    for (const field of Object.keys(RULE_KEYS) as RuleField[]) {
-      await this.db
-        .insert(gameRules)
-        .values({ key: RULE_KEYS[field], value: rules[field], updatedAt: now })
-        .onConflictDoUpdate({ target: gameRules.key, set: { value: rules[field], updatedAt: now } })
-    }
-  }
 
   /** 새 보스를 맨 뒤에 더한다. 난이도 줄도 함께 넣는다. 같은 key 는 BossExists, 없는 그림은 AssetNotFound 다. */
   async createBoss(input: BossInput): Promise<{ id: string }> {
@@ -195,24 +179,12 @@ export class BossesRepository {
             .from(bossDifficulties)
             .where(inArray(bossDifficulties.bossId, ids))
             .orderBy(asc(bossDifficulties.difficulty))
-    // 같은 표에 지출 규칙도 든다. 그 줄은 이 칸의 updatedAt 을 안 움직인다.
-    const rules = (await this.db.select().from(gameRules)).filter((r) =>
-      (Object.values(RULE_KEYS) as string[]).includes(r.key),
-    )
-
-    const ruleOf = (field: RuleField): number | null =>
-      rules.find((r) => r.key === RULE_KEYS[field])?.value ?? null
-    const stamps = [...rows.map((r) => r.updatedAt), ...rules.map((r) => r.updatedAt)]
+    const stamps = rows.map((r) => r.updatedAt)
     const latest =
       stamps.length === 0 ? null : new Date(Math.max(...stamps.map((d) => d.getTime())))
 
     return {
       updatedAt: latest?.toISOString() ?? null,
-      rules: {
-        weeklyBossSelectionLimit: ruleOf('weeklyBossSelectionLimit'),
-        weeklyCrystalSaleLimit: ruleOf('weeklyCrystalSaleLimit'),
-        defaultMaxPartySize: ruleOf('defaultMaxPartySize'),
-      },
       bosses: rows.map((r) => ({
         id: r.id,
         key: r.key,
@@ -241,7 +213,6 @@ export class BossesRepository {
     const catalog = await this.catalog()
     return {
       updatedAt: catalog.updatedAt,
-      rules: catalog.rules,
       bosses: catalog.bosses.map((b) => ({
         id: b.id,
         key: b.key,

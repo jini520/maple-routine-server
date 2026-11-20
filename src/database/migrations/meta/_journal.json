@@ -386,6 +386,20 @@
       "when": 1795177156396,
       "tag": "0054_enhancement_cost_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1795181470743,
+      "tag": "0055_game_rules_bundle",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1795182247547,
+      "tag": "0056_ops_bundle",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 /**
  * 옛 DB 를 새 DB 로 옮기는 것을 진짜 Postgres 에서 본다. 옛 DB 는 옛 표의 마지막 마이그레이션까지, 새 DB 는 끝까지 올린다.
  */
+import { eq } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { join } from 'node:path'
@@ -11,7 +12,9 @@ import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
 import {
+  MissingGameRule,
   moveOldDb,
+  UnknownCropValue,
   SharedCoreMismatch,
   SwappedDatabases,
   UnknownAssetPath,
@@ -22,6 +25,19 @@ import {
 
 /** 옛 DB 의 마지막 마이그레이션. 1.0.14 운영 DB 가 여기까지 올라 있다. */
 const OLD_LAST = '0045_market_range_nullable'
+
+/** 옛 DB 의 게임 규칙 줄 아홉. 옮기기는 하나라도 빠지면 멈추므로 모든 시험이 넣고 시작한다. */
+const OLD_RULES = [
+  { key: 'weekly_boss_selection_limit', value: 12 },
+  { key: 'weekly_crystal_sale_limit', value: 90 },
+  { key: 'default_max_party_size', value: 6 },
+  { key: 'spend_tariff_percent', value: 10 },
+  { key: 'reward_coin_price_meso', value: 40_000_000 },
+  { key: 'meso_market_fee_percent', value: 1 },
+  { key: 'cube_appraisal_free_max_level', value: 120 },
+  { key: 'cube_appraisal_coefficient', value: 20 },
+  { key: 'starforce_destroy_defence_surcharge_percent', value: 200 },
+]
 
 describeDb('moveOldDb', () => {
   let names = { old: '', next: '' }
@@ -58,6 +74,7 @@ describeDb('moveOldDb', () => {
     newDb = drizzle(newPool, { schema })
     await migrate(oldDb, { migrationsFolder: folders[OLD_LAST] })
     await migrate(newDb, { migrationsFolder: join(__dirname, '..', 'database', 'migrations') })
+    await oldDb.insert(oldSchema.gameRules).values(OLD_RULES)
   })
   afterEach(async () => {
     await oldPool.end()
@@ -1136,5 +1153,111 @@ describeDb('moveOldDb', () => {
       [...rows].sort((x, y) => (x.id < y.id ? -1 : 1))
     expect(byId(await newDb.select().from(schema.superiorSeries))).toEqual(byId(oldSeries))
     expect(byId(await newDb.select().from(schema.superiorItems))).toEqual(byId(oldItems))
+  })
+
+  it('게임 규칙: 옛 규칙 줄 아홉을 한 줄의 칸으로 모으고, 칸의 갱신 시각은 지금 응답에 있는 칸의 줄만 옮긴다', async () => {
+    await oldDb
+      .insert(oldSchema.gameDataSections)
+      .values([
+        { key: 'worlds', updatedAt: new Date('2026-11-01T00:00:00Z') },
+        { key: 'dropItems', updatedAt: new Date('2026-11-01T00:00:00Z') },
+      ])
+      .onConflictDoNothing()
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({ gameRules: 1 })
+    expect(await newDb.select().from(schema.gameRules)).toMatchObject([
+      {
+        weeklyBossSelectionLimit: 12,
+        weeklyCrystalSaleLimit: 90,
+        defaultMaxPartySize: 6,
+        spendTariffPercent: 10,
+        rewardCoinPriceMeso: 40_000_000,
+        mesoMarketFeePercent: 1,
+        cubeAppraisalFreeMaxLevel: 120,
+        cubeAppraisalCoefficient: 20,
+        starforceDestroyDefenceSurchargePercent: 200,
+      },
+    ])
+    const keys = (await newDb.select().from(schema.gameDataSectionUpdates)).map((r) => r.key)
+    expect(keys).toContain('worlds')
+    expect(keys).not.toContain('dropItems')
+  })
+
+  it('게임 규칙 줄이 하나라도 없으면 그 key 를 알리고 아무것도 옮기지 않는다', async () => {
+    await oldDb
+      .delete(oldSchema.gameRules)
+      .where(eq(oldSchema.gameRules.key, 'spend_tariff_percent'))
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(
+      new MissingGameRule('spend_tariff_percent'),
+    )
+    expect(await newDb.select().from(schema.gameRules)).toEqual([])
+  })
+
+  it('크롭 · 공지 · FAQ: 크롭 글자를 숫자 셋으로 나누고 모달 띠 줄은 버리며, FAQ 답 블록을 빈 줄로 잇고, 공지는 칸 이름만 바꾼다', async () => {
+    const portrait = await insertOldAsset('bosses/spec_boss.webp')
+    const crops = await oldDb
+      .insert(oldSchema.imageCrops)
+      .values([
+        { kind: 'boss_portrait', assetId: portrait, size: '120.5% auto', position: '50% -12%' },
+        { kind: 'boss_portrait_modal', assetId: portrait, size: '200% auto', position: '50% 40%' },
+      ])
+      .returning({ id: oldSchema.imageCrops.id, kind: oldSchema.imageCrops.kind })
+    const [sheet] = await oldDb
+      .insert(oldSchema.faqSheets)
+      .values({ key: 'spec-sheet', title: '시험', sortOrder: 0 })
+      .returning({ id: oldSchema.faqSheets.id })
+    await oldDb.insert(oldSchema.faqItems).values({
+      sheetId: sheet?.id ?? '',
+      sortOrder: 0,
+      question: '질문',
+      answer: [
+        { kind: 'paragraph', text: '첫 문단' },
+        { kind: 'paragraph', text: '둘째 문단' },
+      ],
+    })
+    const [old] = await oldDb
+      .insert(oldSchema.notices)
+      .values({
+        noticeKey: 'event-1374',
+        kind: 'event',
+        title: '이벤트',
+        sourceId: 1374,
+        publishedAt: new Date('2026-11-01T00:00:00Z'),
+      })
+      .returning({ id: oldSchema.notices.id })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      imageCrops: 1,
+      notices: 1,
+      faqSheets: 1,
+      faqItems: 1,
+    })
+    expect(await newDb.select().from(schema.imageCrops)).toMatchObject([
+      {
+        id: crops.find((c) => c.kind === 'boss_portrait')?.id,
+        type: 'boss_portrait',
+        assetId: portrait,
+        widthPercent: 120.5,
+        positionXPercent: 50,
+        positionYPercent: -12,
+      },
+    ])
+    expect(await newDb.select().from(schema.faqItems)).toMatchObject([
+      { sheetId: sheet?.id, question: '질문', answer: '첫 문단\n\n둘째 문단' },
+    ])
+    expect(await newDb.select().from(schema.notices)).toMatchObject([
+      { id: old?.id, key: 'event-1374', type: 'event', title: '이벤트' },
+    ])
+  })
+
+  it('크롭 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니면 그 줄을 알리고 아무것도 옮기지 않는다', async () => {
+    const portrait = await insertOldAsset('bosses/odd.webp')
+    await oldDb
+      .insert(oldSchema.imageCrops)
+      .values({ kind: 'boss_portrait', assetId: portrait, size: 'cover', position: 'center' })
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(
+      new UnknownCropValue('boss_portrait cover / center'),
+    )
+    expect(await newDb.select().from(schema.imageCrops)).toEqual([])
   })
 })

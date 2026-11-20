@@ -1,4 +1,4 @@
-import { gameDataSections, itemGroups } from '../../database/schema'
+import { gameDataSectionUpdates, itemGroups } from '../../database/schema'
 import {
   describeDb,
   insertItems,
@@ -44,7 +44,9 @@ describeDb('ItemGroupsRepository', () => {
   })
 
   const touched = async () =>
-    (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map((r) => r.key)
+    (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)).map(
+      (r) => r.key,
+    )
   const groupsOf = async (kind: string) =>
     (await repo.tree()).find((k) => k.key === kind)?.groups.map((g) => g.key)
 

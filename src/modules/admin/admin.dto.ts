@@ -13,7 +13,7 @@ import {
   POTENTIAL_GRADES,
   POTENTIAL_RESET_TYPES,
 } from '../enhancement-costs/enhancement-costs.repository'
-import { FAQ_KEY, type FaqBlock } from '../faqs/faqs.repository'
+import { FAQ_KEY } from '../faqs/faqs.repository'
 import { FORCE_TYPES } from '../hunting-grounds/hunting-grounds.repository'
 import { MVP_GRADES } from '../mvp-grades/mvp-grades.repository'
 import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories.repository'
@@ -42,20 +42,22 @@ const pushText = z.object({
 /** 공지 본문 마크다운. 그림 한 줄이 주소만 80자 남짓이라 그림이 많은 설명서가 들어가게 10,000자다. */
 const noticeMarkdown = z.string().min(1).max(10_000)
 
-/** 공지를 쓴다. push 가 null 이면 안 알리고, scheduledAt 이 있으면 그 시각에 알린다. */
+/** 공지를 쓴다. publishAt 이 있으면 그 시각에 올리고, push 가 있으면 올리는 시각에 알린다. */
 export const noticeCreateBody = z.object({
   title: z.string().min(1).max(200),
   markdown: noticeMarkdown,
   link: z.url().nullish(),
-  push: pushText.extend({ scheduledAt: z.iso.datetime({ offset: true }).nullish() }).nullish(),
+  publishAt: z.iso.datetime({ offset: true }).nullish(),
+  push: pushText.nullish(),
 })
 export type NoticeCreateBody = z.infer<typeof noticeCreateBody>
 
-/** 고친다. 예약은 없다. push 가 있으면 지금 다시 보낸다. */
+/** 고친다. 예약한 공지는 publishAt 으로 올릴 시각을 바꾼다. push 는 올라간 공지면 지금 다시 보내고, 예약한 공지면 올라갈 때 보낸다. */
 export const noticeUpdateBody = z.object({
   title: z.string().min(1).max(200),
   markdown: noticeMarkdown,
   link: z.url().nullish(),
+  publishAt: z.iso.datetime({ offset: true }).nullish(),
   push: pushText.nullish(),
 })
 export type NoticeUpdateBody = z.infer<typeof noticeUpdateBody>
@@ -234,14 +236,6 @@ export type WorldPeriodBody = z.infer<typeof worldPeriodBody>
 /* ── 지출 카탈로그 ── */
 
 /** 관세율(%) · 세라자르 주화 판매가 · 메소마켓 수수료율(%). game_rules 의 줄 셋이다. */
-export const spendRulesBody = z.object({
-  tariffPercent: z.number().int().min(0).max(100),
-  rewardCoinPriceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
-  // 100 이면 앱이 메포 지출을 메소로 바꿀 때 0 으로 나눈다.
-  mesoMarketFeePercent: z.number().int().min(0).max(99),
-})
-export type SpendRulesBody = z.infer<typeof spendRulesBody>
-
 export const spendGroupCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
@@ -519,12 +513,6 @@ export type ContentUpdateBody = z.infer<typeof contentUpdateBody>
 /* ── 강화 비용 · MVP 등급 ── */
 
 /** 규칙 셋. 감정비용 무료 상한 · 감정비용 계수 · 파괴 방지 추가분(%). game_rules 의 줄 셋이다. */
-export const enhancementRulesBody = z.object({
-  cubeAppraisalFreeMaxLevel: z.number().int().min(0).max(300),
-  cubeAppraisalCoefficient: z.number().int().min(0),
-  starforceDestroyDefenceSurchargePercent: z.number().int().min(0).max(1000),
-})
-export type EnhancementRulesBody = z.infer<typeof enhancementRulesBody>
 export const potentialTypeParam = z.enum(POTENTIAL_RESET_TYPES)
 export const potentialGradeParam = z.enum(POTENTIAL_GRADES)
 export const minRequiredLevelParam = z.coerce.number().int().min(1)
@@ -616,21 +604,42 @@ export type FaqSheetCreateBody = z.infer<typeof faqSheetCreateBody>
 export const faqSheetUpdateBody = faqSheetCreateBody.omit({ key: true })
 export type FaqSheetUpdateBody = z.infer<typeof faqSheetUpdateBody>
 
-/** 빈 줄로 나눈 답 글을 문단 블록으로 바꾼다. 문단마다 앞뒤 공백을 걷고 빈 문단은 버린다. */
-function paragraphs(text: string): FaqBlock[] {
+/** 답 글의 문단을 빈 줄 하나로 맞춘다. 문단마다 앞뒤 공백을 걷고 빈 문단은 버린다. 앱이 빈 줄에서 문단을 나눈다. */
+function paragraphs(text: string): string {
   return text
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter((p) => p !== '')
-    .map((p): FaqBlock => ({ kind: 'paragraph', text: p }))
+    .join('\n\n')
 }
-/** 문항 하나. 답은 관리 화면의 글 한 칸으로 받아 문단 블록으로 바꾼다. */
+/** 문항 하나. 답은 관리 화면의 글 한 칸이다. */
 export const faqItemBody = z.object({
   question: z.string().trim().min(1).max(200),
   answer: z
     .string()
     .max(5000)
     .transform(paragraphs)
-    .refine((blocks) => blocks.length > 0, { message: '답은 문단이 하나 이상이어야 한다' }),
+    .refine((answer) => answer !== '', { message: '답은 문단이 하나 이상이어야 한다' }),
 })
 export type FaqItemBody = z.infer<typeof faqItemBody>
+
+/* ── 게임 규칙 ── */
+
+/** 규칙 아홉 가운데 바꿀 것만. 하나는 있어야 한다. */
+export const gameRulesBody = z
+  .object({
+    weeklyBossSelectionLimit: z.number().int().min(1),
+    weeklyCrystalSaleLimit: z.number().int().min(1),
+    defaultMaxPartySize: z.number().int().min(1).max(6),
+    spendTariffPercent: z.number().int().min(0).max(100),
+    rewardCoinPriceMeso: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+    // 100 이면 앱이 메포 지출을 메소로 바꿀 때 0 으로 나눈다.
+    mesoMarketFeePercent: z.number().int().min(0).max(99),
+    cubeAppraisalFreeMaxLevel: z.number().int().min(0).max(300),
+    cubeAppraisalCoefficient: z.number().int().min(0),
+    starforceDestroyDefenceSurchargePercent: z.number().int().min(0).max(1000),
+  })
+  .partial()
+  .strict()
+  .refine((b) => Object.keys(b).length > 0, { message: '바꿀 규칙이 없다' })
+export type GameRulesBody = z.infer<typeof gameRulesBody>

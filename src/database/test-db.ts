@@ -63,7 +63,7 @@ const TABLES = [
   'same_item_links',
   'ring_level_items',
   'items',
-  'game_data_sections',
+  'game_data_section_updates',
   'app_images',
   'assets',
   'image_crops',

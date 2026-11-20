@@ -1,8 +1,8 @@
-import { noticeKindEnum } from '../../database/schema'
+import { noticeTypeEnum } from '../../database/schema'
 
 /** 분류 다섯. app 은 운영자 공지이고 나머지 넷은 넥슨이 준다. */
-export type NoticeKind = (typeof noticeKindEnum.enumValues)[number]
-export const NOTICE_KINDS = noticeKindEnum.enumValues
+export type NoticeKind = (typeof noticeTypeEnum.enumValues)[number]
+export const NOTICE_KINDS = noticeTypeEnum.enumValues
 
 /** 상세 본문 한 조각. HTML 이 앱에 안 들어가게 하는 모양이고 앱의 types/notice.ts 와 같다. */
 export type NoticeBlock =

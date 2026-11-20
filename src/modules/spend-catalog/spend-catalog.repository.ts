@@ -6,7 +6,6 @@ import { DB, type Db } from '../../database/database.module'
 import {
   assets,
   cashbookCategories,
-  gameRules,
   spendGroups,
   spendItemOptions,
   spendItemRewardTypes,
@@ -22,14 +21,6 @@ export type SpendCurrency = (typeof SPEND_CURRENCIES)[number]
 /** 앱 코드가 이 값으로 갈린다. 이름은 spend_reward_types 표가 든다. */
 export const SPEND_REWARD_TYPES = ['exp', 'sol_erda'] as const
 export type SpendRewardType = (typeof SPEND_REWARD_TYPES)[number]
-
-/** game_rules 의 key 와 응답 필드 이름. 둘이 짝이다. */
-export const SPEND_RULE_KEYS = {
-  tariffPercent: 'spend_tariff_percent',
-  rewardCoinPriceMeso: 'reward_coin_price_meso',
-  mesoMarketFeePercent: 'meso_market_fee_percent',
-} as const
-export type SpendRuleField = keyof typeof SPEND_RULE_KEYS
 
 export interface SpendRewardTypeView {
   id: string
@@ -83,7 +74,6 @@ export interface SpendItemRewardTypeView {
 /** GET /v1/game-data 의 spendCatalog 칸. 배열 이름은 표 이름이고 다른 표의 줄은 줄 id 다. */
 export interface SpendCatalogSection {
   updatedAt: string | null
-  rules: Record<SpendRuleField, number | null>
   spendRewardTypes: SpendRewardTypeView[]
   spendGroups: SpendGroupView[]
   spendTiles: SpendTileView[]
@@ -126,7 +116,6 @@ export interface SpendItemAdminRow {
 /** 관리 화면의 본문. 묶음 · 타일 · 항목을 key 로 들고 축 값 · 추가 리워드 종류를 항목 key 로 잇는다. */
 export interface SpendCatalogAdminRows {
   updatedAt: string | null
-  rules: Record<SpendRuleField, number | null>
   rewardTypes: { key: SpendRewardType; name: string }[]
   groups: SpendGroupInput[]
   tiles: SpendTileInput[]
@@ -135,7 +124,6 @@ export interface SpendCatalogAdminRows {
   itemRewardTypes: { item: string; rewardType: SpendRewardType }[]
 }
 
-export type SpendRulesInput = Record<SpendRuleField, number>
 /** 항목 하나. 축 값과 추가 리워드 종류를 함께 받아 통째로 갈아 끼운다. */
 export interface SpendItemInput extends SpendItemAdminRow {
   options: { axis: string; value: string }[]
@@ -180,7 +168,7 @@ export class SpendCatalogRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<SpendCatalogSection> {
-    const [rewardTypes, groups, tiles, items, options, itemRewardTypes, rules, updatedAt] =
+    const [rewardTypes, groups, tiles, items, options, itemRewardTypes, updatedAt] =
       await Promise.all([
         this.db
           .select({
@@ -229,12 +217,10 @@ export class SpendCatalogRepository {
           .innerJoin(spendItems, eq(spendItemRewardTypes.itemId, spendItems.id))
           .innerJoin(spendRewardTypes, eq(spendItemRewardTypes.rewardTypeId, spendRewardTypes.id))
           .orderBy(asc(spendItems.key), asc(spendRewardTypes.sortOrder)),
-        this.rules(),
         sectionUpdatedAt(this.db, 'spendCatalog'),
       ])
     return {
       updatedAt,
-      rules,
       spendRewardTypes: rewardTypes,
       spendGroups: groups,
       spendTiles: tiles,
@@ -259,7 +245,7 @@ export class SpendCatalogRepository {
   }
 
   async adminRows(): Promise<SpendCatalogAdminRows> {
-    const [rewardTypes, groups, tiles, items, options, itemRewardTypes, rules, updatedAt] =
+    const [rewardTypes, groups, tiles, items, options, itemRewardTypes, updatedAt] =
       await Promise.all([
         this.db
           .select({ key: spendRewardTypes.key, name: spendRewardTypes.name })
@@ -300,12 +286,10 @@ export class SpendCatalogRepository {
           .innerJoin(spendItems, eq(spendItemRewardTypes.itemId, spendItems.id))
           .innerJoin(spendRewardTypes, eq(spendItemRewardTypes.rewardTypeId, spendRewardTypes.id))
           .orderBy(asc(spendItems.key), asc(spendRewardTypes.sortOrder)),
-        this.rules(),
         sectionUpdatedAt(this.db, 'spendCatalog'),
       ])
     return {
       updatedAt,
-      rules,
       rewardTypes,
       groups,
       tiles,
@@ -326,23 +310,6 @@ export class SpendCatalogRepository {
       itemOptions: options,
       itemRewardTypes,
     }
-  }
-
-  /** 규칙 셋을 적는다. 셋 다 받아 셋 다 쓴다. 보스 표의 규칙과 같은 표이고 key 가 다르다. */
-  async setRules(rules: SpendRulesInput): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const now = new Date()
-      for (const field of Object.keys(SPEND_RULE_KEYS) as SpendRuleField[]) {
-        await tx
-          .insert(gameRules)
-          .values({ key: SPEND_RULE_KEYS[field], value: rules[field], updatedAt: now })
-          .onConflictDoUpdate({
-            target: gameRules.key,
-            set: { value: rules[field], updatedAt: now },
-          })
-      }
-      await touchSection(tx, 'spendCatalog')
-    })
   }
 
   /** 묶음을 맨 뒤에 더한다. 같은 key 는 SpendGroupExists, 지출 갈래가 아니면 NoSpendCategory 다. */
@@ -533,20 +500,6 @@ export class SpendCatalogRepository {
         .orderBy(asc(spendItems.sortOrder), asc(spendItems.key))
       return this.swap(tx, spendItems, rows, key, direction)
     })
-  }
-
-  private async rules(): Promise<Record<SpendRuleField, number | null>> {
-    const rows = await this.db
-      .select()
-      .from(gameRules)
-      .where(inArray(gameRules.key, Object.values(SPEND_RULE_KEYS)))
-    const ruleOf = (field: SpendRuleField): number | null =>
-      rows.find((r) => r.key === SPEND_RULE_KEYS[field])?.value ?? null
-    return {
-      tariffPercent: ruleOf('tariffPercent'),
-      rewardCoinPriceMeso: ruleOf('rewardCoinPriceMeso'),
-      mesoMarketFeePercent: ruleOf('mesoMarketFeePercent'),
-    }
   }
 
   /** 묶음 차례 · 묶음 안 차례로. */

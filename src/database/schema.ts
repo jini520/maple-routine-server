@@ -14,6 +14,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   smallint,
@@ -34,7 +35,7 @@ const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode
 
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
 export const platformEnum = pgEnum('platform', ['ios', 'android'])
-export const noticeKindEnum = pgEnum('notice_kind', ['app', 'game', 'event', 'update', 'cashshop'])
+export const noticeTypeEnum = pgEnum('notice_type', ['app', 'game', 'event', 'update', 'cashshop'])
 /** 쓰기 경로가 사람을 어느 헤더로 찾았나. key 는 증명이 없어 집계 때 가중을 가른다. */
 export const identitySourceEnum = pgEnum('identity_source', ['login', 'key'])
 /** 앱 BOSS_DIFFICULTIES 그대로. 넥슨 API 값이고 선언 순서가 정렬 순서다. */
@@ -208,8 +209,9 @@ export const notices = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /** 앱 계약의 Notice.id. */
-    noticeKey: text('notice_key').notNull().unique(),
-    kind: noticeKindEnum('kind').notNull(),
+    /** 앱이 받는 공지의 id. 운영자 공지는 쓴 시각, 넥슨 공지는 종류와 넥슨 id 를 이은 글자다. 푸시와 기기의 닫은 공지가 든다. */
+    key: text('key').notNull().unique(),
+    type: noticeTypeEnum('type').notNull(),
     title: text('title').notNull(),
     /** 넥슨 공지는 NULL. */
     body: text('body'),
@@ -219,7 +221,6 @@ export const notices = pgTable(
     markdown: text('markdown'),
     link: text('link'),
     /** 넥슨의 notice_id. */
-    sourceId: bigint('source_id', { mode: 'number' }),
     publishedAt: timestamptz('published_at').notNull(),
     startsAt: timestamptz('starts_at'),
     endsAt: timestamptz('ends_at'),
@@ -236,7 +237,7 @@ export const notices = pgTable(
   },
   (t) => [
     index('notices_published_at_idx').on(t.publishedAt.desc(), t.id.desc()),
-    index('notices_kind_published_at_idx').on(t.kind, t.publishedAt.desc(), t.id.desc()),
+    index('notices_type_published_at_idx').on(t.type, t.publishedAt.desc(), t.id.desc()),
     index('notices_scheduled_at_idx')
       .on(t.scheduledAt)
       .where(sql`${t.scheduledAt} IS NOT NULL AND ${t.sentAt} IS NULL`),
@@ -284,12 +285,25 @@ export const bossDifficulties = pgTable(
   (t) => [unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty)],
 )
 
-/** 보스가 아니라 규칙인 값. 선택 한도 12 · 결정석 판매 한도 90 · 파티 인원 상한 기본값 6. */
+/**
+ * 게임 규칙. 규칙마다 칸이고 줄은 하나뿐이다. 규칙을 더할 때는 칸을 더한다.
+ *
+ * 줄이 하나라 게임 데이터 `gameRules` 칸의 updatedAt 은 이 줄의 updated_at 이다.
+ */
 export const gameRules = pgTable('game_rules', {
   id: uuid('id').primaryKey().defaultRandom(),
-  key: text('key').notNull().unique(),
-  value: integer('value').notNull(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  weeklyBossSelectionLimit: integer('weekly_boss_selection_limit').notNull(),
+  weeklyCrystalSaleLimit: integer('weekly_crystal_sale_limit').notNull(),
+  defaultMaxPartySize: integer('default_max_party_size').notNull(),
+  spendTariffPercent: integer('spend_tariff_percent').notNull(),
+  rewardCoinPriceMeso: bigint('reward_coin_price_meso', { mode: 'number' }).notNull(),
+  mesoMarketFeePercent: integer('meso_market_fee_percent').notNull(),
+  cubeAppraisalFreeMaxLevel: integer('cube_appraisal_free_max_level').notNull(),
+  cubeAppraisalCoefficient: integer('cube_appraisal_coefficient').notNull(),
+  starforceDestroyDefenceSurchargePercent: integer(
+    'starforce_destroy_defence_surcharge_percent',
+  ).notNull(),
 })
 
 /** 운영자가 한 보스의 직접 완료를 열어 둔 기간 하나. */
@@ -413,7 +427,7 @@ export const dropPrices = pgTable(
  *
  * 줄의 updated_at 최댓값으로 내면 줄을 지운 것이 안 보인다. 그래서 쓰기마다 이 표의 줄을 민다.
  */
-export const gameDataSections = pgTable('game_data_sections', {
+export const gameDataSectionUpdates = pgTable('game_data_section_updates', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
@@ -466,31 +480,30 @@ export const assets = pgTable(
   ],
 )
 
-/** 앱의 크롭 표 넷과 일대일. 값이 같은 그림이라도 놓이는 곳마다 잘 보이는 자리가 달라 표가 갈린다. */
-export const imageCropKindEnum = pgEnum('image_crop_kind', [
+/** 앱의 크롭 표 셋과 일대일. 값이 같은 그림이라도 놓이는 곳마다 잘 보이는 자리가 달라 표가 갈린다. */
+export const imageCropTypeEnum = pgEnum('image_crop_type', [
   'boss_portrait',
   'boss_portrait_icon',
-  'boss_portrait_modal',
   'daily_quest_region',
 ])
 
-/** 그림을 자르는 크기와 위치. 값은 CSS background-size · background-position 문법이고 운영자가 눈으로 맞춘다. */
+/** 그림을 자르는 폭과 위치. 운영자가 눈으로 맞춘다. 앱은 폭을 `<폭>% auto`, 위치를 `<가로>% <세로>%` 로 그린다. */
 export const imageCrops = pgTable(
   'image_crops',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    kind: imageCropKindEnum('kind').notNull(),
-    /** 자를 그림. 앱에는 그림 이름(확장자를 뗀 것)을 slug 로 낸다. 보스 초상이나 지역 지도다. */
+    type: imageCropTypeEnum('type').notNull(),
+    /** 자를 그림. 보스 초상이나 지역 지도다. */
     assetId: uuid('asset_id')
       .notNull()
       .references(() => assets.id),
-    /** `<퍼센트>% auto` */
-    size: text('size').notNull(),
-    /** `<퍼센트>% <퍼센트>%` */
-    position: text('position').notNull(),
+    /** 그림의 폭. 놓이는 자리의 폭에 대한 % 다. */
+    widthPercent: numeric('width_percent', { mode: 'number' }).notNull(),
+    positionXPercent: numeric('position_x_percent', { mode: 'number' }).notNull(),
+    positionYPercent: numeric('position_y_percent', { mode: 'number' }).notNull(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
-  (t) => [unique('image_crops_kind_asset_unique').on(t.kind, t.assetId)],
+  (t) => [unique('image_crops_type_asset_unique').on(t.type, t.assetId)],
 )
 
 /**
@@ -1091,20 +1104,17 @@ export const faqSheets = pgTable(
 )
 
 /** FAQ 문항 하나. sort_order 는 묶음 안의 차례다. */
-export const faqItems = pgTable(
-  'faq_items',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    sheetId: uuid('sheet_id')
-      .notNull()
-      .references(() => faqSheets.id, { onDelete: 'cascade' }),
-    sortOrder: integer('sort_order').notNull(),
-    question: text('question').notNull(),
-    /** 블록 배열. 앱은 모르는 kind 의 블록만 버린다. */
-    answer: jsonb('answer').$type<{ kind: 'paragraph'; text: string }[]>().notNull(),
-  },
-  (t) => [check('faq_items_answer_array', sql`jsonb_typeof(${t.answer}) = 'array'`)],
-)
+export const faqItems = pgTable('faq_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sheetId: uuid('sheet_id')
+    .notNull()
+    .references(() => faqSheets.id, { onDelete: 'cascade' }),
+  sortOrder: integer('sort_order').notNull(),
+  question: text('question').notNull(),
+  /** 블록 배열. 앱은 모르는 kind 의 블록만 버린다. */
+  /** 답 글. 문단은 빈 줄로 나눈다. 앱이 빈 줄에서 문단을 나눠 그린다. */
+  answer: text('answer').notNull(),
+})
 
 /** 컨텐츠 갈래. 앱 CONTENT_CATEGORIES 의 key 집합 그대로다. 카드 모양 · 길드 판정 · 계열 한도가 이 값으로 갈린다. */
 export const contentCategoryEnum = pgEnum('content_category', [

@@ -1,4 +1,4 @@
-import { gameDataSections, items } from '../../database/schema'
+import { gameDataSectionUpdates, items } from '../../database/schema'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { AssetNotFound } from '../assets/asset-refs'
 import {
@@ -144,11 +144,11 @@ describeDb('HuntLootRepository', () => {
 
   it('이름 · 그림을 고치면 아이템 줄이 바뀌므로 사냥 전리품 칸과 items 칸의 시각을 함께 민다', async () => {
     const touched = async () =>
-      (await db.select({ key: gameDataSections.key }).from(gameDataSections))
+      (await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates))
         .map((r) => r.key)
         .sort()
     await repo.create(milk)
-    await db.delete(gameDataSections)
+    await db.delete(gameDataSectionUpdates)
 
     await repo.update('reindeer_milk', { ...milk, name: '순록의 우유!' })
     expect(await touched()).toEqual(['huntLoot', 'items'])

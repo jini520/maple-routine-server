@@ -257,7 +257,7 @@ ${ASSET_PICKER}
 
   document.getElementById('tile-filter').addEventListener('input', function () { if (state.data) render(); });
   document.getElementById('r-save').addEventListener('click', async function () {
-    var r = await call('PUT', '/admin/spend-catalog/rules', { tariffPercent: Number(document.getElementById('r-tariff').value), rewardCoinPriceMeso: Number(document.getElementById('r-coin').value), mesoMarketFeePercent: Number(document.getElementById('r-fee').value) });
+    var r = await call('PUT', '/admin/game-rules', { spendTariffPercent: Number(document.getElementById('r-tariff').value), rewardCoinPriceMeso: Number(document.getElementById('r-coin').value), mesoMarketFeePercent: Number(document.getElementById('r-fee').value) });
     show(r.ok ? '규칙을 적었다' : fail('못 적었다', r), !r.ok); load();
   });
   document.getElementById('g-add').addEventListener('click', async function () {
@@ -295,9 +295,10 @@ ${ASSET_PICKER}
     document.getElementById('stat-closed').textContent = r.json.groups.filter(function (g) { return !g.isActive; }).length;
     document.getElementById('stat-items').textContent = r.json.items.length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
-    document.getElementById('r-tariff').value = r.json.rules.tariffPercent == null ? '' : r.json.rules.tariffPercent;
-    document.getElementById('r-coin').value = r.json.rules.rewardCoinPriceMeso == null ? '' : r.json.rules.rewardCoinPriceMeso;
-    document.getElementById('r-fee').value = r.json.rules.mesoMarketFeePercent == null ? '' : r.json.rules.mesoMarketFeePercent;
+    var g = await call('GET', '/admin/game-rules'); var rules = g.ok && g.json.gameRules ? g.json.gameRules : {};
+    document.getElementById('r-tariff').value = rules.spendTariffPercent == null ? '' : rules.spendTariffPercent;
+    document.getElementById('r-coin').value = rules.rewardCoinPriceMeso == null ? '' : rules.rewardCoinPriceMeso;
+    document.getElementById('r-fee').value = rules.mesoMarketFeePercent == null ? '' : rules.mesoMarketFeePercent;
     render();
   }
   load();

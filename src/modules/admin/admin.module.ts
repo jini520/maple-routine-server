@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common'
 import { AssetsModule } from '../assets/assets.module'
 import { BossDropsModule } from '../boss-drops/boss-drops.module'
 import { BossesModule } from '../bosses/bosses.module'
+import { GameRulesModule } from '../game-rules/game-rules.module'
 import { ContentsModule } from '../contents/contents.module'
 import { CrystalPricesModule } from '../crystal-prices/crystal-prices.module'
 import { DropItemsModule } from '../drop-items/drop-items.module'
@@ -35,6 +36,7 @@ import { UsageDashboardService } from './usage-dashboard.service'
 @Module({
   imports: [
     BossesModule,
+    GameRulesModule,
     ManualCompletionModule,
     NoticesModule,
     FaqsModule,

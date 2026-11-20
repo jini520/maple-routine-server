@@ -19,6 +19,8 @@ const PNG = Buffer.concat([
   Buffer.alloc(8),
 ])
 
+const ASSET = '6f1e2b3c-4d5e-4f60-8a7b-9c0d1e2f3a4b'
+
 describe('AdminAssetsController', () => {
   let app: NestFastifyApplication
   const assets = {
@@ -111,48 +113,43 @@ describe('AdminAssetsController', () => {
     expect(assets.put).not.toHaveBeenCalled()
   })
 
-  it('PUT /admin/image-crops 는 CSS 문법만 받고, DELETE 는 없으면 404 다', async () => {
-    const put = (body: object) =>
-      app.inject({ method: 'PUT', url: '/admin/image-crops/boss_portrait/zakum', payload: body })
-    expect((await put({ size: '100% auto', position: '50% 45%' })).statusCode).toBe(204)
-    expect(crops.put).toHaveBeenCalledWith('boss_portrait', 'zakum', {
-      size: '100% auto',
-      position: '50% 45%',
-    })
-    expect((await put({ size: 'cover', position: '50% 45%' })).statusCode).toBe(400)
-    expect((await put({ size: '100% auto', position: 'center' })).statusCode).toBe(400)
-    expect(
-      (
-        await app.inject({
-          method: 'PUT',
-          url: '/admin/image-crops/nope/zakum',
-          payload: { size: '100% auto', position: '50% 45%' },
-        })
-      ).statusCode,
-    ).toBe(400)
+  it('PUT /admin/image-crops 는 종류 · 그림 줄 id 와 숫자 셋을 받고, 그 밖은 400 이다. DELETE 는 없으면 404 다', async () => {
+    const crop = { widthPercent: 100, positionXPercent: 50, positionYPercent: -5 }
+    const put = (url: string, body: object) => app.inject({ method: 'PUT', url, payload: body })
+    expect((await put(`/admin/image-crops/boss_portrait/${ASSET}`, crop)).statusCode).toBe(204)
+    expect(crops.put).toHaveBeenCalledWith('boss_portrait', ASSET, crop)
+    for (const [url, body] of [
+      [`/admin/image-crops/boss_portrait/${ASSET}`, { ...crop, widthPercent: 0 }],
+      [`/admin/image-crops/boss_portrait/${ASSET}`, { widthPercent: '100% auto' }],
+      [`/admin/image-crops/boss_portrait_modal/${ASSET}`, crop],
+      ['/admin/image-crops/boss_portrait/zakum', crop],
+    ] as const) {
+      expect((await put(url, body)).statusCode).toBe(400)
+    }
+    expect(crops.put).toHaveBeenCalledTimes(1)
 
     crops.remove.mockResolvedValue(false)
     expect(
-      (await app.inject({ method: 'DELETE', url: '/admin/image-crops/boss_portrait/zakum' }))
+      (await app.inject({ method: 'DELETE', url: `/admin/image-crops/boss_portrait/${ASSET}` }))
         .statusCode,
     ).toBe(404)
   })
 
   it('PUT /admin/image-crops 는 크롭이 가리킬 그림이 그림 표에 없으면 400 이다', async () => {
-    crops.put.mockRejectedValue(new AssetNotFound('nope'))
+    crops.put.mockRejectedValue(new AssetNotFound(ASSET))
     const res = await app.inject({
       method: 'PUT',
-      url: '/admin/image-crops/boss_portrait/nope',
-      payload: { size: '100% auto', position: '50% 45%' },
+      url: `/admin/image-crops/boss_portrait/${ASSET}`,
+      payload: { widthPercent: 100, positionXPercent: 50, positionYPercent: 45 },
     })
     expect(res.statusCode).toBe(400)
-    expect(res.json()).toMatchObject({ message: '그림 표에 없는 그림이다: nope' })
+    expect(res.json()).toMatchObject({ message: `그림 표에 없는 그림이다: ${ASSET}` })
   })
 
   it('GET /admin/assets/list 는 분류 트리 · 그림 줄 · 크롭이다', async () => {
     assets.section.mockResolvedValue({ updatedAt: '2026-11-09T00:00:00.000Z', files: [] })
     assets.adminRows.mockResolvedValue([{ id: 'a', label: '벨로나' }])
-    crops.section.mockResolvedValue({ updatedAt: null, crops: [] })
+    crops.section.mockResolvedValue({ updatedAt: null, imageCrops: [] })
     groups.tree.mockResolvedValue([
       { key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] },
     ])

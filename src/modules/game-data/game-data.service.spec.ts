@@ -5,6 +5,7 @@ import type { AppImagesRepository } from '../app-images/app-images.repository'
 import type { AssetsRepository } from '../assets/assets.repository'
 import type { ImageCropsRepository } from '../assets/image-crops.repository'
 import type { BossDropsRepository } from '../boss-drops/boss-drops.repository'
+import type { GameRulesRepository, GameRulesSection } from '../game-rules/game-rules.repository'
 import type { BossesRepository, BossesSection } from '../bosses/bosses.repository'
 import type { CashbookCategoriesRepository } from '../cashbook-categories/cashbook-categories.repository'
 import type { ContentsRepository } from '../contents/contents.repository'
@@ -41,12 +42,12 @@ function stampDb(initial: string): { db: Db; set: (stamp: string) => void } {
 function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): GameDataService {
   return new GameDataService(
     bosses as unknown as BossesRepository,
+    { section: () => Promise.resolve(RULES) } as unknown as GameRulesRepository,
     empty({ bossDifficultyRewards: [] }) as unknown as BossDropsRepository,
     empty({ dropBoxes: [], dropBoxContents: [] }) as unknown as DropBoxesRepository,
     empty({ bossCrystalPrices: [] }) as unknown as CrystalPricesRepository,
     empty({ worlds: [], worldOpenPeriods: [] }) as unknown as WorldsRepository,
     empty({
-      rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
       spendRewardTypes: [],
       spendGroups: [],
       spendTiles: [],
@@ -61,11 +62,6 @@ function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): Game
     }) as unknown as SymbolCostsRepository,
     empty({ contentCategories: [], contents: [] }) as unknown as ContentsRepository,
     empty({
-      rules: {
-        cubeAppraisalFreeMaxLevel: null,
-        cubeAppraisalCoefficient: null,
-        starforceDestroyDefenceSurchargePercent: null,
-      },
       potentialResetCosts: [],
       soulPotentialResetCosts: [],
       starforceCostSteps: [],
@@ -104,9 +100,23 @@ function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): Game
   )
 }
 
+const RULES: GameRulesSection = {
+  updatedAt: '2026-10-15T00:00:00.000Z',
+  gameRules: {
+    weeklyBossSelectionLimit: 12,
+    weeklyCrystalSaleLimit: 90,
+    defaultMaxPartySize: 6,
+    spendTariffPercent: 10,
+    rewardCoinPriceMeso: 40_000_000,
+    mesoMarketFeePercent: 1,
+    cubeAppraisalFreeMaxLevel: 120,
+    cubeAppraisalCoefficient: 20,
+    starforceDestroyDefenceSurchargePercent: 200,
+  },
+}
+
 const catalog: BossesSection = {
   updatedAt: '2026-10-15T01:00:00.000Z',
-  rules: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
   bosses: [],
   bossDifficulties: [],
 }
@@ -117,13 +127,13 @@ describe('GameDataService', () => {
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
       bosses: catalog,
+      gameRules: RULES,
       bossDrops: { updatedAt: null, bossDifficultyRewards: [] },
       dropBoxes: { updatedAt: null, dropBoxes: [], dropBoxContents: [] },
       crystalPrices: { updatedAt: null, bossCrystalPrices: [] },
       worlds: { updatedAt: null, worlds: [], worldOpenPeriods: [] },
       spendCatalog: {
         updatedAt: null,
-        rules: { tariffPercent: null, rewardCoinPriceMeso: null, mesoMarketFeePercent: null },
         spendRewardTypes: [],
         spendGroups: [],
         spendTiles: [],
@@ -136,11 +146,6 @@ describe('GameDataService', () => {
       contents: { updatedAt: null, contentCategories: [], contents: [] },
       enhancementCosts: {
         updatedAt: null,
-        rules: {
-          cubeAppraisalFreeMaxLevel: null,
-          cubeAppraisalCoefficient: null,
-          starforceDestroyDefenceSurchargePercent: null,
-        },
         potentialResetCosts: [],
         soulPotentialResetCosts: [],
         starforceCostSteps: [],
@@ -175,11 +180,6 @@ describe('GameDataService', () => {
   it('빈 표도 칸을 뺀 채 주지 않는다', async () => {
     const emptyCatalog: BossesSection = {
       updatedAt: null,
-      rules: {
-        weeklyBossSelectionLimit: null,
-        weeklyCrystalSaleLimit: null,
-        defaultMaxPartySize: null,
-      },
       bosses: [],
       bossDifficulties: [],
     }

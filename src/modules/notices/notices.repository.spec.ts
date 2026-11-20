@@ -56,7 +56,6 @@ describeDb('NoticesRepository', () => {
       notice({
         noticeKey: 'game-1',
         blocks: [{ type: 'image', src: 'x' }],
-        sourceId: 1,
         link: 'https://g',
       }),
     )
@@ -65,7 +64,6 @@ describeDb('NoticesRepository', () => {
     expect(row).toMatchObject({
       noticeKey: 'game-1',
       kind: 'game',
-      sourceId: 1,
       link: 'https://g',
       blocks: [{ type: 'image', src: 'x' }],
     })
@@ -226,23 +224,27 @@ describeDb('NoticesRepository', () => {
     expect((await repo.listApp(10))[0]?.markdown).toBe('고친 **본문**')
     expect((await repo.findByKey('notice-1'))?.blocks).toEqual(edit.blocks)
 
-    expect(await repo.cancelSchedule(appId)).toBe(true)
-    expect((await repo.findAppById(appId))?.scheduledAt).toBeNull()
-    expect(await repo.cancelSchedule(appId)).toBe(false)
-
     expect(await repo.deleteApp(gameId)).toBe(false)
     expect(await repo.deleteApp(appId)).toBe(true)
     expect(await repo.findByKey('game-1')).not.toBeNull()
     expect(await repo.findByKey('notice-1')).toBeNull()
   })
 
-  it('이미 나간 예약은 취소할 수 없다', async () => {
+  // 예약한 공지가 그 시각 전에 앱에 보이면 예약한 뜻이 없다. 관리 화면은 예약한 공지도 본다.
+  it('게시 시각이 지나지 않은 공지는 앱의 목록 · 상세에서 빠지고, 지금 올리면 나온다. 관리 목록에는 늘 있다', async () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000)
     const { id } = await repo.insert(
-      notice({ noticeKey: 'notice-2', kind: 'app', scheduledAt: new Date('2026-10-02T00:00:00Z') }),
+      notice({ noticeKey: 'notice-later', kind: 'app', publishedAt: future, scheduledAt: future }),
     )
-    await repo.markSent(id, new Date())
+    await repo.insert(notice({ noticeKey: 'notice-now', kind: 'app' }))
 
-    expect(await repo.cancelSchedule(id)).toBe(false)
+    expect((await repo.list(['app'], 10)).map((r) => r.noticeKey)).toEqual(['notice-now'])
+    expect(await repo.findByKey('notice-later')).toBeNull()
+    expect((await repo.listApp(10)).map((r) => r.noticeKey)).toContain('notice-later')
+
+    await repo.setPublishedAt(id, new Date(), null)
+    expect((await repo.list(['app'], 10)).map((r) => r.noticeKey)).toContain('notice-later')
+    expect((await repo.findAppById(id))?.scheduledAt).toBeNull()
   })
 
   // 알림을 보낸 날 방문자가 뛰므로 대시보드가 날짜 아래에 놓는다. 보낸 시각이 없는 공지는 알림을 안 쏜 것이다.

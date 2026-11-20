@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing'
 import { AssetNotFound } from '../assets/asset-refs'
 import { BossDropsRepository } from '../boss-drops/boss-drops.repository'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
+import { GameRulesRepository, NoGameRules } from '../game-rules/game-rules.repository'
 import {
   CashbookCategoriesRepository,
   CashbookCategoryExists,
@@ -76,7 +77,11 @@ import {
   ManualCompletionRepository,
 } from '../manual-completion/manual-completion.repository'
 import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
-import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
+import {
+  AlreadyPublished,
+  OperatorNoticesService,
+  SchedulePassed,
+} from '../notices/operator-notices.service'
 import { DropMarketService } from '../drop-market/drop-market.service'
 import { AdminController } from './admin.controller'
 import { UsageDashboardService } from './usage-dashboard.service'
@@ -94,7 +99,6 @@ const newBoss = {
 describe('AdminController', () => {
   let app: NestFastifyApplication
   const bosses = {
-    setRules: jest.fn(),
     createBoss: jest.fn(),
     upsertDifficulty: jest.fn(),
     deleteDifficulty: jest.fn(),
@@ -138,7 +142,7 @@ describe('AdminController', () => {
     create: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
-    cancelSchedule: jest.fn(),
+    publishNow: jest.fn(),
   }
   const prices = { items: jest.fn(), points: jest.fn(), periods: jest.fn(), recent: jest.fn() }
   const market = { scopes: jest.fn(), overview: jest.fn(), detail: jest.fn() }
@@ -155,7 +159,6 @@ describe('AdminController', () => {
   const spendRepo = {
     section: jest.fn(),
     adminRows: jest.fn(),
-    setRules: jest.fn(),
     createGroup: jest.fn(),
     updateGroup: jest.fn(),
     moveGroup: jest.fn(),
@@ -194,7 +197,6 @@ describe('AdminController', () => {
   }
   const enhancementRepo = {
     adminRows: jest.fn(),
-    setRules: jest.fn(),
     setPotentialResetCost: jest.fn(),
     addPotentialResetBand: jest.fn(),
     removePotentialResetBand: jest.fn(),
@@ -208,6 +210,7 @@ describe('AdminController', () => {
     removeSuperiorItem: jest.fn(),
     setSuperiorItemIcon: jest.fn(),
   }
+  const rulesRepo = { section: jest.fn(), update: jest.fn() }
   const mvpRepo = { section: jest.fn(), update: jest.fn(), move: jest.fn() }
   const huntingRepo = {
     adminRows: jest.fn(),
@@ -262,6 +265,7 @@ describe('AdminController', () => {
       controllers: [AdminController],
       providers: [
         { provide: BossesRepository, useValue: bosses },
+        { provide: GameRulesRepository, useValue: rulesRepo },
         { provide: ManualCompletionRepository, useValue: manual },
         { provide: OperatorNoticesService, useValue: notices },
         { provide: DropPricesRepository, useValue: prices },
@@ -292,6 +296,7 @@ describe('AdminController', () => {
   beforeEach(() => {
     for (const mock of [
       ...Object.values(bosses),
+      ...Object.values(rulesRepo),
       ...Object.values(manual),
       ...Object.values(notices),
       ...Object.values(prices),
@@ -405,31 +410,33 @@ describe('AdminController', () => {
     }
   })
 
-  it('PUT /admin/bosses/rules 는 규칙 둘을 적고 204 다. 0 은 400 이다', async () => {
-    bosses.setRules.mockResolvedValue(undefined)
+  // 화면마다 자기 규칙만 보낸다. 다른 화면의 규칙을 그 화면이 읽은 옛 값으로 덮지 않으려는 것이다.
+  it('게임 규칙은 GET 이 칸 그대로이고, PUT 은 받은 규칙만 넘겨 204 다. 비거나 모르는 칸 · 범위 밖은 400, 줄이 없으면 409 다', async () => {
+    const section = { updatedAt: null, gameRules: null }
+    rulesRepo.section.mockResolvedValue(section)
+    expect((await app.inject({ method: 'GET', url: '/admin/game-rules' })).json()).toEqual(section)
 
-    const ok = await app.inject({
-      method: 'PUT',
-      url: '/admin/bosses/rules',
-      payload: { weeklyBossSelectionLimit: 12, weeklyCrystalSaleLimit: 90, defaultMaxPartySize: 6 },
-    })
-    expect(ok.statusCode).toBe(204)
-    expect(bosses.setRules).toHaveBeenCalledWith({
-      weeklyBossSelectionLimit: 12,
-      weeklyCrystalSaleLimit: 90,
-      defaultMaxPartySize: 6,
-    })
-
-    const bad = await app.inject({
-      method: 'PUT',
-      url: '/admin/bosses/rules',
-      payload: { weeklyBossSelectionLimit: 0, weeklyCrystalSaleLimit: 90 },
-    })
-    expect(bad.statusCode).toBe(400)
+    const put = (payload: object) =>
+      app.inject({ method: 'PUT', url: '/admin/game-rules', payload })
+    rulesRepo.update.mockResolvedValue(undefined)
+    expect((await put({ cubeAppraisalFreeMaxLevel: 121 })).statusCode).toBe(204)
+    expect(rulesRepo.update).toHaveBeenCalledWith({ cubeAppraisalFreeMaxLevel: 121 })
+    // 수수료율이 100 이면 앱의 환산이 0 으로 나눈다.
+    for (const payload of [
+      {},
+      { tariffPercent: 10 },
+      { mesoMarketFeePercent: 100 },
+      { weeklyBossSelectionLimit: 0 },
+    ]) {
+      expect((await put(payload)).statusCode).toBe(400)
+    }
+    expect(rulesRepo.update).toHaveBeenCalledTimes(1)
+    rulesRepo.update.mockRejectedValue(new NoGameRules())
+    expect((await put({ spendTariffPercent: 9 })).statusCode).toBe(409)
   })
 
   it('GET /admin/bosses/rows 는 게임 데이터의 bosses 칸 그대로다', async () => {
-    const catalog = { updatedAt: null, rules: {}, bosses: [] }
+    const catalog = { updatedAt: null, bosses: [] }
     bosses.catalog.mockResolvedValueOnce(catalog)
     const res = await app.inject({ method: 'GET', url: '/admin/bosses/rows' })
     expect(res.statusCode).toBe(200)
@@ -634,13 +641,13 @@ describe('AdminController', () => {
       })
     })
 
-    it('POST /admin/notices 는 검사한 본문을 서비스에 넘기고 201 이다', async () => {
+    it('POST /admin/notices 는 올릴 시각과 알림 문구를 서비스에 넘기고 201 이다', async () => {
       notices.create.mockResolvedValue({ id: ROW, noticeKey: 'k', messageId: 'm' })
 
       const res = await app.inject({
         method: 'POST',
         url: '/admin/notices',
-        payload: { ...body, push: { title: '제목', scheduledAt: '2026-12-01T10:00:00+09:00' } },
+        payload: { ...body, publishAt: '2026-12-01T10:00:00+09:00', push: { title: '제목' } },
       })
 
       expect(res.statusCode).toBe(201)
@@ -649,7 +656,8 @@ describe('AdminController', () => {
         title: '점검',
         markdown: '밤 10시',
         link: null,
-        push: { title: '제목', body: null, scheduledAt: new Date('2026-12-01T01:00:00Z') },
+        publishAt: new Date('2026-12-01T01:00:00Z'),
+        push: { title: '제목', body: null },
       })
     })
 
@@ -678,9 +686,16 @@ describe('AdminController', () => {
       const passed = await app.inject({
         method: 'POST',
         url: '/admin/notices',
-        payload: { ...body, push: { scheduledAt: '2020-01-01T00:00:00Z' } },
+        payload: { ...body, publishAt: '2020-01-01T00:00:00Z' },
       })
       expect(passed.statusCode).toBe(400)
+      notices.update.mockRejectedValueOnce(new AlreadyPublished())
+      const published = await app.inject({
+        method: 'PATCH',
+        url: `/admin/notices/${ROW}`,
+        payload: { ...body, publishAt: '2030-01-01T00:00:00Z' },
+      })
+      expect(published.statusCode).toBe(409)
 
       const noTitle = await app.inject({
         method: 'POST',
@@ -714,6 +729,7 @@ describe('AdminController', () => {
         title: '점검',
         markdown: '밤 10시',
         link: null,
+        publishAt: null,
         push: null,
       })
 
@@ -747,7 +763,7 @@ describe('AdminController', () => {
       expect(notices.create).not.toHaveBeenCalled()
     })
 
-    it('DELETE 둘은 204 이고 없으면 404 다', async () => {
+    it('지우기와 지금 올리기는 204 이고 없으면 404, 이미 올라간 공지를 지금 올리면 409 다', async () => {
       notices.remove.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
       expect(
         (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}` })).statusCode,
@@ -756,14 +772,14 @@ describe('AdminController', () => {
         (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}` })).statusCode,
       ).toBe(404)
 
-      notices.cancelSchedule.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}/schedule` })).statusCode,
-      ).toBe(204)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}/schedule` })).statusCode,
-      ).toBe(404)
-      expect(notices.cancelSchedule).toHaveBeenCalledWith(ROW)
+      const publish = async () =>
+        (await app.inject({ method: 'POST', url: `/admin/notices/${ROW}/publish` })).statusCode
+      notices.publishNow.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+      expect(await publish()).toBe(204)
+      expect(await publish()).toBe(404)
+      expect(notices.publishNow).toHaveBeenCalledWith(ROW)
+      notices.publishNow.mockRejectedValueOnce(new AlreadyPublished())
+      expect(await publish()).toBe(409)
     })
   })
 
@@ -945,10 +961,10 @@ describe('AdminController', () => {
       drops.rows.mockResolvedValue([])
       crystals.pairs.mockResolvedValue([])
       crystals.section.mockResolvedValue({ updatedAt: null, bossCrystalPrices: [] })
-      bosses.catalog.mockResolvedValue({
+      bosses.catalog.mockResolvedValue({ updatedAt: null, bosses: [] })
+      rulesRepo.section.mockResolvedValue({
         updatedAt: null,
-        rules: { defaultMaxPartySize: 6 },
-        bosses: [],
+        gameRules: { defaultMaxPartySize: 6 },
       })
 
       expect(
@@ -1260,10 +1276,9 @@ describe('AdminController', () => {
   })
 
   describe('지출 카탈로그', () => {
-    it('rows 는 관리 줄 그대로이고, 규칙은 204 · 범위 밖은 400, 묶음은 201 · 같은 key 409 · 모르면 404 다', async () => {
+    it('rows 는 관리 줄 그대로이고, 묶음은 201 · 같은 key 409 · 모르면 404 다', async () => {
       const section = {
         updatedAt: null,
-        rules: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
         rewardTypes: [],
         groups: [],
         tiles: [],
@@ -1275,36 +1290,6 @@ describe('AdminController', () => {
       expect(
         (await app.inject({ method: 'GET', url: '/admin/spend-catalog/rows' })).json(),
       ).toEqual(section)
-
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/spend-catalog/rules',
-            payload: {
-              tariffPercent: 10,
-              rewardCoinPriceMeso: 40_000_000,
-              mesoMarketFeePercent: 1,
-            },
-          })
-        ).statusCode,
-      ).toBe(204)
-      expect(spendRepo.setRules).toHaveBeenCalledWith({
-        tariffPercent: 10,
-        rewardCoinPriceMeso: 40_000_000,
-        mesoMarketFeePercent: 1,
-      })
-      // 수수료율이 100 이면 앱의 환산이 0 으로 나눈다. 빠진 칸도 앱이 표 전체를 버리므로 막는다.
-      for (const payload of [
-        { tariffPercent: 101, rewardCoinPriceMeso: 1, mesoMarketFeePercent: 1 },
-        { tariffPercent: 10, rewardCoinPriceMeso: 1, mesoMarketFeePercent: 100 },
-        { tariffPercent: 10, rewardCoinPriceMeso: 1 },
-      ]) {
-        expect(
-          (await app.inject({ method: 'PUT', url: '/admin/spend-catalog/rules', payload }))
-            .statusCode,
-        ).toBe(400)
-      }
 
       spendRepo.createGroup.mockResolvedValue({ id: ROW })
       const created = await app.inject({
@@ -1657,13 +1642,11 @@ describe('AdminController', () => {
       expect((await createSheet({ key: 'boss-manage', title: '보스 관리' })).statusCode).toBe(409)
     })
 
-    it('답은 빈 줄로 나눈 문단마다 앞뒤 공백을 걷어 문단 블록이 되고, 빈 문단은 버린다', async () => {
+    // 앱은 빈 줄에서 문단을 나눠 그린다. 빈 줄이 여럿이거나 공백만 든 줄이 섞이면 빈 문단이 그려진다.
+    it('답은 빈 줄로 나눈 문단마다 앞뒤 공백을 걷고 빈 문단을 버려 빈 줄 하나로 이은 글이 된다', async () => {
       const answer =
         '  추가 버튼을 누릅니다.\n이름을 고릅니다.  \n\n \n\n  다시 켜면 보입니다. \n\n'
-      const blocks = [
-        { kind: 'paragraph', text: '추가 버튼을 누릅니다.\n이름을 고릅니다.' },
-        { kind: 'paragraph', text: '다시 켜면 보입니다.' },
-      ]
+      const blocks = '추가 버튼을 누릅니다.\n이름을 고릅니다.\n\n다시 켜면 보입니다.'
       faqRepo.createItem.mockResolvedValue({ id: ROW })
       expect((await createItem({ question: ' 보스는 어떻게 더하나요? ', answer })).statusCode).toBe(
         201,
@@ -2287,32 +2270,12 @@ describe('AdminController', () => {
   })
 
   describe('강화 비용', () => {
-    it('rows 는 관리 줄이고, 규칙 PUT 204, 칸 PUT 204 · 모르면 404, 구간 POST 201 · 같은 구간 409, 구간 DELETE 204 · 1 구간 409 다', async () => {
+    it('rows 는 관리 줄이고, 칸 PUT 204 · 모르면 404, 구간 POST 201 · 같은 구간 409, 구간 DELETE 204 · 1 구간 409 다', async () => {
       const rows = { updatedAt: null, superiorSeries: [], superiorItems: [] }
       enhancementRepo.adminRows.mockResolvedValue(rows)
       expect(
         (await app.inject({ method: 'GET', url: '/admin/enhancement-costs/rows' })).json(),
       ).toEqual(rows)
-      enhancementRepo.setRules.mockResolvedValue(undefined)
-      expect(
-        (
-          await app.inject({
-            method: 'PUT',
-            url: '/admin/enhancement-costs/rules',
-            payload: {
-              cubeAppraisalFreeMaxLevel: 120,
-              cubeAppraisalCoefficient: 20,
-              starforceDestroyDefenceSurchargePercent: 200,
-            },
-          })
-        ).statusCode,
-      ).toBe(204)
-      expect(enhancementRepo.setRules).toHaveBeenCalledWith({
-        cubeAppraisalFreeMaxLevel: 120,
-        cubeAppraisalCoefficient: 20,
-        starforceDestroyDefenceSurchargePercent: 200,
-      })
-
       enhancementRepo.setPotentialResetCost.mockResolvedValue(true)
       expect(
         (

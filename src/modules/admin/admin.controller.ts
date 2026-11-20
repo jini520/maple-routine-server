@@ -26,10 +26,9 @@ import {
   difficultyParam,
   type PeriodInput,
   periodInput,
-  type RulesInput,
-  rulesInput,
 } from '../bosses/bosses.dto'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
+import { GameRulesRepository, NoGameRules } from '../game-rules/game-rules.repository'
 import {
   CashbookCategoriesRepository,
   CashbookCategoryExists,
@@ -140,7 +139,12 @@ import {
 } from '../worlds/worlds.repository'
 import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
 import type { AppNoticeRow } from '../notices/notices.repository'
-import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
+import {
+  AlreadyPublished,
+  OperatorNoticesService,
+  type PushRequest,
+  SchedulePassed,
+} from '../notices/operator-notices.service'
 import {
   type BossDropCreateBody,
   bossDropCreateBody,
@@ -223,8 +227,6 @@ import {
   spendItemCreateBody,
   type SpendItemUpdateBody,
   spendItemUpdateBody,
-  type SpendRulesBody,
-  spendRulesBody,
   type SpendTileCreateBody,
   spendTileCreateBody,
   type SpendTileUpdateBody,
@@ -240,8 +242,8 @@ import {
   contentUpdateBody,
   type CostBody,
   costBody,
-  type EnhancementRulesBody,
-  enhancementRulesBody,
+  type GameRulesBody,
+  gameRulesBody,
   fromStarParam,
   minRequiredLevelParam,
   mvpGradeParam,
@@ -366,6 +368,7 @@ export class AdminController {
     private readonly hexa: HexaMatrixRepository,
     private readonly faqs: FaqsRepository,
     private readonly dashboard: UsageDashboardService,
+    private readonly rules: GameRulesRepository,
   ) {}
 
   @Get()
@@ -389,11 +392,26 @@ export class AdminController {
     return this.bosses.catalog()
   }
 
-  /** 규칙 둘을 적는다. */
-  @Put('bosses/rules')
+  /** 규칙을 쓰는 화면(보스 · 지출 카탈로그 · 강화 비용)이 읽는다. 게임 데이터의 gameRules 칸과 같다. */
+  @Get('game-rules')
+  @Header('cache-control', 'no-store')
+  gameRules() {
+    return this.rules.section()
+  }
+
+  /** 받은 규칙만 고친다. 화면마다 자기 규칙만 보낸다. 규칙 줄이 없으면 409 다. */
+  @Put('game-rules')
   @HttpCode(204)
-  async setRules(@Body(new ZodValidationPipe(rulesInput)) body: RulesInput): Promise<void> {
-    await this.bosses.setRules(body)
+  async setGameRules(
+    @Body(new ZodValidationPipe(gameRulesBody)) body: GameRulesBody,
+  ): Promise<void> {
+    try {
+      await this.rules.update(body)
+    } catch (error) {
+      if (error instanceof NoGameRules)
+        throw new ConflictException('규칙 줄이 없다. 옮기는 스크립트가 만든다')
+      throw error
+    }
   }
 
   /** 새 보스를 맨 뒤에 더한다. 같은 key 가 있으면 409, 그림 표에 없는 초상이면 400 이다. */
@@ -548,7 +566,7 @@ export class AdminController {
     }
   }
 
-  /** 쓴다. 저장은 그 자리에서 되고 알림은 push 가 정한다. 지난 시각의 예약 · https 가 아닌 본문 주소는 400 이다. */
+  /** 쓴다. 올릴 시각이 있으면 그때 앱에 보이고 켠 알림도 그때 간다. 지난 시각의 예약 · https 가 아닌 본문 주소는 400 이다. */
   @Post('notices')
   @HttpCode(201)
   async createNotice(@Body(new ZodValidationPipe(noticeCreateBody)) body: NoticeCreateBody) {
@@ -557,22 +575,15 @@ export class AdminController {
         title: body.title,
         markdown: body.markdown,
         link: body.link ?? null,
-        push:
-          body.push === null || body.push === undefined
-            ? null
-            : {
-                title: body.push.title ?? null,
-                body: body.push.body ?? null,
-                scheduledAt: body.push.scheduledAt ? new Date(body.push.scheduledAt) : null,
-              },
+        publishAt: body.publishAt ? new Date(body.publishAt) : null,
+        push: pushRequest(body.push),
       })
     } catch (error) {
-      if (error instanceof SchedulePassed) throw new BadRequestException('예약 시각이 이미 지났다')
-      throw markdownRejection(error)
+      throw noticeRejection(error)
     }
   }
 
-  /** 고친다. 넥슨 공지나 없는 id 는 404, https 가 아닌 본문 주소는 400 이다. */
+  /** 고친다. 넥슨 공지나 없는 id 는 404, https 가 아닌 본문 주소 · 지난 예약 시각은 400, 올라간 공지의 시각 바꾸기는 409 다. */
   @Patch('notices/:id')
   async updateNotice(
     @Param('id', new ZodValidationPipe(rowId)) id: string,
@@ -584,13 +595,11 @@ export class AdminController {
         title: body.title,
         markdown: body.markdown,
         link: body.link ?? null,
-        push:
-          body.push === null || body.push === undefined
-            ? null
-            : { title: body.push.title ?? null, body: body.push.body ?? null },
+        publishAt: body.publishAt ? new Date(body.publishAt) : null,
+        push: pushRequest(body.push),
       })
     } catch (error) {
-      throw markdownRejection(error)
+      throw noticeRejection(error)
     }
     if (result === null) throw new NotFoundException()
     return result
@@ -602,11 +611,17 @@ export class AdminController {
     if (!(await this.notices.remove(id))) throw new NotFoundException()
   }
 
-  /** 아직 안 나간 예약을 내린다. 공지는 남는다. */
-  @Delete('notices/:id/schedule')
+  /** 예약한 공지를 지금 올린다. 켠 알림도 지금 간다. 없으면 404, 이미 올라갔으면 409 다. */
+  @Post('notices/:id/publish')
   @HttpCode(204)
-  async cancelSchedule(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
-    if (!(await this.notices.cancelSchedule(id))) throw new NotFoundException()
+  async publishNotice(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    let found: boolean
+    try {
+      found = await this.notices.publishNow(id)
+    } catch (error) {
+      throw noticeRejection(error)
+    }
+    if (!found) throw new NotFoundException()
   }
 
   /* ── FAQ ── */
@@ -949,15 +964,6 @@ export class AdminController {
   @Header('cache-control', 'no-store')
   spendCatalogRows() {
     return this.spend.adminRows()
-  }
-
-  /** 관세율과 주화 판매가를 적는다. */
-  @Put('spend-catalog/rules')
-  @HttpCode(204)
-  async setSpendRules(
-    @Body(new ZodValidationPipe(spendRulesBody)) body: SpendRulesBody,
-  ): Promise<void> {
-    await this.spend.setRules(body)
   }
 
   /** 묶음을 맨 뒤에 더한다. 같은 key 는 409, 지출 갈래가 아니면 404 다. */
@@ -1732,14 +1738,14 @@ export class AdminController {
   @Get('crystal-prices/rows')
   @Header('cache-control', 'no-store')
   async crystalPriceRows() {
-    const [pairs, catalog, section] = await Promise.all([
+    const [pairs, rules, section] = await Promise.all([
       this.crystals.pairs(),
-      this.bosses.catalog(),
+      this.rules.section(),
       this.crystals.section(),
     ])
     return {
       updatedAt: section.updatedAt,
-      defaultMaxPartySize: catalog.rules.defaultMaxPartySize,
+      defaultMaxPartySize: rules.gameRules?.defaultMaxPartySize ?? null,
       pairs,
     }
   }
@@ -1909,15 +1915,6 @@ export class AdminController {
   @Header('cache-control', 'no-store')
   enhancementCostRows() {
     return this.enhancement.adminRows()
-  }
-
-  /** 규칙 셋을 적는다. 셋 다 받는다. */
-  @Put('enhancement-costs/rules')
-  @HttpCode(204)
-  async setEnhancementRules(
-    @Body(new ZodValidationPipe(enhancementRulesBody)) body: EnhancementRulesBody,
-  ): Promise<void> {
-    await this.enhancement.setRules(body)
   }
 
   /** 잠재 재설정의 칸 하나를 고친다. 없는 칸은 404 다. */
@@ -2319,6 +2316,20 @@ function toAdminNotice(row: AppNoticeRow) {
     pushTitle: row.pushTitle,
     pushBody: row.pushBody,
   }
+}
+
+/** 알림 문구 본문을 서비스 입력으로. 없으면 알림을 안 보낸다. */
+function pushRequest(push: NoticeCreateBody['push']): PushRequest | null {
+  return push === null || push === undefined
+    ? null
+    : { title: push.title ?? null, body: push.body ?? null }
+}
+
+/** 공지 쓰기의 거절. 지난 예약 시각은 400, 이미 올라간 공지는 409, 본문 주소는 markdownRejection 이 고른다. */
+function noticeRejection(error: unknown): unknown {
+  if (error instanceof SchedulePassed) return new BadRequestException('예약 시각이 이미 지났다')
+  if (error instanceof AlreadyPublished) return new ConflictException('이미 올라간 공지다')
+  return markdownRejection(error)
 }
 
 /** 공지 본문의 거절을 400 으로 바꾼 예외. 메시지에 거절한 주소가 들어 있다. 다른 에러는 그대로 돌려준다. */

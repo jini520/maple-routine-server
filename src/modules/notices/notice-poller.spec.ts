@@ -85,7 +85,6 @@ describe('NoticePoller', () => {
         kind: 'game',
         title: '새 점검',
         link: 'https://n/2',
-        sourceId: 2,
       }),
     )
     expect(push.sendNotice).toHaveBeenCalledWith(
@@ -372,7 +371,6 @@ describe('NoticePoller', () => {
       title: '점검',
       body: '본문',
       link: null,
-      sourceId: null,
       publishedAt: NOW,
       startsAt: null,
       endsAt: null,

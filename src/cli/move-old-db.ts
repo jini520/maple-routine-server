@@ -17,6 +17,7 @@ import { Pool } from 'pg'
 import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { parseAssetPath } from '../modules/assets/asset-paths'
+import { SECTION_KEYS } from '../modules/game-data/sections'
 
 export type OldDb = NodePgDatabase<typeof oldSchema>
 export type NewDb = NodePgDatabase<typeof schema>
@@ -66,7 +67,19 @@ export interface MoveResult {
   superiorSeries: number
   superiorItems: number
   mvpGrades: number
+  gameRules: number
+  gameDataSectionUpdates: number
+  imageCrops: number
+  notices: number
+  faqSheets: number
+  faqItems: number
 }
+
+/** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
+export class UnknownCropValue extends Error {}
+
+/** 옛 DB 에 게임 규칙 줄 하나가 없다. message 가 그 key 다. */
+export class MissingGameRule extends Error {}
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
 export class SwappedDatabases extends Error {}
@@ -146,6 +159,12 @@ const MOVED_TABLES = [
   schema.superiorSeries,
   schema.superiorItems,
   schema.mvpGrades,
+  schema.gameRules,
+  schema.gameDataSectionUpdates,
+  schema.imageCrops,
+  schema.notices,
+  schema.faqSheets,
+  schema.faqItems,
 ]
 
 /**
@@ -320,6 +339,9 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const symbol = await symbolRows(oldDb)
   const hunting = await huntingGroundRows(oldDb)
   const enhancement = await enhancementCostRows(oldDb)
+  const rules = await gameRuleRow(oldDb)
+  const sectionUpdates = await sectionUpdateRows(oldDb)
+  const ops = await operationRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -366,6 +388,12 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.superiorSeries, enhancement.superiorSeries)
     await insertAll(tx, schema.superiorItems, enhancement.superiorItems)
     await insertAll(tx, schema.mvpGrades, enhancement.mvpGrades)
+    await insertAll(tx, schema.gameRules, [rules])
+    await insertAll(tx, schema.gameDataSectionUpdates, sectionUpdates)
+    await insertAll(tx, schema.imageCrops, ops.imageCrops)
+    await insertAll(tx, schema.notices, ops.notices)
+    await insertAll(tx, schema.faqSheets, ops.faqSheets)
+    await insertAll(tx, schema.faqItems, ops.faqItems)
   })
   return {
     assets: assets.length,
@@ -411,7 +439,123 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     superiorSeries: enhancement.superiorSeries.length,
     superiorItems: enhancement.superiorItems.length,
     mvpGrades: enhancement.mvpGrades.length,
+    gameRules: 1,
+    gameDataSectionUpdates: sectionUpdates.length,
+    imageCrops: ops.imageCrops.length,
+    notices: ops.notices.length,
+    faqSheets: ops.faqSheets.length,
+    faqItems: ops.faqItems.length,
   }
+}
+
+const CROP_WIDTH = /^(\d+(?:\.\d+)?)% auto$/
+const CROP_POSITION = /^(-?\d+(?:\.\d+)?)% (-?\d+(?:\.\d+)?)%$/
+
+/**
+ * 크롭 · 공지 · FAQ 의 새 줄. 줄 id 는 그대로다. 크롭의 CSS 글자는 숫자 셋으로 나누고, 앱이 읽지 않는 파티 모달 띠 줄은
+ * 옮기지 않는다. FAQ 답의 문단 블록은 빈 줄로 이은 글이 된다. 공지는 칸 이름만 바뀌고 넥슨 id 칸을 버린다.
+ */
+async function operationRows(oldDb: OldDb) {
+  const [crops, notices, sheets, items] = await Promise.all([
+    oldDb.select().from(oldSchema.imageCrops),
+    oldDb.select().from(oldSchema.notices),
+    oldDb.select().from(oldSchema.faqSheets),
+    oldDb.select().from(oldSchema.faqItems),
+  ])
+  const imageCrops = crops.flatMap((c) => {
+    if (c.kind === 'boss_portrait_modal') return []
+    const width = CROP_WIDTH.exec(c.size)
+    const position = CROP_POSITION.exec(c.position)
+    if (width === null || position === null)
+      throw new UnknownCropValue(`${c.kind} ${c.size} / ${c.position}`)
+    return [
+      {
+        id: c.id,
+        type: c.kind,
+        assetId: c.assetId,
+        widthPercent: Number(width[1]),
+        positionXPercent: Number(position[1]),
+        positionYPercent: Number(position[2]),
+        updatedAt: c.updatedAt,
+      },
+    ]
+  })
+  return {
+    imageCrops,
+    notices: notices.map((n) => ({
+      id: n.id,
+      key: n.noticeKey,
+      type: n.kind,
+      title: n.title,
+      body: n.body,
+      blocks: n.blocks,
+      markdown: n.markdown,
+      link: n.link,
+      publishedAt: n.publishedAt,
+      startsAt: n.startsAt,
+      endsAt: n.endsAt,
+      scheduledAt: n.scheduledAt,
+      sentAt: n.sentAt,
+      pushTitle: n.pushTitle,
+      pushBody: n.pushBody,
+      fetchedAt: n.fetchedAt,
+      detailFetchedAt: n.detailFetchedAt,
+    })),
+    faqSheets: sheets,
+    faqItems: items.map((i) => ({
+      id: i.id,
+      sheetId: i.sheetId,
+      sortOrder: i.sortOrder,
+      question: i.question,
+      answer: i.answer.map((block) => block.text).join('\n\n'),
+    })),
+  }
+}
+
+/** 게임 규칙 칸과 옛 규칙 줄의 key. 옛 표는 규칙마다 한 줄이었다. */
+const GAME_RULE_KEYS = {
+  weeklyBossSelectionLimit: 'weekly_boss_selection_limit',
+  weeklyCrystalSaleLimit: 'weekly_crystal_sale_limit',
+  defaultMaxPartySize: 'default_max_party_size',
+  spendTariffPercent: 'spend_tariff_percent',
+  rewardCoinPriceMeso: 'reward_coin_price_meso',
+  mesoMarketFeePercent: 'meso_market_fee_percent',
+  cubeAppraisalFreeMaxLevel: 'cube_appraisal_free_max_level',
+  cubeAppraisalCoefficient: 'cube_appraisal_coefficient',
+  starforceDestroyDefenceSurchargePercent: 'starforce_destroy_defence_surcharge_percent',
+} as const
+
+/** 옛 규칙 줄 아홉을 한 줄의 칸으로 모은다. 빠진 규칙이 있으면 멈춘다. 새 표의 칸은 비울 수 없다. */
+async function gameRuleRow(oldDb: OldDb) {
+  const rows = await oldDb.select().from(oldSchema.gameRules)
+  const valueOf = (key: string): number => {
+    const row = rows.find((r) => r.key === key)
+    if (row === undefined) throw new MissingGameRule(key)
+    return row.value
+  }
+  const updatedAt = new Date(Math.max(...rows.map((r) => r.updatedAt.getTime())))
+  return {
+    updatedAt,
+    weeklyBossSelectionLimit: valueOf(GAME_RULE_KEYS.weeklyBossSelectionLimit),
+    weeklyCrystalSaleLimit: valueOf(GAME_RULE_KEYS.weeklyCrystalSaleLimit),
+    defaultMaxPartySize: valueOf(GAME_RULE_KEYS.defaultMaxPartySize),
+    spendTariffPercent: valueOf(GAME_RULE_KEYS.spendTariffPercent),
+    rewardCoinPriceMeso: valueOf(GAME_RULE_KEYS.rewardCoinPriceMeso),
+    mesoMarketFeePercent: valueOf(GAME_RULE_KEYS.mesoMarketFeePercent),
+    cubeAppraisalFreeMaxLevel: valueOf(GAME_RULE_KEYS.cubeAppraisalFreeMaxLevel),
+    cubeAppraisalCoefficient: valueOf(GAME_RULE_KEYS.cubeAppraisalCoefficient),
+    starforceDestroyDefenceSurchargePercent: valueOf(
+      GAME_RULE_KEYS.starforceDestroyDefenceSurchargePercent,
+    ),
+  }
+}
+
+/** 칸의 갱신 시각 줄. 지금 응답에 있는 칸의 줄만 옮긴다. 옛 칸(dropItems · equipmentItems)은 items 칸으로 합쳐졌다. */
+async function sectionUpdateRows(oldDb: OldDb) {
+  const keys: readonly string[] = SECTION_KEYS
+  return (await oldDb.select().from(oldSchema.gameDataSections))
+    .filter((r) => keys.includes(r.key))
+    .map((r) => ({ id: r.id, key: r.key, updatedAt: r.updatedAt }))
 }
 
 /**

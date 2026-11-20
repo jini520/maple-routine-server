@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 
-import { assets, gameDataSections, imageCrops } from '../../database/schema'
+import { assets, gameDataSectionUpdates, imageCrops } from '../../database/schema'
 import {
   describeDb,
   insertAssets,
@@ -128,10 +128,11 @@ describeDb('AssetsRepository', () => {
     const ids = await insertAssets(db, ['items/used.png', 'bosses/old.webp'])
     await insertItems(db, [{ key: 'u', name: '쓰는 아이템', iconAssetId: ids['items/used.png'] }])
     await db.insert(imageCrops).values({
-      kind: 'boss_portrait',
+      type: 'boss_portrait',
       assetId: ids['bosses/old.webp'] ?? '',
-      size: '120% auto',
-      position: '50% 50%',
+      widthPercent: 120,
+      positionXPercent: 50,
+      positionYPercent: 50,
     })
     await expect(repo.remove(ids['items/used.png'] ?? '')).rejects.toEqual(
       new AssetInUse([{ kind: '아이템', name: '쓰는 아이템', itemCategory: null }]),
@@ -139,9 +140,9 @@ describeDb('AssetsRepository', () => {
     expect(await repo.remove(ids['bosses/old.webp'] ?? '')).toBe(true)
     expect((await db.select().from(assets)).map((r) => r.id)).toEqual([ids['items/used.png']])
     expect(await db.select().from(imageCrops)).toEqual([])
-    const touched = (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map(
-      (r) => r.key,
-    )
+    const touched = (
+      await db.select({ key: gameDataSectionUpdates.key }).from(gameDataSectionUpdates)
+    ).map((r) => r.key)
     expect(touched).toEqual(expect.arrayContaining(['assets', 'imageCrops']))
     expect(await repo.remove(ids['bosses/old.webp'] ?? '')).toBe(false)
   })

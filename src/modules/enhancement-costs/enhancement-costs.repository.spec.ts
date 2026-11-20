@@ -1,4 +1,4 @@
-import { gameDataSections } from '../../database/schema'
+import { gameDataSectionUpdates } from '../../database/schema'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { AssetNotFound } from '../assets/asset-refs'
 import {
@@ -24,30 +24,15 @@ describeDb('EnhancementCostsRepository', () => {
   afterAll(() => close())
 
   const base = { rare: 4_000_000, epic: 16_000_000, unique: 34_000_000, legendary: 40_000_000 }
-  const rules = {
-    cubeAppraisalFreeMaxLevel: 120,
-    cubeAppraisalCoefficient: 20,
-    starforceDestroyDefenceSurchargePercent: 200,
-  }
-
-  it('비어 있으면 규칙이 null 이고 표 이름의 배열이 빈다. 규칙 셋은 한 번에 적는다', async () => {
+  it('비어 있으면 표 이름의 배열이 빈다', async () => {
     expect(await repo.section()).toEqual({
       updatedAt: null,
-      rules: {
-        cubeAppraisalFreeMaxLevel: null,
-        cubeAppraisalCoefficient: null,
-        starforceDestroyDefenceSurchargePercent: null,
-      },
       potentialResetCosts: [],
       soulPotentialResetCosts: [],
       starforceCostSteps: [],
       superiorSeries: [],
       superiorItems: [],
     })
-    await repo.setRules(rules)
-    const section = await repo.section()
-    expect(section.rules).toEqual(rules)
-    expect(section.updatedAt).not.toBeNull()
   })
 
   it('구간은 등급 넷과 함께 더하고 지운다. 같은 구간은 BandExists, 1 구간은 BaseBand 다. 칸 하나를 고친다', async () => {
@@ -184,7 +169,7 @@ describeDb('EnhancementCostsRepository', () => {
 
   it('계열을 더하거나 고치고 장비를 더하거나 지우거나 그림을 바꾸면 칸의 updatedAt 이 선다', async () => {
     const touched = async (write: () => Promise<unknown>) => {
-      await db.delete(gameDataSections)
+      await db.delete(gameDataSectionUpdates)
       await write()
       return (await repo.section()).updatedAt
     }

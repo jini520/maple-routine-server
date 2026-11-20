@@ -1,4 +1,4 @@
-import { appImages, gameDataSections } from '../../database/schema'
+import { appImages, gameDataSectionUpdates } from '../../database/schema'
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
 import { AssetNotFound } from '../assets/asset-refs'
 import { touchSection } from '../game-data/sections'
@@ -40,7 +40,7 @@ describeDb('AppImagesRepository', () => {
     await db
       .insert(appImages)
       .values({ key: 'meso_pouch', assetId: ids['items/meso_pouch.webp'] ?? '' })
-    const touched = async () => (await db.select().from(gameDataSections)).length
+    const touched = async () => (await db.select().from(gameDataSectionUpdates)).length
 
     expect(await repo.set('meso_pouch', ids['items/meso_pouch.webp'] ?? '')).toBe(true)
     expect(await touched()).toBe(0)

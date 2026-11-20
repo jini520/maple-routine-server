@@ -3,34 +3,23 @@ import { layout } from './layout'
 
 /**
  * 앱 그림 화면(앱 저장소 ADR-187 결정 6 · 8). 붙일 게임 데이터 표가 없어 앱이 key 로 찾는 그림이다. key 는 앱 코드가 들어
- * 여기서는 그림만 바꾼다. 드롭 연출 프레임은 앱이 번호 차례로 재생하므로 같은 차례로 보인다.
+ * 여기서는 그림만 바꾼다. 왼쪽은 key 의 머리로 묶은 묶음이고, 오른쪽은 고른 묶음의 그림 칸이다. 칸을 눌러 그림을 고르고 저장
+ * 막대로 한 번에 보낸다. 드롭 연출 프레임은 앱이 번호 차례로 재생하므로 같은 차례로 보인다.
  */
 export const APP_IMAGES_HTML = layout(
   '/admin/app-images',
   '앱 그림',
-  `<div class="head">
-  <div>
-    <h1>앱 그림</h1>
-    <p>앱 코드가 key 로 찾는 그림이다. key 는 앱 코드가 들고 있어 여기서 더하거나 지우지 않고, 그림만 바꾼다. 바꾸면 앱이 다음에 켜거나 돌아올 때 새 그림을 받는다.</p>
-  </div>
-  <div class="stats">
-    <div class="stat"><b id="stat-count">–</b><span>key</span></div>
-    <div class="stat"><b id="stat-updated" class="mono">–</b><span>마지막 갱신</span></div>
-  </div>
-</div>
+  `<div class="top"><h1>앱 그림</h1><span class="grow"></span><span class="updated" id="updated"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
-<div id="groups" class="groups"></div>
+<div class="split"><nav class="picklist" id="list" aria-label="묶음"></nav><section class="panel" id="detail"></section></div>
 ${ASSET_PICKER}
 <style>
-  .groups { display: grid; gap: 16px }
-  .group header { display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 4px }
-  .group header h2 { margin: 0; font-size: 15px }
-  .group header span { color: var(--text-3); font-size: 12px }
-  .app-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 8px 16px 16px }
-  .app-tile { display: grid; gap: 6px; justify-items: center; padding: 10px 8px; border-radius: 10px; background: var(--surface-2); text-align: center; min-width: 0 }
-  .app-tile img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated }
-  .app-tile .key { font: 500 11.5px/1.3 var(--mono); color: var(--text); overflow-wrap: anywhere }
-  .app-tile .path { font: 400 10.5px/1.3 var(--mono); color: var(--text-3); overflow-wrap: anywhere }
+  .app-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px }
+  .app-tile { display: grid; gap: 4px; justify-items: center; padding: 8px 6px; border-radius: 10px; background: var(--surface-2); min-width: 0 }
+  .app-tile .asset-cell { flex-direction: column; width: 100%; max-width: none; padding: 4px }
+  .app-tile .asset-cell img { width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated }
+  .app-tile .asset-cell span { white-space: normal; font: 10.5px/1.3 var(--mono); overflow-wrap: anywhere; text-align: center }
+  .app-tile .key { font: 500 11.5px/1.3 var(--mono); color: var(--text); overflow-wrap: anywhere; text-align: center }
 </style>
 <script>
   /** key 의 머리로 묶는다. 앞에서부터 처음 맞는 묶음이다. */
@@ -45,8 +34,11 @@ ${ASSET_PICKER}
     ['드롭 연출 · 시작', /^drop_effect_pre_/],
     ['드롭 연출 · 반복', /^drop_effect_loop_/],
     ['드롭 연출 · 끝', /^drop_effect_end_/],
+    ['그 밖', /./],
   ];
-  var state = { images: [], assets: {} };
+  var D = null, assets = {}, current = null;
+  var batch = editing(function () { load(); });
+  function lookup(id) { return assets[id]; }
 
   // 연출 프레임은 번호가 끝에 있어 글자 차례면 10 이 2 앞에 선다.
   function byKey(a, b) {
@@ -55,55 +47,45 @@ ${ASSET_PICKER}
     return a.key < b.key ? -1 : 1;
   }
 
-  async function change(image, asset) {
-    var category = asset ? asset.category : 'item';
-    openAssetPicker({
-      categories: [category], uploadCategory: category, current: image.assetId,
-      onPick: async function (f) {
-        if (f === null) { show('앱 그림은 비울 수 없다. 다른 그림을 고른다', true); return; }
-        var r = await call('PUT', '/admin/app-images/' + image.key, { assetId: f.id });
-        show(r.ok ? image.key + ' 의 그림을 바꿨다' : fail('못 바꿨다', r), !r.ok);
-        if (r.ok) load();
-      },
-    });
-  }
-
-  function tile(image) {
-    var asset = state.assets[image.assetId];
-    var box = el('div', undefined, 'app-tile');
-    var img = el('img'); img.alt = ''; img.loading = 'lazy'; if (asset) img.src = '/assets/' + asset.file;
-    box.appendChild(img);
-    box.appendChild(el('div', image.key, 'key'));
-    box.appendChild(el('div', asset ? asset.category + '/' + asset.fileName + '.' + asset.extension : '그림 표에 없다', 'path'));
-    var b = button('바꾸기', 'btn ghost sm');
-    b.addEventListener('click', function () { change(image, asset); });
-    box.appendChild(b);
-    return box;
+  function groups() {
+    var left = D.images.slice().sort(byKey);
+    return GROUPS.map(function (g) {
+      var mine = left.filter(function (i) { return g[1].test(i.key); });
+      left = left.filter(function (i) { return mine.indexOf(i) === -1; });
+      return { key: g[0], title: g[0], meta: String(mine.length), images: mine };
+    }).filter(function (g) { return g.images.length > 0; });
   }
 
   function render() {
-    var root = document.getElementById('groups'); root.innerHTML = '';
-    var left = state.images.slice().sort(byKey);
-    GROUPS.concat([['그 밖', /./]]).forEach(function (g) {
-      var mine = left.filter(function (i) { return g[1].test(i.key); });
-      left = left.filter(function (i) { return mine.indexOf(i) === -1; });
-      if (mine.length === 0) return;
-      var card = el('section', undefined, 'card group');
-      var head = el('header'); head.appendChild(el('h2', g[0])); head.appendChild(span(mine.length + '개'));
-      var tiles = el('div', undefined, 'app-tiles');
-      mine.forEach(function (i) { tiles.appendChild(tile(i)); });
-      card.appendChild(head); card.appendChild(tiles); root.appendChild(card);
+    batch.clear();
+    var all = groups();
+    if (current === null) current = hashKey();
+    if (!all.some(function (g) { return g.key === current; })) current = all.length ? all[0].key : null;
+    pickList(document.getElementById('list'), all, current, function (k) { if (!discardOk(batch)) return; current = k; setHashKey(k); render(); });
+    var box = document.getElementById('detail'); box.innerHTML = '';
+    var group = all.filter(function (g) { return g.key === current; })[0];
+    if (!group) { box.appendChild(el('p', '앱 그림이 없다', 'dim')); return; }
+    var tiles = el('div', undefined, 'app-tiles');
+    group.images.forEach(function (image) {
+      var asset = assets[image.assetId];
+      var category = asset ? asset.category : 'item';
+      var cellRef = { c: null };
+      var send = function () { return call('PUT', '/admin/app-images/' + image.key, { assetId: cellRef.c.value() }); };
+      cellRef.c = assetCell(batch, image.key, image.assetId, send, { categories: [category], uploadCategory: category, lookup: lookup });
+      var tile = el('div', undefined, 'app-tile');
+      tile.appendChild(cellRef.c.input); tile.appendChild(el('div', image.key, 'key'));
+      tiles.appendChild(tile);
     });
+    box.appendChild(tiles);
+    box.appendChild(el('p', 'key 는 앱 코드가 들고 있어 여기서 더하거나 지우지 않는다. 앱 그림은 비울 수 없다. 바꾸면 앱이 다음에 켜거나 돌아올 때 새 그림을 받는다.', 'hint'));
   }
 
   async function load() {
     var r = await call('GET', '/admin/app-images/rows');
     var a = await call('GET', '/admin/assets/list');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
-    state.images = r.json.images;
-    state.assets = {}; a.json.rows.forEach(function (x) { state.assets[x.id] = x; });
-    document.getElementById('stat-count').textContent = state.images.length;
-    document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
+    D = r.json; assets = {}; a.json.rows.forEach(function (x) { assets[x.id] = x; });
+    document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
     render();
   }
   load();

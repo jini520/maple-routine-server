@@ -1560,4 +1560,19 @@ describeDb('moveOldDb', () => {
       }),
     ])
   })
+
+  it('앱 그림: 줄 id · key · 그림 id 를 그대로 옮긴다', async () => {
+    const asset = await insertOldAsset('items/meso_pouch.png')
+    const [image] = await oldDb
+      .insert(oldSchema.appImages)
+      .values({ key: 'meso_pouch', assetId: asset })
+      .returning({ id: oldSchema.appImages.id })
+
+    const moved = await moveOldDb(oldDb, newDb)
+
+    expect(moved).toMatchObject({ appImages: 1 })
+    expect(await newDb.select().from(schema.appImages)).toEqual([
+      { id: image.id, key: 'meso_pouch', assetId: asset },
+    ])
+  })
 })

@@ -86,6 +86,7 @@ export interface MoveResult {
   maspiDailyCloses: number
   usageEvents: number
   enhancementAnomalies: number
+  appImages: number
 }
 
 /** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
@@ -199,6 +200,7 @@ const MOVED_TABLES = [
   schema.marketResponses,
   schema.usageEvents,
   schema.enhancementAnomalies,
+  schema.appImages,
 ]
 
 /**
@@ -379,6 +381,8 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const accounts = await accountRows(oldDb)
   const market = await marketRows(oldDb, { ringLevelItems, tradeGroups, worlds, accounts })
   const logs = await logRows(oldDb)
+  // 앱 그림은 칸이 그대로라 줄 id 와 함께 옮긴다. 그림 표의 줄 id 가 그대로라 가리키는 그림도 같다.
+  const appImages = await oldDb.select().from(oldSchema.appImages)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -444,6 +448,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.maspiDailyCloses, market.maspiDailyCloses)
     await insertAll(tx, schema.usageEvents, logs.usageEvents)
     await insertAll(tx, schema.enhancementAnomalies, logs.enhancementAnomalies)
+    await insertAll(tx, schema.appImages, appImages)
   })
   return {
     assets: assets.length,
@@ -508,6 +513,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     maspiDailyCloses: market.maspiDailyCloses.length,
     usageEvents: logs.usageEvents.length,
     enhancementAnomalies: logs.enhancementAnomalies.length,
+    appImages: appImages.length,
   }
 }
 

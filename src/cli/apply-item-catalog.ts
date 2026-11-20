@@ -5,7 +5,7 @@
  * `--apply` 를 붙여야 쓴다. 폴더에는 `plan.json`(CatalogPlan)과 `items/` 그림이 있다.
  *
  * @example
- * npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/apply-item-catalog.js https://mapleroutine.store ~/Downloads/item-catalog --apply
+ * npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/apply-item-catalog.js https://admin.mapleroutine.store ~/Downloads/item-catalog --apply
  */
 import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'

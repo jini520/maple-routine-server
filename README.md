@@ -47,7 +47,9 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   ~/.config/maple-routine-server/.env     값 전부. 이름 목록은 .env.example 과 src/config/env.schema.ts
   ~/.config/maple-routine-server/fcm-key.json   FCM 서비스 계정 키. compose 가 /run/secrets/fcm-key.json 으로 건다
   ~/.config/maple-routine-server/db.env   DATABASE_URL 하나. psql 을 도커로 띄울 때 쓴다
-  /etc/nginx/sites-available/mapleroutine /v1 · /admin 을 127.0.0.1:4000 으로 넘기고, /assets/ 는 아래 디렉터리를 바로 낸다
+  /etc/nginx/sites-available/mapleroutine 주소 넷(mapleroutine.store · api · admin · info)의 server 블록. admin 이 /admin 을 127.0.0.1:4000 으로 넘긴다
+  /etc/nginx/snippets/mapleroutine-api.conf  루트와 api 가 함께 include 하는 서버 경로. /v1 을 127.0.0.1:4000 으로 넘기고, /assets/ · /ota/files/ 는 아래 디렉터리를 바로 낸다
+  /etc/nginx/snippets/mapleroutine-site.conf 루트와 info 가 함께 include 하는 안내 사이트
   /etc/nginx/nginx.conf                   gzip 설정. JSON 을 줄인다(아래 nginx 압축)
   /etc/docker/daemon.json                 {"live-restore": true}. 데몬을 다시 켜도 서버 컨테이너가 멈추지 않는다(아래 Docker 데몬)
   /srv/maple-routine-assets/              그림 파일(<sha256>.<확장자>). compose 가 /data/assets 로 건다. 주인은 uid 1000(컨테이너의 node)
@@ -109,10 +111,11 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   있다. 게임 데이터 표의 그림 칸은 그림 표의 `id` 를 FK 로 가리킨다(앱 저장소 `ADR-187` 결정 3). 그래서 쓰이는 그림은 지울 수 없고,
   관리 화면 API 는 지금처럼 파일 이름 · slug 글자를 받아 그림 id 로 푼다(없으면 400). 앱에 내는 게임 데이터는 그림 경로에서 그 글자를
   다시 만들어 예전과 같다. 처음 채울 때는 맥에서
-  `npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://mapleroutine.store ~/Developments/maple-routine` 이다.
+  `npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://admin.mapleroutine.store ~/Developments/maple-routine` 이다.
   이미 있는 경로와 크롭은 건너뛴다. 분류 확인을 마친 아이템의 분류 · 그림 · 새 아이템은
-  `ADMIN_AUTH=아이디:비밀번호 node dist/cli/apply-item-catalog.js https://mapleroutine.store <폴더> --apply` 로 넣는다. 폴더에는
-  `plan.json` 과 `items/` 그림이 있다. `--apply` 를 빼면 할 일만 보인다. 이미 붙은 그림은 바꾸지 않는다. nginx 는 이렇게 둔다.
+  `ADMIN_AUTH=아이디:비밀번호 node dist/cli/apply-item-catalog.js https://admin.mapleroutine.store <폴더> --apply` 로 넣는다. 관리 화면은
+  admin 주소에서만 열리므로(앱 저장소 `ADR-016` 결정 14) 루트 주소를 주면 404 다. 폴더에는
+  `plan.json` 과 `items/` 그림이 있다. `--apply` 를 빼면 할 일만 보인다. 이미 붙은 그림은 바꾸지 않는다. nginx(`snippets/mapleroutine-api.conf`)는 이렇게 둔다.
 
   ```
   location /assets/ {
@@ -128,7 +131,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 - **OTA 는 앱 저장소의 `node scripts/publish-rn-ota.mjs` 가 올린다**(앱 저장소 `ADR-011` 결정 1 · 13). 스크립트가 맥에서 rsync 로
   `/srv/maple-routine-ota/` 에 쓰고, 서버는 `GET /v1/ota/manifest` · `GET /v1/ota/latest` 로 매니페스트만 읽어 준다. 번들과 에셋은
   nginx 가 `files/` 를 바로 낸다. 번들은 옆에 둔 `.gz` 를 `gzip_static` 이 그대로 내준다. 최근 세 번의 발행이 쓰지 않는 파일은
-  스크립트가 지운다. nginx 는 이렇게 둔다.
+  스크립트가 지운다. nginx(`snippets/mapleroutine-api.conf`)는 이렇게 둔다.
 
   ```
   location /ota/files/ {
@@ -182,7 +185,8 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
     하려는 것이다. `/v1/maintenance` 와 OTA 확인(`/v1/ota/`)만 예외다. `/admin` 은 막지 않는다.
   - 503 으로 점검을 알리지 않는 것은 nginx 가 속도 제한에 걸린 요청에도 503 을 내기 때문이다.
 
-  nginx 는 이렇게 둔다. `/v1/` 과 `/v1/friends/stream` 두 블록에는 맨 위에 `if` 를 넣고, 나머지 줄은 그대로 둔다.
+  nginx 는 이렇게 둔다. 서버 경로는 `/etc/nginx/snippets/mapleroutine-api.conf` 에 있어서 루트와 api 주소에 함께 걸린다(앱 저장소
+  `ADR-016` 결정 14). `/v1/` 과 `/v1/friends/stream` 두 블록에는 맨 위에 `if` 를 넣고, 나머지 줄은 그대로 둔다.
 
   ```
   # 점검 상태. 파일이 있으면 점검 중이다.
@@ -268,5 +272,3 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   재시작은 필요 없다. firebase 가 보낼 때마다 키를 읽는다.
 - **옛 서버와 같이 도는 동안 `FCM_KEY` 를 비워 둔다.** 두 서버가 같은 넥슨 공지를 보고 각자 알림을 쏘면 사용자가
   두 번 받는다. 전환할 때 옛 컨테이너를 먼저 세우고 `FCM_KEY=/run/secrets/fcm-key.json` 으로 채워 다시 띄운다.
-- **되돌리기는 nginx 하나다.** 설정 파일을 옛것으로 바꿔 `nginx -s reload` 하면 미니 PC 의 옛 서버로 돌아간다. 옛
-  서버의 DB 는 안 건드렸다.

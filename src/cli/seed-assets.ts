@@ -5,7 +5,7 @@
  * 서버에 이미 있는 경로와 크롭은 건너뛴다.
  *
  * @example
- * npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://mapleroutine.store ~/Developments/maple-routine
+ * npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://admin.mapleroutine.store ~/Developments/maple-routine
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'

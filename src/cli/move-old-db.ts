@@ -9,7 +9,7 @@
  */
 import { randomUUID } from 'node:crypto'
 
-import { eq, getTableName, isNotNull, sql } from 'drizzle-orm'
+import { and, eq, getTableName, isNotNull, sql } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import type { PgTable } from 'drizzle-orm/pg-core'
 import { Pool } from 'pg'
@@ -87,6 +87,7 @@ export interface MoveResult {
   usageEvents: number
   enhancementAnomalies: number
   appImages: number
+  dropSalePrices: number
 }
 
 /** 크롭의 크기 · 위치 글자가 `<폭>% auto` · `<가로>% <세로>%` 꼴이 아니다. message 가 그 줄의 값이다. */
@@ -102,7 +103,7 @@ export class SwappedDatabases extends Error {}
 export class UnmovedRecords extends Error {}
 
 /** 2026-11-17 운영에 줄이 없어 옮기지 않는 옛 기록 표. 1.0.14 까지의 앱이 올리지 않는 표다. */
-const EMPTY_OLD_RECORD_TABLES = [oldSchema.enhancementTotals]
+const EMPTY_OLD_RECORD_TABLES = [oldSchema.enhancementTotals, oldSchema.bossClears]
 
 /** 옛 그림 경로의 폴더 · 확장자를 분류로 읽지 못했다. message 가 그 경로다. */
 export class UnknownAssetPath extends Error {}
@@ -207,6 +208,7 @@ const MOVED_TABLES = [
   schema.usageEvents,
   schema.enhancementAnomalies,
   schema.appImages,
+  schema.dropSalePrices,
 ]
 
 /**
@@ -392,6 +394,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const accounts = await accountRows(oldDb)
   const market = await marketRows(oldDb, { ringLevelItems, tradeGroups, worlds, accounts })
   const logs = await logRows(oldDb)
+  const salePrices = await dropSalePriceRows(oldDb, ringLevelItems)
   // 앱 그림은 칸이 그대로라 줄 id 와 함께 옮긴다. 그림 표의 줄 id 가 그대로라 가리키는 그림도 같다.
   const appImages = await oldDb.select().from(oldSchema.appImages)
 
@@ -460,6 +463,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.usageEvents, logs.usageEvents)
     await insertAll(tx, schema.enhancementAnomalies, logs.enhancementAnomalies)
     await insertAll(tx, schema.appImages, appImages)
+    await insertAll(tx, schema.dropSalePrices, salePrices)
   })
   return {
     assets: assets.length,
@@ -525,6 +529,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     usageEvents: logs.usageEvents.length,
     enhancementAnomalies: logs.enhancementAnomalies.length,
     appImages: appImages.length,
+    dropSalePrices: salePrices.length,
   }
 }
 
@@ -532,6 +537,51 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
  * 로그 표의 새 줄. 줄 id 그대로다. 신원 종류는 사람의 값이라 걷는다. 강화 이상 보고의 사람은 넥슨 계정 줄이 가리키고, 장비
  * key 는 읽는 곳이 없어 걷는다. 옛 한 줄의 기준에는 상세가 없어, 새 기준에서 겹치는 줄은 생기지 않는다.
  */
+/**
+ * 옛 드롭 가격 줄을 판매가 줄로 옮긴다. 가격을 적은 줄만 옮기고 줄 id 는 기기의 드롭 id 다. 같은 드롭 id 의 줄이 둘이면 나중에
+ * 올라온 줄을 남긴다. 같은 드롭이 사람 줄 둘에 한 번씩 올라온 것이다. 반지 줄은 그 레벨의 아이템 줄로 바꾸고 맞는 줄이 없으면
+ * 멈춘다. 보스 · 난이도 · 기간 · 상자는 판매가 표에 없어 버린다.
+ */
+async function dropSalePriceRows(
+  oldDb: OldDb,
+  ringLevelItems: readonly { itemId: string; ringItemId: string; ringLevel: number }[],
+) {
+  const rows = await oldDb
+    .select()
+    .from(oldSchema.dropPrices)
+    .where(
+      and(
+        eq(oldSchema.dropPrices.recordStatus, 'completed'),
+        isNotNull(oldSchema.dropPrices.priceMeso),
+      ),
+    )
+  const levelItem = new Map(ringLevelItems.map((r) => [`${r.ringItemId}|${r.ringLevel}`, r.itemId]))
+  const latest = new Map<string, (typeof rows)[number]>()
+  for (const row of rows) {
+    const kept = latest.get(row.dropRecordId)
+    if (kept === undefined || kept.createdAt < row.createdAt) latest.set(row.dropRecordId, row)
+  }
+  return [...latest.values()].map((row) => {
+    let itemId = row.itemId
+    if (row.ringLevel !== null) {
+      const level = levelItem.get(`${row.itemId}|${row.ringLevel}`)
+      if (level === undefined) throw new UnknownRingLevel(`${row.itemId} · ${row.ringLevel}`)
+      itemId = level
+    }
+    return {
+      id: row.dropRecordId,
+      userId: row.userId,
+      itemId,
+      worldId: row.worldId,
+      salePriceMeso: row.priceMeso ?? 0,
+      // completed 줄은 옛 표의 CHECK 가 거래 시각을 채운다.
+      pricedAt: row.pricedAt ?? row.updatedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }
+  })
+}
+
 async function logRows(oldDb: OldDb) {
   const [events, anomalies] = await Promise.all([
     oldDb.select().from(oldSchema.usageEvents),

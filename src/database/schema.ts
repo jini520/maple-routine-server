@@ -9,6 +9,7 @@ import {
   boolean,
   check,
   customType,
+  foreignKey,
   date,
   doublePrecision,
   index,
@@ -297,7 +298,11 @@ export const bossDifficulties = pgTable(
     validFrom: text('valid_from'),
     validUntil: text('valid_until'),
   },
-  (t) => [unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty)],
+  (t) => [
+    unique('boss_difficulties_boss_difficulty_unique').on(t.bossId, t.difficulty),
+    // 수익 건이 난이도와 보스를 함께 가리켜, 난이도 줄과 어긋난 보스가 들어가지 못하게 한다.
+    unique('boss_difficulties_id_boss_unique').on(t.id, t.bossId),
+  ],
 )
 
 /**
@@ -344,96 +349,31 @@ export const bossManualCompletionPeriods = pgTable(
 )
 
 /**
- * 가격 줄의 상태. 미입력(pending) · 기록 안함(skipped)도 줄이 선다. deleted 는 기기에서 기록이 사라진 것이고 DELETE 가
- * 적는다. 가격은 completed 만 갖는다(CHECK).
+ * 사용자가 적은 드롭 판매가 한 건. 시세를 재는 데만 쓴다. 줄 id 는 그 판매가가 나온 드롭(`boss_drops`)의 id 이고, 서버가 가격을
+ * 적은 드롭을 받을 때 같은 처리 안에서 적는다. 시세는 사람마다 한 표로 세므로 사람 줄을 적고, 계정을 삭제하면 사람만 비우고 줄은
+ * 남긴다. 기기끼리 맞추는 표가 아니라 변경 번호가 없다.
  */
-export const dropRecordStatusEnum = pgEnum('drop_record_status', [
-  'pending',
-  'completed',
-  'skipped',
-  'deleted',
-])
-
-export const dropPrices = pgTable(
-  'drop_prices',
+export const dropSalePrices = pgTable(
+  'drop_sale_prices',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    /**
-     * 올린 사람. ocid 가 없는 줄(1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱)은 이 칸과 기록 id 로 찾는다. 계정을 삭제하면 비우고
-     * 줄은 남긴다.
-     */
+    id: uuid('id').primaryKey(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
-    /** 기기가 만든 v4. 메이플 ID 안에서(옛 줄은 사람 안에서) 유일하다. 남의 기록 id 로 남의 줄을 못 덮는다. */
-    dropRecordId: uuid('drop_record_id').notNull(),
-    /** 드롭한 캐릭터의 메이플 ID. 계정을 삭제하면 비운다. 메이플 ID · ocid 없이 온 드롭(1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱)은 NULL 이다. */
-    mapleId: text('maple_id').references(() => mapleIds.hash, {
-      onDelete: 'set null',
-      onUpdate: 'cascade',
-    }),
-    /** 드롭한 캐릭터의 ocid 해시. 원문이 아니라 계정을 삭제해도 남겨, 돌아와 다시 보낸 같은 드롭을 막는다. */
-    ocid: text('ocid'),
-    /** 같은 드롭을 가리는 보스. 난이도를 넣으면 난이도만 고친 같은 드롭이 두 줄이 된다. 표에 없는 보스면 NULL. */
-    bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
-    /**
-     * 획득처. 상자에서 나온 드롭이면 그 상자 아이템이고, 보스가 직접 떨군 드롭은 NULL 이다. 한 캐릭터는 한 기간에 한 보스에게서
-     * 같은 아이템을 둘 얻지 못해, 같은 아이템은 획득처로만 갈린다.
-     */
-    boxOriginItemId: uuid('box_origin_item_id').references(() => items.id),
-    identifiedBy: identitySourceEnum('identified_by').notNull(),
-    /** 어느 아이템의 시세인가. 서버가 전송값의 key 로 찾아 적고, 모르는 key 는 받지 않는다. */
+    /** 판 아이템. 반지는 레벨 줄, 상자에서 나온 연마석은 따로 둔 줄이다. 시세는 같은 물건 연결을 따라 원래 아이템으로 모은다. */
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id),
-    /** 판매 총액. 내 몫이 아니다. completed 만 값이 있고 나머지 상태는 NULL 이다. 0 으로 적으면 미입력과 구분이 사라진다. */
-    priceMeso: bigint('price_meso', { mode: 'number' }),
-    recordStatus: dropRecordStatusEnum('record_status').notNull(),
-    /** 주간 YYYY-MM-DD · 월간 YYYY-MM. */
-    periodKey: text('period_key').notNull(),
-    /** 어느 월드에서 팔았나. 앱이 월드를 모르면 NULL 이고, 모르는 key 는 받지 않는다. */
+    /** 판 월드. 시세를 재는 범위가 된다. 월드를 모르는 옛 줄은 비어 있고 어느 시세에도 들지 않는다. */
     worldId: uuid('world_id').references(() => worlds.id),
-    ringLevel: integer('ring_level'),
-    /** 어느 보스 · 난이도에서 얻었나. 표에 없는 쌍이거나 이 칸이 생기기 전 줄은 NULL. */
-    bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
-      onDelete: 'set null',
-    }),
-    /** 어느 처치 기간의 드롭인가. 기기의 기간 행 id 이고 사람 안에서만 뜻이 있다. 이 칸이 생기기 전 줄은 NULL. */
-    periodRecordId: uuid('period_record_id'),
-    /**
-     * 가격이 처음 적히거나 바뀐 시각. 시세의 거래 시각이다. completed 만 값이 있다.
-     * 기기가 그룹을 저장할 때마다 같은 값을 다시 보내 updated_at 이 움직이므로 거래 시각으로 못 쓴다.
-     */
-    pricedAt: timestamptz('priced_at'),
+    /** 판매 총액. 내 몫이 아니다. */
+    salePriceMeso: bigint('sale_price_meso', { mode: 'number' }).notNull(),
+    /** 가격을 적은 시각. 시세의 거래 시각이다. */
+    pricedAt: timestamptz('priced_at').notNull(),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
   (t) => [
-    unique('drop_prices_user_record_unique').on(t.userId, t.dropRecordId),
-    unique('drop_prices_maple_record_unique').on(t.mapleId, t.dropRecordId),
-    // 같은 드롭은 누가 보냈든 한 줄이다. 기기에서 지운 줄이 자리를 쥐면 같은 자리에 다시 적은 드롭을 못 받는다.
-    // 직접 떨군 드롭끼리도 같은 획득처라 NULL 을 한 값으로 묶는다. 그대로 두면 NULL 끼리 달라 두 줄이 된다.
-    uniqueIndex('drop_prices_same_drop_unique')
-      .on(
-        t.ocid,
-        t.bossId,
-        t.periodKey,
-        t.itemId,
-        sql`coalesce(${t.boxOriginItemId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
-      )
-      .where(sql`${t.recordStatus} <> 'deleted'`),
-    index('drop_prices_item_period_idx')
-      .on(t.itemId, t.periodKey)
-      .where(sql`${t.recordStatus} = 'completed'`),
-    check(
-      'drop_prices_price_matches_status',
-      sql`(${t.recordStatus} = 'completed') = (${t.priceMeso} IS NOT NULL)`,
-    ),
-    check(
-      'drop_prices_priced_at_matches_status',
-      sql`(${t.recordStatus} = 'completed') = (${t.pricedAt} IS NOT NULL)`,
-    ),
-    index('drop_prices_priced_at_idx')
-      .on(t.pricedAt)
-      .where(sql`${t.recordStatus} = 'completed'`),
+    index('drop_sale_prices_priced_at_idx').on(t.pricedAt),
+    index('drop_sale_prices_user_id_idx').on(t.userId),
   ],
 )
 
@@ -1404,68 +1344,6 @@ export const huntingGroundLevels = pgTable(
   ],
 )
 
-/** 분배 방식. 비율 1:3 과 균등 3인은 두 수가 같아 이 칸 없이는 못 가른다. */
-export const splitModeEnum = pgEnum('split_mode', ['even', 'ratio'])
-/** 처치를 누가 적었나. auto 는 동기화, manual 은 사용자가 직접 적은 완료다. */
-export const clearSourceEnum = pgEnum('clear_source', ['auto', 'manual'])
-
-/**
- * 보스 처치 기간 하나의 최종값. 기기의 boss_party_periods 중 처치한 행이고, 기기가 기준이라 서버는 사본이다.
- *
- * 처치를 취소하거나 기록이 사라지면 줄을 남기고 deleted_at 을 적는다.
- */
-export const bossClears = pgTable(
-  'boss_clears',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    identifiedBy: identitySourceEnum('identified_by').notNull(),
-    /** 기기의 기간 행 id. 메이플 ID 안에서만 유일하다. 리프로 ocid 가 바뀌어도 이것으로 같은 줄을 찾는다. */
-    periodRecordId: uuid('period_record_id').notNull(),
-    /** 잡은 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
-    mapleId: text('maple_id')
-      .notNull()
-      .references(() => mapleIds.hash, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    ocid: text('ocid').notNull(),
-    /** 같은 처치를 가리는 보스. 표에 없는 보스면 NULL. */
-    bossId: uuid('boss_id').references(() => bosses.id, { onDelete: 'set null' }),
-    /** 표에 없는 보스 · 난이도면 NULL. */
-    bossDifficultyId: uuid('boss_difficulty_id').references(() => bossDifficulties.id, {
-      onDelete: 'set null',
-    }),
-    cycle: bossCycleEnum('cycle').notNull(),
-    /** 주간 YYYY-MM-DD · 월간 YYYY-MM. */
-    periodKey: text('period_key').notNull(),
-    /** 앱이 월드를 모르면 NULL 이고, 모르는 key 는 받지 않는다. */
-    worldId: uuid('world_id').references(() => worlds.id),
-    priceMeso: bigint('price_meso', { mode: 'number' }).notNull(),
-    /** 받은 몫. 분배와 수수료를 뗀 값이다. */
-    payoutMeso: bigint('payout_meso', { mode: 'number' }).notNull(),
-    splitMode: splitModeEnum('split_mode').notNull(),
-    partySize: integer('party_size').notNull(),
-    myShare: integer('my_share'),
-    sharesTotal: integer('shares_total'),
-    splitFeePercent: integer('split_fee_percent'),
-    /** 처치 날짜(KST YYYY-MM-DD). 모르면 NULL. */
-    defeatedDate: text('defeated_date'),
-    source: clearSourceEnum('source').notNull(),
-    deletedAt: timestamptz('deleted_at'),
-    createdAt: timestamptz('created_at').notNull().defaultNow(),
-    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
-  },
-  (t) => [
-    unique('boss_clears_maple_record_unique').on(t.mapleId, t.periodRecordId),
-    // 한 캐릭터는 한 기간에 한 보스를 한 번 잡는다. 난이도를 넣으면 난이도만 고친 같은 처치가 두 줄이 된다.
-    uniqueIndex('boss_clears_same_clear_unique')
-      .on(t.ocid, t.bossId, t.periodKey)
-      .where(sql`${t.deletedAt} IS NULL`),
-    index('boss_clears_difficulty_period_idx').on(t.bossDifficultyId, t.periodKey),
-    check(
-      'boss_clears_ratio_shares',
-      sql`(${t.splitMode} = 'ratio') = (${t.myShare} IS NOT NULL AND ${t.sharesTotal} IS NOT NULL)`,
-    ),
-  ],
-)
-
 /**
  * 가계부 기록 한 건의 최종값. 기기의 cashbook_entries 사본이다. 금액은 품목 줄에 있다.
  *
@@ -2239,6 +2117,174 @@ export const enhancementSettledDays = pgTable(
       t.nexonAccountId,
       t.apiType,
       t.historyDate,
+    ),
+  ],
+)
+
+/** 처치를 누가 적었는지. auto 는 동기화, manual 은 사용자가 직접 적은 완료다. */
+export const clearRecordedByEnum = pgEnum('clear_recorded_by', ['auto', 'manual'])
+
+/** 드롭의 가격을 적었는지 */
+export const dropPriceStatusEnum = pgEnum('drop_price_status', ['pending', 'entered', 'skipped'])
+
+/**
+ * 한 캐릭터가 한 기간에 한 보스 · 난이도에서 얻는 수익 한 건. 처치하지 않은 기간도 그 주만 바꾼 분배와 드롭을 담아 줄이 선다.
+ * 처치했는지는 적은 쪽(`clear_recorded_by`)이 차 있는지로 안다. 처치한 줄은 결정석 가격 · 받는 메소 · 적은 쪽이 모두 차 있다.
+ * 줄 id 는 기기의 기간 행 id 다.
+ *
+ * 처치한 줄은 캐릭터 · 보스 · 기간으로도 가린다. 한 캐릭터는 한 기간에 한 보스를 한 번만 잡는다. 기기에서 지운 줄이 자리를 쥐면
+ * 같은 자리에 다시 적은 기록을 못 받아 두 기준 모두 지운 줄은 빼고 견준다. 기간 값의 첫 글자가 난이도의 주기와 맞는지는 쓰는
+ * 코드가 본다.
+ */
+export const bossProfitEntries = pgTable(
+  'boss_profit_entries',
+  {
+    id: uuid('id').primaryKey(),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    /** 난이도 줄에서 채운다. 처치한 줄의 기준이 보스라 둔다. */
+    bossId: uuid('boss_id')
+      .notNull()
+      .references(() => bosses.id),
+    bossDifficultyId: uuid('boss_difficulty_id').notNull(),
+    /** 주간 `W202647` · 월간 `M202611` */
+    periodCode: text('period_code').notNull(),
+    /** 그 기간에 캐릭터가 있던 월드 */
+    worldId: uuid('world_id').references(() => worlds.id),
+    /** 결정석 한 개의 가격. 나누기 전 전체 금액이다. */
+    crystalPriceMeso: bigint('crystal_price_meso', { mode: 'number' }),
+    /** 가격을 분배대로 나눈 뒤 내가 받는 메소 */
+    crystalReceivedMeso: bigint('crystal_received_meso', { mode: 'number' }),
+    splitType: splitTypeEnum('split_type'),
+    partySize: integer('party_size'),
+    /** 내 몫. % 에 1000 을 곱한 정수(0 ~ 100000) */
+    splitShareMillipercent: integer('split_share_millipercent'),
+    splitFeePercent: integer('split_fee_percent'),
+    splitFeeFollowsMvpGrade: boolean('split_fee_follows_mvp_grade').notNull(),
+    /** 처치한 날짜(KST). 모르면 비어 있다. */
+    clearedDate: date('cleared_date', { mode: 'string' }),
+    clearRecordedBy: clearRecordedByEnum('clear_recorded_by'),
+    ...syncColumns(),
+  },
+  (t) => [
+    foreignKey({
+      name: 'boss_profit_entries_difficulty_boss_fk',
+      columns: [t.bossDifficultyId, t.bossId],
+      foreignColumns: [bossDifficulties.id, bossDifficulties.bossId],
+    }),
+    uniqueIndex('boss_profit_entries_character_difficulty_period_unique')
+      .on(t.characterId, t.bossDifficultyId, t.periodCode)
+      .where(sql`${t.deletedAt} IS NULL`),
+    uniqueIndex('boss_profit_entries_cleared_character_boss_period_unique')
+      .on(t.characterId, t.bossId, t.periodCode)
+      .where(sql`${t.clearRecordedBy} IS NOT NULL AND ${t.deletedAt} IS NULL`),
+    check(
+      'boss_profit_entries_cleared_check',
+      sql`(${t.clearRecordedBy} IS NULL) = (${t.crystalPriceMeso} IS NULL)
+          AND (${t.clearRecordedBy} IS NULL) = (${t.crystalReceivedMeso} IS NULL)`,
+    ),
+    check(
+      'boss_profit_entries_split_check',
+      sql`(${t.splitType} IS DISTINCT FROM 'excluded'
+            OR (${t.partySize} IS NULL AND ${t.splitShareMillipercent} IS NULL))
+          AND ${t.splitShareMillipercent} BETWEEN 0 AND 100000`,
+    ),
+    // 처치한 줄의 비율 분배는 그 처치를 계산한 요율이 있어야 한다. 처치 전 줄은 자동이면 비우고 수동이면 채운다.
+    check(
+      'boss_profit_entries_fee_check',
+      sql`CASE WHEN ${t.clearRecordedBy} IS NOT NULL
+               THEN ${t.splitType} IS DISTINCT FROM 'ratio' OR ${t.splitFeePercent} IS NOT NULL
+               ELSE (${t.splitFeeFollowsMvpGrade} = (${t.splitFeePercent} IS NULL)) END`,
+    ),
+  ],
+)
+
+/**
+ * 한 수익 건에서 나온 드롭 한 개와 그 판매 기록. 가격을 적지 않은 드롭도 든다. 캐릭터 · 보스 · 기간 · 월드는 수익 건에서 읽고,
+ * 수익 건이 지워지면 함께 지워진다. 나온 상자는 수익 건의 난이도와 아이템으로 드롭 표에서 찾는다. 줄 id 는 기기의 드롭 id 다.
+ * 수수료가 비어 있으면 수수료 없음이다.
+ */
+export const bossDrops = pgTable(
+  'boss_drops',
+  {
+    id: uuid('id').primaryKey(),
+    profitEntryId: uuid('profit_entry_id')
+      .notNull()
+      .references(() => bossProfitEntries.id, { onDelete: 'cascade' }),
+    /** 얻은 아이템. 반지는 레벨까지 정해진 줄이다. */
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id),
+    category: dropCategoryEnum('category').notNull(),
+    priceStatus: dropPriceStatusEnum('price_status').notNull(),
+    /** 판매 총액. 가격을 적은 줄에만 있다. */
+    salePriceMeso: bigint('sale_price_meso', { mode: 'number' }),
+    /** 판매 수수료와 분배를 반영해 내가 받는 메소 */
+    saleReceivedMeso: bigint('sale_received_meso', { mode: 'number' }),
+    /** 가격을 처음 적거나 바꾼 시각 */
+    pricedAt: timestamptz('priced_at'),
+    saleFeePercent: integer('sale_fee_percent'),
+    saleFeeFollowsMvpGrade: boolean('sale_fee_follows_mvp_grade').notNull(),
+    splitType: splitTypeEnum('split_type'),
+    partySize: integer('party_size'),
+    /** 내 몫. % 에 1000 을 곱한 정수(0 ~ 100000) */
+    splitShareMillipercent: integer('split_share_millipercent'),
+    splitFeePercent: integer('split_fee_percent'),
+    splitFeeFollowsMvpGrade: boolean('split_fee_follows_mvp_grade').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    uniqueIndex('boss_drops_entry_item_unique')
+      .on(t.profitEntryId, t.itemId)
+      .where(sql`${t.deletedAt} IS NULL`),
+    check(
+      'boss_drops_price_check',
+      sql`(${t.priceStatus} = 'entered') = (${t.salePriceMeso} IS NOT NULL)
+          AND (${t.salePriceMeso} IS NULL) = (${t.saleReceivedMeso} IS NULL)
+          AND (${t.salePriceMeso} IS NULL) = (${t.pricedAt} IS NULL)`,
+    ),
+    check(
+      'boss_drops_split_check',
+      sql`${t.splitType} IS DISTINCT FROM 'excluded' AND ${t.splitShareMillipercent} BETWEEN 0 AND 100000`,
+    ),
+  ],
+)
+
+/**
+ * 한 캐릭터가 한 보스 · 난이도를 잡을 때 쓰는 기본 분배 설정. 분배를 정한 줄만 둔다. 수수료율은 자동이면 비우고 수동이면 반드시
+ * 채운다. 자동인 설정은 처치를 적을 때 그 날짜의 등급 요율을 구해 저장된 값이 쓰이지 않는다.
+ */
+export const bossSplitSettings = pgTable(
+  'boss_split_settings',
+  {
+    id: uuid('id').primaryKey(),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    bossDifficultyId: uuid('boss_difficulty_id')
+      .notNull()
+      .references(() => bossDifficulties.id),
+    splitType: splitTypeEnum('split_type').notNull(),
+    partySize: integer('party_size'),
+    /** 내 몫. % 에 1000 을 곱한 정수(0 ~ 100000) */
+    splitShareMillipercent: integer('split_share_millipercent'),
+    splitFeePercent: integer('split_fee_percent'),
+    splitFeeFollowsMvpGrade: boolean('split_fee_follows_mvp_grade').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    uniqueIndex('boss_split_settings_character_difficulty_unique')
+      .on(t.characterId, t.bossDifficultyId)
+      .where(sql`${t.deletedAt} IS NULL`),
+    check(
+      'boss_split_settings_split_check',
+      sql`(${t.splitType} <> 'excluded' OR (${t.partySize} IS NULL AND ${t.splitShareMillipercent} IS NULL))
+          AND ${t.splitShareMillipercent} BETWEEN 0 AND 100000`,
+    ),
+    check(
+      'boss_split_settings_fee_check',
+      sql`${t.splitFeeFollowsMvpGrade} = (${t.splitFeePercent} IS NULL)`,
     ),
   ],
 )

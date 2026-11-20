@@ -330,7 +330,7 @@ import { NOTICES_HTML } from './views/notices'
 function dropPriceFilter(query: DropPriceQuery): DropPriceFilter {
   return {
     itemKey: query.itemKey ?? null,
-    periodKey: query.periodKey ?? null,
+    periodCode: query.periodCode ?? null,
     source: query.source,
   }
 }

@@ -99,6 +99,10 @@ const CONVERTED = [
   'boss_profit_calculator_record_bosses',
   'enhancement_totals',
   'enhancement_settled_days',
+  'boss_profit_entries',
+  'boss_drops',
+  'boss_split_settings',
+  'drop_sale_prices',
 ]
 
 interface DesignColumn {
@@ -185,20 +189,23 @@ describe('바꾼 표와 설계', () => {
   it('설계가 가리키는 표를 적은 칸은 그 표를 참조한다', () => {
     const written = new Set(tables.map((table) => table.name))
     for (const table of tables) {
-      const references = new Map(
-        table.foreignKeys.flatMap((key) => {
-          const reference = key.reference()
-          return reference.columns.map((column) => [
-            column.name,
+      // 한 칸이 참조 둘에 들 수 있다. 수익 건의 보스 칸은 보스 표와, 난이도와 묶여 난이도 표를 가리킨다.
+      const references = new Map<string, string[]>()
+      for (const key of table.foreignKeys) {
+        const reference = key.reference()
+        for (const column of reference.columns)
+          references.set(column.name, [
+            ...(references.get(column.name) ?? []),
             getTableConfig(reference.foreignTable).name,
           ])
-        }),
-      )
+      }
       for (const column of designTables.get(table.name) ?? []) {
         if (column.references === null || !written.has(column.references)) continue
         expect({
           column: `${table.name}.${column.name}`,
-          references: references.get(column.name),
+          references: references.get(column.name)?.includes(column.references)
+            ? column.references
+            : references.get(column.name),
         }).toEqual({
           column: `${table.name}.${column.name}`,
           references: column.references,

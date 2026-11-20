@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { enhancementCategoryEnum } from '../../database/schema'
-import { uuidLike } from '../drop-prices/drop-prices.dto'
+import { uuidLike } from '../../common/uuid-like'
 import { mapleId, nexonIdHash } from '../identity/me.dto'
 
 const meso = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)

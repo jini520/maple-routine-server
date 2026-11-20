@@ -3,9 +3,8 @@ import { eq } from 'drizzle-orm'
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
   accountSettings,
-  bossClears,
   characters,
-  dropPrices,
+  dropSalePrices,
   enhancementAnomalies,
   enhancementSettledDays,
   items,
@@ -16,13 +15,13 @@ import {
   trackedCharacters,
   usageEvents,
   users,
+  worlds,
 } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { NexonAccountsRepository } from './nexon-accounts.repository'
 import { UsersRepository } from './users.repository'
 
 const RECORD_A = '0a0a0a0a-0000-4000-8000-00000000000a'
-const RECORD_B = '0b0b0b0b-0000-4000-8000-00000000000b'
 
 async function errorOf(query: PromiseLike<unknown>): Promise<unknown> {
   try {
@@ -301,6 +300,7 @@ describeDb('NexonAccountsRepository', () => {
 
     describe('없앨 줄의 사람의 옛 기록', () => {
       let itemId: string
+      let worldId: string
 
       beforeEach(async () => {
         const [item] = await db
@@ -308,25 +308,29 @@ describeDb('NexonAccountsRepository', () => {
           .values({ key: 'ring', name: '반지', isValuable: true, isDrop: true })
           .returning({ id: items.id })
         itemId = item.id
+        const [world] = await db
+          .insert(worlds)
+          .values({ key: 'scania', name: '스카니아', sortOrder: 0 })
+          .returning({ id: worlds.id })
+        worldId = world.id
       })
 
-      function dropPrice(userId: string, dropRecordId: string, updatedAt: string) {
+      function salePrice(userId: string, id: string) {
         return {
+          id,
           userId,
-          dropRecordId,
-          identifiedBy: 'key' as const,
           itemId,
-          recordStatus: 'pending' as const,
-          periodKey: '2026-11-05',
-          updatedAt: new Date(updatedAt),
+          worldId,
+          salePriceMeso: 1,
+          pricedAt: new Date('2026-11-01T00:00:00Z'),
         }
       }
 
-      // ocid 가 없는 드롭 줄과 사용 로그는 사람으로 찾는다. 사람을 지우면 그 칸이 비어 익명 줄이 된다.
-      it('키 사람에게 다른 줄이 없으면 옛 드롭 줄 · 사용 로그를 로그인 사람으로, 강화 이상 보고를 로그인 계정으로 옮기고 사람을 지운다', async () => {
+      // 드롭 판매가와 사용 로그는 사람으로 찾는다. 사람을 지우면 그 칸이 비어 익명 줄이 된다.
+      it('키 사람에게 다른 줄이 없으면 드롭 판매가 · 사용 로그를 로그인 사람으로, 강화 이상 보고를 로그인 계정으로 옮기고 사람을 지운다', async () => {
         const key = await users$.upsertByMapleId('m1')
         const login = await users$.upsertByNexonUid('uid-1')
-        await db.insert(dropPrices).values(dropPrice(key.id, RECORD_A, '2026-11-01T00:00:00Z'))
+        await db.insert(dropSalePrices).values(salePrice(key.id, RECORD_A))
         await db.insert(enhancementAnomalies).values({
           nexonAccountId: key.nexonAccountId,
           historyDate: '2026-11-01',
@@ -347,8 +351,8 @@ describeDb('NexonAccountsRepository', () => {
         await repo.reportMapleIds(login.nexonAccountId, ['m1'])
 
         expect((await db.select().from(users)).map((row) => row.id)).toEqual([login.id])
-        expect(await db.select().from(dropPrices)).toEqual([
-          expect.objectContaining({ userId: login.id, dropRecordId: RECORD_A }),
+        expect(await db.select().from(dropSalePrices)).toEqual([
+          expect.objectContaining({ userId: login.id, id: RECORD_A }),
         ])
         expect(await db.select().from(enhancementAnomalies)).toEqual([
           expect.objectContaining({ nexonAccountId: login.nexonAccountId }),
@@ -356,52 +360,19 @@ describeDb('NexonAccountsRepository', () => {
         expect((await db.select().from(usageEvents)).map((row) => row.userId)).toEqual([login.id])
       })
 
-      // 옛 드롭 줄은 사람 안에서 기록 id 로 유일하다. 합칠 때도 나중 값이 앞 값을 덮어야 UNIQUE 가 깨지지 않는다.
-      it('같은 옛 드롭 기록이 양쪽 사람에게 있으면 updated_at 이 늦은 줄을 남긴다', async () => {
+      // 캐릭터와 그 기록은 메이플 ID 를 가리킨다. 메이플 ID 가 로그인 줄로 옮겨 가면 기록도 함께 이어진다.
+      it('메이플 ID 를 가리키는 캐릭터 줄은 키 사람을 지워도 남아 로그인 계정으로 이어진다', async () => {
         const key = await users$.upsertByMapleId('m1')
         const login = await users$.upsertByNexonUid('uid-1')
-        const [keyNewer] = await db
-          .insert(dropPrices)
-          .values(dropPrice(key.id, RECORD_A, '2026-11-03T00:00:00Z'))
-          .returning({ id: dropPrices.id })
-        await db.insert(dropPrices).values(dropPrice(login.id, RECORD_A, '2026-11-02T00:00:00Z'))
-        await db.insert(dropPrices).values(dropPrice(key.id, RECORD_B, '2026-11-02T00:00:00Z'))
-        const [loginNewer] = await db
-          .insert(dropPrices)
-          .values(dropPrice(login.id, RECORD_B, '2026-11-03T00:00:00Z'))
-          .returning({ id: dropPrices.id })
-
-        await repo.reportMapleIds(login.nexonAccountId, ['m1'])
-
-        const prices = await db.select().from(dropPrices)
-        expect(prices.map((row) => row.id).sort()).toEqual([keyNewer.id, loginNewer.id].sort())
-        expect(prices.every((row) => row.userId === login.id)).toBe(true)
-      })
-
-      // 처치 · 가계부 · 강화 합계는 메이플 ID 를 가리킨다. 메이플 ID 가 로그인 줄로 옮겨 가면 기록도 함께 이어진다.
-      it('메이플 ID 를 가리키는 기록은 키 사람을 지워도 남아 로그인 계정으로 이어진다', async () => {
-        const key = await users$.upsertByMapleId('m1')
-        const login = await users$.upsertByNexonUid('uid-1')
-        await db.insert(bossClears).values({
-          identifiedBy: 'key',
-          periodRecordId: RECORD_A,
-          mapleId: 'm1',
-          ocid: 'o1',
-          cycle: 'weekly',
-          periodKey: '2026-11-05',
-          priceMeso: 0,
-          payoutMeso: 0,
-          splitMode: 'even',
-          partySize: 1,
-          source: 'auto',
-        })
+        const [maple] = await db.select().from(mapleIds).where(eq(mapleIds.hash, 'm1'))
+        await db.insert(characters).values({ mapleId: maple?.id ?? '', ocid: 'o1' })
 
         await repo.reportMapleIds(login.nexonAccountId, ['m1'])
 
         expect(await db.select().from(users)).toEqual([expect.objectContaining({ id: login.id })])
         expect(key.id).not.toBe(login.id)
-        expect(await db.select().from(bossClears)).toEqual([
-          expect.objectContaining({ mapleId: 'm1' }),
+        expect(await db.select().from(characters)).toEqual([
+          expect.objectContaining({ mapleId: maple?.id, ocid: 'o1' }),
         ])
         expect(await holderOf('m1')).toBe(login.nexonAccountId)
       })
@@ -415,14 +386,14 @@ describeDb('NexonAccountsRepository', () => {
           .set({ userId: other.id })
           .where(eq(nexonAccounts.id, key.nexonAccountId))
         await db.delete(users).where(eq(users.id, key.id))
-        await db.insert(dropPrices).values(dropPrice(other.id, RECORD_A, '2026-11-01T00:00:00Z'))
+        await db.insert(dropSalePrices).values(salePrice(other.id, RECORD_A))
         const login = await users$.upsertByNexonUid('uid-1')
 
         await repo.reportMapleIds(login.nexonAccountId, ['m1'])
 
         expect(await holderOf('m1')).toBe(login.nexonAccountId)
         expect(await accountIds()).toEqual([other.nexonAccountId, login.nexonAccountId].sort())
-        expect(await db.select().from(dropPrices)).toEqual([
+        expect(await db.select().from(dropSalePrices)).toEqual([
           expect.objectContaining({ userId: other.id }),
         ])
       })

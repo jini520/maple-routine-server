@@ -442,6 +442,13 @@
       "when": 1795199268793,
       "tag": "0062_enhancement_records",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795200333365,
+      "tag": "0063_boss_records",
+      "breakpoints": true
     }
   ]
 }

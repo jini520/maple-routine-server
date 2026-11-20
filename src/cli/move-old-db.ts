@@ -21,7 +21,7 @@ import { parseAssetPath } from '../modules/assets/asset-paths'
 export type OldDb = NodePgDatabase<typeof oldSchema>
 export type NewDb = NodePgDatabase<typeof schema>
 
-/** 옮긴 표마다 줄 수. 옛 DB 에 없던 줄(반지 레벨 · 같은 물건)은 새로 만든 수다. */
+/** 옮긴 표마다 줄 수. 옛 DB 에 없던 줄(반지 레벨 · 같은 물건 · 직업)은 새로 만든 수다. */
 export interface MoveResult {
   assets: number
   bosses: number
@@ -33,6 +33,11 @@ export interface MoveResult {
   tradeGroups: number
   worlds: number
   worldOpenPeriods: number
+  jobs: number
+  hexaCoreTypes: number
+  hexaCores: number
+  hexaCoreLevelCosts: number
+  hexaStats: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -44,6 +49,12 @@ export class UnknownAssetPath extends Error {}
 /** 이름을 정하지 않은 거래권 글자다. message 가 그 글자다. */
 export class UnknownTradeGroup extends Error {}
 
+/** 모든 직업에 있는 코어인데 직업마다 그림이나 넥슨 타입이 달라 한 줄로 합칠 수 없다. message 가 코어 이름이다. */
+export class SharedCoreMismatch extends Error {}
+
+/** 이름 표에도 없고 그 넥슨 타입의 기본 종류도 없어 코어의 종류를 정하지 못했다. message 가 `직업 · 코어 이름` 이다. */
+export class UnknownHexaCoreType extends Error {}
+
 /** 한 번에 넣는 줄 수. Postgres 의 자리 표시자 상한(65535)을 넘지 않게 나눈다. */
 const CHUNK = 1000
 
@@ -52,6 +63,9 @@ const TRADE_GROUP_NAMES: Record<string, string> = {
   general: '일반 월드',
   helios_eos: '에오스 · 핼리오스',
 }
+
+/** 모든 직업이 함께 쓰는 코어가 가리키는 직업 줄의 이름. */
+const ALL_JOBS = '전직업'
 
 /** 보스가 직접도 떨구고 상자로도 주는 아이템. 상자에서 나온 것을 같은 물건의 다른 줄로 둔다. */
 const BOXED_COPIES = [{ originalKey: 'life_whetstone', key: 'life_whetstone_from_box' }]
@@ -68,6 +82,11 @@ const MOVED_TABLES = [
   schema.items,
   schema.ringLevelItems,
   schema.sameItemLinks,
+  schema.jobs,
+  schema.hexaCoreTypes,
+  schema.hexaCores,
+  schema.hexaCoreLevelCosts,
+  schema.hexaStats,
 ]
 
 /**
@@ -233,6 +252,8 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     sameItemLinks.push({ itemId: id, originalItemId: original.id })
   }
 
+  const hexa = await hexaRows(oldDb)
+
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
     await insertAll(tx, schema.assets, assets)
@@ -245,6 +266,11 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.items, [...items, ...levelItems, ...boxedItems])
     await insertAll(tx, schema.ringLevelItems, ringLevelItems)
     await insertAll(tx, schema.sameItemLinks, sameItemLinks)
+    await insertAll(tx, schema.jobs, hexa.jobs)
+    await insertAll(tx, schema.hexaCoreTypes, hexa.hexaCoreTypes)
+    await insertAll(tx, schema.hexaCores, hexa.hexaCores)
+    await insertAll(tx, schema.hexaCoreLevelCosts, hexa.hexaCoreLevelCosts)
+    await insertAll(tx, schema.hexaStats, hexa.hexaStats)
   })
   return {
     assets: assets.length,
@@ -257,6 +283,120 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     tradeGroups: tradeGroups.length,
     worlds: worlds.length,
     worldOpenPeriods: worldOpenPeriods.length,
+    jobs: hexa.jobs.length,
+    hexaCoreTypes: hexa.hexaCoreTypes.length,
+    hexaCores: hexa.hexaCores.length,
+    hexaCoreLevelCosts: hexa.hexaCoreLevelCosts.length,
+    hexaStats: hexa.hexaStats.length,
+  }
+}
+
+/**
+ * 헥사 매트릭스 표 다섯의 새 줄. 직업은 코어의 직업 글자로 만들고 전직업 줄을 더한다. 모든 직업에 같은 이름으로 있는 코어는
+ * 전직업의 코어 한 줄로 합치고, 남는 줄의 id 는 직업 이름 차례로 첫 직업의 것이다. 종류는 지금 앱이 가르는 대로 이름 표에
+ * 있으면 그 종류, 없으면 넥슨 타입의 기본 종류다. 차례는 같은 직업 · 같은 종류 안에서 옛 차례대로 0 부터 다시 매긴다.
+ */
+async function hexaRows(oldDb: OldDb) {
+  const [kinds, costs, nameKinds, cores, stats] = await Promise.all([
+    oldDb.select().from(oldSchema.hexaCoreKinds),
+    oldDb.select().from(oldSchema.hexaCoreLevelCosts),
+    oldDb.select().from(oldSchema.hexaCoreNameKinds),
+    oldDb.select().from(oldSchema.hexaJobCores),
+    oldDb.select().from(oldSchema.hexaStats),
+  ])
+  const jobNames = [...new Set(cores.map((c) => c.job))].sort()
+  const jobs = [
+    ...jobNames.map((name) => ({ id: randomUUID(), name, isAllJobs: false })),
+    { id: randomUUID(), name: ALL_JOBS, isAllJobs: true },
+  ]
+  const jobIdOf = new Map(jobs.map((j) => [j.name, j.id]))
+  const allJobsId = jobIdOf.get(ALL_JOBS) ?? ''
+
+  const namedType = new Map(nameKinds.map((n) => [n.name, n.kindId]))
+  const defaultType = new Map(kinds.filter((k) => k.isDefault).map((k) => [k.apiType, k.id]))
+  const typeOf = (core: (typeof cores)[number]): string => {
+    const typeId = namedType.get(core.name.trim()) ?? defaultType.get(core.apiType)
+    if (typeId === undefined) throw new UnknownHexaCoreType(`${core.job} · ${core.name}`)
+    return typeId
+  }
+  const jobsOfName = new Map<string, Set<string>>()
+  for (const c of cores) jobsOfName.set(c.name, (jobsOfName.get(c.name) ?? new Set()).add(c.job))
+  // 직업이 하나뿐이면 그 직업의 코어가 모두 공용으로 잡힌다.
+  const isShared = (name: string) =>
+    jobNames.length > 1 && jobsOfName.get(name)?.size === jobNames.length
+
+  const kept: (typeof schema.hexaCores.$inferInsert & { oldOrder: number })[] = []
+  const sharedRows = new Map<string, (typeof kept)[number]>()
+  const byJob = [...cores].sort((x, y) =>
+    x.job < y.job ? -1 : x.job > y.job ? 1 : x.sortOrder - y.sortOrder,
+  )
+  for (const c of byJob) {
+    const row = {
+      id: c.id,
+      jobId: jobIdOf.get(c.job) ?? '',
+      name: c.name,
+      typeId: typeOf(c),
+      iconAssetId: c.iconAssetId,
+      sortOrder: 0,
+      oldOrder: c.sortOrder,
+    }
+    if (!isShared(c.name)) {
+      kept.push(row)
+      continue
+    }
+    const first = sharedRows.get(c.name)
+    if (first === undefined) {
+      const shared = { ...row, jobId: allJobsId }
+      sharedRows.set(c.name, shared)
+      kept.push(shared)
+    } else if (first.iconAssetId !== row.iconAssetId || first.typeId !== row.typeId) {
+      throw new SharedCoreMismatch(c.name)
+    }
+  }
+  const nextOrder = new Map<string, number>()
+  const hexaCores = [...kept]
+    .sort((x, y) => x.oldOrder - y.oldOrder)
+    .map((row) => {
+      const group = `${row.jobId}|${row.typeId}`
+      const sortOrder = nextOrder.get(group) ?? 0
+      nextOrder.set(group, sortOrder + 1)
+      return {
+        id: row.id,
+        jobId: row.jobId,
+        name: row.name,
+        typeId: row.typeId,
+        iconAssetId: row.iconAssetId,
+        sortOrder,
+      }
+    })
+
+  return {
+    jobs,
+    hexaCoreTypes: kinds.map((k) => ({
+      id: k.id,
+      key: k.key,
+      name: k.name,
+      apiType: k.apiType,
+      isDefault: k.isDefault,
+      maxLevel: k.maxLevel,
+      iconAssetId: k.iconAssetId,
+      sortOrder: k.sortOrder,
+    })),
+    hexaCores,
+    hexaCoreLevelCosts: costs.map((c) => ({
+      id: c.id,
+      typeId: c.kindId,
+      fromLevel: c.level,
+      fragmentQuantity: c.fragments,
+      solErdaQuantity: c.solErda,
+    })),
+    hexaStats: stats.map((st) => ({
+      id: st.id,
+      key: st.key,
+      name: st.name,
+      activationFragmentQuantity: st.activationFragments,
+      sortOrder: st.sortOrder,
+    })),
   }
 }
 

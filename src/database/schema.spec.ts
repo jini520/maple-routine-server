@@ -25,6 +25,11 @@ const CONVERTED = [
   'trade_groups',
   'worlds',
   'world_open_periods',
+  'jobs',
+  'hexa_cores',
+  'hexa_core_types',
+  'hexa_core_level_costs',
+  'hexa_stats',
 ]
 
 interface DesignColumn {

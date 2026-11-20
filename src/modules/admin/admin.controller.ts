@@ -114,14 +114,15 @@ import {
 } from '../hunting-grounds/hunting-grounds.repository'
 import {
   CostLevelsMismatch,
-  DefaultKindTaken,
-  HexaKindExists,
+  DefaultTypeTaken,
+  HexaCoreExists,
   HexaMatrixRepository,
   HexaStatExists,
-  JobCoreExists,
+  HexaTypeExists,
+  JobExists,
   LevelsAboveMax as HexaLevelsAboveMax,
-  NameKindExists,
-  NoHexaKind,
+  NoHexaType,
+  NoJob,
 } from '../hexa-matrix/hexa-matrix.repository'
 import { type MvpGrade, MvpGradesRepository } from '../mvp-grades/mvp-grades.repository'
 import {
@@ -193,22 +194,22 @@ import {
   cashbookEntryType,
   type CashbookItemKindUpdateBody,
   cashbookItemKindUpdateBody,
+  type HexaCoreCreateBody,
+  hexaCoreCreateBody,
+  type HexaCoreUpdateBody,
+  hexaCoreUpdateBody,
   type HexaCostsBody,
   hexaCostsBody,
-  type HexaJobCoreCreateBody,
-  hexaJobCoreCreateBody,
-  type HexaJobCoreUpdateBody,
-  hexaJobCoreUpdateBody,
-  type HexaKindCreateBody,
-  hexaKindCreateBody,
-  type HexaKindUpdateBody,
-  hexaKindUpdateBody,
-  type HexaNameKindBody,
-  hexaNameKindBody,
+  type HexaJobBody,
+  hexaJobBody,
   type HexaStatCreateBody,
   hexaStatCreateBody,
   type HexaStatUpdateBody,
   hexaStatUpdateBody,
+  type HexaTypeCreateBody,
+  hexaTypeCreateBody,
+  type HexaTypeUpdateBody,
+  hexaTypeUpdateBody,
   type HuntLootCreateBody,
   huntLootCreateBody,
   type HuntLootUpdateBody,
@@ -1388,52 +1389,46 @@ export class AdminController {
     return HEXA_MATRIX_HTML
   }
 
-  /** 화면이 부른다. 앱이 받는 칸에 이름 표 · 직업별 코어의 id 를 더한 것이다. */
+  /** 화면이 부른다. 앱이 받는 칸과 같다. */
   @Get('hexa-matrix/rows')
   @Header('cache-control', 'no-store')
   hexaMatrixRows() {
-    return this.hexa.adminRows()
+    return this.hexa.section()
   }
 
-  /** 종류를 맨 뒤에 더한다. 비용은 따로 한 번에 넣는다. 같은 key · 같은 API 타입의 기본 종류가 있으면 409 다. */
-  @Post('hexa-matrix/kinds')
+  /** 종류를 맨 뒤에 더한다. 비용은 따로 한 번에 넣는다. 같은 key · 같은 넥슨 타입의 기본 종류가 있으면 409, 없는 그림은 400 이다. */
+  @Post('hexa-matrix/types')
   @HttpCode(201)
-  async createHexaKind(@Body(new ZodValidationPipe(hexaKindCreateBody)) body: HexaKindCreateBody) {
-    await this.requireAssets([['itemIcon', body.iconFile]])
+  async createHexaType(@Body(new ZodValidationPipe(hexaTypeCreateBody)) body: HexaTypeCreateBody) {
     try {
-      return await this.hexa.createKind(body)
+      return await this.hexa.createType(body)
     } catch (error) {
-      if (error instanceof HexaKindExists)
+      if (error instanceof HexaTypeExists)
         throw new ConflictException(`이미 있는 종류다: ${body.key}`)
-      if (error instanceof DefaultKindTaken)
-        throw new ConflictException(`이 API 타입에는 기본 종류가 이미 있다: ${error.message}`)
-      throw error
+      throw hexaRejection(error)
     }
   }
 
   /** key 를 빼고 갈아 끼운다. 모르면 404, 기본 종류가 겹치거나 만렙 위에 비용 줄이 있으면 409 다. */
-  @Put('hexa-matrix/kinds/:key')
+  @Put('hexa-matrix/types/:key')
   @HttpCode(204)
-  async updateHexaKind(
+  async updateHexaType(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
-    @Body(new ZodValidationPipe(hexaKindUpdateBody)) body: HexaKindUpdateBody,
+    @Body(new ZodValidationPipe(hexaTypeUpdateBody)) body: HexaTypeUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([['itemIcon', body.iconFile]])
     let found: boolean
     try {
-      found = await this.hexa.updateKind(key, body)
+      found = await this.hexa.updateType(key, body)
     } catch (error) {
-      if (error instanceof DefaultKindTaken)
-        throw new ConflictException(`이 API 타입에는 기본 종류가 이미 있다: ${error.message}`)
       if (error instanceof HexaLevelsAboveMax)
         throw new ConflictException(`만렙 위에 비용 줄이 있다. 레벨 ${error.message} 까지 있다`)
-      throw error
+      throw hexaRejection(error)
     }
     if (!found) throw new NotFoundException(`모르는 종류다: ${key}`)
   }
 
   /** 비용 줄 전부를 갈아 끼운다. 모르는 종류는 404, 레벨이 0 부터 만렙 - 1 까지 꼭 한 번씩이 아니면 400 이다. */
-  @Put('hexa-matrix/kinds/:key/costs')
+  @Put('hexa-matrix/types/:key/costs')
   @HttpCode(204)
   async replaceHexaCosts(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
@@ -1442,7 +1437,7 @@ export class AdminController {
     try {
       await this.hexa.replaceCosts(key, body.costs)
     } catch (error) {
-      if (error instanceof NoHexaKind) throw new NotFoundException(`모르는 종류다: ${key}`)
+      if (error instanceof NoHexaType) throw new NotFoundException(`모르는 종류다: ${key}`)
       if (error instanceof CostLevelsMismatch)
         throw new BadRequestException(
           `${error.message}. 레벨 0 부터 만렙 - 1 까지 한 번씩 있어야 한다`,
@@ -1451,73 +1446,73 @@ export class AdminController {
     }
   }
 
-  /** 기본 종류가 아닌 코어의 이름을 적는다. 모르는 종류는 400, 같은 이름은 409 다. */
-  @Post('hexa-matrix/names')
+  /** 새 직업. 같은 이름은 409 다. */
+  @Post('hexa-matrix/jobs')
   @HttpCode(201)
-  async addHexaNameKind(@Body(new ZodValidationPipe(hexaNameKindBody)) body: HexaNameKindBody) {
+  async createHexaJob(@Body(new ZodValidationPipe(hexaJobBody)) body: HexaJobBody) {
     try {
-      return await this.hexa.addNameKind(body)
+      return await this.hexa.createJob(body)
     } catch (error) {
-      if (error instanceof NoHexaKind) throw new BadRequestException(`모르는 종류다: ${body.kind}`)
-      if (error instanceof NameKindExists)
-        throw new ConflictException(`이미 있는 이름이다: ${body.name}`)
-      throw error
+      throw hexaRejection(error)
     }
   }
 
-  @Delete('hexa-matrix/names/:id')
+  /** 직업 이름을 고친다. 모르면 404, 같은 이름은 409 다. */
+  @Put('hexa-matrix/jobs/:id')
   @HttpCode(204)
-  async removeHexaNameKind(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
-    if (!(await this.hexa.removeNameKind(id))) throw new NotFoundException()
-  }
-
-  /** 직업 안 맨 뒤에 더한다. 같은 직업에 같은 이름이 있으면 409 다. */
-  @Post('hexa-matrix/job-cores')
-  @HttpCode(201)
-  async createHexaJobCore(
-    @Body(new ZodValidationPipe(hexaJobCoreCreateBody)) body: HexaJobCoreCreateBody,
-  ) {
-    await this.requireAssets([['skillIcon', body.iconFile]])
-    try {
-      return await this.hexa.createJobCore(body)
-    } catch (error) {
-      if (error instanceof JobCoreExists)
-        throw new ConflictException(`${body.job} 에 이미 있는 코어다: ${body.name}`)
-      throw error
-    }
-  }
-
-  @Put('hexa-matrix/job-cores/:id')
-  @HttpCode(204)
-  async updateHexaJobCore(
+  async updateHexaJob(
     @Param('id', new ZodValidationPipe(rowId)) id: string,
-    @Body(new ZodValidationPipe(hexaJobCoreUpdateBody)) body: HexaJobCoreUpdateBody,
+    @Body(new ZodValidationPipe(hexaJobBody)) body: HexaJobBody,
   ): Promise<void> {
-    await this.requireAssets([['skillIcon', body.iconFile]])
     let found: boolean
     try {
-      found = await this.hexa.updateJobCore(id, body)
+      found = await this.hexa.updateJob(id, body)
     } catch (error) {
-      if (error instanceof JobCoreExists)
-        throw new ConflictException(`그 직업에 이미 있는 코어다: ${body.name}`)
-      throw error
+      throw hexaRejection(error)
     }
     if (!found) throw new NotFoundException()
   }
 
-  @Delete('hexa-matrix/job-cores/:id')
-  @HttpCode(204)
-  async removeHexaJobCore(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
-    if (!(await this.hexa.removeJobCore(id))) throw new NotFoundException()
+  /** 그 직업 · 종류 안 맨 뒤에 더한다. 모르는 직업 · 종류 · 그림은 400, 같은 직업에 같은 이름이 있으면 409 다. */
+  @Post('hexa-matrix/cores')
+  @HttpCode(201)
+  async createHexaCore(@Body(new ZodValidationPipe(hexaCoreCreateBody)) body: HexaCoreCreateBody) {
+    try {
+      return await this.hexa.createCore(body)
+    } catch (error) {
+      throw hexaRejection(error)
+    }
   }
 
-  @Post('hexa-matrix/job-cores/:id/move')
+  @Put('hexa-matrix/cores/:id')
   @HttpCode(204)
-  async moveHexaJobCore(
+  async updateHexaCore(
+    @Param('id', new ZodValidationPipe(rowId)) id: string,
+    @Body(new ZodValidationPipe(hexaCoreUpdateBody)) body: HexaCoreUpdateBody,
+  ): Promise<void> {
+    let found: boolean
+    try {
+      found = await this.hexa.updateCore(id, body)
+    } catch (error) {
+      throw hexaRejection(error)
+    }
+    if (!found) throw new NotFoundException()
+  }
+
+  @Delete('hexa-matrix/cores/:id')
+  @HttpCode(204)
+  async removeHexaCore(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
+    if (!(await this.hexa.removeCore(id))) throw new NotFoundException()
+  }
+
+  /** 같은 직업 · 같은 종류 안에서 한 칸 옮긴다. */
+  @Post('hexa-matrix/cores/:id/move')
+  @HttpCode(204)
+  async moveHexaCore(
     @Param('id', new ZodValidationPipe(rowId)) id: string,
     @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
   ): Promise<void> {
-    if (!(await this.hexa.moveJobCore(id, body.direction))) throw new NotFoundException()
+    if (!(await this.hexa.moveCore(id, body.direction))) throw new NotFoundException()
   }
 
   /** 스탯을 맨 뒤에 더한다. 같은 key 는 409 다. */
@@ -1527,7 +1522,7 @@ export class AdminController {
     try {
       return await this.hexa.createStat({
         ...body,
-        activationFragments: body.activationFragments ?? null,
+        activationFragmentQuantity: body.activationFragmentQuantity ?? null,
       })
     } catch (error) {
       if (error instanceof HexaStatExists)
@@ -1544,7 +1539,7 @@ export class AdminController {
   ): Promise<void> {
     const found = await this.hexa.updateStat(key, {
       ...body,
-      activationFragments: body.activationFragments ?? null,
+      activationFragmentQuantity: body.activationFragmentQuantity ?? null,
     })
     if (!found) throw new NotFoundException(`모르는 스탯이다: ${key}`)
   }
@@ -2337,5 +2332,20 @@ function worldRejection(error: unknown): unknown {
     return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
   if (error instanceof NoTradeGroup)
     return new BadRequestException(`거래권 표에 없는 거래권이다: ${error.message}`)
+  return error
+}
+
+/** 헥사 매트릭스 쓰기의 거절. 본문이 가리키는 줄이 없으면 400, 겹치면 409 다. */
+function hexaRejection(error: unknown): unknown {
+  if (error instanceof AssetNotFound)
+    return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
+  if (error instanceof NoJob) return new BadRequestException(`모르는 직업이다: ${error.message}`)
+  if (error instanceof NoHexaType)
+    return new BadRequestException(`모르는 종류다: ${error.message}`)
+  if (error instanceof DefaultTypeTaken)
+    return new ConflictException(`이 넥슨 타입에는 기본 종류가 이미 있다: ${error.message}`)
+  if (error instanceof JobExists) return new ConflictException(`이미 있는 직업이다: ${error.message}`)
+  if (error instanceof HexaCoreExists)
+    return new ConflictException(`그 직업에 이미 있는 코어다: ${error.message}`)
   return error
 }

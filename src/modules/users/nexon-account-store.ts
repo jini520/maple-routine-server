@@ -2,10 +2,16 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import type { Db } from '../../database/database.module'
 import {
+  accountSettings,
+  bossProfitCalculatorRecords,
+  bottomBarSubPageOrders,
   enhancementAnomalies,
+  enhancementSettledDays,
   mapleIds,
   nexonAccounts,
+  partyAppointments,
   subAccountRegistrations,
+  trackedCharacters,
   users,
 } from '../../database/schema'
 
@@ -62,9 +68,9 @@ export async function findOrCreateMapleIdAccount(tx: Tx, mapleId: string): Promi
 }
 
 /**
- * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 메이플 ID · 부계정 등록 · 강화 이상 보고를 옮기고 from 을 지운다. 기록은
- * 메이플 ID 를 가리키므로 메이플 ID 를 따라 옮겨진다. from 의 사람에게 다른 줄이 없으면 그 사람의 옛 기록을 into 의 사람에게
- * 옮기고 사람도 지운다.
+ * 같은 넥슨 ID 인 두 줄을 into 하나로 합친다. 메이플 ID · 부계정 등록 · 강화 이상 보고와 넥슨 계정에 붙는 기록을 옮기고 from
+ * 을 지운다. 지우는 from 을 가리키는 줄은 함께 지워지므로 지우기 전에 옮겨야 한다. 캐릭터와 그 기록은 메이플 ID 를 가리키므로
+ * 메이플 ID 를 따라 옮겨진다. from 의 사람에게 다른 줄이 없으면 그 사람의 옛 기록을 into 의 사람에게 옮기고 사람도 지운다.
  */
 export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Promise<void> {
   const [source] = await tx
@@ -108,6 +114,7 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     .update(enhancementAnomalies)
     .set({ nexonAccountId: into })
     .where(eq(enhancementAnomalies.nexonAccountId, from))
+  await moveAccountRecords(tx, from, into)
   await tx.delete(nexonAccounts).where(eq(nexonAccounts.id, from))
 
   if (source.userId === target.userId) return
@@ -119,6 +126,44 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
   if (rest !== undefined) return
   await moveLegacyRecords(tx, source.userId, target.userId)
   await tx.delete(users).where(eq(users.id, source.userId))
+}
+
+/**
+ * 넥슨 계정에 붙는 기록을 옮긴다. 한 계정에 하나인 줄(설정 · 하위 페이지 차례 · 추적 캐릭터)이 양쪽에 있으면 늦게 고친 줄을
+ * 남기고, 시각이 같으면 from 쪽을 버린다. 대표 캐릭터는 into 에 있으면 into 의 것을 남긴다. 대표는 계정에 하나다. 굳은 날은 같은
+ * 날이 양쪽에 있어도 같은 사실이라 from 쪽을 버린다. 손으로 적은 약속과 계산기 기록은 둘 다 남긴다.
+ */
+async function moveAccountRecords(tx: Tx, from: string, into: string): Promise<void> {
+  for (const [table, key] of [
+    ['account_settings', ''],
+    ['bottom_bar_sub_page_orders', 'AND d.group_key = o.group_key'],
+    ['tracked_characters', 'AND d.character_id = o.character_id'],
+  ] as const) {
+    await tx.execute(sql`
+      DELETE FROM ${sql.identifier(table)} d USING ${sql.identifier(table)} o
+       WHERE d.nexon_account_id IN (${from}, ${into}) AND o.nexon_account_id IN (${from}, ${into})
+         AND d.nexon_account_id <> o.nexon_account_id ${sql.raw(key)}
+         AND (d.updated_at < o.updated_at OR (d.updated_at = o.updated_at AND d.nexon_account_id = ${from}))`)
+  }
+  await tx.execute(sql`
+    UPDATE ${trackedCharacters} SET is_representative = false
+     WHERE nexon_account_id = ${from} AND is_representative
+       AND EXISTS (SELECT 1 FROM ${trackedCharacters} t
+                    WHERE t.nexon_account_id = ${into} AND t.is_representative AND t.deleted_at IS NULL)`)
+  await tx.execute(sql`
+    DELETE FROM ${enhancementSettledDays} d USING ${enhancementSettledDays} o
+     WHERE d.nexon_account_id = ${from} AND o.nexon_account_id = ${into}
+       AND d.api_type = o.api_type AND d.history_date = o.history_date`)
+  for (const table of [
+    accountSettings,
+    bottomBarSubPageOrders,
+    trackedCharacters,
+    partyAppointments,
+    bossProfitCalculatorRecords,
+    enhancementSettledDays,
+  ]) {
+    await tx.update(table).set({ nexonAccountId: into }).where(eq(table.nexonAccountId, from))
+  }
 }
 
 /**

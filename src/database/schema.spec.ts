@@ -97,6 +97,8 @@ const CONVERTED = [
   'boss_profit_calculator_records',
   'boss_profit_calculator_record_characters',
   'boss_profit_calculator_record_bosses',
+  'enhancement_totals',
+  'enhancement_settled_days',
 ]
 
 interface DesignColumn {

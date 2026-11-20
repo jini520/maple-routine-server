@@ -13,18 +13,22 @@ const M1 = sha256Hex('m1')
 const OCID1 = sha256Hex('ocid-1')
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
+const WORLD = '2f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
-  totalRecordId: RECORD,
+  id: RECORD,
   mapleId: M1,
   ocid: OCID1,
   historyDate: '2026-10-20',
-  enhancementCategory: 'starforce',
-  itemGroup: 'key:arcane_umbra_knuckle',
-  itemKey: 'arcane_umbra_knuckle',
+  category: 'starforce',
   itemName: '아케인셰이드 클로',
-  attempts: 3,
+  attemptCount: 3,
   attemptCostMeso: 1_000_000,
   destroyDefenceCostMeso: 2_000_000,
+  worldId: WORLD,
+  superiorCostMeso: null,
+  fromStar: 17,
+  toStar: 18,
+  isEventWorld: false,
 }
 
 describe('EnhancementTotalsController', () => {
@@ -66,27 +70,16 @@ describe('EnhancementTotalsController', () => {
     expect(totals.upsert).not.toHaveBeenCalled()
   })
 
-  it('신원을 더해 그대로 적고, 빠진 장비 key 는 null 이다', async () => {
+  it('신원의 넥슨 계정을 더해 그대로 적는다', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/enhancement-totals',
       headers: bearer,
-      payload: { ...body, itemKey: undefined },
+      payload: body,
     })
 
     expect(res.statusCode).toBe(200)
-    expect(totals.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        nexonAccountId: 'a1',
-        identifiedBy: 'login',
-        totalRecordId: RECORD,
-        mapleId: M1,
-        ocid: OCID1,
-        itemKey: null,
-        attemptCostMeso: 1_000_000,
-        destroyDefenceCostMeso: 2_000_000,
-      }),
-    )
+    expect(totals.upsert).toHaveBeenCalledWith({ ...body, nexonAccountId: 'a1' })
   })
 
   // 분류는 앱 화면의 다섯뿐이다. 모르는 값을 받으면 통계에 이름 없는 분류가 생긴다.
@@ -95,7 +88,7 @@ describe('EnhancementTotalsController', () => {
       method: 'POST',
       url: '/v1/enhancement-totals/batch',
       headers: bearer,
-      payload: { items: [body, { ...body, enhancementCategory: 'flame' }] },
+      payload: { items: [body, { ...body, category: 'flame' }] },
     })
 
     expect(res.statusCode).toBe(200)

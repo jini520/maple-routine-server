@@ -9,7 +9,7 @@
  */
 import { randomUUID } from 'node:crypto'
 
-import { eq, isNotNull, sql } from 'drizzle-orm'
+import { eq, getTableName, isNotNull, sql } from 'drizzle-orm'
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import type { PgTable } from 'drizzle-orm/pg-core'
 import { Pool } from 'pg'
@@ -97,6 +97,12 @@ export class MissingGameRule extends Error {}
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
 export class SwappedDatabases extends Error {}
+
+/** 운영에 줄이 없어 옮기지 않는 옛 기록 표에 줄이 있다. 그대로 옮기면 그 줄을 잃는다. message 가 표와 줄 수다. */
+export class UnmovedRecords extends Error {}
+
+/** 2026-11-17 운영에 줄이 없어 옮기지 않는 옛 기록 표. 1.0.14 까지의 앱이 올리지 않는 표다. */
+const EMPTY_OLD_RECORD_TABLES = [oldSchema.enhancementTotals]
 
 /** 옛 그림 경로의 폴더 · 확장자를 분류로 읽지 못했다. message 가 그 경로다. */
 export class UnknownAssetPath extends Error {}
@@ -213,6 +219,11 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     !(await hasColumn(newDb, 'assets', 'category'))
   )
     throw new SwappedDatabases('옛 DB 에 assets.path, 새 DB 에 assets.category 가 있어야 한다')
+  for (const table of EMPTY_OLD_RECORD_TABLES) {
+    const [row] = await oldDb.select({ count: sql<number>`count(*)::int` }).from(table)
+    if ((row?.count ?? 0) > 0)
+      throw new UnmovedRecords(`${getTableName(table)} ${row?.count ?? 0}줄`)
+  }
 
   const [oldAssets, oldBosses, oldDifficulties, oldWorlds, oldPeriods, oldGroups, oldItems] =
     await Promise.all([

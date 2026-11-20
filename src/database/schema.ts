@@ -1545,49 +1545,47 @@ export const enhancementCategoryEnum = pgEnum('enhancement_category', [
 ])
 
 /**
- * 강화 지출 합계 한 줄. 기기의 enhancement_totals 중 이벤트 월드가 아닌 줄의 사본이다.
- *
- * 비용은 MVP 할인 전이다. 할인은 사람마다 등급이 달라 통계에 섞이면 안 된다. 넥슨 응답은 캐릭터를 이름으로만 줘서, 기기가
- * 그날 그 이름이었던 캐릭터의 ocid 를 붙여 보낸다.
+ * 강화 지출 합계. 날짜 · 캐릭터 · 분류 · 장비 이름마다 한 줄이다. 원본 내역이 아니라 합계만 둬서 많이 쓰는 기기의 18개월 치가
+ * 천 줄 안팎이다. 금액은 올린 기기가 그때의 비용표로 매긴 값이고 받은 기기는 다시 매기지 않는다. 기기마다 다시 매기면 비용표가
+ * 바뀐 뒤에 받은 기기만 다른 금액을 본다. 비용은 MVP 할인 전이다. 할인은 사람마다 등급이 달라 통계에 섞이면 안 된다. 줄 id 는
+ * 기기의 합계 id 다.
  */
 export const enhancementTotals = pgTable(
   'enhancement_totals',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    identifiedBy: identitySourceEnum('identified_by').notNull(),
-    /** 기기의 합계 id. 지우기 경로가 찾는 값이다. 다시 설치한 기기는 같은 합계에 새 id 를 붙여 유일 기준이 아니다. */
-    totalRecordId: uuid('total_record_id').notNull(),
-    /** 강화한 캐릭터의 메이플 ID. 계정을 삭제하면 줄도 지워진다. */
-    mapleId: text('maple_id')
+    id: uuid('id').primaryKey(),
+    characterId: uuid('character_id')
       .notNull()
-      .references(() => mapleIds.hash, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    /** 그날 그 이름이었던 캐릭터. 이름을 바꿔도 그대로라 이것으로 가린다. */
-    ocid: text('ocid').notNull(),
-    /** 강화한 날(KST YYYY-MM-DD). */
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    /** 강화한 날 `YYYY-MM-DD` */
     historyDate: text('history_date').notNull(),
-    enhancementCategory: enhancementCategoryEnum('enhancement_category').notNull(),
-    /** 앱 장비 표의 key. 표에 없는 장비면 NULL 이고 이름만 있다. */
-    itemKey: text('item_key'),
+    category: enhancementCategoryEnum('category').notNull(),
+    /** 넥슨이 준 장비 이름. 장비를 이 이름으로 가리고, 그림과 레벨은 읽을 때 이름으로 장비 표에서 찾는다. */
     itemName: text('item_name').notNull(),
-    /** 장비 key 면 'key:…', 없으면 공백을 지운 이름 'name:…'. 기기 표와 같다. */
-    itemGroup: text('item_group').notNull(),
-    attempts: integer('attempts').notNull(),
-    /** MVP 할인을 받는 시도 비용 합계. */
+    attemptCount: integer('attempt_count').notNull(),
+    /** MVP 할인을 받는 시도 비용 합계 */
     attemptCostMeso: bigint('attempt_cost_meso', { mode: 'number' }).notNull(),
-    /** 할인을 받지 않는 파괴 방지 추가 비용 합계. */
+    /** 할인을 받지 않는 파괴 방지 추가 비용 합계 */
     destroyDefenceCostMeso: bigint('destroy_defence_cost_meso', { mode: 'number' }).notNull(),
-    deletedAt: timestamptz('deleted_at'),
-    createdAt: timestamptz('created_at').notNull().defaultNow(),
-    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+    /** 비어 있으면 월드를 모르는 줄(리프 전 기간)이다. */
+    worldId: uuid('world_id').references(() => worlds.id),
+    /** 슈페리얼 장비의 스타포스 비용 */
+    superiorCostMeso: bigint('superior_cost_meso', { mode: 'number' }),
+    /** 스타포스의 처음 성 */
+    fromStar: integer('from_star'),
+    /** 스타포스의 끝 성 */
+    toStar: integer('to_star'),
+    /** 모르면 비어 있다. 월드를 모르는 줄도 이 판정은 가져 월드에서 다시 구할 수 없다. */
+    isEventWorld: boolean('is_event_world'),
+    ...syncColumns(),
   },
   (t) => [
-    unique('enhancement_totals_same_total_unique').on(
-      t.ocid,
+    unique('enhancement_totals_character_date_category_item_unique').on(
+      t.characterId,
       t.historyDate,
-      t.enhancementCategory,
-      t.itemGroup,
+      t.category,
+      t.itemName,
     ),
-    index('enhancement_totals_category_date_idx').on(t.enhancementCategory, t.historyDate),
   ],
 )
 
@@ -2213,6 +2211,34 @@ export const bossProfitCalculatorRecordBosses = pgTable(
     check(
       'boss_profit_calculator_record_bosses_share_check',
       sql`${t.splitShareMillipercent} BETWEEN 0 AND 100000`,
+    ),
+  ],
+)
+
+/**
+ * 한 넥슨 계정이 강화 내역을 넥슨에서 다 받은 날. 새 기기는 여기 있는 날을 다시 받지 않고 합계만 받는다. 과거 날짜의 내역은 바뀌지
+ * 않기 때문이다. 강화하지 않은 날도 줄이 있어 받았는데 없었던 날과 아직 안 받은 날을 가른다. 지우는 일이 없어 삭제 표식이 없다.
+ */
+export const enhancementSettledDays = pgTable(
+  'enhancement_settled_days',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    nexonAccountId: uuid('nexon_account_id')
+      .notNull()
+      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+    apiType: enhancementApiTypeEnum('api_type').notNull(),
+    /** 다 받은 날 `YYYY-MM-DD` */
+    historyDate: text('history_date').notNull(),
+    changeSeq: bigint('change_seq', { mode: 'number' })
+      .notNull()
+      .default(sql`nextval('record_change_seq')`),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('enhancement_settled_days_account_api_date_unique').on(
+      t.nexonAccountId,
+      t.apiType,
+      t.historyDate,
     ),
   ],
 )

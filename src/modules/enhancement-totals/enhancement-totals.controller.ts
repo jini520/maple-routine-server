@@ -24,8 +24,7 @@ import { type EnhancementTotalBody, enhancementTotalBody } from './enhancement-t
 import { EnhancementTotalsRepository } from './enhancement-totals.repository'
 
 /**
- * 강화 지출 합계. 가계부 기록과 같은 규칙이다. 신원이 있어야 하고, DELETE 는 기기에서 합계가 사라졌거나 이벤트 월드로
- * 판정된 때다.
+ * 강화 지출 합계. 가계부 기록과 같은 규칙이다. 신원이 있어야 하고, DELETE 는 기기에서 합계가 사라진 때다.
  */
 @Controller()
 @UseGuards(IdentityGuard)
@@ -59,7 +58,7 @@ export class EnhancementTotalsController {
     const results = await eachInBatch(
       body.items,
       enhancementTotalBody,
-      (raw) => recordIdOf(raw, 'totalRecordId'),
+      (raw) => recordIdOf(raw, 'id'),
       (item) => this.save(identity, item),
       (error) =>
         error instanceof MapleIdNotOwned ? `이 계정의 메이플 ID 가 아니다: ${error.message}` : null,
@@ -68,21 +67,16 @@ export class EnhancementTotalsController {
   }
 
   /** 기기에서 그 합계가 사라졌다. 줄은 남고 지운 시각이 적힌다. 없어도 204 다. */
-  @Delete('v1/enhancement-totals/:totalRecordId')
+  @Delete('v1/enhancement-totals/:id')
   @HttpCode(204)
   async remove(
     @CurrentIdentity() identity: IdentityContext,
-    @Param('totalRecordId', new ZodValidationPipe(uuidLike)) totalRecordId: string,
+    @Param('id', new ZodValidationPipe(uuidLike)) id: string,
   ): Promise<void> {
-    await this.totals.markDeleted(identity, totalRecordId)
+    await this.totals.markDeleted(identity, id)
   }
 
   private async save(identity: IdentityContext, body: EnhancementTotalBody): Promise<void> {
-    await this.totals.upsert({
-      ...body,
-      nexonAccountId: identity.nexonAccountId,
-      identifiedBy: identity.source,
-      itemKey: body.itemKey ?? null,
-    })
+    await this.totals.upsert({ ...body, nexonAccountId: identity.nexonAccountId })
   }
 }

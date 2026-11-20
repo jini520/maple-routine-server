@@ -181,6 +181,11 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   `sudo nginx -t && sudo nginx -s reload` 다. 이 설정은 운영과 같은 nginx 1.18 컨테이너에서 켜기 전 · 켠 뒤 · 끈 뒤의 응답을
   확인했다(2026-11-20).
 
+  **운영에는 `location = /v1/maintenance` 와 `location /v1/ota/` 만 넣었다(2026-11-20).** `/v1/` 과 `/v1/friends/stream` 의 `if` 는
+  아직 없다. 그래서 지금은 점검을 켜도 서버 요청이 막히지 않고, 잠금 코드가 든 앱만 잠긴다. 실기기에서 잠금 화면을 확인하려고
+  이렇게 나눴다. 확인한 뒤에 `if` 를 넣고 이 문단을 지운다. 넣기 전의 설정은 앱 박스의
+  `~/nginx-backups/mapleroutine.2026-11-20.before-maintenance` 에 있다.
+
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.
 - **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 이미 있는 보스의 별칭, 난이도 줄 더하기 · 레벨 · 지우기다. 보스와 마지막

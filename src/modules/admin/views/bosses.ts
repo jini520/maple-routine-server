@@ -2,226 +2,142 @@ import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
- * 보스 표. 위는 규칙 둘, 아래는 보스 표 하나다. 줄의 수정을 누르면 그 아래로 난이도 편집기가 펼쳐지고,
- * 새 보스는 같은 편집기가 표 맨 위에 열린다. 목록을 떠나지 않는다.
+ * 보스 목록. 위는 보스 규칙 셋, 왼쪽은 보스 목록, 오른쪽은 고른 보스 하나의 줄인 이름 · 유효 기간 · 난이도 줄이다.
  *
- * 보스는 더하기만 있고 지우기는 없다. 직접 완료 줄이 참조할 수 있어서다. 이미 있는 보스에서 고치는 칸은 별칭뿐이고,
- * 이름 · 주기 · 초상화는 고치는 끝점이 없다. 난이도 줄은 더하고 지우고 레벨을 갈아 끼운다. 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이
- * 표 전체를 거절한다. 유효 기간 둘은 편집기 아래 줄에서 적는다. 시즌 보스의 끝이 그것이다.
+ * 보스는 더하기만 있고 지우기는 없다. 직접 완료 줄이 참조할 수 있어서다. 이름 · 시즌 보스 · 주기 · 초상화는 고치는 경로가 없다.
+ * 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이 표 전체를 거절한다. 시즌 보스는 시즌이 끝나는 날을 끝에 적는다.
  */
 export const BOSSES_HTML = layout(
   '/admin/bosses',
   '보스 목록',
-  `<div class="head">
-  <div>
-    <h1>보스 목록</h1>
-    <p>바꾸면 <code>GET /v1/game-data</code> 의 <code>bosses.updatedAt</code> 이 움직이고, 앱은 다음에 켤 때 표를 다시 받는다. 새 보스의 그림은 앱 번들에 있어야 그려진다.</p>
-  </div>
-  <div class="stats">
-    <div class="stat"><b id="stat-bosses">–</b><span>보스</span></div>
-    <div class="stat"><b id="stat-diffs">–</b><span>난이도 줄</span></div>
-    <div class="stat"><b id="stat-updated" class="mono">–</b><span>마지막 갱신</span></div>
-  </div>
-</div>
+  `<div class="top"><h1>보스 목록</h1><span class="top-rules" id="rules"></span><span class="grow"></span><span class="updated" id="updated"></span><button id="b-new" class="btn sm" type="button">새 보스</button></div>
 <div id="message" class="msg" role="status" hidden></div>
-<section class="card">
-  <div class="body">
-    <div class="row">
-      <div class="field w-sm"><label for="rule-selection">주간 보스 선택 한도</label><input id="rule-selection" type="number" min="1"></div>
-      <div class="field w-sm"><label for="rule-crystal">주간 결정석 판매 한도</label><input id="rule-crystal" type="number" min="1"></div>
-      <div class="field w-sm"><label for="rule-party">파티 인원 상한 기본값</label><input id="rule-party" type="number" min="1" max="6"></div>
-      <button id="save-rules" class="btn ghost" type="button">규칙 저장</button>
-      <span class="hint">앱의 n/12 배지와 결정석 판매 상한이 이 값을 본다</span>
-    </div>
-  </div>
-</section>
-<section class="card">
-  <header><h2>보스</h2><p id="bosses-count"></p><span class="grow"></span><button id="b-new" class="btn" type="button">새 보스</button></header>
-  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>이름</th><th>시즌 · 기간</th><th>초상화</th><th>난이도 · 주기 · 요구 레벨</th><th></th></tr></thead><tbody id="bosses-rows"></tbody></table></div>
-</section>
+<div class="split"><nav class="picklist" id="list" aria-label="보스"></nav><section class="panel" id="detail"></section></div>
 ${ASSET_PICKER}
 <script>
   var DIFFS = ['easy', 'normal', 'hard', 'chaos', 'extreme'];
-  var CYCLES = [['weekly', 'weekly'], ['monthly', 'monthly']];
-  // open 은 편집기가 펼쳐진 보스 key, newRow 는 새 보스 편집기 DOM. 다시 그려도 적던 값이 안 날아가게 노드를 든다.
-  // assets 는 그림 id 에서 그림 줄을 찾는 표다. 초상화 칸에 파일 이름을 보인다.
-  var state = { table: null, open: null, creating: false, newRow: null, assets: {} };
+  var LETTER = { easy: 'E', normal: 'N', hard: 'H', chaos: 'C', extreme: 'X' };
+  var CYCLES = [['weekly', '주간'], ['monthly', '월간']];
+  var D = null, R = null, assets = {}, current = null;
+  var batch = editing(function () { load(); });
+  var ruleCells = {};
 
-  function el(tag, text, cls) { var e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; }
-  function span(text, cls) { return el('span', text, cls); }
-  function cell(tr, child, cls) { var td = document.createElement('td'); if (typeof child === 'string' || typeof child === 'number') td.textContent = String(child); else td.appendChild(child); if (cls) td.className = cls; tr.appendChild(td); return td; }
-  function input(type, cls) { var i = document.createElement('input'); i.type = type; if (cls) i.className = cls; return i; }
-  function select(options, value) { var s = document.createElement('select'); options.forEach(function (o) { var opt = document.createElement('option'); opt.value = o[0]; opt.textContent = o[1]; s.appendChild(opt); }); if (value) s.value = value; return s; }
-  function diffSelect(value, allowed) { return select(allowed.map(function (d) { return [d, d]; }), value); }
-  function assetText(id) { var a = state.assets[id]; return a ? a.fileName + '.' + a.extension : '그림 표에 없다'; }
-  function diffText(d) { return d.difficulty + (d.cycle === 'monthly' ? ' 월간' : '') + ' ' + d.requiredLevel; }
-  function levelInput(value) { var i = input('number'); i.min = '1'; i.placeholder = 'Lv'; if (value) i.value = String(value); return i; }
-  function button(text, cls) { var b = el('button', text, cls); b.type = 'button'; return b; }
-  function inline() { var d = el('div', undefined, 'inline'); for (var i = 0; i < arguments.length; i++) d.appendChild(arguments[i]); return d; }
-  function field(label, small, control) { var d = el('div', undefined, 'field'); var l = el('label', label); if (small) { l.appendChild(document.createTextNode(' ')); l.appendChild(el('small', small)); } d.appendChild(l); d.appendChild(control); return d; }
-  function mini(headers, tbody) { var wrap = el('div', undefined, 'mini'); var t = el('table'); var thead = el('thead'); var hr = el('tr'); headers.forEach(function (h) { hr.appendChild(el('th', h)); }); thead.appendChild(hr); t.appendChild(thead); t.appendChild(tbody); wrap.appendChild(t); return wrap; }
-  function fail(what, r) { return what + ' ' + r.status + '\\n' + r.text; }
-
-  // 보스 한 줄. 열려 있으면 바로 아래에 editorRow 가 따라온다.
-  function bossRow(b, i) {
-    var isOpen = state.open === b.key;
-    var tr = el('tr', undefined, isOpen ? 'open' : '');
-    cell(tr, i + 1, 'n'); cell(tr, b.key, 'mono');
-    var name = span(b.name); if (b.shortName !== b.name) { name.appendChild(document.createTextNode(' ')); name.appendChild(span(b.shortName, 'dim')); } cell(tr, name);
-    var cyc = el('div', undefined, 'tags'); if (b.isSeasonBoss) cyc.appendChild(span('시즌 보스', 'tag accent'));
-    if (b.validFrom || b.validUntil) cyc.appendChild(span((b.validFrom || '처음') + ' ~ ' + (b.validUntil || ''), 'tag mono'));
-    cell(tr, cyc); cell(tr, assetText(b.portraitAssetId), 'mono');
-    var tags = el('div', undefined, 'tags');
-    b.difficulties.forEach(function (d) { tags.appendChild(span(diffText(d) + (d.maxPartySize == null ? '' : ' · ' + d.maxPartySize + '인') + (d.validFrom || d.validUntil ? ' · ' + (d.validFrom || '처음') + '~' + (d.validUntil || '') : ''), 'tag mono')); });
-    cell(tr, tags);
-    var toggle = button(isOpen ? '닫기' : '수정', 'btn ghost sm');
-    toggle.addEventListener('click', function () { state.open = isOpen ? null : b.key; render(); });
-    cell(tr, toggle, 'act');
-    return tr;
+  function periodBody(from, until) { return { validFrom: orNull(from.value()), validUntil: orNull(until.value()) }; }
+  function periodCell(key, value, send, empty) { var c = textCell(batch, key, value, send, 'period'); c.input.placeholder = empty; return c; }
+  function ruleCell(label, field) {
+    var w = el('span', undefined, 'rule'); w.appendChild(document.createTextNode(label));
+    ruleCells[field] = numCell(batch, '보스 규칙', R ? R[field] : null, function () {
+      var body = {}; Object.keys(ruleCells).forEach(function (k) { body[k] = ruleCells[k].value(); });
+      return call('PUT', '/admin/game-rules', body);
+    }, 'short');
+    w.appendChild(ruleCells[field].input); return w;
   }
 
-  // 펼쳐진 난이도 편집기. 줄마다 그 자리에서 저장되고 저장 뒤 load() 가 다시 그린다. 열린 보스는 그대로 열려 있다.
-  function editorRow(b) {
-    var tr = el('tr', undefined, 'expand'); var td = document.createElement('td'); td.colSpan = 7;
-    var box = el('div', undefined, 'editor');
-    var h = el('h3', b.name + ' '); h.appendChild(span(b.key, 'mono dim')); box.appendChild(h);
-    var shortName = input('text'); shortName.value = b.shortName;
-    var saveShortName = button('줄인 이름 저장', 'btn ghost sm');
-    saveShortName.addEventListener('click', async function () {
-      var res = await call('PUT', '/admin/bosses/' + b.key + '/short-name', { shortName: shortName.value });
-      show(res.ok ? b.key + ' 의 줄인 이름을 적었다' : fail('못 적었다', res), !res.ok); load();
-    });
-    var arow = el('div', undefined, 'row'); arow.appendChild(field('줄인 이름', '좁은 자리의 이름', shortName)); arow.appendChild(saveShortName); box.appendChild(arow);
-    var tbody = el('tbody');
+  function renderDetail(b) {
+    var box = document.getElementById('detail'); box.innerHTML = '';
+    if (!b) { box.appendChild(el('p', '보스가 없다', 'dim')); return; }
+    var head = el('div', undefined, 'detail-head');
+    var a = assets[b.portraitAssetId]; var img = el('img'); img.alt = ''; if (a) img.src = '/assets/' + a.file; head.appendChild(img);
+    var title = el('div'); title.appendChild(el('h2', b.name)); title.appendChild(span(b.key + (a ? ' · ' + a.fileName + '.' + a.extension : ' · 그림 표에 없는 초상'), 'mono dim')); head.appendChild(title);
+    head.appendChild(span('', 'grow'));
+    if (b.isSeasonBoss) head.appendChild(span('시즌 보스', 'tag accent'));
+    box.appendChild(head);
+
+    var fields = el('div', undefined, 'fields');
+    var short = textCell(batch, b.key + ' 줄인 이름', b.shortName, function () { return call('PUT', '/admin/bosses/' + b.key + '/short-name', { shortName: short.value() }); });
+    var s1 = el('span', '줄인 이름 ', 'rule'); s1.appendChild(short.input); fields.appendChild(s1);
+    var from, until;
+    var sendPeriod = function () { return call('PUT', '/admin/bosses/' + b.key + '/period', periodBody(from, until)); };
+    from = periodCell(b.key + ' 기간', b.validFrom, sendPeriod, '처음부터'); until = periodCell(b.key + ' 기간', b.validUntil, sendPeriod, '끝없이');
+    var s2 = el('span', '기간 ', 'rule'); s2.appendChild(from.input); s2.appendChild(document.createTextNode('~')); s2.appendChild(until.input); fields.appendChild(s2);
+    box.appendChild(fields);
+
+    var t = el('table', undefined, 'sheet'); var thead = el('thead'); var hr = el('tr');
+    ['난이도', '주기', '요구 레벨', '시작', '끝', ''].forEach(function (h, i) { var th = el('th', h); if (i === 2) th.className = 'num'; hr.appendChild(th); });
+    thead.appendChild(hr); t.appendChild(thead); var tb = el('tbody');
     b.difficulties.forEach(function (d) {
-      var r = el('tr');
-      cell(r, inline(span(d.difficulty, 'tag'), span(d.cycle, d.cycle === 'weekly' ? 'tag' : 'tag accent')));
-      var lvl = levelInput(d.requiredLevel); var save = button('레벨 저장', 'btn ghost sm');
-      save.addEventListener('click', async function () {
-        var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty, { cycle: d.cycle, requiredLevel: Number(lvl.value) });
-        show(res.ok ? b.key + ' ' + d.difficulty + ' 레벨을 적었다' : fail('못 적었다', res), !res.ok); load();
-      });
-      cell(r, inline(lvl, save));
-      var dfrom = input('text', 'mono w-period'); dfrom.placeholder = '시작'; dfrom.value = d.validFrom || ''; var duntil = input('text', 'mono w-period'); duntil.placeholder = '끝'; duntil.value = d.validUntil || '';
-      var savePeriod = button('기간 저장', 'btn ghost sm');
-      savePeriod.addEventListener('click', async function () {
-        var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty + '/period', { validFrom: orNull(dfrom.value), validUntil: orNull(duntil.value) });
-        show(res.ok ? b.key + ' ' + d.difficulty + ' 의 유효 기간을 적었다' : fail('못 적었다', res), !res.ok); load();
-      });
-      cell(r, inline(dfrom, duntil, savePeriod));
-      var del = button('지우기', 'btn danger sm');
-      del.addEventListener('click', async function () {
-        if (!window.confirm(b.name + ' ' + d.difficulty + ' 줄을 지운다.')) return;
-        var res = await call('DELETE', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty);
-        show(res.ok ? '지웠다' : fail('못 지웠다', res), !res.ok); load();
-      });
-      cell(r, del, 'act');
-      tbody.appendChild(r);
+      var tr = el('tr'); cell(tr, d.difficulty, 'label'); cell(tr, d.cycle === 'monthly' ? '월간' : '주간', 'label');
+      var lv = numCell(batch, b.key + ' ' + d.difficulty + ' 레벨', d.requiredLevel, function () { return call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty, { cycle: d.cycle, requiredLevel: lv.value() }); }, 'short');
+      cell(tr, lv.input, 'num');
+      var df, du; var sendD = function () { return call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty + '/period', periodBody(df, du)); };
+      df = periodCell(b.key + ' ' + d.difficulty + ' 기간', d.validFrom, sendD, '보스 기간'); du = periodCell(b.key + ' ' + d.difficulty + ' 기간', d.validUntil, sendD, '보스 기간');
+      cell(tr, df.input); cell(tr, du.input);
+      var rm = button('지우기', 'btn danger sm row-act'); if (b.difficulties.length === 1) rm.hidden = true;
+      rm.addEventListener('click', async function () { if (!window.confirm(b.name + ' ' + d.difficulty + ' 줄을 지운다.')) return; var r = await call('DELETE', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty); show(r.ok ? '지웠다' : fail('못 지웠다', r), !r.ok); load(); });
+      cell(tr, rm, 'act'); tb.appendChild(tr);
     });
-    var have = b.difficulties.map(function (d) { return d.difficulty; });
-    var rest = DIFFS.filter(function (d) { return have.indexOf(d) < 0; });
-    if (rest.length > 0) {
-      var r = el('tr'); var sel = diffSelect(rest[0], rest); var ncycle = select(CYCLES, b.difficulties[0] ? b.difficulties[0].cycle : 'weekly'); var lv = levelInput(''); var add = button('난이도 추가', 'btn sm');
-      var nfrom = input('text', 'mono w-period'); nfrom.placeholder = '시작 (패치 시각)'; var nuntil = input('text', 'mono w-period'); nuntil.placeholder = '끝';
-      add.addEventListener('click', async function () {
-        var res = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + sel.value, { cycle: ncycle.value, requiredLevel: Number(lv.value), validFrom: orNull(nfrom.value), validUntil: orNull(nuntil.value) });
-        show(res.ok ? b.key + ' ' + sel.value + ' 을 적었다' : fail('못 적었다', res), !res.ok); load();
-      });
-      cell(r, inline(sel, ncycle)); cell(r, inline(lv)); cell(r, inline(nfrom, nuntil)); cell(r, add, 'act');
-      tbody.appendChild(r);
-    }
-    box.appendChild(mini(['난이도 · 주기', '요구 레벨', '유효 기간 (KST, 비우면 보스 기간 그대로)', ''], tbody));
-    var from = input('text', 'mono w-period'); from.placeholder = '2026-07-03'; from.value = b.validFrom || '';
-    var until = input('text', 'mono w-period'); until.placeholder = '2026-11-05T10:00'; until.value = b.validUntil || '';
-    var savePeriod = button('기간 저장', 'btn ghost sm');
-    savePeriod.addEventListener('click', async function () {
-      var res = await call('PUT', '/admin/bosses/' + b.key + '/period', { validFrom: orNull(from.value), validUntil: orNull(until.value) });
-      show(res.ok ? b.key + ' 의 유효 기간을 적었다' : fail('못 적었다', res), !res.ok); load();
-    });
-    var prow = el('div', undefined, 'row'); prow.appendChild(field('시작', '비우면 처음부터', from)); prow.appendChild(field('끝', '비우면 끝없이. KST 글자. 그 날을 품은 주까지 서고 다음 주부터 안 선다', until)); prow.appendChild(savePeriod); box.appendChild(prow);
-    box.appendChild(el('p', '이름 · 시즌 보스 · 난이도의 주기 · 초상화는 고치는 끝점이 없어 여기서 안 바꾼다. 줄인 이름은 위에서 고친다. 마지막 난이도는 못 지운다. 시즌 보스는 시즌이 끝나는 날을 끝에 적는다.', 'hint'));
-    td.appendChild(box); tr.appendChild(td);
-    return tr;
+    t.appendChild(tb); box.appendChild(t);
+    var foot = el('div', undefined, 'panel-head'); foot.style.marginTop = '10px';
+    foot.appendChild(el('p', '목록 차례가 앱의 화면 차례다. 기간은 KST 2026-07-03 또는 2026-11-05T10:00. 난이도 기간을 비우면 보스 기간을 따른다. 끝은 그 날을 품은 주까지 선다.'));
+    foot.appendChild(span('', 'grow'));
+    var rest = DIFFS.filter(function (x) { return !b.difficulties.some(function (d) { return d.difficulty === x; }); });
+    if (rest.length > 0) { var add = button('난이도 추가', 'btn ghost sm'); add.addEventListener('click', function () { addDifficulty(b, rest); }); foot.appendChild(add); }
+    box.appendChild(foot);
   }
 
-  // 새 보스 편집기. 표 맨 위에 선다. 한 번 만든 노드를 다시 쓰므로 다른 줄을 펼쳐도 적던 값이 남는다.
-  function newEditorRow() {
-    var tr = el('tr', undefined, 'expand'); var td = document.createElement('td'); td.colSpan = 7;
-    var box = el('div', undefined, 'editor');
-    box.appendChild(el('h3', '새 보스'));
-    var key = input('text', 'mono'); key.placeholder = 'jupiter';
-    var season = input('checkbox'); var name = input('text'); var shortName = input('text');
-    var portrait = { id: null }; var portraitText = span('고르지 않았다', 'mono dim'); var pickPortrait = button('고르기', 'btn ghost sm');
-    pickPortrait.addEventListener('click', function () {
-      openAssetPicker({ categories: ['boss'], uploadCategory: 'boss', current: portrait.id, onPick: function (f) { portrait.id = f ? f.id : null; portraitText.textContent = f ? f.fileName + '.' + f.extension : '고르지 않았다'; } });
+  function addDifficulty(b, rest) {
+    var form = el('div', undefined, 'form-body');
+    var diff = select(rest.map(function (x) { return [x, x]; }), rest[0]); var cyc = select(CYCLES, b.difficulties[0] ? b.difficulties[0].cycle : 'weekly');
+    var lv = input('number'); lv.min = '1'; var from = input('text', 'mono'); from.placeholder = '2026-09-17T10:00'; var until = input('text', 'mono');
+    form.appendChild(field('난이도', undefined, diff)); form.appendChild(field('주기', undefined, cyc)); form.appendChild(field('요구 레벨', undefined, lv));
+    form.appendChild(field('시작', '새로 생긴 난이도면 패치 시각', from)); form.appendChild(field('끝', '비우면 끝없이', until));
+    var go = button('난이도 추가', 'btn'); form.appendChild(go);
+    var d = openForm(b.name + ' 난이도 추가', form);
+    go.addEventListener('click', async function () {
+      var r = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + diff.value, { cycle: cyc.value, requiredLevel: Number(lv.value), validFrom: orNull(from.value), validUntil: orNull(until.value) });
+      show(r.ok ? diff.value + ' 을 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
+  }
+
+  function newBoss() {
+    var form = el('div', undefined, 'form-body');
+    var key = input('text', 'mono'); key.placeholder = 'jupiter'; var name = input('text'); var short = input('text');
+    var season = input('checkbox'); var seasonLabel = el('label', undefined, 'check'); seasonLabel.appendChild(season); seasonLabel.appendChild(document.createTextNode('시즌 보스 (주간 선택 한도에서 빠진다)'));
+    var portrait = { id: null }; var portraitText = span('고르지 않았다', 'mono dim'); var pick = button('고르기', 'btn ghost sm');
+    pick.addEventListener('click', function () { openAssetPicker({ categories: ['boss'], uploadCategory: 'boss', current: portrait.id, onPick: function (f) { portrait.id = f ? f.id : null; portraitText.textContent = f ? f.fileName + '.' + f.extension : '고르지 않았다'; } }); });
     var grid = el('div', undefined, 'grid2');
-    grid.appendChild(field('key', 'snake_case · 넥슨 응답의 보스 이름을 맞출 때 쓰는 값', key)); grid.appendChild(field('시즌 보스', '주간 선택 한도에서 빠진다', season));
-    grid.appendChild(field('이름', '넥슨 API content_name 표기', name)); grid.appendChild(field('줄인 이름', '좁은 자리의 이름. 비우면 이름 그대로', shortName));
-    grid.appendChild(field('초상화', '보스 분류의 그림', inline(portraitText, pickPortrait)));
-    box.appendChild(grid);
-    var tbody = el('tbody');
-    function addDiffRow(difficulty) {
-      var r = el('tr');
-      var d = diffSelect(difficulty, DIFFS); d.className = 'diff'; var c = select(CYCLES, 'weekly'); c.className = 'cycle';
-      cell(r, inline(d)); cell(r, inline(c)); cell(r, inline(levelInput('')));
-      var del = button('빼기', 'btn danger sm'); del.addEventListener('click', function () { r.remove(); }); cell(r, del, 'act');
-      tbody.appendChild(r);
+    grid.appendChild(field('key', '넥슨 응답의 보스 이름을 맞출 때 쓴다', key)); grid.appendChild(field('초상화', '보스 분류의 그림', inline(portraitText, pick)));
+    grid.appendChild(field('이름', '넥슨 API content_name 표기', name)); grid.appendChild(field('줄인 이름', '비우면 이름 그대로', short));
+    form.appendChild(grid); form.appendChild(seasonLabel);
+    var tb = el('tbody');
+    function addRow() {
+      var tr = el('tr'); var d = select(DIFFS.map(function (x) { return [x, x]; }), 'normal'); d.className = 'diff'; var c = select(CYCLES, 'weekly'); c.className = 'cycle'; var lv = input('number'); lv.min = '1';
+      cell(tr, d); cell(tr, c); cell(tr, lv); var rm = button('빼기', 'btn danger sm'); rm.addEventListener('click', function () { tr.remove(); }); cell(tr, rm, 'act'); tb.appendChild(tr);
     }
-    addDiffRow('normal');
-    box.appendChild(mini(['난이도', '주기', '요구 레벨', ''], tbody));
-    var create = button('보스 추가', 'btn'); var more = button('난이도 줄 추가', 'btn ghost'); var close = button('닫기', 'btn ghost');
-    more.addEventListener('click', function () { addDiffRow('normal'); });
-    close.addEventListener('click', function () { state.creating = false; render(); });
-    create.addEventListener('click', async function () {
-      var difficulties = [];
-      tbody.querySelectorAll('tr').forEach(function (r) { difficulties.push({ difficulty: r.querySelector('select.diff').value, cycle: r.querySelector('select.cycle').value, requiredLevel: Number(r.querySelector('input').value) }); });
+    addRow(); form.appendChild(mini(['난이도', '주기', '요구 레벨', ''], tb));
+    var more = button('난이도 줄 추가', 'btn ghost sm'); more.addEventListener('click', addRow);
+    var go = button('보스 추가', 'btn'); form.appendChild(inline(go, more));
+    var dlg = openForm('새 보스', form); dlg.classList.add('mid');
+    go.addEventListener('click', async function () {
       if (portrait.id === null) { show('초상화를 고른다', true); return; }
-      var body = { key: key.value.trim(), name: name.value.trim(), shortName: shortName.value.trim() || name.value.trim(), isSeasonBoss: season.checked, portraitAssetId: portrait.id, difficulties: difficulties };
+      var difficulties = []; tb.querySelectorAll('tr').forEach(function (tr) { difficulties.push({ difficulty: tr.querySelector('select.diff').value, cycle: tr.querySelector('select.cycle').value, requiredLevel: Number(tr.querySelector('input').value) }); });
+      var body = { key: key.value.trim(), name: name.value.trim(), shortName: short.value.trim() || name.value.trim(), isSeasonBoss: season.checked, portraitAssetId: portrait.id, difficulties: difficulties };
       var r = await call('POST', '/admin/bosses', body);
-      if (!r.ok) { show(fail('더하지 못했다', r), true); return; }
-      show(body.key + ' 를 더했다', false);
-      state.creating = false; state.open = body.key; load();
+      show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { dlg.close(); current = body.key; setHashKey(current); load(); }
     });
-    var acts = el('div', undefined, 'actions'); acts.appendChild(create); acts.appendChild(more); acts.appendChild(close); box.appendChild(acts);
-    td.appendChild(box); tr.appendChild(td);
-    return tr;
   }
 
   function render() {
-    var rows = document.getElementById('bosses-rows'); rows.innerHTML = '';
-    if (state.creating) { if (!state.newRow) state.newRow = newEditorRow(); rows.appendChild(state.newRow); } else { state.newRow = null; }
-    if (!state.table) return;
-    state.table.bosses.forEach(function (b, i) { rows.appendChild(bossRow(b, i)); if (state.open === b.key) rows.appendChild(editorRow(b)); });
+    batch.clear(); ruleCells = {};
+    var rules = document.getElementById('rules'); rules.innerHTML = '';
+    rules.appendChild(ruleCell('주간 보스 선택 한도', 'weeklyBossSelectionLimit'));
+    rules.appendChild(ruleCell('주간 결정석 판매 한도', 'weeklyCrystalSaleLimit'));
+    rules.appendChild(ruleCell('파티 인원 상한 기본값', 'defaultMaxPartySize'));
+    if (!D.bosses.some(function (b) { return b.key === current; })) current = D.bosses.length ? D.bosses[0].key : null;
+    pickList(document.getElementById('list'), D.bosses.map(function (b) {
+      return { key: b.key, title: b.name, meta: b.difficulties.map(function (d) { return LETTER[d.difficulty]; }).join('') };
+    }), current, function (k) { if (!discardOk(batch)) return; current = k; setHashKey(k); render(); });
+    renderDetail(D.bosses.filter(function (b) { return b.key === current; })[0]);
   }
 
-  document.getElementById('b-new').addEventListener('click', function () {
-    state.creating = true; render(); state.newRow.querySelector('input').focus();
-  });
-  document.getElementById('save-rules').addEventListener('click', async function () {
-    var r = await call('PUT', '/admin/game-rules', {
-      weeklyBossSelectionLimit: Number(document.getElementById('rule-selection').value),
-      weeklyCrystalSaleLimit: Number(document.getElementById('rule-crystal').value),
-      defaultMaxPartySize: Number(document.getElementById('rule-party').value),
-    });
-    show(r.ok ? '규칙을 저장했다' : fail('저장하지 못했다', r), !r.ok); load();
-  });
-
+  document.getElementById('b-new').addEventListener('click', newBoss);
   async function load() {
-    var r = await call('GET', '/admin/bosses/rows');
-    var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/admin/bosses/rows'); var a = await call('GET', '/admin/assets/list'); var g = await call('GET', '/admin/game-rules');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
-    var c = r.json; state.table = c;
-    state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; });
-    var g = await call('GET', '/admin/game-rules'); var rules = g.ok && g.json.gameRules ? g.json.gameRules : {};
-    document.getElementById('rule-selection').value = rules.weeklyBossSelectionLimit == null ? '' : rules.weeklyBossSelectionLimit;
-    document.getElementById('rule-crystal').value = rules.weeklyCrystalSaleLimit == null ? '' : rules.weeklyCrystalSaleLimit;
-    document.getElementById('rule-party').value = rules.defaultMaxPartySize == null ? '' : rules.defaultMaxPartySize;
-    var diffCount = 0; c.bosses.forEach(function (b) { diffCount += b.difficulties.length; });
-    document.getElementById('stat-bosses').textContent = c.bosses.length;
-    document.getElementById('stat-diffs').textContent = diffCount;
-    document.getElementById('stat-updated').textContent = c.updatedAt ? when(c.updatedAt) : '없음';
-    document.getElementById('bosses-count').textContent = c.bosses.length + '줄 · 순서가 곧 앱의 화면 순서';
+    D = r.json; R = g.ok ? g.json.gameRules : null;
+    assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
+    if (current === null) current = hashKey();
+    document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
     render();
   }
   load();

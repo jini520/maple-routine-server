@@ -71,7 +71,7 @@ describe('sniffImage', () => {
 describe('imageSize', () => {
   const fixture = (name: string) => readFileSync(join(__dirname, '__fixtures__', name))
 
-  it('png · jpg · webp 세 갈래(VP8 · VP8L · VP8X)의 머리에서 가로 · 세로를 읽는다', () => {
+  it('png · jpg · webp 세 가지(VP8 · VP8L · VP8X)의 머리에서 가로 · 세로를 읽는다', () => {
     expect(imageSize(fixture('icon.png'))).toEqual({ width: 38, height: 38 })
     expect(imageSize(fixture('photo.jpg'))).toEqual({ width: 1280, height: 720 })
     expect(imageSize(fixture('vp8.webp'))).toEqual({ width: 1000, height: 405 })

@@ -1,113 +1,17 @@
+import { subNav } from './edit-kit'
 import { layout } from './layout'
 
-/**
- * 그림 · 크롭 화면(앱 저장소 ADR-187 결정 5 · 6). 왼쪽 트리는 아이템이 쓰는 그림을 그 아이템의 분류로, 나머지를 그림
- * 분류(폴더)로 묶는다. 오른쪽은 한 줄에 그림 하나다. 아래는 보스 초상 · 지역 지도의 크롭이다.
- *
- * 그림은 nginx 가 `/assets/<해시>.<확장자>` 로 내므로 미리보기도 그 주소를 쓴다. 크롭 값이 CSS background 문법이라
- * 미리보기는 같은 값을 background-size · background-position 에 그대로 넣는다.
- */
-export const ASSETS_HTML = layout(
-  '/admin/assets',
-  '그림',
-  `<div class="head">
-  <div>
-    <h1>그림</h1>
-    <p>앱이 받는 그림이다. 아이템이 쓰는 그림은 아이템 분류로, 나머지는 그림 분류로 묶인다. 경로는 앱 <code>src/assets/</code> 기준이고 같은 경로에 올리면 그림이 바뀐다. 이름은 비워 두면 그 그림을 쓰는 곳의 이름을 보인다.</p>
-  </div>
-  <div class="stats">
-    <div class="stat"><b id="stat-files">–</b><span>그림</span></div>
-    <div class="stat"><b id="stat-size" class="mono">–</b><span>합계</span></div>
-    <div class="stat"><b id="stat-updated" class="mono">–</b><span>마지막 갱신</span></div>
-  </div>
-</div>
-<div id="message" class="msg" role="status" hidden></div>
-<div id="unused" class="notice" hidden><span id="unused-text"></span><span class="grow"></span><button type="button" class="btn sm" id="unused-show">모아 보기</button></div>
-<section class="card">
-  <div class="assets-split">
-    <nav class="tree" id="tree" aria-label="그림 분류"></nav>
-    <div class="assets-main">
-      <div class="bar"><input id="q" type="search" placeholder="이름 · 경로로 찾는다" class="w-md"><span class="grow"></span><div class="inline" id="new-form"></div></div>
-      <div class="table"><table><thead><tr><th>그림</th><th>보이는 이름 · 경로</th><th>쓰는 곳</th><th class="num">크기</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
-    </div>
-  </div>
-</section>
-<section class="card">
-  <header><h2>크롭</h2><p>폭은 놓이는 자리의 폭에 대한 %, 위치는 가로 · 세로 % 다. 줄이 없으면 앱은 cover · 가운데로 그린다. 미리보기 틀의 비율은 앱 자리와 비슷하게 맞춘 것이다</p><div class="grow"></div><div class="inline" id="crop-kind"></div></header>
-  <div class="table"><table><thead><tr><th>미리보기</th><th>그림</th><th class="num">폭 %</th><th class="num">가로 %</th><th class="num">세로 %</th><th></th></tr></thead><tbody id="crop-rows"></tbody></table></div>
-</section>
-<style>
-  .notice { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--r-card); background: var(--danger-tint); color: var(--danger-ink); font-weight: 500 }
-  .notice .btn { background: var(--danger-ink) }
-  .notice .grow, .bar .grow { flex: 1 }
-  .assets-split { display: grid; grid-template-columns: 210px minmax(0, 1fr) }
-  @media (max-width: 760px) { .assets-split { grid-template-columns: 1fr } }
-  .tree { display: flex; flex-direction: column; gap: 2px; padding: 12px; background: var(--surface-2) }
-  .tree .k { font-size: 11.5px; font-weight: 700; color: var(--text-3); letter-spacing: .04em; padding: 10px 10px 4px }
-  .tree button { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: 500 13px/1.3 var(--font); text-align: left; cursor: pointer }
-  .tree button:hover { background: var(--surface); color: var(--text) }
-  .tree button[aria-current="true"] { background: var(--accent-tint); color: var(--accent-ink) }
-  .tree button.child { padding-left: 24px; font-weight: 400 }
-  .tree button span { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums }
-  .assets-main { min-width: 0 }
-  .bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; padding: 14px 16px 6px }
-  .thumb { width: 48px; height: 48px; object-fit: contain; background: var(--surface-2); border-radius: 6px; display: block; image-rendering: pixelated }
-  td.wrap { white-space: normal; width: 100%; min-width: 180px }
-  .label { font-weight: 500; overflow-wrap: anywhere }
-  .label small { display: block; color: var(--text-3); font-weight: 400; font-size: 11.5px }
-  .label .path { display: block; font: 400 11.5px/1.4 var(--mono); color: var(--text-3); overflow-wrap: anywhere }
-  .tag.bad { background: var(--danger-tint); color: var(--danger-ink) }
-  button.tag { border: 0; cursor: pointer }
-  tr.uses td { background: var(--surface-2); padding: 10px 16px }
-  .uses-list { display: flex; flex-wrap: wrap; gap: 6px }
-  .crop { background-color: var(--surface-2); background-repeat: no-repeat; border-radius: 8px; flex: none }
-  .crop.boss_portrait { width: 180px; height: 90px }
-  .crop.boss_portrait_icon { width: 56px; height: 56px; border-radius: 50% }
-  .w-num { width: 76px }
-  .crop.daily_quest_region { width: 180px; height: 72px }
-</style>
-<script>
-  var CROP_KINDS = [
-    ['boss_portrait', '보스 카드', 'boss'],
-    ['boss_portrait_icon', '보스 원형 아이콘', 'boss'],
-    ['daily_quest_region', '컨텐츠 카드 지도', 'map'],
-  ];
-  /**
-   * 그림 분류. 잎이 그림 분류(category) 하나다. 부모를 고르면 자식 분류 전부를 보인다. 아이템이 쓰는 그림은 여기에
-   * 안 들고 아이템 분류에 든다. 분류 목록은 서버 asset-paths.ts 의 ASSET_CATEGORIES 와 같다.
-   */
-  var FOLDERS = [
-    { label: '보스 초상', category: 'boss' },
-    { label: '아이템 폴더', children: [{ label: '일반', category: 'item' }, { label: '반지', category: 'item_ring' }] },
-    { label: '지도', children: [{ label: '배경', category: 'map' }, { label: '아이콘', category: 'map_icon' }] },
-    { label: '월드 엠블럼', category: 'world' },
-    { label: 'MVP 명패', category: 'mvp' },
-    { label: '포스', category: 'force' },
-    { label: '스킬', category: 'skill' },
-    { label: '캐릭터', category: 'character' },
-    { label: '고가 드롭 연출', children: [
-      { label: '화면', category: 'drop_effect_screen' }, { label: '시작', category: 'drop_effect_pre' },
-      { label: '반복', category: 'drop_effect_loop' }, { label: '끝', category: 'drop_effect_end' },
-    ] },
-  ];
-  var EXT = { 'image/png': 'png', 'image/webp': 'webp', 'image/jpeg': 'jpg' };
-  var ALL = { kind: 'all', label: '전체' };
-  var UNUSED = { kind: 'unused', label: '표가 안 쓰는 그림' };
-  var NO_CATEGORY = { kind: 'item', category: null, label: '분류 없음' };
-  var state = { rows: [], crops: [], categories: [], node: ALL, q: '', open: null, editing: null, cropKind: 'boss_portrait' };
+const NAV = [
+  ['/admin/assets', '그림'],
+  ['/admin/assets/crops', '크롭'],
+] as const
 
-  function kb(n) { return (n / 1024).toFixed(1) + 'KB'; }
+/** 두 화면이 함께 쓰는 읽기. 그림은 nginx 가 `/assets/<해시>.<확장자>` 로 내므로 미리보기도 그 주소를 쓴다. */
+const COMMON_JS = `
+  var D = null;
+  var batch = editing(function () { load(); });
   function urlOf(f) { return '/assets/' + f.file; }
   function keyText(r) { return r.category + '/' + r.fileName + '.' + r.extension; }
-  function usedByItem(r) { return r.uses.some(function (u) { return u.kind === '아이템'; }); }
-  function categoriesOf(node) { return node.children ? node.children.map(function (c) { return c.category; }) : [node.category]; }
-  function inNode(r, node) {
-    if (node.kind === 'all') return true;
-    if (node.kind === 'unused') return r.uses.length === 0;
-    if (node.kind === 'item') return usedByItem(r) && r.itemCategory === node.category;
-    return !usedByItem(r) && categoriesOf(node).indexOf(r.category) !== -1;
-  }
-  function countOf(node) { return state.rows.filter(function (r) { return inNode(r, node); }).length; }
   // 연출 프레임은 숫자 이름이라 글자 차례면 10 이 2 앞에 선다. 앱이 숫자 차례로 재생하므로 같은 차례로 보인다.
   function byFile(a, b) {
     if (a.category !== b.category) return a.category < b.category ? -1 : 1;
@@ -115,201 +19,220 @@ export const ASSETS_HTML = layout(
     if (!isNaN(na) && !isNaN(nb)) return na - nb;
     return keyText(a) < keyText(b) ? -1 : 1;
   }
+  async function load() {
+    var r = await call('GET', '/admin/assets/list');
+    if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
+    D = r.json;
+    document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
+    render();
+  }
+`
+
+function page(current: string, top: string, body: string, script: string): string {
+  return layout(
+    '/admin/assets',
+    '그림',
+    `<div class="top"><h1>그림</h1>${subNav(NAV, current)}${top}<span class="grow"></span><span class="updated" id="updated"></span></div>
+<div id="message" class="msg" role="status" hidden></div>
+${body}
+<script>
+${COMMON_JS}
+${script}
+  load();
+</script>`,
+  )
+}
+
+/**
+ * 앱이 받는 그림. 왼쪽 분류는 아이템이 쓰는 그림을 그 아이템의 묶음으로, 나머지를 그림 분류(폴더)로 묶는다. 오른쪽은 고른 분류의
+ * 그림이 18장씩 선다. 보이는 이름은 칸에서 바로 고치고, 비우면 그 그림을 쓰는 곳의 이름을 보인다.
+ *
+ * 같은 경로에 올리면 그림이 바뀐다. 표가 쓰지 않는 그림만 지울 수 있다.
+ */
+export const ASSETS_HTML = page(
+  '/admin/assets',
+  '<input id="q" type="search" class="on-bg" placeholder="이름 · 경로로 찾는다"><button type="button" class="btn danger sm" id="unused" hidden></button>',
+  `<div class="split"><nav class="picklist tree" id="tree" aria-label="그림 분류"></nav><section class="panel">
+  <div class="panel-head" id="head"></div>
+  <table class="sheet tight"><thead><tr><th>그림</th><th>보이는 이름 · 경로</th><th>쓰는 곳</th><th class="num">크기</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+  <div class="panel-head" style="margin-top:8px"><p id="summary"></p><span class="grow"></span><span id="pages"></span></div>
+</section></div>
+<style>
+  .tree .k { font-size: 11.5px; font-weight: 700; color: var(--text-3); letter-spacing: .04em; padding: 8px 10px 2px }
+  .tree button.child { padding-left: 22px }
+  .thumb { width: 28px; height: 28px; object-fit: contain; background: var(--surface-2); border-radius: 6px; display: block; image-rendering: pixelated }
+  .tag.bad { background: var(--danger-tint); color: var(--danger-ink) }
+  button.tag { border: 0; cursor: pointer }
+</style>`,
+  `
+  /**
+   * 그림 분류. 잎이 그림 분류(category) 하나다. 부모를 고르면 자식 분류 전부를 보인다. 아이템이 쓰는 그림은 여기에
+   * 안 들고 아이템 묶음에 든다. 분류 목록은 서버 asset-paths.ts 의 ASSET_CATEGORIES 와 같다.
+   */
+  var FOLDERS = [
+    { key: 'f:boss', label: '보스 초상', category: 'boss' },
+    { key: 'f:item', label: '아이템 폴더', children: [{ key: 'f:item:item', label: '일반', category: 'item' }, { key: 'f:item:ring', label: '반지', category: 'item_ring' }] },
+    { key: 'f:map', label: '지도', children: [{ key: 'f:map:bg', label: '배경', category: 'map' }, { key: 'f:map:icon', label: '아이콘', category: 'map_icon' }] },
+    { key: 'f:world', label: '월드 엠블럼', category: 'world' },
+    { key: 'f:mvp', label: 'MVP 명패', category: 'mvp' },
+    { key: 'f:force', label: '포스', category: 'force' },
+    { key: 'f:skill', label: '스킬', category: 'skill' },
+    { key: 'f:character', label: '캐릭터', category: 'character' },
+    { key: 'f:effect', label: '고가 드롭 연출', children: [
+      { key: 'f:effect:screen', label: '화면', category: 'drop_effect_screen' }, { key: 'f:effect:pre', label: '시작', category: 'drop_effect_pre' },
+      { key: 'f:effect:loop', label: '반복', category: 'drop_effect_loop' }, { key: 'f:effect:end', label: '끝', category: 'drop_effect_end' },
+    ] },
+  ];
+  var EXT = { 'image/png': 'png', 'image/webp': 'webp', 'image/jpeg': 'jpg' };
+  var PAGE = 18, nodeKey = 'all', pageAt = 0;
+  function kb(n) { return (n / 1024).toFixed(1) + 'KB'; }
+  function usedByItem(r) { return r.uses.some(function (u) { return u.kind === '아이템'; }); }
+  function nodes() {
+    var l = [{ key: 'all', label: '전체', test: function () { return true; } }, { key: 'unused', label: '표가 안 쓰는 그림', test: function (r) { return r.uses.length === 0; } }];
+    D.categories.forEach(function (k) {
+      l.push({ head: '아이템 · ' + k.name });
+      k.groups.forEach(function (g) { l.push({ key: 'i:' + g.key, label: g.name, test: function (r) { return usedByItem(r) && r.itemCategory === g.key; } }); });
+    });
+    l.push({ key: 'i:', label: '아이템 · 분류 없음', test: function (r) { return usedByItem(r) && r.itemCategory === null; } });
+    l.push({ head: '그 밖' });
+    FOLDERS.forEach(function (f) {
+      var cats = f.children ? f.children.map(function (c) { return c.category; }) : [f.category];
+      l.push({ key: f.key, label: f.label, category: f.category, test: function (r) { return !usedByItem(r) && cats.indexOf(r.category) >= 0; } });
+      (f.children || []).forEach(function (c) { l.push({ key: c.key, label: c.label, category: c.category, child: true, test: function (r) { return !usedByItem(r) && r.category === c.category; } }); });
+    });
+    return l;
+  }
+  function nodeOf(key) { return nodes().filter(function (n) { return n.key === key; })[0] || nodes()[0]; }
 
   /** 그림 하나를 올린다. 확장자가 없으면(새 그림) 파일 형식에서 정한다. 있으면(바꾸기) 파일 형식이 같아야 한다. */
   async function upload(target, file) {
-    if (!file) { show('파일을 고른다', true); return; }
+    if (!file) { show('파일을 고른다', true); return false; }
     var key = { category: target.category, fileName: target.fileName, extension: target.extension || EXT[file.type] || '' };
     var res = await fetch('/admin/assets/file?' + new URLSearchParams(key), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
     var text = await res.text();
-    if (!res.ok) { show('못 올렸다 ' + res.status + '\\n' + text, true); return; }
+    if (!res.ok) { show('못 올렸다 ' + res.status + '\\n' + text, true); return false; }
     var json = JSON.parse(text);
     show(keyText(key) + (json.result === 'same' ? ' 는 내용이 같아 그대로다' : json.result === 'created' ? ' 를 더했다' : ' 를 바꿨다'), false);
-    load();
+    load(); return true;
   }
-
   function filePicker(onPick) {
     var f = input('file'); f.accept = 'image/png,image/webp,image/jpeg'; f.hidden = true;
     f.addEventListener('change', function () { if (f.files && f.files[0]) onPick(f.files[0]); f.value = ''; });
     return f;
   }
+  function uploadForm(category) {
+    var form = el('div', undefined, 'form-body'); var name = input('text', 'mono'); name.placeholder = category.indexOf('drop_effect') === 0 ? '24' : 'newName'; var file = input('file'); file.accept = 'image/png,image/webp,image/jpeg';
+    form.appendChild(field('파일 이름', category + ' 분류. 확장자는 파일 형식에서 정한다', name)); form.appendChild(field('파일', 'png · webp · jpg, 1MB 까지', file));
+    var go = button('올리기', 'btn'); form.appendChild(go); var d = openForm('새 그림 올리기', form);
+    go.addEventListener('click', async function () { if (await upload({ category: category, fileName: name.value.trim() }, file.files && file.files[0])) d.close(); });
+  }
+  function usesDialog(r) {
+    var form = el('div', undefined, 'form-body'); var list = el('div', undefined, 'tags');
+    r.uses.forEach(function (u) { list.appendChild(span(u.kind + ' · ' + u.name, 'tag')); }); form.appendChild(list); openForm(keyText(r) + ' 를 쓰는 곳', form);
+  }
 
-  function pick(node) { state.node = node; state.open = null; state.editing = null; renderTree(); renderNewForm(); renderRows(); }
-
-  function renderTree() {
-    var box = document.getElementById('tree'); box.innerHTML = '';
-    function item(node, isChild) {
-      var n = countOf(node);
-      if (n === 0 && node.kind === 'item') return;
-      var b = button('', isChild ? 'child' : '');
-      b.appendChild(document.createTextNode(node.label));
-      b.appendChild(span(String(n)));
-      b.setAttribute('aria-current', state.node === node ? 'true' : 'false');
-      b.addEventListener('click', function () { pick(node); });
-      box.appendChild(b);
-    }
-    item(ALL, false); item(UNUSED, false);
-    state.categories.forEach(function (kind) {
-      var groups = kind.groups.filter(function (g) { return countOf(g.node) > 0; });
-      if (groups.length === 0) return;
-      box.appendChild(el('div', '아이템 · ' + kind.name, 'k'));
-      groups.forEach(function (g) { item(g.node, false); });
+  function render() {
+    batch.clear();
+    var all = nodes(), node = nodeOf(nodeKey);
+    var tree = document.getElementById('tree'); tree.innerHTML = '';
+    all.forEach(function (n) {
+      if (n.head) { tree.appendChild(el('div', n.head, 'k')); return; }
+      var c = D.rows.filter(n.test).length; if (c === 0 && n.key.indexOf('i:') === 0) return;
+      var b = button('', n.child ? 'child' : ''); b.setAttribute('aria-current', n.key === node.key ? 'true' : 'false'); b.appendChild(el('b', n.label)); b.appendChild(span(String(c), 'pl-meta'));
+      b.addEventListener('click', function () { if (n.key === nodeKey || !discardOk(batch)) return; nodeKey = n.key; pageAt = 0; setHashKey(n.key); render(); });
+      tree.appendChild(b);
     });
-    if (countOf(NO_CATEGORY) > 0) item(NO_CATEGORY, false);
-    box.appendChild(el('div', '그 밖', 'k'));
-    FOLDERS.forEach(function (node) { item(node, false); (node.children || []).forEach(function (c) { item(c, true); }); });
-  }
-
-  function renderNewForm() {
-    var box = document.getElementById('new-form'); box.innerHTML = '';
-    var node = state.node;
-    if (node.kind === 'item') { box.appendChild(span('아이템 그림은 아이템 화면에서 아이템을 열고 고르거나 올린다', 'dim')); return; }
-    if (node.kind !== undefined || node.children) { box.appendChild(span('그 밖의 하위 분류를 고르면 새 그림을 올릴 수 있다', 'dim')); return; }
-    var category = node.category;
-    var name = input('text', 'mono'); name.placeholder = category.indexOf('drop_effect') === 0 ? '24' : 'newName'; name.size = 24;
-    var file = input('file'); file.accept = 'image/png,image/webp,image/jpeg';
-    var go = button('올리기', 'btn');
-    go.addEventListener('click', function () { upload({ category: category, fileName: name.value.trim() }, file.files && file.files[0]); });
-    box.appendChild(field('파일 이름', category + ' 분류. 확장자는 파일 형식에서 정한다', name));
-    box.appendChild(field('파일', '', file));
-    box.appendChild(go);
-  }
-
-  async function saveName(r, value) {
-    var res = await call('PUT', '/admin/assets/' + r.id + '/name', { name: value });
-    show(res.ok ? (value.trim() ? keyText(r) + ' 이름을 적었다' : keyText(r) + ' 이름을 비웠다. 쓰는 곳의 이름을 보인다') : fail('이름을 못 적었다', res), !res.ok);
-    if (res.ok) { state.editing = null; load(); }
-  }
-
-  async function remove(r) {
-    if (!confirm(keyText(r) + ' 를 지운다. 이 그림의 크롭도 함께 지운다. 되돌릴 수 없다')) return;
-    var res = await call('DELETE', '/admin/assets/' + r.id);
-    show(res.ok ? keyText(r) + ' 를 지웠다' : fail('못 지웠다', res), !res.ok);
-    if (res.ok) load();
-  }
-
-  function nameCell(r) {
-    if (state.editing === r.id) {
-      var box = el('div', undefined, 'inline');
-      var name = input('text'); name.value = r.name || ''; name.placeholder = r.uses[0] ? r.uses[0].name : r.fileName; name.size = 22;
-      var save = button('저장', 'btn sm'), cancel = button('취소', 'btn ghost sm');
-      save.addEventListener('click', function () { saveName(r, name.value); });
-      cancel.addEventListener('click', function () { state.editing = null; renderRows(); });
-      name.addEventListener('keydown', function (e) { if (e.key === 'Enter') saveName(r, name.value); });
-      box.appendChild(name); box.appendChild(save); box.appendChild(cancel);
-      setTimeout(function () { name.focus(); }, 0);
-      return box;
-    }
-    var d = el('div', undefined, 'label');
-    d.appendChild(document.createTextNode(r.label));
-    if (r.name) d.appendChild(el('small', '적은 이름'));
-    d.appendChild(span(keyText(r), 'path'));
-    return d;
-  }
-
-  function renderRows() {
-    var rows = document.getElementById('rows'); rows.innerHTML = '';
-    var q = state.q.trim().toLowerCase();
-    var shown = state.rows.filter(function (r) {
-      return inNode(r, state.node) && (!q || r.label.toLowerCase().indexOf(q) !== -1 || keyText(r).toLowerCase().indexOf(q) !== -1);
-    }).sort(byFile);
-    shown.forEach(function (r) {
-      var tr = el('tr');
-      var img = el('img', undefined, 'thumb'); img.src = urlOf(r); img.alt = ''; img.loading = 'lazy';
-      cell(tr, img);
-      cell(tr, nameCell(r), 'wrap');
-      var uses;
-      if (r.uses.length === 0) uses = span('표가 안 씀', 'tag bad');
-      else {
-        uses = button(r.uses.length + '곳', 'tag accent');
-        uses.setAttribute('aria-expanded', state.open === r.id ? 'true' : 'false');
-        uses.addEventListener('click', function () { state.open = state.open === r.id ? null : r.id; renderRows(); });
-      }
-      cell(tr, uses);
-      cell(tr, r.width + '×' + r.height + ' · ' + kb(r.sizeBytes), 'num mono');
-      var pickFile = filePicker(function (file) { upload(r, file); });
-      var replace = button('바꾸기', 'btn ghost sm');
-      replace.addEventListener('click', function () { pickFile.click(); });
-      var rename = button('이름', 'btn ghost sm');
-      rename.addEventListener('click', function () { state.editing = r.id; renderRows(); });
-      var actions = inline(rename, replace, pickFile);
+    var head = document.getElementById('head'); head.innerHTML = ''; head.appendChild(el('b', node.label)); head.appendChild(span('', 'grow'));
+    if (node.category && !node.children) { var up = button('새 그림 올리기', 'btn ghost sm'); up.addEventListener('click', function () { uploadForm(node.category); }); head.appendChild(up); }
+    else if (node.key.indexOf('i:') === 0) head.appendChild(el('p', '아이템 그림은 아이템 화면의 그림 칸에서 고르거나 올린다'));
+    var q = document.getElementById('q').value.trim().toLowerCase();
+    var shown = D.rows.filter(function (r) { return node.test(r) && (!q || r.label.toLowerCase().indexOf(q) >= 0 || keyText(r).toLowerCase().indexOf(q) >= 0); }).sort(byFile);
+    var pages = Math.max(1, Math.ceil(shown.length / PAGE)); if (pageAt >= pages) pageAt = pages - 1;
+    var tb = document.getElementById('rows'); tb.innerHTML = '';
+    shown.slice(pageAt * PAGE, pageAt * PAGE + PAGE).forEach(function (r) {
+      var tr = el('tr'); var img = el('img', undefined, 'thumb'); img.src = urlOf(r); img.alt = ''; img.loading = 'lazy'; cell(tr, img);
+      var name = textCell(batch, keyText(r), r.name || '', function () { return call('PUT', '/admin/assets/' + r.id + '/name', { name: name.value() }); }, 'w-mid');
+      name.input.placeholder = r.uses[0] ? r.uses[0].name : r.fileName;
+      var box = el('div', undefined, 'pair'); box.appendChild(name.input); box.appendChild(el('small', keyText(r))); cell(tr, box);
+      var uses = r.uses.length === 0 ? span('표가 안 씀', 'tag bad') : button(r.uses.length + '곳', 'tag accent');
+      if (r.uses.length > 0) uses.addEventListener('click', function () { usesDialog(r); });
+      cell(tr, uses); cell(tr, r.width + '×' + r.height + ' · ' + kb(r.sizeBytes), 'num mono');
+      var pick = filePicker(function (file) { upload(r, file); }); var replace = button('바꾸기', 'btn ghost sm'); replace.addEventListener('click', function () { pick.click(); });
+      var act = inline(replace, pick);
       if (r.uses.length === 0) {
         var del = button('지우기', 'btn danger sm');
-        del.addEventListener('click', function () { remove(r); });
-        actions.appendChild(del);
+        del.addEventListener('click', async function () { if (!window.confirm(keyText(r) + ' 를 지운다. 이 그림의 크롭도 함께 지운다. 되돌릴 수 없다')) return; var res = await call('DELETE', '/admin/assets/' + r.id); show(res.ok ? keyText(r) + ' 를 지웠다' : fail('못 지웠다', res), !res.ok); if (res.ok) load(); });
+        act.appendChild(del);
       }
-      cell(tr, actions, 'act');
-      rows.appendChild(tr);
-      if (state.open === r.id) {
-        var more = el('tr', undefined, 'uses');
-        var list = el('div', undefined, 'uses-list');
-        r.uses.forEach(function (u) { list.appendChild(span(u.kind + ' · ' + u.name, 'tag')); });
-        var td = cell(more, list); td.colSpan = 5;
-        rows.appendChild(more);
+      act.classList.add('row-act'); cell(tr, act, 'act'); tb.appendChild(tr);
+    });
+    if (shown.length === 0) { var e = el('tr'); var td = cell(e, '맞는 그림이 없다', 'empty'); td.colSpan = 5; tb.appendChild(e); }
+    document.getElementById('summary').textContent = shown.length + '장 · 전체 ' + D.rows.length + '장 · ' + kb(D.rows.reduce(function (n, f) { return n + f.sizeBytes; }, 0)) + ' · 이름을 비우면 쓰는 곳의 이름을 보인다';
+    var pg = document.getElementById('pages'); pg.innerHTML = '';
+    pg.appendChild(pager(pages, pageAt, function (v) { if (!discardOk(batch)) return; pageAt = v; render(); }));
+    var unused = D.rows.filter(function (x) { return x.uses.length === 0; }).length; var ub = document.getElementById('unused');
+    ub.hidden = unused === 0; ub.textContent = '표가 안 쓰는 그림 ' + unused + '장';
+  }
+  if (hashKey()) nodeKey = hashKey();
+  document.getElementById('q').addEventListener('input', function () { pageAt = 0; render(); });
+  document.getElementById('unused').addEventListener('click', function () { if (!discardOk(batch)) return; nodeKey = 'unused'; pageAt = 0; setHashKey('unused'); render(); });
+`,
+)
+
+/**
+ * 보스 초상 · 컨텐츠 지역 지도의 크롭. 위에서 종류를 고르면 그 종류에 쓰는 그림마다 미리보기와 숫자 셋(폭 · 가로 · 세로 %)이 선다.
+ * 미리보기 틀의 비율은 앱 자리와 비슷하게 맞춘 것이다. 줄이 없으면 앱은 cover · 가운데로 그린다.
+ */
+export const ASSET_CROPS_HTML = page(
+  '/admin/assets/crops',
+  '',
+  `<section class="panel">
+  <div class="panel-head"><span id="kinds"></span><span class="grow"></span><p>칸은 차례로 폭 · 가로 · 세로 % 다</p></div>
+  <div class="crops" id="crops"></div>
+  <div class="panel-head" style="margin-top:10px"><p>폭은 놓이는 자리의 폭에 대한 %, 위치는 가로 · 세로 % 다. 폭을 비우면 크롭이 없고 앱은 cover · 가운데로 그린다.</p></div>
+</section>
+<style>
+  .crops { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 6px 8px }
+  .crop-card { position: relative; display: grid; gap: 4px; padding: 6px; border-radius: 10px; background: var(--surface-2) }
+  .crop-card .nm { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; align-items: center; gap: 6px; font: 11.5px var(--mono); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8) }
+  .crop-card .nm .grow { flex: 1 }
+  .crop-card .nm .btn { visibility: hidden; background: var(--surface); padding: 3px 7px }
+  .crop-card:hover .nm .btn { visibility: visible }
+  .crop-card .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px }
+  .crop-card .num-in { width: 100%; padding: 4px 6px; background: var(--surface) }
+  .crop { background-color: var(--surface); background-repeat: no-repeat; border-radius: 8px }
+  .crop.boss_portrait { width: 100%; aspect-ratio: 2 / 1 }
+  .crop.boss_portrait_icon { width: 56px; height: 56px; border-radius: 50%; justify-self: center; margin-top: 16px }
+  .crop.daily_quest_region { width: 100%; aspect-ratio: 5 / 2 }
+</style>`,
+  `
+  var KINDS = [['boss_portrait', '보스 카드', 'boss'], ['boss_portrait_icon', '보스 원형 아이콘', 'boss'], ['daily_quest_region', '컨텐츠 카드 지도', 'map']];
+  var kind = 'boss_portrait';
+  function render() {
+    batch.clear();
+    var k = KINDS.filter(function (x) { return x[0] === kind; })[0];
+    var head = document.getElementById('kinds'); head.innerHTML = '';
+    head.appendChild(segButtons(KINDS.map(function (x) { return [x[0], x[1]]; }), kind, function (v) { if (!discardOk(batch)) return; kind = v; setHashKey(v); render(); }));
+    var box = document.getElementById('crops'); box.innerHTML = '';
+    D.rows.filter(function (f) { return f.category === k[2]; }).sort(byFile).forEach(function (f) {
+      var saved = D.crops.filter(function (c) { return c.type === kind && c.assetId === f.id; })[0];
+      var card = el('div', undefined, 'crop-card'); var prev = el('div', undefined, 'crop ' + kind); prev.style.backgroundImage = 'url(' + urlOf(f) + ')';
+      var w, x, y;
+      var send = function () { return call('PUT', '/admin/image-crops/' + kind + '/' + f.id, { widthPercent: w.value(), positionXPercent: x.value() === null ? 50 : x.value(), positionYPercent: y.value() === null ? 50 : y.value() }); };
+      w = numCell(batch, f.fileName + ' 크롭', saved ? saved.widthPercent : null, send); x = numCell(batch, f.fileName + ' 크롭', saved ? saved.positionXPercent : null, send); y = numCell(batch, f.fileName + ' 크롭', saved ? saved.positionYPercent : null, send);
+      w.input.placeholder = 'cover'; x.input.placeholder = '50'; y.input.placeholder = '50';
+      function preview() {
+        var wv = numRaw(w.input.value), xv = numRaw(x.input.value), yv = numRaw(y.input.value);
+        prev.style.backgroundSize = wv ? wv + '% auto' : 'cover'; prev.style.backgroundPosition = xv || yv ? (xv || '50') + '% ' + (yv || '50') + '%' : 'center';
       }
+      [w, x, y].forEach(function (c) { c.input.addEventListener('input', preview); c.input.addEventListener('blur', preview); }); preview();
+      var nm = el('div', undefined, 'nm'); nm.appendChild(span(f.fileName)); nm.appendChild(span('', 'grow'));
+      if (saved) { var rm = button('지우기', 'btn danger sm'); rm.addEventListener('click', async function () { var r = await call('DELETE', '/admin/image-crops/' + kind + '/' + f.id); show(r.ok ? f.fileName + ' 크롭을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) load(); }); nm.appendChild(rm); }
+      w.input.title = '폭 %'; x.input.title = '가로 위치 %'; y.input.title = '세로 위치 %';
+      var nums = el('div', undefined, 'nums'); nums.appendChild(w.input); nums.appendChild(x.input); nums.appendChild(y.input);
+      card.appendChild(prev); card.appendChild(nm); card.appendChild(nums); box.appendChild(card);
     });
-    if (shown.length === 0) { var tr = el('tr'); var td = cell(tr, '맞는 그림이 없다', 'empty'); td.colSpan = 5; rows.appendChild(tr); }
   }
-
-  function renderCropKind() {
-    var s = select(CROP_KINDS.map(function (k) { return [k[0], k[1]]; }), state.cropKind);
-    s.addEventListener('change', function () { state.cropKind = s.value; renderCrops(); });
-    var box = document.getElementById('crop-kind'); box.innerHTML = ''; box.appendChild(s);
-  }
-
-  function renderCrops() {
-    var kind = CROP_KINDS.find(function (k) { return k[0] === state.cropKind; });
-    var rows = document.getElementById('crop-rows'); rows.innerHTML = '';
-    var files = state.rows.filter(function (f) { return f.category === kind[2]; }).sort(byFile);
-    files.forEach(function (f) {
-      var name = f.fileName;
-      var saved = state.crops.find(function (c) { return c.type === kind[0] && c.assetId === f.id; });
-      var tr = el('tr');
-      var box = el('div', undefined, 'crop ' + kind[0]); box.style.backgroundImage = 'url(' + urlOf(f) + ')';
-      var num = function (v) { var i = input('number'); i.step = '0.1'; i.className = 'w-num'; i.value = v === null || v === undefined ? '' : v; return i; };
-      var w = num(saved ? saved.widthPercent : null), x = num(saved ? saved.positionXPercent : null), y = num(saved ? saved.positionYPercent : null);
-      w.placeholder = 'cover'; x.placeholder = '50'; y.placeholder = '50';
-      function preview() { box.style.backgroundSize = w.value.trim() ? w.value.trim() + '% auto' : 'cover'; box.style.backgroundPosition = x.value.trim() || y.value.trim() ? (x.value.trim() || '50') + '% ' + (y.value.trim() || '50') + '%' : 'center'; }
-      [w, x, y].forEach(function (i) { i.addEventListener('input', preview); }); preview();
-      var save = button('저장', 'btn sm'), remove = button('지우기', 'btn danger sm');
-      save.addEventListener('click', async function () {
-        var r = await call('PUT', '/admin/image-crops/' + kind[0] + '/' + f.id, { widthPercent: Number(w.value), positionXPercent: Number(x.value || 50), positionYPercent: Number(y.value || 50) });
-        show(r.ok ? name + ' 크롭을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) load();
-      });
-      remove.addEventListener('click', async function () {
-        var r = await call('DELETE', '/admin/image-crops/' + kind[0] + '/' + f.id);
-        show(r.ok ? name + ' 크롭을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) load();
-      });
-      cell(tr, box); cell(tr, name, 'mono'); cell(tr, w, 'num'); cell(tr, x, 'num'); cell(tr, y, 'num');
-      cell(tr, saved ? inline(save, remove) : save, 'act');
-      rows.appendChild(tr);
-    });
-    if (files.length === 0) { var tr = el('tr'); var td = cell(tr, '그림이 없다', 'empty'); td.colSpan = 6; rows.appendChild(tr); }
-  }
-
-  async function load() {
-    var r = await call('GET', '/admin/assets/list');
-    if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
-    state.rows = r.json.rows; state.crops = r.json.crops;
-    // 트리 노드는 다시 읽어도 같은 것을 가리켜야 고른 자리가 남는다.
-    var keep = state.node.kind === 'item' ? state.node.category : undefined;
-    state.categories = r.json.categories.map(function (kind) {
-      return { key: kind.key, name: kind.name, groups: kind.groups.map(function (g) {
-        var node = { kind: 'item', category: g.key, label: g.name };
-        if (keep === g.key) state.node = node;
-        return { key: g.key, name: g.name, node: node };
-      }) };
-    });
-    var unused = state.rows.filter(function (x) { return x.uses.length === 0; }).length;
-    document.getElementById('unused').hidden = unused === 0;
-    document.getElementById('unused-text').textContent = '표가 쓰지 않는 그림이 ' + unused + '장 있다. 지워도 앱에서 빠지는 그림이 없다';
-    document.getElementById('stat-files').textContent = state.rows.length;
-    document.getElementById('stat-size').textContent = kb(state.rows.reduce(function (n, f) { return n + f.sizeBytes; }, 0));
-    document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
-    renderTree(); renderNewForm(); renderRows(); renderCrops();
-  }
-  document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value; renderRows(); });
-  document.getElementById('unused-show').addEventListener('click', function () { pick(UNUSED); });
-  renderCropKind(); load();
-</script>`,
+  if (hashKey()) kind = hashKey();
+`,
 )

@@ -239,7 +239,7 @@ export type WorldPeriodBody = z.infer<typeof worldPeriodBody>
 export const spendGroupCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
-  /** 지출 갈래의 key. 수입 갈래는 리포지토리가 막는다. */
+  /** 지출 분류의 key. 수입 분류는 리포지토리가 막는다. */
   category: snakeKey,
   cardTitle: z.string().min(1).max(50),
   isActive: z.boolean().default(true),
@@ -293,7 +293,7 @@ export const spendRewardTypeKey = z.enum(SPEND_REWARD_TYPES)
 export const spendRewardTypeUpdateBody = z.object({ name: z.string().min(1).max(20) })
 export type SpendRewardTypeUpdateBody = z.infer<typeof spendRewardTypeUpdateBody>
 
-/* ── 가계부 갈래 ── */
+/* ── 가계부 분류 ── */
 
 export const cashbookEntryType = z.enum(CASHBOOK_ENTRY_TYPES)
 export const cashbookCategoryCreateBody = z.object({
@@ -455,7 +455,7 @@ export type HexaStatUpdateBody = z.infer<typeof hexaStatUpdateBody>
 
 /* ── 컨텐츠 ── */
 
-/** 갈래의 글자 · 태그 · 주간 최대 횟수 · 공유 차례. key 는 ENUM 이라 경로가 든다. 태그는 글자와 숨김 중 하나다. */
+/** 분류의 글자 · 태그 · 주간 최대 횟수 · 공유 차례. key 는 ENUM 이라 경로가 든다. 태그는 글자와 숨김 중 하나다. */
 export const contentCategoryUpdateBody = z
   .object({
     name: z.string().min(1).max(50),
@@ -471,7 +471,7 @@ export const contentCategoryUpdateBody = z
 export type ContentCategoryUpdateBody = z.infer<typeof contentCategoryUpdateBody>
 export const contentCategoryParam = z.enum(CONTENT_CATEGORIES)
 
-/** 컨텐츠 한 줄. 갈래는 key, 그림은 그림 줄 id 다. 카드 그림은 지도와 초상 중 하나다. */
+/** 컨텐츠 한 줄. 분류는 key, 그림은 그림 줄 id 다. 카드 그림은 지도와 초상 중 하나다. */
 const contentBase = z.object({
   key: snakeKey,
   cycle: z.enum(CONTENT_CYCLES),

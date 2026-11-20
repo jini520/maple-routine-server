@@ -336,11 +336,16 @@ describe('AdminController', () => {
     '/admin/crystal-prices',
     '/admin/worlds',
     '/admin/cashbook-categories',
+    '/admin/cashbook-categories/item-types',
     '/admin/hunt-loot',
     '/admin/spend-catalog',
+    '/admin/spend-catalog/tiles',
     '/admin/symbol-costs',
     '/admin/hexa-matrix',
+    '/admin/hexa-matrix/types',
+    '/admin/hexa-matrix/costs',
     '/admin/contents',
+    '/admin/contents/categories',
     '/admin/enhancement-costs',
     '/admin/enhancement-costs/starforce',
     '/admin/enhancement-costs/superior',
@@ -362,16 +367,20 @@ describe('AdminController', () => {
     }
   })
 
-  it('보스 목록 화면은 표 하나와 새 보스 단추를 든다. 편집기는 줄 아래로 펼쳐진다', async () => {
+  it('보스 목록 화면은 왼쪽 보스 목록 · 오른쪽 편집 칸 · 새 보스 단추를 들고, 옛 표 이름을 읽지 않는다', async () => {
     const res = await app.inject({ method: 'GET', url: '/admin/bosses' })
-    expect(res.body.match(/<table/g)).toHaveLength(1)
-    expect(res.body).toContain('id="b-new"')
+    for (const id of ['id="list"', 'id="detail"', 'id="b-new"']) expect(res.body).toContain(id)
     expect(res.body).not.toContain('boss_difficulties')
   })
 
   const MENU_OF: Record<string, string> = {
     '/admin/enhancement-costs/starforce': '/admin/enhancement-costs',
     '/admin/enhancement-costs/superior': '/admin/enhancement-costs',
+    '/admin/cashbook-categories/item-types': '/admin/cashbook-categories',
+    '/admin/spend-catalog/tiles': '/admin/spend-catalog',
+    '/admin/hexa-matrix/types': '/admin/hexa-matrix',
+    '/admin/hexa-matrix/costs': '/admin/hexa-matrix',
+    '/admin/contents/categories': '/admin/contents',
   }
 
   // 한 메뉴를 나눈 화면(강화 비용의 스타포스 등)은 그 메뉴 항목이 지금 화면이다. 화면 안의 전환 막대는 따로 센다.
@@ -1415,7 +1424,7 @@ describe('AdminController', () => {
     })
   })
 
-  describe('가계부 갈래', () => {
+  describe('가계부 분류', () => {
     const hexa = {
       entryType: 'spend',
       key: 'hexa_skill',
@@ -1424,7 +1433,7 @@ describe('AdminController', () => {
       iconAssetId: ROW,
     }
 
-    it('갈래를 더하면 빈 설명 · 단위를 채워 넘기고, 같은 쪽의 같은 key 는 409, 그림 표에 없는 그림은 400 이다', async () => {
+    it('분류를 더하면 빈 설명 · 단위를 채워 넘기고, 같은 쪽의 같은 key 는 409, 그림 표에 없는 그림은 400 이다', async () => {
       cashbookRepo.createCategory.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
@@ -1458,7 +1467,7 @@ describe('AdminController', () => {
       ).toBe(400)
     })
 
-    it('갈래 고치기 · 옮기기는 수입 · 지출과 key 로 찾고, 모르면 404 다', async () => {
+    it('분류 고치기 · 옮기기는 수입 · 지출과 key 로 찾고, 모르면 404 다', async () => {
       cashbookRepo.updateCategory.mockResolvedValue(true)
       const body = {
         name: '사냥',
@@ -2093,7 +2102,7 @@ describe('AdminController', () => {
       regionIconAssetId: null,
     }
 
-    it('rows 는 관리 줄 그대로이고, 갈래는 PUT 204 · 모르면 404, move 는 204 다', async () => {
+    it('rows 는 관리 줄 그대로이고, 분류는 PUT 204 · 모르면 404, move 는 204 다', async () => {
       contentsRepo.adminRows.mockResolvedValue({ updatedAt: null, categories: [], contents: [] })
       expect((await app.inject({ method: 'GET', url: '/admin/contents/rows' })).json()).toEqual({
         updatedAt: null,
@@ -2123,7 +2132,7 @@ describe('AdminController', () => {
         weeklyMaxCount: 3,
         sharedSortOrder: 2,
       })
-      // 글자와 숨김을 함께 못 든다. 갈래 key 는 ENUM 밖이면 경로에서 400 이다.
+      // 글자와 숨김을 함께 못 든다. 분류 key 는 ENUM 밖이면 경로에서 400 이다.
       expect(
         (
           await app.inject({
@@ -2166,7 +2175,7 @@ describe('AdminController', () => {
       expect(contentsRepo.moveCategory).toHaveBeenCalledWith('guild', 'up')
     })
 
-    it('컨텐츠 POST 는 201 · 모르는 갈래 404 · 같은 key 와 겹치는 API 이름 409 · 없는 그림과 모양이 틀리면 400 이다', async () => {
+    it('컨텐츠 POST 는 201 · 모르는 분류 404 · 같은 key 와 겹치는 API 이름 409 · 없는 그림과 모양이 틀리면 400 이다', async () => {
       contentsRepo.createContent.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',

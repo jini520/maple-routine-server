@@ -328,7 +328,7 @@ describeDb('SpendCatalogRepository', () => {
     expect(admin.tiles.find((t) => t.key === 'magical_scroll')?.name).toBe('매지컬')
   })
 
-  it('묶음은 지출 갈래만 가리키고, 카드 제목 · 추가 리워드 종류 이름을 낸다', async () => {
+  it('묶음은 지출 분류만 가리키고, 카드 제목 · 추가 리워드 종류 이름을 낸다', async () => {
     await seedTwoGroups()
     await expect(
       repo.createGroup({ ...epic, key: 'hunt', category: 'hunting' }),

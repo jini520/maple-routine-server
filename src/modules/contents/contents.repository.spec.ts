@@ -40,7 +40,7 @@ describeDb('ContentsRepository', () => {
   beforeEach(async () => {
     await truncate()
     assetIds = await insertAssets(db, SPEC_ASSETS)
-    // 갈래 줄은 ENUM 과 일대일이라 리포지토리가 더하지 않는다. 씨앗이 넣는 모양 그대로 둘만 둔다.
+    // 분류 줄은 ENUM 과 일대일이라 리포지토리가 더하지 않는다. 씨앗이 넣는 모양 그대로 둘만 둔다.
     await db.insert(contentCategories).values([
       {
         key: 'epic_dungeon',
@@ -164,7 +164,7 @@ describeDb('ContentsRepository', () => {
     })
   })
 
-  it('모르는 갈래는 NoContentCategory, 같은 key 는 ContentExists, 공백만 다른 API 이름은 ApiNameTaken, 없는 그림은 AssetNotFound 다', async () => {
+  it('모르는 분류는 NoContentCategory, 같은 key 는 ContentExists, 공백만 다른 API 이름은 ApiNameTaken, 없는 그림은 AssetNotFound 다', async () => {
     await repo.createContent(highMountain)
     await expect(repo.createContent({ ...aurumRegis, category: 'guild' })).rejects.toBeInstanceOf(
       NoContentCategory,
@@ -222,7 +222,7 @@ describeDb('ContentsRepository', () => {
     ])
   })
 
-  it('갈래의 글자 · 태그 · 주간 최대 횟수 · 공유 차례를 고치고 차례를 옮긴다. 모르는 key 는 false 다', async () => {
+  it('분류의 글자 · 태그 · 주간 최대 횟수 · 공유 차례를 고치고 차례를 옮긴다. 모르는 key 는 false 다', async () => {
     expect(
       await repo.updateCategory('epic_dungeon', {
         name: '에픽던전',

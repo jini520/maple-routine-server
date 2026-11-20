@@ -48,7 +48,7 @@ export const bossDifficultyEnum = pgEnum('boss_difficulty', [
 ])
 /** 난이도의 주기. 시즌 보스인지는 주기가 아니라 `bosses.is_season_boss` 가 말한다. */
 export const bossCycleEnum = pgEnum('boss_cycle', ['weekly', 'monthly'])
-/** 드롭 표의 갈래. 앱 DROP_CATEGORIES 그대로이고 선언 순서가 화면 순서다. */
+/** 드롭 표의 분류. 앱 DROP_CATEGORIES 그대로이고 선언 순서가 화면 순서다. */
 export const dropCategoryEnum = pgEnum('drop_category', ['fixed', 'equipment', 'consumable'])
 
 /** 사람. 넥슨 계정 줄을 들고, 한 사람이 넥슨 계정을 여럿 가질 수 있다. 세션은 사람을 가리킨다. */
@@ -630,7 +630,7 @@ export const bossDifficultyRewards = pgTable(
     itemId: uuid('item_id')
       .notNull()
       .references(() => items.id),
-    /** 고정 보상의 개수. 다른 갈래는 NULL 이다. */
+    /** 고정 보상의 개수. 다른 분류는 NULL 이다. */
     quantity: integer('quantity'),
     /** KST 글자 그대로. YYYY-MM-DD 또는 YYYY-MM-DDTHH:mm. 앱의 기간 판정이 문자열 비교다. */
     validFrom: text('valid_from'),
@@ -638,7 +638,7 @@ export const bossDifficultyRewards = pgTable(
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
-    // 드롭 기록은 한 수익 건에서 같은 아이템이 한 줄이라 갈래만 다른 줄을 두면 둘을 가르지 못한다.
+    // 드롭 기록은 한 수익 건에서 같은 아이템이 한 줄이라 분류만 다른 줄을 두면 둘을 가르지 못한다.
     unique('boss_difficulty_rewards_row_unique')
       .on(t.bossDifficultyId, t.itemId, t.validFrom)
       .nullsNotDistinct(),
@@ -754,8 +754,8 @@ export const worldOpenPeriods = pgTable(
 export const cashbookEntryTypeEnum = pgEnum('cashbook_entry_type', ['income', 'spend'])
 
 /**
- * 가계부의 갈래. 기록이 (entry_type, key) 로 가리켜 지우지 않는다. key 는 관리 화면에서 더하므로 ENUM 이 아니다.
- * 앱이 입력 폼을 모르는 key 는 갈래 목록에 이름만 서고 못 고른다.
+ * 가계부의 분류. 기록이 (entry_type, key) 로 가리켜 지우지 않는다. key 는 관리 화면에서 더하므로 ENUM 이 아니다.
+ * 앱이 입력 폼을 모르는 key 는 분류 목록에 이름만 서고 못 고른다.
  */
 export const cashbookCategories = pgTable(
   'cashbook_categories',
@@ -764,15 +764,15 @@ export const cashbookCategories = pgTable(
     entryType: cashbookEntryTypeEnum('entry_type').notNull(),
     key: text('key').notNull(),
     name: text('name').notNull(),
-    /** 묶음이 없는 갈래의 하루 목록 카드 첫 줄. 묶음이 있는 갈래는 묶음의 card_title 을 쓴다. */
+    /** 묶음이 없는 분류의 하루 목록 카드 첫 줄. 묶음이 있는 분류는 묶음의 card_title 을 쓴다. */
     cardTitle: text('card_title').notNull(),
     /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. */
     iconAssetId: uuid('icon_asset_id')
       .notNull()
       .references(() => assets.id),
-    /** 갈래 카드에만 서는 한 줄. */
+    /** 분류 카드에만 서는 한 줄. */
     description: text('description').notNull(),
-    /** 묶음이 없는 갈래의 수량 단위(사냥의 소재 등). NULL 은 수량이 없거나 항목 · 종류가 단위를 든다. */
+    /** 묶음이 없는 분류의 수량 단위(사냥의 소재 등). NULL 은 수량이 없거나 항목 · 종류가 단위를 든다. */
     unit: text('unit'),
     sortOrder: integer('sort_order').notNull(),
   },
@@ -837,7 +837,7 @@ export const spendGroups = pgTable('spend_groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
-  /** 지출 갈래만 가리킨다. 리포지토리가 entry_type 을 본다. */
+  /** 지출 분류만 가리킨다. 리포지토리가 entry_type 을 본다. */
   cashbookCategoryId: uuid('cashbook_category_id')
     .notNull()
     .references(() => cashbookCategories.id),
@@ -1116,7 +1116,7 @@ export const faqItems = pgTable('faq_items', {
   answer: text('answer').notNull(),
 })
 
-/** 컨텐츠 갈래. 앱 CONTENT_CATEGORIES 의 key 집합 그대로다. 카드 모양 · 길드 판정 · 계열 한도가 이 값으로 갈린다. */
+/** 컨텐츠 분류. 앱 CONTENT_CATEGORIES 의 key 집합 그대로다. 카드 모양 · 길드 판정 · 계열 한도가 이 값으로 갈린다. */
 export const contentCategoryEnum = pgEnum('content_category', [
   'monster_park',
   'daily_quest',
@@ -1142,7 +1142,7 @@ export const contentCheckTypeEnum = pgEnum('content_check_type', [
 /** 진행이 누구와 공유되는가. 캐릭터 · 월드 · 계정. */
 export const shareScopeEnum = pgEnum('share_scope', ['character', 'world', 'account'])
 
-/** 갈래의 글자 · 태그 · 한도 · 차례. ENUM 여덟과 일대일이라 줄을 더하고 지우는 것은 마이그레이션이다. */
+/** 분류의 글자 · 태그 · 한도 · 차례. ENUM 여덟과 일대일이라 줄을 더하고 지우는 것은 마이그레이션이다. */
 export const contentCategories = pgTable(
   'content_categories',
   {
@@ -1150,14 +1150,14 @@ export const contentCategories = pgTable(
     key: contentCategoryEnum('key').notNull().unique(),
     /** 카드 라벨 · today 공유 위젯의 머리글. */
     name: text('name').notNull(),
-    /** 갈래의 참고 태그. 글자와 숨김 중 하나다. */
+    /** 분류의 참고 태그. 글자와 숨김 중 하나다. */
     countTag: text('count_tag'),
     hidesCountTag: boolean('hides_count_tag').notNull().default(false),
-    /** 그 갈래에서 한 주에 완료할 수 있는 횟수. 등록 여부와 무관하게 완료한 항목 수를 센다. */
+    /** 그 분류에서 한 주에 완료할 수 있는 횟수. 등록 여부와 무관하게 완료한 항목 수를 센다. */
     weeklyMaxCount: integer('weekly_max_count'),
     /** today 공유 위젯의 계열 차례. NULL 은 뒤에 선다. */
     sharedSortOrder: integer('shared_sort_order'),
-    /** 관리 화면 주간 목록의 갈래 차례. */
+    /** 관리 화면 주간 목록의 분류 차례. */
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
@@ -1454,7 +1454,7 @@ export const bossClears = pgTable(
 /**
  * 가계부 기록 한 건의 최종값. 기기의 cashbook_entries 사본이다. 금액은 품목 줄에 있다.
  *
- * key 는 글자 그대로다. 갈래마다 다른 표를 가리켜 외래키로 바꾸면 표에 없는 key 의 기록을 거절하게 된다.
+ * key 는 글자 그대로다. 분류마다 다른 표를 가리켜 외래키로 바꾸면 표에 없는 key 의 기록을 거절하게 된다.
  */
 export const serverCashbookEntries = pgTable(
   'cashbook_entries',

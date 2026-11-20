@@ -57,16 +57,19 @@ describe('AdminItemsController', () => {
     [...Object.values(items), ...Object.values(groups)].forEach((m) => m.mockReset()),
   )
 
-  it('GET /admin/items 는 화면, /admin/items/rows 는 분류 트리와 아이템이다', async () => {
-    const page = await app.inject({ method: 'GET', url: '/admin/items' })
-    expect(page.statusCode).toBe(200)
-    expect(page.headers['content-type']).toContain('text/html')
-    // 메뉴의 게임데이터 묶음 맨 위에 아이템이 서고, 드롭 아이템 · 장비 메뉴는 없다
-    expect(page.body.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
-      '<a href="/admin/items" aria-current="page">',
-    ])
-    expect(page.body).not.toContain('href="/admin/drop-items"')
-    expect(page.body).not.toContain('href="/admin/equipment-items"')
+  it('GET /admin/items · /admin/items/groups 는 화면, /admin/items/rows 는 분류 트리와 아이템이다', async () => {
+    for (const url of ['/admin/items', '/admin/items/groups']) {
+      const page = await app.inject({ method: 'GET', url })
+      expect(page.statusCode).toBe(200)
+      expect(page.headers['content-type']).toContain('text/html')
+      // 메뉴의 게임데이터 묶음 맨 위에 아이템이 서고, 드롭 아이템 · 장비 메뉴는 없다. 화면 안의 전환 막대는 따로 센다.
+      const nav = page.body.slice(page.body.indexOf('<nav'), page.body.indexOf('</nav>'))
+      expect(nav.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
+        '<a href="/admin/items" aria-current="page">',
+      ])
+      expect(page.body).not.toContain('href="/admin/drop-items"')
+      expect(page.body).not.toContain('href="/admin/equipment-items"')
+    }
 
     items.adminRows.mockResolvedValue([])
     groups.tree.mockResolvedValue(tree)

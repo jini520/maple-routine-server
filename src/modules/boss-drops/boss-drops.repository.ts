@@ -10,7 +10,7 @@ import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 export type DropCategory = 'fixed' | 'equipment' | 'consumable'
 export type Difficulty = DifficultyInput['difficulty']
 
-/** 드롭 표 한 줄. 납작하다. 보스 · 난이도 · 갈래로 묶는 것은 앱이다. */
+/** 드롭 표 한 줄. 납작하다. 보스 · 난이도 · 분류로 묶는 것은 앱이다. */
 export interface BossDifficultyRewardView {
   bossDifficultyId: string
   category: DropCategory
@@ -52,7 +52,7 @@ export interface BossDropInput {
 
 export class NoBossDifficulty extends Error {}
 export class NoDropItem extends Error {}
-/** 같은 조합 · 아이템 · 시작의 줄이 이미 있다. 갈래가 달라도 같은 줄이다. */
+/** 같은 조합 · 아이템 · 시작의 줄이 이미 있다. 분류가 달라도 같은 줄이다. */
 export class RewardExists extends Error {}
 
 @Injectable()
@@ -74,7 +74,7 @@ export class BossDropsRepository {
     }
   }
 
-  /** 한 조합의 줄. 갈래 ENUM 순, 그 안은 sort_order 순이다. */
+  /** 한 조합의 줄. 분류 ENUM 순, 그 안은 sort_order 순이다. */
   async rows(boss: string, difficulty: Difficulty): Promise<BossDropAdminRow[]> {
     const rows = await this.joined(
       and(eq(bosses.key, boss), eq(bossDifficulties.difficulty, difficulty)),
@@ -93,7 +93,7 @@ export class BossDropsRepository {
     }))
   }
 
-  /** 그 조합 · 갈래의 맨 뒤에 더한다. */
+  /** 그 조합 · 분류의 맨 뒤에 더한다. */
   async create(input: BossDropInput): Promise<{ id: string }> {
     const pair = await this.pairId(input.boss, input.difficulty)
     if (pair === null) throw new NoBossDifficulty(`${input.boss}/${input.difficulty}`)
@@ -168,7 +168,7 @@ export class BossDropsRepository {
     })
   }
 
-  /** 같은 조합 · 갈래 안에서 한 칸 옮긴다. 끝이면 그대로 true 다. 없으면 false 다. */
+  /** 같은 조합 · 분류 안에서 한 칸 옮긴다. 끝이면 그대로 true 다. 없으면 false 다. */
   async move(id: string, direction: 'up' | 'down'): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [mine] = await tx
@@ -202,7 +202,7 @@ export class BossDropsRepository {
     })
   }
 
-  /** 조합 · 갈래 · 줄 차례로. 보스는 sort_order, 난이도와 갈래는 ENUM 순이다. */
+  /** 조합 · 분류 · 줄 차례로. 보스는 sort_order, 난이도와 분류는 ENUM 순이다. */
   private async joined(where?: ReturnType<typeof and>) {
     return this.db
       .select({

@@ -2,182 +2,140 @@ import { ASSET_PICKER } from './asset-picker'
 import { layout } from './layout'
 
 /**
- * 심볼 강화 비용. 묶음마다 표 하나다. 가로가 레벨, 세로가 심볼, 칸이 지금 비용이다. 심볼 줄의 수정을 누르면 그 아래로
- * 레벨마다 새 비용 칸과 시작일이 펼쳐진다.
+ * 심볼 강화 비용. 위에서 묶음을 고르면 그 묶음의 표 하나가 선다. 세로가 레벨, 가로가 심볼, 칸이 지금 비용이다.
+ * 심볼 머리에서 그림 · 이름 · 착용 레벨을, 칸에서 비용을 바로 고친다.
  *
- * 새 비용은 결정석 가격처럼 지금 줄을 닫고 새 줄을 연다. 바뀐 칸만 새 줄이 된다. 옛 줄은 과거 기록이 읽어 안 건드린다.
- * 새 심볼은 레벨 전부를 한 번에 넣는다. 빈 레벨이 있으면 앱의 구간 합이 틀려서다.
+ * 비용은 결정석 가격처럼 지금 줄을 닫고 새 줄을 연다. 고친 칸만 새 줄이 되고 시작은 위의 `새 비용 시작` 이다. 옛 줄은 과거 기록이
+ * 읽어 안 건드린다. 새 심볼은 레벨 전부를 한 번에 넣는다. 빈 레벨이 있으면 앱의 구간 합이 틀려서다.
  */
 export const SYMBOL_COSTS_HTML = layout(
   '/admin/symbol-costs',
   '심볼 비용',
-  `<div class="head">
-  <div>
-    <h1>심볼 비용</h1>
-    <p>Lv.n → n+1 로 올리는 메소다. 패치로 값이 바뀌면 시작일을 적고 바뀐 칸을 고친다. 지금 줄이 그 날로 닫히고 새 줄이 선다. 옛 줄은 과거 기록이 읽어 그대로 둔다. 바꾸면 <code>symbolCosts.updatedAt</code> 이 움직인다.</p>
-  </div>
-  <div class="stats">
-    <div class="stat"><b id="stat-groups">–</b><span>묶음</span></div>
-    <div class="stat"><b id="stat-symbols">–</b><span>심볼</span></div>
-    <div class="stat"><b id="stat-missing">–</b><span>비용 없는 칸</span></div>
-    <div class="stat"><b id="stat-updated" class="mono">–</b><span>마지막 갱신</span></div>
-  </div>
-</div>
+  `<div class="top"><h1>심볼 비용</h1><span id="groups"></span><span class="grow"></span><span class="updated" id="updated"></span><button id="add-symbol" class="btn sm" type="button">심볼 추가</button><button id="add-group" class="btn ghost sm" type="button">묶음 추가</button></div>
 <div id="message" class="msg" role="status" hidden></div>
-<div id="groups"></div>
-<section class="card">
-  <header><h2>새 심볼</h2><p>key 는 사냥터 표의 지역 key 와 같다. 더한 뒤 그 줄의 수정에서 레벨 전부의 비용을 한 번에 넣는다</p></header>
-  <div class="body"><div class="row">
-    <div class="field"><label for="s-key">key</label><input id="s-key" class="mono" placeholder="tallahart"></div>
-    <div class="field w-md"><label for="s-group">묶음</label><select id="s-group"></select></div>
-    <div class="field"><label for="s-name">이름 <small>넥슨 응답의 심볼 이름이 이것으로 끝난다</small></label><input id="s-name" placeholder="탈라하트"></div>
-    <div class="field w-sm"><label for="s-level">착용 레벨</label><input id="s-level" type="number" min="1"></div>
-    <div class="field"><label>그림 <small>아이템 분류의 그림</small></label><div class="inline"><span id="s-icon" class="mono dim">고르지 않았다</span><button id="s-icon-pick" class="btn ghost sm" type="button">고르기</button></div></div>
-    <button id="s-add" class="btn" type="button">심볼 추가</button>
-  </div></div>
+<section class="panel">
+  <div class="panel-head" id="group-fields"></div>
+  <table class="sheet symbol-grid"><thead id="head"></thead><tbody id="rows"></tbody></table>
+  <div class="panel-head" style="margin-top:10px"><p>칸을 고치면 그 칸만 새 비용 줄이 되고, 지금 줄은 새 비용 시작 날로 닫힌다. 비어 있는 칸은 비용이 없는 레벨이다. 심볼의 지난 줄은 머리의 <b>줄</b> 에서 본다.</p></div>
 </section>
-<section class="card">
-  <header><h2>새 묶음</h2><p>심볼 종류가 하나 더 생길 때. 만렙과 심볼을 고르면 서는 기본 범위를 든다</p></header>
-  <div class="body"><div class="row">
-    <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="grand_authentic"></div>
-    <div class="field"><label for="n-name">이름</label><input id="n-name" placeholder="그랜드 어센틱 심볼"></div>
-    <div class="field w-sm"><label for="n-max">만렙</label><input id="n-max" type="number" min="2"></div>
-    <div class="field w-sm"><label for="n-from">기본 시작</label><input id="n-from" type="number" min="1"></div>
-    <div class="field w-sm"><label for="n-to">기본 끝</label><input id="n-to" type="number" min="2"></div>
-    <button id="n-add" class="btn" type="button">묶음 추가</button>
-  </div></div>
-</section>
+<style>
+  .symbol-grid th { text-transform: none; letter-spacing: 0; vertical-align: bottom }
+  .symbol-grid th .sym { display: grid; justify-items: end; gap: 2px }
+  .symbol-grid th .sym .text-in { text-align: right; width: 110px }
+  .symbol-grid .num-in { width: 110px }
+  .symbol-grid .num-in::placeholder { color: var(--danger-ink) }
+</style>
 ${ASSET_PICKER}
 <script>
-  // assets 는 그림 id 에서 그림 줄을 찾는 표다. 그림 칸에 파일 이름을 보인다.
-  var state = { data: null, open: null, editingGroup: null, assets: {}, newIcon: null };
-  function current(level) { return level.costs.filter(function (c) { return c.validUntil === null; })[0] || null; }
-  function iconText(id) { var a = id ? state.assets[id] : null; return id == null ? '고르지 않았다' : a ? a.fileName + '.' + a.extension : '그림 표에 없다'; }
-  function pickIcon(current, onPick) {
-    openAssetPicker({ categories: ['item', 'item_ring'], uploadCategory: 'item', current: current, onPick: function (f) { if (f) onPick(f.id); } });
+  var D = null, assets = {}, current = null;
+  var batch = editing(function () { load(); });
+  function lookup(id) { return assets[id]; }
+  function now(level) { return level.costs.filter(function (c) { return c.validUntil === null; })[0] || null; }
+  function groupOf(key) { return D.groups.filter(function (g) { return g.key === key; })[0]; }
+  var startInput = input('text', 'text-in period'); startInput.placeholder = '2026-10-22';
+
+  function symbolHead(s) {
+    var box = el('div', undefined, 'sym'); var name, level, icon;
+    var send = function () { return call('PUT', '/admin/symbol-costs/symbols/' + s.key, { name: name.value(), requiredLevel: level.value(), iconAssetId: icon.value() }); };
+    icon = assetCell(batch, s.name, s.iconAssetId, send, { categories: ['item', 'item_ring'], uploadCategory: 'item', lookup: lookup, compact: true });
+    name = textCell(batch, s.name, s.name, send); level = numCell(batch, s.name, s.requiredLevel, send, 'short');
+    var rows = button('줄', 'btn ghost sm'); rows.addEventListener('click', function () { history(s); });
+    box.appendChild(inline(icon.input, rows)); box.appendChild(name.input); box.appendChild(inline(span('착용', 'dim'), level.input));
+    return box;
   }
 
-  function groupCard(g) {
-    var card = el('section', undefined, 'card'); var header = el('header');
-    if (state.editingGroup === g.key) {
-      var name = input('text'); name.value = g.name; var max = input('number'); max.min = '2'; max.value = g.maxLevel;
-      var from = input('number'); from.min = '1'; from.value = g.defaultFromLevel; var to = input('number'); to.min = '2'; to.value = g.defaultToLevel;
-      var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
-      save.addEventListener('click', async function () {
-        var r = await call('PUT', '/admin/symbol-costs/groups/' + g.key, { name: name.value.trim(), maxLevel: Number(max.value), defaultFromLevel: Number(from.value), defaultToLevel: Number(to.value) });
-        show(r.ok ? g.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editingGroup = null; load();
-      });
-      close.addEventListener('click', function () { state.editingGroup = null; render(); });
-      var row = el('div', undefined, 'row'); row.appendChild(field('이름', undefined, name)); row.appendChild(field('만렙', '비용 줄 위로는 못 내린다', max)); row.appendChild(field('기본 시작', undefined, from)); row.appendChild(field('기본 끝', undefined, to)); row.appendChild(inline(save, close));
-      header.appendChild(row);
-    } else {
-      var h = el('h2', g.name + ' '); h.appendChild(span(g.key, 'mono dim')); header.appendChild(h);
-      header.appendChild(el('p', '만렙 ' + g.maxLevel + ' · 고르면 서는 범위 Lv.' + g.defaultFromLevel + ' → ' + g.defaultToLevel + ' · 심볼 ' + g.symbols.length));
-      var grow = el('span', undefined, 'grow'); header.appendChild(grow);
-      var edit = button('묶음 수정', 'btn ghost sm'); edit.addEventListener('click', function () { state.editingGroup = g.key; render(); }); header.appendChild(edit);
-    }
-    card.appendChild(header);
-    var wrap = el('div', undefined, 'table'); var table = el('table'); var thead = el('thead'); var hr = el('tr');
-    hr.appendChild(el('th', '심볼')); hr.appendChild(el('th', '착용', 'num'));
-    for (var lv = 1; lv < g.maxLevel; lv++) { var th = el('th', lv + '→' + (lv + 1), 'num'); hr.appendChild(th); }
-    hr.appendChild(el('th', '')); thead.appendChild(hr); table.appendChild(thead);
-    var tbody = el('tbody');
-    g.symbols.forEach(function (s) {
-      var isOpen = state.open === s.key; var tr = el('tr', undefined, isOpen ? 'open' : '');
-      var name = span(s.name + ' '); name.appendChild(span(s.key, 'mono dim')); cell(tr, name); cell(tr, s.requiredLevel, 'num');
-      s.levels.forEach(function (l) { var c = current(l); cell(tr, c ? meso(c.costMeso) : span('없음', 'tag'), 'num'); });
-      var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), toggle = button(isOpen ? '닫기' : '수정', 'btn ghost sm');
-      up.addEventListener('click', async function () { var r = await call('POST', '/admin/symbol-costs/symbols/' + s.key + '/move', { direction: 'up' }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); });
-      down.addEventListener('click', async function () { var r = await call('POST', '/admin/symbol-costs/symbols/' + s.key + '/move', { direction: 'down' }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); });
-      toggle.addEventListener('click', function () { state.open = isOpen ? null : s.key; render(); });
-      cell(tr, inline(up, down, toggle), 'act');
-      tbody.appendChild(tr);
-      if (isOpen) tbody.appendChild(editorRow(g, s));
-    });
-    if (g.symbols.length === 0) { var empty = el('tr'); var td = cell(empty, '심볼이 없다', 'empty'); td.colSpan = g.maxLevel + 2; tbody.appendChild(empty); }
-    table.appendChild(tbody); wrap.appendChild(table); card.appendChild(wrap);
-    return card;
-  }
-
-  function editorRow(g, s) {
-    var tr = el('tr', undefined, 'expand'); var td = document.createElement('td'); td.colSpan = g.maxLevel + 2;
-    var box = el('div', undefined, 'editor'); box.appendChild(el('h3', s.name + ' 의 비용 줄'));
-    var name = input('text'); name.value = s.name; var level = input('number'); level.min = '1'; level.value = s.requiredLevel;
-    var icon = { id: s.iconAssetId }; var iconLabel = span(iconText(icon.id), 'mono'); var pick = button('고르기', 'btn ghost sm');
-    pick.addEventListener('click', function () { pickIcon(icon.id, function (id) { icon.id = id; iconLabel.textContent = iconText(id); }); });
-    var saveMeta = button('심볼 저장', 'btn ghost sm');
-    saveMeta.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/symbol-costs/symbols/' + s.key, { name: name.value.trim(), requiredLevel: Number(level.value), iconAssetId: icon.id });
-      show(r.ok ? s.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); load();
-    });
-    var meta = el('div', undefined, 'row'); meta.appendChild(field('이름', undefined, name)); meta.appendChild(field('착용 레벨', undefined, level)); meta.appendChild(field('그림', undefined, inline(iconLabel, pick))); meta.appendChild(saveMeta); box.appendChild(meta);
-
-    var inputs = []; var tbody = el('tbody');
+  function history(s) {
+    var form = el('div', undefined, 'form-body'); var tb = el('tbody');
     s.levels.forEach(function (l) {
-      var c = current(l); var row = el('tr');
-      cell(row, 'Lv.' + l.fromLevel + ' → ' + (l.fromLevel + 1), 'mono'); cell(row, c ? meso(c.costMeso) : span('없음', 'tag'), 'num'); cell(row, c ? (c.validFrom || '처음부터') : '-', 'mono'); cell(row, l.costs.length, 'num');
-      var next = input('number'); next.min = '1'; next.placeholder = c ? '그대로' : '필수'; inputs.push({ fromLevel: l.fromLevel, input: next, current: c }); cell(row, next);
-      if (c && l.costs.length > 1) {
-        var del = button('거두기', 'btn danger sm');
-        del.addEventListener('click', async function () { if (!window.confirm('Lv.' + l.fromLevel + ' 의 지금 비용 줄을 거둔다. 바로 앞 줄이 다시 열린다.')) return; var x = await call('DELETE', '/admin/symbol-costs/rows/' + c.id); show(x.ok ? '거뒀다' : fail('못 거뒀다', x), !x.ok); load(); });
-        cell(row, del, 'act');
-      } else cell(row, '');
-      tbody.appendChild(row);
+      l.costs.slice().reverse().forEach(function (c, i) {
+        var tr = el('tr'); cell(tr, i === 0 ? 'Lv.' + l.fromLevel + ' → ' + (l.fromLevel + 1) : '', 'mono'); cell(tr, c.validFrom || '처음부터', 'mono'); cell(tr, c.validUntil || '지금', 'mono'); cell(tr, meso(c.costMeso), 'num');
+        if (c.validUntil === null && l.costs.length > 1) {
+          var rm = button('거두기', 'btn danger sm');
+          rm.addEventListener('click', async function () { if (!window.confirm('Lv.' + l.fromLevel + ' 의 지금 비용 줄을 거둔다. 바로 앞 줄이 다시 열린다.')) return; var x = await call('DELETE', '/admin/symbol-costs/rows/' + c.id); show(x.ok ? '거뒀다' : fail('못 거뒀다', x), !x.ok); if (x.ok) { d.close(); load(); } });
+          cell(tr, rm, 'act');
+        } else cell(tr, '');
+        tb.appendChild(tr);
+      });
     });
-    box.appendChild(mini(['레벨', '지금 비용', '시작', '줄', '새 비용', ''], tbody));
-    var from = input('text', 'mono'); from.placeholder = '2026-10-22'; var open = button('적은 칸으로 새 비용 열기', 'btn sm');
-    open.addEventListener('click', async function () {
-      var costs = inputs.filter(function (i) { return i.input.value.trim() !== ''; }).map(function (i) { return { fromLevel: i.fromLevel, costMeso: Number(i.input.value) }; });
-      if (costs.length === 0) { show('새 비용을 적은 칸이 없다', true); return; }
-      var x = await call('POST', '/admin/symbol-costs/symbols/' + s.key + '/costs', { validFrom: orNull(from.value), costs: costs });
-      show(x.ok ? costs.length + '칸의 새 비용을 열었다' : fail('못 열었다', x), !x.ok); load();
-    });
-    var row2 = el('div', undefined, 'row'); row2.appendChild(field('시작', 'KST 패치일. 지금 줄의 시작보다 뒤. 첫 줄은 비워도 된다', from)); row2.appendChild(open); box.appendChild(row2);
-    box.appendChild(el('p', '새 심볼은 레벨 전부를 한 번에 적는다. 빈 레벨이 있으면 서버가 거절한다. 앱의 구간 합이 틀려서다.', 'hint'));
-    td.appendChild(box); tr.appendChild(td); return tr;
+    form.appendChild(mini(['레벨', '시작', '끝', '비용', ''], tb));
+    var left = button('← 앞으로', 'btn ghost sm'), right = button('뒤로 →', 'btn ghost sm');
+    var move = async function (direction) { var x = await call('POST', '/admin/symbol-costs/symbols/' + s.key + '/move', { direction: direction }); if (!x.ok) show(fail('못 옮겼다', x), true); d.close(); load(); };
+    left.addEventListener('click', function () { move('up'); }); right.addEventListener('click', function () { move('down'); });
+    form.appendChild(inline(span('표의 자리', 'dim'), left, right));
+    var d = openForm(s.name + ' 비용 줄', form); d.classList.add('mid');
   }
 
   function render() {
-    var groups = document.getElementById('groups'); groups.innerHTML = '';
-    state.data.groups.forEach(function (g) { groups.appendChild(groupCard(g)); });
-    var sel = document.getElementById('s-group'); var keep = sel.value; sel.innerHTML = '';
-    state.data.groups.forEach(function (g) { var o = document.createElement('option'); o.value = g.key; o.textContent = g.name; sel.appendChild(o); });
-    if (keep) sel.value = keep;
+    batch.clear();
+    if (!groupOf(current)) current = D.groups.length ? D.groups[0].key : null;
+    var nav = document.getElementById('groups'); nav.innerHTML = '';
+    nav.appendChild(segButtons(D.groups.map(function (g) { return [g.key, g.name]; }), current, function (k) { if (!discardOk(batch)) return; current = k; setHashKey(k); render(); }));
+    var g = groupOf(current); if (!g) return;
+    var gf = document.getElementById('group-fields'); gf.innerHTML = '';
+    var name, max, from, to;
+    var sendGroup = function () { return call('PUT', '/admin/symbol-costs/groups/' + g.key, { name: name.value(), maxLevel: max.value(), defaultFromLevel: from.value(), defaultToLevel: to.value() }); };
+    name = textCell(batch, g.name + ' 묶음', g.name, sendGroup, 'w-name'); max = numCell(batch, g.name + ' 묶음', g.maxLevel, sendGroup, 'short');
+    from = numCell(batch, g.name + ' 묶음', g.defaultFromLevel, sendGroup, 'short'); to = numCell(batch, g.name + ' 묶음', g.defaultToLevel, sendGroup, 'short');
+    var w1 = el('span', '이름 ', 'rule'); w1.appendChild(name.input); var w2 = el('span', '만렙 ', 'rule'); w2.appendChild(max.input);
+    var w3 = el('span', '고르면 서는 범위 Lv.', 'rule'); w3.appendChild(from.input); w3.appendChild(document.createTextNode('→')); w3.appendChild(to.input);
+    var w4 = el('span', '새 비용 시작 ', 'rule'); w4.appendChild(startInput);
+    [span(g.key, 'mono dim'), w1, w2, w3, span('', 'grow'), w4].forEach(function (x) { gf.appendChild(x); });
+
+    var head = document.getElementById('head'); head.innerHTML = ''; var hr = el('tr'); hr.appendChild(el('th', '레벨'));
+    g.symbols.forEach(function (s) { var th = el('th', undefined, 'num'); th.appendChild(symbolHead(s)); hr.appendChild(th); });
+    head.appendChild(hr);
+    var cells = {};
+    g.symbols.forEach(function (s) {
+      cells[s.key] = [];
+      var send = function () {
+        var costs = cells[s.key].filter(function (x) { return x.cell.changed(); }).map(function (x) { return { fromLevel: x.fromLevel, costMeso: x.cell.value() }; });
+        return call('POST', '/admin/symbol-costs/symbols/' + s.key + '/costs', { validFrom: orNull(startInput.value), costs: costs });
+      };
+      s.levels.forEach(function (l) { var c = now(l); var nc = numCell(batch, s.name + ' 비용', c ? c.costMeso : null, send); nc.input.placeholder = '없음'; cells[s.key].push({ fromLevel: l.fromLevel, cell: nc }); });
+    });
+    var tb = document.getElementById('rows'); tb.innerHTML = '';
+    for (var lv = 1; lv < g.maxLevel; lv++) {
+      var tr = el('tr'); cell(tr, 'Lv.' + lv + ' → ' + (lv + 1), 'label');
+      g.symbols.forEach(function (s) { var x = cells[s.key].filter(function (y) { return y.fromLevel === lv; })[0]; cell(tr, x ? x.cell.input : '', 'num'); });
+      tb.appendChild(tr);
+    }
+    if (g.symbols.length === 0) { var e = el('tr'); var td = cell(e, '심볼이 없다. 심볼 추가로 더한다', 'empty'); td.colSpan = 2; tb.appendChild(e); }
   }
 
-  document.getElementById('s-add').addEventListener('click', async function () {
-    var body = { key: document.getElementById('s-key').value.trim(), group: document.getElementById('s-group').value, name: document.getElementById('s-name').value.trim(), requiredLevel: Number(document.getElementById('s-level').value), iconAssetId: state.newIcon };
-    var r = await call('POST', '/admin/symbol-costs/symbols', body);
-    show(r.ok ? body.key + ' 를 더했다. 수정에서 레벨 전부의 비용을 넣는다' : fail('더하지 못했다', r), !r.ok);
-    if (r.ok) {
-      ['s-key', 's-name', 's-level'].forEach(function (id) { document.getElementById(id).value = ''; });
-      state.newIcon = null; document.getElementById('s-icon').textContent = iconText(null);
-    }
-    load();
+  document.getElementById('add-symbol').addEventListener('click', function () {
+    var g = groupOf(current); if (!g) return;
+    var form = el('div', undefined, 'form-body'); var key = input('text', 'mono'); key.placeholder = 'tallahart'; var name = input('text'); var level = input('number'); level.min = '1';
+    var icon = { id: null }; var iconText = span('고르지 않았다', 'mono dim'); var pick = button('고르기', 'btn ghost sm');
+    pick.addEventListener('click', function () { openAssetPicker({ categories: ['item', 'item_ring'], uploadCategory: 'item', current: icon.id, onPick: function (f) { icon.id = f ? f.id : null; iconText.textContent = f ? f.fileName + '.' + f.extension : '고르지 않았다'; } }); });
+    form.appendChild(field('key', '사냥터 표의 지역 key 와 같다', key)); form.appendChild(field('이름', '넥슨 응답의 심볼 이름이 이것으로 끝난다', name));
+    form.appendChild(field('착용 레벨', undefined, level)); form.appendChild(field('그림', '아이템 분류의 그림', inline(iconText, pick)));
+    form.appendChild(el('p', '더한 뒤 표의 그 심볼 칸에 레벨 전부의 비용을 적고 저장한다.', 'hint'));
+    var go = button(g.name + ' 에 더하기', 'btn'); form.appendChild(go); var d = openForm('심볼 추가', form);
+    go.addEventListener('click', async function () {
+      var body = { key: key.value.trim(), group: g.key, name: name.value.trim(), requiredLevel: Number(level.value), iconAssetId: icon.id };
+      var r = await call('POST', '/admin/symbol-costs/symbols', body);
+      show(r.ok ? body.key + ' 를 더했다. 칸에 비용을 적는다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
+    });
   });
-  document.getElementById('s-icon-pick').addEventListener('click', function () {
-    pickIcon(state.newIcon, function (id) { state.newIcon = id; document.getElementById('s-icon').textContent = iconText(id); });
-  });
-  document.getElementById('n-add').addEventListener('click', async function () {
-    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), maxLevel: Number(document.getElementById('n-max').value), defaultFromLevel: Number(document.getElementById('n-from').value), defaultToLevel: Number(document.getElementById('n-to').value) };
-    var r = await call('POST', '/admin/symbol-costs/groups', body);
-    show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
-    if (r.ok) ['n-key', 'n-name', 'n-max', 'n-from', 'n-to'].forEach(function (id) { document.getElementById(id).value = ''; });
-    load();
+  document.getElementById('add-group').addEventListener('click', function () {
+    var form = el('div', undefined, 'form-body'); var key = input('text', 'mono'); key.placeholder = 'grand_authentic'; var name = input('text');
+    var max = input('number'); max.min = '2'; var from = input('number'); from.min = '1'; var to = input('number'); to.min = '2';
+    form.appendChild(field('key', undefined, key)); form.appendChild(field('이름', undefined, name)); form.appendChild(field('만렙', undefined, max));
+    form.appendChild(field('고르면 서는 범위', '시작 → 끝', inline(from, document.createTextNode('→'), to)));
+    var go = button('묶음 추가', 'btn'); form.appendChild(go); var d = openForm('묶음 추가', form);
+    go.addEventListener('click', async function () {
+      var body = { key: key.value.trim(), name: name.value.trim(), maxLevel: Number(max.value), defaultFromLevel: Number(from.value), defaultToLevel: Number(to.value) };
+      var r = await call('POST', '/admin/symbol-costs/groups', body);
+      show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); current = body.key; setHashKey(current); load(); }
+    });
   });
 
   async function load() {
-    var r = await call('GET', '/admin/symbol-costs/rows');
-    var a = await call('GET', '/admin/assets/list');
-    if (a.ok) { state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; }); }
-    if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
-    state.data = r.json;
-    var symbols = 0, missing = 0;
-    r.json.groups.forEach(function (g) { symbols += g.symbols.length; g.symbols.forEach(function (s) { s.levels.forEach(function (l) { if (!current(l)) missing++; }); }); });
-    document.getElementById('stat-groups').textContent = r.json.groups.length;
-    document.getElementById('stat-symbols').textContent = symbols;
-    document.getElementById('stat-missing').textContent = missing;
-    document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
+    var r = await call('GET', '/admin/symbol-costs/rows'); var a = await call('GET', '/admin/assets/list');
+    if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
+    D = r.json; assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
+    if (current === null) current = hashKey();
+    document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
     render();
   }
   load();

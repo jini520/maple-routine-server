@@ -299,7 +299,7 @@ import {
 } from './admin.dto'
 import { BOSS_DROPS_HTML } from './views/boss-drops'
 import { BOSSES_HTML } from './views/bosses'
-import { CASHBOOK_CATEGORIES_HTML } from './views/cashbook-categories'
+import { CASHBOOK_CATEGORIES_HTML, CASHBOOK_ITEM_TYPES_HTML } from './views/cashbook-categories'
 import { CRYSTAL_PRICES_HTML } from './views/crystal-prices'
 import { DROP_BOXES_HTML } from './views/drop-boxes'
 import { DROP_MARKET_HTML } from './views/drop-market'
@@ -308,16 +308,16 @@ import { DROP_PRICES_HTML } from './views/drop-prices'
 import { USAGE_HTML } from './views/usage'
 import { USERS_HTML } from './views/users'
 import { UsageDashboardService } from './usage-dashboard.service'
-import { SPEND_CATALOG_HTML } from './views/spend-catalog'
+import { SPEND_CATALOG_HTML, SPEND_TILES_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
-import { CONTENTS_HTML } from './views/contents'
+import { CONTENT_CATEGORIES_HTML, CONTENTS_HTML } from './views/contents'
 import {
   ENHANCEMENT_POTENTIAL_HTML,
   ENHANCEMENT_STARFORCE_HTML,
   ENHANCEMENT_SUPERIOR_HTML,
 } from './views/enhancement-costs'
 import { FAQ_SHEET_HTML, FAQS_HTML } from './views/faqs'
-import { HEXA_MATRIX_HTML } from './views/hexa-matrix'
+import { HEXA_COSTS_HTML, HEXA_MATRIX_HTML, HEXA_TYPES_HTML } from './views/hexa-matrix'
 import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
 import { HUNT_LOOT_HTML } from './views/hunt-loot'
 import { MVP_GRADES_HTML } from './views/mvp-grades'
@@ -336,7 +336,7 @@ function dropPriceFilter(query: DropPriceQuery): DropPriceFilter {
 }
 
 /**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 갈래 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 장비 ·
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 분류 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 장비 ·
  * 강화 비용 · MVP 등급 · 사냥터 · FAQ)도 여기다.
  *
  * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
@@ -959,6 +959,13 @@ export class AdminController {
     return SPEND_CATALOG_HTML
   }
 
+  @Get('spend-catalog/tiles')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  spendTilesPage(): string {
+    return SPEND_TILES_HTML
+  }
+
   /** 화면이 부른다. 묶음 · 타일 · 항목을 key 로 이은 관리 줄이다. */
   @Get('spend-catalog/rows')
   @Header('cache-control', 'no-store')
@@ -966,7 +973,7 @@ export class AdminController {
     return this.spend.adminRows()
   }
 
-  /** 묶음을 맨 뒤에 더한다. 같은 key 는 409, 지출 갈래가 아니면 404 다. */
+  /** 묶음을 맨 뒤에 더한다. 같은 key 는 409, 지출 분류가 아니면 404 다. */
   @Post('spend-catalog/groups')
   @HttpCode(201)
   async createSpendGroup(
@@ -978,12 +985,12 @@ export class AdminController {
       if (error instanceof SpendGroupExists)
         throw new ConflictException(`이미 있는 묶음이다: ${body.key}`)
       if (error instanceof NoSpendCategory)
-        throw new NotFoundException(`모르는 지출 갈래다: ${body.category}`)
+        throw new NotFoundException(`모르는 지출 분류다: ${body.category}`)
       throw error
     }
   }
 
-  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. 닫기가 곧 isActive 끄기다. 모르는 묶음 · 갈래는 404 다. */
+  /** 이름 · 분류 · 카드 제목 · 열림을 갈아 끼운다. 닫기가 곧 isActive 끄기다. 모르는 묶음 · 분류는 404 다. */
   @Put('spend-catalog/groups/:key')
   @HttpCode(204)
   async updateSpendGroup(
@@ -995,7 +1002,7 @@ export class AdminController {
         throw new NotFoundException(`모르는 묶음이다: ${key}`)
     } catch (error) {
       if (error instanceof NoSpendCategory)
-        throw new NotFoundException(`모르는 지출 갈래다: ${body.category}`)
+        throw new NotFoundException(`모르는 지출 분류다: ${body.category}`)
       throw error
     }
   }
@@ -1100,13 +1107,20 @@ export class AdminController {
       throw new NotFoundException(`모르는 항목이다: ${key}`)
   }
 
-  /* ── 가계부 갈래 ── */
+  /* ── 가계부 분류 ── */
 
   @Get('cashbook-categories')
   @Header('content-type', 'text/html; charset=utf-8')
   @Header('cache-control', 'no-store')
   cashbookCategoriesPage(): string {
     return CASHBOOK_CATEGORIES_HTML
+  }
+
+  @Get('cashbook-categories/item-types')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  cashbookItemTypesPage(): string {
+    return CASHBOOK_ITEM_TYPES_HTML
   }
 
   /** 화면이 부른다. 앱이 받는 칸 그대로다. */
@@ -1116,7 +1130,7 @@ export class AdminController {
     return this.cashbook.section()
   }
 
-  /** 갈래를 그 쪽 맨 뒤에 더한다. 같은 (entryType, key) 는 409 다. 앱은 폼을 모르는 갈래를 못 고르게 막는다. */
+  /** 분류를 그 쪽 맨 뒤에 더한다. 같은 (entryType, key) 는 409 다. 앱은 폼을 모르는 분류를 못 고르게 막는다. */
   @Post('cashbook-categories')
   @HttpCode(201)
   async createCashbookCategory(
@@ -1126,7 +1140,7 @@ export class AdminController {
       return await this.cashbook.createCategory({ ...body, unit: body.unit ?? null })
     } catch (error) {
       if (error instanceof CashbookCategoryExists)
-        throw new ConflictException(`이미 있는 갈래다: ${body.entryType}.${body.key}`)
+        throw new ConflictException(`이미 있는 분류다: ${body.entryType}.${body.key}`)
       throw assetRejection(error)
     }
   }
@@ -1147,7 +1161,7 @@ export class AdminController {
     } catch (error) {
       throw assetRejection(error)
     }
-    if (!found) throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
+    if (!found) throw new NotFoundException(`모르는 분류다: ${entryType}.${key}`)
   }
 
   @Post('cashbook-categories/:entryType/:key/move')
@@ -1158,7 +1172,7 @@ export class AdminController {
     @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
   ): Promise<void> {
     if (!(await this.cashbook.moveCategory(entryType, key, body.direction)))
-      throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
+      throw new NotFoundException(`모르는 분류다: ${entryType}.${key}`)
   }
 
   /** 아이템 종류의 이름 · 단위 · 관세 여부를 바꾼다. 종류는 앱 코드가 key 로 갈려 더하기가 없다. */
@@ -1379,6 +1393,20 @@ export class AdminController {
   @Header('cache-control', 'no-store')
   hexaMatrixPage(): string {
     return HEXA_MATRIX_HTML
+  }
+
+  @Get('hexa-matrix/types')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  hexaTypesPage(): string {
+    return HEXA_TYPES_HTML
+  }
+
+  @Get('hexa-matrix/costs')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  hexaCostsPage(): string {
+    return HEXA_COSTS_HTML
   }
 
   /** 화면이 부른다. 앱이 받는 칸과 같다. */
@@ -1659,7 +1687,7 @@ export class AdminController {
     return { rows: await this.drops.rows(query.boss, query.difficulty) }
   }
 
-  /** 줄을 그 조합 · 갈래의 맨 뒤에 더한다. 모르는 조합 · 아이템은 404, 같은 줄은 409 다. */
+  /** 줄을 그 조합 · 분류의 맨 뒤에 더한다. 모르는 조합 · 아이템은 404, 같은 줄은 409 다. */
   @Post('boss-drops')
   @HttpCode(201)
   async createBossDrop(@Body(new ZodValidationPipe(bossDropCreateBody)) body: BossDropCreateBody) {
@@ -1680,7 +1708,7 @@ export class AdminController {
         throw new NotFoundException(`모르는 아이템이다: ${body.item}`)
       if (error instanceof RewardExists)
         throw new ConflictException(
-          '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 갈래가 달라도 같은 줄이다',
+          '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 분류가 달라도 같은 줄이다',
         )
       throw error
     }
@@ -1704,7 +1732,7 @@ export class AdminController {
     } catch (error) {
       if (error instanceof RewardExists)
         throw new ConflictException(
-          '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 갈래가 달라도 같은 줄이다',
+          '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 분류가 달라도 같은 줄이다',
         )
       throw error
     }
@@ -1812,14 +1840,21 @@ export class AdminController {
     return CONTENTS_HTML
   }
 
-  /** 화면이 부른다. 앱이 받는 칸에 컨텐츠마다 갈래 key 를 더한 것이다. */
+  @Get('contents/categories')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  contentCategoriesPage(): string {
+    return CONTENT_CATEGORIES_HTML
+  }
+
+  /** 화면이 부른다. 앱이 받는 칸에 컨텐츠마다 분류 key 를 더한 것이다. */
   @Get('contents/rows')
   @Header('cache-control', 'no-store')
   contentRows() {
     return this.contents.adminRows()
   }
 
-  /** 갈래의 글자 · 태그 · 한도 · 공유 차례를 갈아 끼운다. 갈래는 ENUM 이라 더하고 지우는 끝점이 없다. 모르면 404 다. */
+  /** 분류의 글자 · 태그 · 한도 · 공유 차례를 갈아 끼운다. 분류는 ENUM 이라 더하고 지우는 끝점이 없다. 모르면 404 다. */
   @Put('contents/categories/:key')
   @HttpCode(204)
   async updateContentCategory(
@@ -1835,7 +1870,7 @@ export class AdminController {
         sharedSortOrder: body.sharedSortOrder ?? null,
       }))
     )
-      throw new NotFoundException(`모르는 갈래다: ${key}`)
+      throw new NotFoundException(`모르는 분류다: ${key}`)
   }
 
   @Post('contents/categories/:key/move')
@@ -1845,10 +1880,10 @@ export class AdminController {
     @Body(new ZodValidationPipe(moveBody)) body: MoveBody,
   ): Promise<void> {
     if (!(await this.contents.moveCategory(key, body.direction)))
-      throw new NotFoundException(`모르는 갈래다: ${key}`)
+      throw new NotFoundException(`모르는 분류다: ${key}`)
   }
 
-  /** 컨텐츠를 같은 주기의 맨 뒤에 더한다. 모르는 갈래는 404, 같은 key 나 공백만 다른 API 이름은 409, 없는 그림은 400 이다. */
+  /** 컨텐츠를 같은 주기의 맨 뒤에 더한다. 모르는 분류는 404, 같은 key 나 공백만 다른 API 이름은 409, 없는 그림은 400 이다. */
   @Post('contents')
   @HttpCode(201)
   async createContent(@Body(new ZodValidationPipe(contentCreateBody)) body: ContentCreateBody) {
@@ -2260,12 +2295,12 @@ function contentFields(body: ContentUpdateBody) {
   }
 }
 
-/** 컨텐츠 쓰기의 실패를 HTTP 로 옮긴다. 모르는 갈래는 404, 같은 key 와 겹치는 API 이름은 409, 없는 그림은 400 이다. */
+/** 컨텐츠 쓰기의 실패를 HTTP 로 옮긴다. 모르는 분류는 404, 같은 key 와 겹치는 API 이름은 409, 없는 그림은 400 이다. */
 function contentError(error: unknown, key: string): unknown {
   if (error instanceof AssetNotFound)
     return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
   if (error instanceof NoContentCategory)
-    return new NotFoundException(`모르는 갈래다: ${error.message}`)
+    return new NotFoundException(`모르는 분류다: ${error.message}`)
   if (error instanceof ContentKeyExists) return new ConflictException(`이미 있는 컨텐츠다: ${key}`)
   if (error instanceof ApiNameTaken)
     return new ConflictException(`공백만 다른 API 이름이 이미 있다: ${error.message}`)

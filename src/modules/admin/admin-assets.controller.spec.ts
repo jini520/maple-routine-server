@@ -60,10 +60,12 @@ describe('AdminAssetsController', () => {
       mock.mockReset()
   })
 
-  it('GET /admin/assets 는 화면이다', async () => {
-    const page = await app.inject({ method: 'GET', url: '/admin/assets' })
-    expect(page.statusCode).toBe(200)
-    expect(page.headers['content-type']).toContain('text/html')
+  it('GET /admin/assets · /admin/assets/crops 는 화면이다', async () => {
+    for (const url of ['/admin/assets', '/admin/assets/crops']) {
+      const page = await app.inject({ method: 'GET', url })
+      expect(page.statusCode).toBe(200)
+      expect(page.headers['content-type']).toContain('text/html')
+    }
   })
 
   it('PUT /admin/assets/file 은 해시 이름으로 파일을 먼저 쓰고 그다음 표에 적는다', async () => {

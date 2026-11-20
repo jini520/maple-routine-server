@@ -29,7 +29,7 @@ export interface CashbookItemTypeView {
   hasTariff: boolean
 }
 
-/** GET /v1/game-data 의 cashbookCategories 칸. 갈래는 수입 · 지출 순서이고 그 안은 차례대로다. */
+/** GET /v1/game-data 의 cashbookCategories 칸. 분류는 수입 · 지출 순서이고 그 안은 차례대로다. */
 export interface CashbookCategoriesSection {
   updatedAt: string | null
   cashbookCategories: CashbookCategoryView[]
@@ -43,7 +43,7 @@ export type CashbookItemTypeUpdate = Omit<CashbookItemTypeView, 'id' | 'key'>
 export class CashbookCategoryExists extends Error {}
 
 /**
- * 갈래는 더하고 고치고 옮기기만 있다. 기록이 줄을 가리켜 지우지 않는다. 아이템 종류는 앱 코드가 key 로 수량 · 관세를
+ * 분류는 더하고 고치고 옮기기만 있다. 기록이 줄을 가리켜 지우지 않는다. 아이템 종류는 앱 코드가 key 로 수량 · 관세를
  * 가르므로 관리 화면에서는 고치기만 있다.
  */
 @Injectable()

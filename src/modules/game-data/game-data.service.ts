@@ -1,5 +1,8 @@
-import { Injectable } from '@nestjs/common'
+import { createHash } from 'node:crypto'
 
+import { Inject, Injectable } from '@nestjs/common'
+
+import { DB, type Db } from '../../database/database.module'
 import { AppImagesRepository, type AppImagesSection } from '../app-images/app-images.repository'
 import { AssetsRepository, type AssetsSection } from '../assets/assets.repository'
 import { ImageCropsRepository, type ImageCropsSection } from '../assets/image-crops.repository'
@@ -42,11 +45,12 @@ import {
   type SymbolCostsSection,
 } from '../symbol-costs/symbol-costs.repository'
 import { WorldsRepository, type WorldsSection } from '../worlds/worlds.repository'
+import { gameDataStamp } from './sections'
 
 /**
  * GET /v1/game-data 의 몸체. 칸 하나가 표 하나이고 칸마다 updatedAt 을 든다.
  *
- * 표가 비어도 칸을 빼지 않는다. 앱이 칸마다 사본과 비교해 바뀐 표만 덮으므로 칸의 자리가 늘 같아야 한다.
+ * 표가 비어도 칸을 빼지 않는다. 앱은 칸 하나라도 읽지 못하면 응답 전체를 버린다.
  */
 export interface GameDataSnapshot {
   bosses: Catalog
@@ -72,8 +76,22 @@ export interface GameDataSnapshot {
   items: ItemsSection
 }
 
+/** 칸 시각이 같아도 응답을 다시 만드는 간격. 칸 시각을 안 올리는 쓰기가 앱에 닿기까지 늦는 끝 */
+const MAX_AGE_MS = 5 * 60_000
+
+/** 담아 둔 응답. `stamp` 는 만들기 전에 읽은 칸 시각이라, 만드는 사이에 쓰기가 끼면 다음 요청이 다시 만든다 */
+interface Built {
+  stamp: string
+  builtAt: number
+  body: string
+  etag: string
+}
+
 @Injectable()
 export class GameDataService {
+  private built: Built | null = null
+  private building: Promise<Built> | null = null
+
   constructor(
     private readonly bosses: BossesRepository,
     private readonly dropItems: DropItemsRepository,
@@ -96,7 +114,37 @@ export class GameDataService {
     private readonly imageCrops: ImageCropsRepository,
     private readonly appImages: AppImagesRepository,
     private readonly items: ItemsRepository,
+    @Inject(DB) private readonly db: Db,
   ) {}
+
+  /**
+   * 응답 몸 JSON 과 그 해시 ETag. 칸 시각이 같고 담은 지 5분 안이면 담아 둔 것을 낸다.
+   *
+   * 요청마다 몸을 만들면 304 로 끝나는 요청도 칸을 다 읽고 1MB 를 직렬화해서 몰리는 때 서버가 막힌다.
+   */
+  async response(): Promise<{ body: string; etag: string }> {
+    const stamp = await gameDataStamp(this.db)
+    const built = this.built
+    if (built !== null && built.stamp === stamp && Date.now() - built.builtAt < MAX_AGE_MS) return built
+    return this.build(stamp)
+  }
+
+  /** 응답을 다시 만드는 함수. 이미 만드는 중이면 그것을 함께 기다린다. 요청마다 따로 만들면 몰리는 때 같은 부하가 난다 */
+  private build(stamp: string): Promise<Built> {
+    if (this.building !== null) return this.building
+    const builtAt = Date.now()
+    this.building = this.snapshot()
+      .then((snapshot) => {
+        const body = JSON.stringify(snapshot)
+        const next: Built = { stamp, builtAt, body, etag: `"${createHash('sha1').update(body).digest('hex')}"` }
+        this.built = next
+        return next
+      })
+      .finally(() => {
+        this.building = null
+      })
+    return this.building
+  }
 
   async snapshot(): Promise<GameDataSnapshot> {
     const [

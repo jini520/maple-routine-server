@@ -1,6 +1,14 @@
 import { eq, sql } from 'drizzle-orm'
 
-import { characters, mapleIdNames, mapleIds, rememberedLevels, users } from './schema'
+import { isCheckViolation } from '../common/pg-errors'
+import {
+  characters,
+  mapleIdNames,
+  mapleIds,
+  partyAppointments,
+  rememberedLevels,
+  users,
+} from './schema'
 import { describeDb, insertNexonAccount, openTestDb, type TestDb } from './test-db'
 
 describeDb('기록 표', () => {
@@ -82,5 +90,33 @@ describeDb('기록 표', () => {
     expect((await db.select().from(rememberedLevels)).map((row) => row.characterId)).toEqual([
       keptCharacter.id,
     ])
+  })
+
+  // 한 번과 매주는 쓰는 칸이 다르다. 둘을 함께 채운 약속은 기기마다 다르게 읽힌다.
+  it('약속은 한 번이면 날짜만, 매주면 요일과 시작 주만 받는다', async () => {
+    const { nexonAccountId } = await insertNexonAccount(db, ['m-a'])
+    const base = { nexonAccountId, time: '21:00', durationMinutes: 60 }
+    const once = { ...base, scheduleType: 'once' as const, date: '2026-11-21' }
+    const weekly = { ...base, scheduleType: 'weekly' as const, weekday: 4, fromWeekCode: 'W202647' }
+
+    await db.insert(partyAppointments).values([
+      { ...once, id: crypto.randomUUID() },
+      { ...weekly, id: crypto.randomUUID() },
+    ])
+    const mixed = [
+      { ...once, id: crypto.randomUUID(), weekday: 4 },
+      { ...weekly, id: crypto.randomUUID(), date: '2026-11-21' },
+      { ...weekly, id: crypto.randomUUID(), fromWeekCode: null },
+    ]
+    for (const row of mixed) {
+      const error: unknown = await db
+        .insert(partyAppointments)
+        .values(row)
+        .then(
+          () => null,
+          (thrown: unknown) => thrown,
+        )
+      expect({ row, rejected: isCheckViolation(error) }).toEqual({ row, rejected: true })
+    }
   })
 })

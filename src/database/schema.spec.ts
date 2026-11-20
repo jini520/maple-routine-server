@@ -88,6 +88,15 @@ const CONVERTED = [
   'remembered_levels',
   'representative_character_motions',
   'shared_content_progress',
+  'account_settings',
+  'bottom_bar_sub_page_orders',
+  'tracked_characters',
+  'party_appointments',
+  'party_appointment_exceptions',
+  'party_appointment_bosses',
+  'boss_profit_calculator_records',
+  'boss_profit_calculator_record_characters',
+  'boss_profit_calculator_record_bosses',
 ]
 
 interface DesignColumn {

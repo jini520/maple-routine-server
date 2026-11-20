@@ -19,7 +19,7 @@ import type { NoticeKind } from './notice.types'
 import { type NewNotice, NoticesRepository } from './notices.repository'
 import { isSundayMaple } from './sunday'
 
-/** 올라온 지 이보다 오래된 글은 저장만 한다. 씨 뿌리기가 중간에 죽거나 서버가 하루 죽었다 살아날 때 밀린 알림이 터지는 것을 막는다. */
+/** 올라온 지 이보다 오래된 글은 저장만 한다(썬데이는 `isLate` 가 이벤트 기간으로 본다). 씨 뿌리기가 중간에 죽거나 서버가 하루 죽었다 살아날 때 밀린 알림이 터지는 것을 막는다. */
 export const STALE_MS = 6 * 60 * 60 * 1000
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -140,8 +140,7 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
       const { id } = await this.repo.insert(row)
       summary.stored += 1
 
-      const stale = now.getTime() - row.publishedAt.getTime() > STALE_MS
-      if (seeding || stale || !shouldNotify(kind, item.title)) continue
+      if (seeding || !shouldNotify(kind, item.title) || isLate(row, now)) continue
       try {
         await this.push.sendNotice({
           noticeKey: row.noticeKey,
@@ -257,6 +256,15 @@ export class NoticePoller implements OnApplicationBootstrap, OnModuleDestroy {
       }
     }
   }
+}
+
+/**
+ * 알리기엔 늦은 글. 기간의 끝(`endsAt`)은 썬데이 줄에만 있고, 썬데이는 미리 써 두고 늦게 공개되기도 해서 `date` 대신
+ * 이벤트가 끝났는지로 본다. 한 주에 하나라 서버가 멈췄다 켜져도 알림이 몰리지 않는다. 끝을 못 읽으면 6시간 규칙이다.
+ */
+function isLate(row: NewNotice, now: Date): boolean {
+  if (row.endsAt != null) return now.getTime() > row.endsAt.getTime()
+  return now.getTime() - row.publishedAt.getTime() > STALE_MS
 }
 
 /** 열쇠는 `{분류}-{넥슨 notice_id}` 다. 번호 체계가 분류마다 달라 번호 하나로는 못 가린다. */

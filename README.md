@@ -47,7 +47,7 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   ~/.config/maple-routine-server/.env     값 전부. 이름 목록은 .env.example 과 src/config/env.schema.ts
   ~/.config/maple-routine-server/fcm-key.json   FCM 서비스 계정 키. compose 가 /run/secrets/fcm-key.json 으로 건다
   ~/.config/maple-routine-server/db.env   DATABASE_URL 하나. psql 을 도커로 띄울 때 쓴다
-  /etc/nginx/sites-available/mapleroutine 주소 넷(mapleroutine.store · api · admin · info)의 server 블록. admin 이 /admin 을 127.0.0.1:4000 으로 넘긴다
+  /etc/nginx/sites-available/mapleroutine 주소 넷(mapleroutine.store · api · admin · info)의 server 블록. admin 은 /admin 과 /v1/bosses 를 127.0.0.1:4000 으로 넘기고 /assets/ 는 아래 디렉터리를 바로 낸다. 관리 화면이 보스 표와 그림을 /admin 밖에서 읽기 때문이다. /admin 에만 auth_basic 을 건다
   /etc/nginx/snippets/mapleroutine-api.conf  루트와 api 가 함께 include 하는 서버 경로. /v1 을 127.0.0.1:4000 으로 넘기고, /assets/ · /ota/files/ 는 아래 디렉터리를 바로 낸다
   /etc/nginx/snippets/mapleroutine-site.conf 루트와 info 가 함께 include 하는 안내 사이트
   /etc/nginx/nginx.conf                   gzip 설정. JSON 을 줄인다(아래 nginx 압축)

@@ -80,6 +80,14 @@ const CONVERTED = [
   'usage_events',
   'enhancement_anomalies',
   'app_images',
+  'characters',
+  'character_world_leaps',
+  'maple_id_names',
+  'mvp_grade_history',
+  'manual_tracked_items',
+  'remembered_levels',
+  'representative_character_motions',
+  'shared_content_progress',
 ]
 
 interface DesignColumn {

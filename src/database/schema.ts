@@ -1,5 +1,5 @@
 /**
- * Model. 표 쉰아홉과 ENUM 스물여섯. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
+ * Model. 서버의 표와 ENUM 전부다. 마이그레이션은 이 선언에서 `drizzle-kit generate` 가 뽑는다.
  *
  * PK 는 항상 uuid 한 칸이고 자연키는 UNIQUE 제약이다. 봉한 값은 version‖iv‖tag‖cipher 한 칸이다.
  */
@@ -16,6 +16,7 @@ import {
   jsonb,
   numeric,
   pgEnum,
+  pgSequence,
   pgTable,
   smallint,
   text,
@@ -32,6 +33,23 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
 })
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
+
+/**
+ * 기록 표의 변경 번호 순번. 서버 전체에서 하나다. 기기는 주인마다 마지막으로 받은 번호를 기억하고 그보다 큰 줄만 받는다.
+ * 마이그레이션이 `change_seq` 칸을 가진 표마다 트리거 `bump_change_seq` 를 걸어, 줄을 넣거나 고칠 때마다 다음 값을 적는다.
+ * 쓰는 코드가 번호를 잊으면 그 줄을 다른 기기가 받지 못하기 때문이다. 새 기록 표를 만드는 마이그레이션도 트리거를 건다.
+ */
+export const recordChangeSeq = pgSequence('record_change_seq')
+
+/** 지운 줄에 표식을 남기는 기록 표의 동기화 칸 넷. 표식이 선 줄은 다른 기기가 받아 지운 뒤 180일이 지나면 지운다. */
+const syncColumns = () => ({
+  changeSeq: bigint('change_seq', { mode: 'number' })
+    .notNull()
+    .default(sql`nextval('record_change_seq')`),
+  deletedAt: timestamptz('deleted_at'),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})
 
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
 export const platformEnum = pgEnum('platform', ['ios', 'android'])
@@ -1781,4 +1799,170 @@ export const marketResponses = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
   (t) => [unique('market_responses_date_key_unique').on(t.date, t.key)],
+)
+
+/** 수동 추적 항목의 종류. 대상 줄이 일간 · 주간이면 컨텐츠, 보스면 보스 난이도다. */
+export const manualTrackedTypeEnum = pgEnum('manual_tracked_type', ['daily', 'weekly', 'boss'])
+
+/** 기억한 레벨의 종류. 대상 줄이 심볼이면 심볼, 헥사면 헥사 코어다. */
+export const rememberedLevelTypeEnum = pgEnum('remembered_level_type', ['symbol', 'hexa'])
+
+/**
+ * 캐릭터 하나가 한 줄이다. 기록 표는 메이플 ID 와 ocid 두 칸 대신 이 줄을 가리킨다. 두 칸을 줄마다 적으면 같은 캐릭터가 표마다
+ * 다른 메이플 ID 아래에 적히는 것을 막을 수 없다. 기기는 이 줄 id 를 모르고 해시를 실어 올리며, 서버가 줄이 없으면 만든다.
+ * 월드 리프로 ocid 가 바뀌면 이 줄만 고친다. 계정을 지우면 메이플 ID 줄을 따라 지워지고 이 줄을 가리키는 기록도 지워진다.
+ */
+export const characters = pgTable(
+  'characters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    mapleId: uuid('maple_id')
+      .notNull()
+      .references(() => mapleIds.id, { onDelete: 'cascade' }),
+    /** 넥슨 ocid 의 SHA-256 16진 */
+    ocid: text('ocid').notNull().unique(),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [index('characters_maple_id_idx').on(t.mapleId)],
+)
+
+/** 월드 리프 한 번. 다른 기기가 이 줄을 받아 옛 ocid 의 기기 기록을 새 ocid 로 옮긴다. 옛 ocid 는 한 번만 옮겨 간다. */
+export const characterWorldLeaps = pgTable(
+  'character_world_leaps',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** 리프한 캐릭터 줄. 새 ocid 는 그 줄에 있다. */
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    /** 리프 전 ocid 의 SHA-256 16진 */
+    previousOcid: text('previous_ocid').notNull().unique(),
+    ...syncColumns(),
+  },
+  (t) => [index('character_world_leaps_character_id_idx').on(t.characterId)],
+)
+
+/** 사용자가 메이플 ID 에 붙인 이름. 바꾸지 않은 메이플 ID 는 줄이 없고 기기가 기본 이름을 만든다. */
+export const mapleIdNames = pgTable('maple_id_names', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  mapleId: uuid('maple_id')
+    .notNull()
+    .unique()
+    .references(() => mapleIds.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  ...syncColumns(),
+})
+
+/** 사용자가 적은 MVP 등급 이력. 등급은 달성한 날부터 바뀌어 시작 날짜는 아무 요일이나 된다. */
+export const mvpGradeHistory = pgTable(
+  'mvp_grade_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    mapleId: uuid('maple_id')
+      .notNull()
+      .references(() => mapleIds.id, { onDelete: 'cascade' }),
+    /** `YYYY-MM-DD` */
+    fromDate: text('from_date').notNull(),
+    /** 비어 있으면 등급 없음 */
+    gradeId: uuid('grade_id').references(() => mvpGrades.id),
+    ...syncColumns(),
+  },
+  (t) => [unique('mvp_grade_history_maple_id_from_date_unique').on(t.mapleId, t.fromDate)],
+)
+
+/**
+ * 수동 모드에서 캐릭터가 추적하기로 고른 항목 하나. 기기는 캐릭터마다 목록 하나지만 항목마다 한 줄로 푼다. 목록째 올리면 두
+ * 기기가 각자 하나씩 더했을 때 한쪽이 사라진다. 대상 칸 하나가 두 표를 가리켜 참조를 걸 수 없어, 받을 때 종류의 표에서 찾는다.
+ */
+export const manualTrackedItems = pgTable(
+  'manual_tracked_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    type: manualTrackedTypeEnum('type').notNull(),
+    /** 일간 · 주간은 `contents` 의 줄, 보스는 `boss_difficulties` 의 줄 */
+    targetId: uuid('target_id').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    unique('manual_tracked_items_character_type_target_unique').on(
+      t.characterId,
+      t.type,
+      t.targetId,
+    ),
+  ],
+)
+
+/**
+ * 심볼 강화와 헥사 스킬 폼이 강화 전 레벨 칸을 채우는 값. 넥슨이 주지 않아 올리지 않으면 새 기기에서 다시 쳐야 한다. 대상 칸
+ * 하나가 두 표를 가리켜 참조를 걸 수 없어, 받을 때 종류의 표에서 찾는다.
+ */
+export const rememberedLevels = pgTable(
+  'remembered_levels',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    type: rememberedLevelTypeEnum('type').notNull(),
+    /** 심볼은 `symbols` 의 줄, 헥사는 `hexa_cores` 의 줄 */
+    targetId: uuid('target_id').notNull(),
+    level: integer('level').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    unique('remembered_levels_character_type_target_unique').on(t.characterId, t.type, t.targetId),
+  ],
+)
+
+/** 대표 캐릭터가 할 행동과 표정. 고른 차례에 뜻이 있고 개수가 적어 줄로 풀지 않고 글자 배열로 둔다. */
+export const representativeCharacterMotions = pgTable('representative_character_motions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  characterId: uuid('character_id')
+    .notNull()
+    .unique()
+    .references(() => characters.id, { onDelete: 'cascade' }),
+  /** 3개까지 */
+  actions: text('actions').array().notNull(),
+  /** 5개까지 */
+  emotions: text('emotions').array().notNull(),
+  durationMs: integer('duration_ms').notNull(),
+  restsBetweenActions: boolean('rests_between_actions').notNull(),
+  ...syncColumns(),
+})
+
+/**
+ * 월드나 계정이 함께 쓰는 컨텐츠의 진행. 넥슨은 접속한 캐릭터의 값만 줘서 그 캐릭터를 추적하지 않는 기기는 다시 받을 수 없다.
+ * 계정이 함께 쓰는 컨텐츠는 월드가 비어 있고, 빈 월드끼리도 한 줄이어야 해서 유일 기준이 빈 값을 같게 본다.
+ */
+export const sharedContentProgress = pgTable(
+  'shared_content_progress',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    mapleId: uuid('maple_id')
+      .notNull()
+      .references(() => mapleIds.id, { onDelete: 'cascade' }),
+    worldId: uuid('world_id').references(() => worlds.id),
+    contentId: uuid('content_id')
+      .notNull()
+      .references(() => contents.id),
+    /** 등록이 한 번이라도 확인된 컨텐츠인지 */
+    isRegistered: boolean('is_registered').notNull(),
+    nowCount: integer('now_count'),
+    /** 넥슨이 준 최대 횟수. 컨텐츠 표에 최대 횟수가 없는 컨텐츠가 진행 중에 읽는다. */
+    maxCount: integer('max_count'),
+    /** 0 · 1 · 2 */
+    questState: smallint('quest_state'),
+    /** 값이 속한 기간. 주간은 `W202647`, 일간은 `D20261119` 꼴 */
+    periodCode: text('period_code').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    unique('shared_content_progress_maple_id_world_content_unique')
+      .on(t.mapleId, t.worldId, t.contentId)
+      .nullsNotDistinct(),
+  ],
 )

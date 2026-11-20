@@ -337,6 +337,13 @@
       "when": 1795155169573,
       "tag": "0047_item_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795159626356,
+      "tag": "0048_hexa_bundle",
+      "breakpoints": true
     }
   ]
 }

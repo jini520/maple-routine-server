@@ -10,7 +10,14 @@ import { migrationFoldersUpTo } from '../database/migration-folders'
 import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
-import { moveOldDb, SwappedDatabases, UnknownAssetPath, UnknownTradeGroup } from './move-old-db'
+import {
+  moveOldDb,
+  SharedCoreMismatch,
+  SwappedDatabases,
+  UnknownAssetPath,
+  UnknownHexaCoreType,
+  UnknownTradeGroup,
+} from './move-old-db'
 
 /** 옛 DB 의 마지막 마이그레이션. 1.0.14 운영 DB 가 여기까지 올라 있다. */
 const OLD_LAST = '0045_market_range_nullable'
@@ -383,5 +390,170 @@ describeDb('moveOldDb', () => {
 
     await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownTradeGroup('challengers_5'))
     expect(await newDb.select().from(schema.worlds)).toEqual([])
+  })
+
+  /** 옛 헥사 표. 종류 셋(스킬 기본 · 3rd · 공용 기본)과 3rd 를 가르는 이름 한 줄. */
+  async function insertOldHexaTypes(): Promise<Record<string, string>> {
+    const icon = await insertOldAsset('items/hexa_core_skill.webp')
+    const kinds = await oldDb
+      .insert(oldSchema.hexaCoreKinds)
+      .values([
+        {
+          key: 'skill',
+          name: '스킬 코어',
+          apiType: '스킬 코어',
+          isDefault: true,
+          maxLevel: 2,
+          iconAssetId: icon,
+          sortOrder: 0,
+        },
+        {
+          key: 'skill_3rd',
+          name: '3rd 스킬 코어',
+          apiType: '스킬 코어',
+          iconAssetId: icon,
+          sortOrder: 1,
+        },
+        {
+          key: 'common',
+          name: '공용 코어',
+          apiType: '공용 코어',
+          isDefault: true,
+          iconAssetId: icon,
+          sortOrder: 2,
+        },
+      ])
+      .returning({ id: oldSchema.hexaCoreKinds.id, key: oldSchema.hexaCoreKinds.key })
+    const kindId = Object.fromEntries(kinds.map((k) => [k.key, k.id]))
+    await oldDb
+      .insert(oldSchema.hexaCoreNameKinds)
+      .values({ name: '천예', kindId: kindId.skill_3rd ?? '' })
+    return kindId
+  }
+
+  it('헥사: 직업은 코어의 직업 글자로 만들고 전직업을 더한다. 모든 직업에 있는 코어는 전직업의 한 줄로 합치고, 종류는 이름 표 다음 기본 종류로 정하며, 차례는 직업 · 종류 안에서 다시 매긴다', async () => {
+    const kindId = await insertOldHexaTypes()
+    const a = await insertOldAsset('skills/a.webp')
+    const janus = await insertOldAsset('skills/janus.webp')
+    const cores = await oldDb
+      .insert(oldSchema.hexaJobCores)
+      .values([
+        { job: '렌', name: '창룡파천검', apiType: '스킬 코어', iconAssetId: a, sortOrder: 0 },
+        { job: '렌', name: '천예', apiType: '스킬 코어', iconAssetId: a, sortOrder: 1 },
+        { job: '렌', name: '염화무극', apiType: '스킬 코어', iconAssetId: a, sortOrder: 2 },
+        { job: '렌', name: '솔 야누스', apiType: '공용 코어', iconAssetId: janus, sortOrder: 3 },
+        {
+          job: '히어로',
+          name: '레이징 블로우',
+          apiType: '스킬 코어',
+          iconAssetId: a,
+          sortOrder: 0,
+        },
+        {
+          job: '히어로',
+          name: '솔 야누스',
+          apiType: '공용 코어',
+          iconAssetId: janus,
+          sortOrder: 1,
+        },
+      ])
+      .returning({
+        id: oldSchema.hexaJobCores.id,
+        job: oldSchema.hexaJobCores.job,
+        name: oldSchema.hexaJobCores.name,
+      })
+    const costs = await oldDb
+      .insert(oldSchema.hexaCoreLevelCosts)
+      .values([
+        { kindId: kindId.skill ?? '', level: 0, fragments: 100, solErda: 1 },
+        { kindId: kindId.skill ?? '', level: 1, fragments: 30, solErda: 2 },
+      ])
+      .returning({ id: oldSchema.hexaCoreLevelCosts.id })
+    const [stat] = await oldDb
+      .insert(oldSchema.hexaStats)
+      .values({ key: 'hexa_stat_1', name: '헥사 스탯 Ⅰ', activationFragments: 10, sortOrder: 0 })
+      .returning({ id: oldSchema.hexaStats.id })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      jobs: 3,
+      hexaCoreTypes: 3,
+      hexaCores: 5,
+      hexaCoreLevelCosts: 2,
+      hexaStats: 1,
+    })
+    const jobs = await newDb.select().from(schema.jobs)
+    const jobName = new Map(jobs.map((j) => [j.id, j.name]))
+    expect(jobs.map((j) => [j.name, j.isAllJobs]).sort()).toEqual([
+      ['렌', false],
+      ['전직업', true],
+      ['히어로', false],
+    ])
+    const types = await newDb.select().from(schema.hexaCoreTypes)
+    expect(types.map((t) => [t.key, t.id]).sort()).toEqual(Object.entries(kindId).sort())
+    const typeKey = new Map(types.map((t) => [t.id, t.key]))
+    const moved = await newDb.select().from(schema.hexaCores)
+    expect(
+      moved.map((c) => [jobName.get(c.jobId), typeKey.get(c.typeId), c.sortOrder, c.name]).sort(),
+    ).toEqual([
+      ['렌', 'skill', 0, '창룡파천검'],
+      ['렌', 'skill', 1, '염화무극'],
+      ['렌', 'skill_3rd', 0, '천예'],
+      ['전직업', 'common', 0, '솔 야누스'],
+      ['히어로', 'skill', 0, '레이징 블로우'],
+    ])
+    // 남는 공용 코어 줄은 직업 이름 차례로 첫 직업의 줄이다.
+    const janusRow = moved.find((c) => c.name === '솔 야누스')
+    expect(janusRow).toMatchObject({
+      id: cores.find((c) => c.job === '렌' && c.name === '솔 야누스')?.id,
+      iconAssetId: janus,
+    })
+    expect(
+      (await newDb.select().from(schema.hexaCoreLevelCosts))
+        .map((c) => ({ ...c }))
+        .sort((x, y) => x.fromLevel - y.fromLevel),
+    ).toEqual([
+      {
+        id: costs[0]?.id,
+        typeId: kindId.skill,
+        fromLevel: 0,
+        fragmentQuantity: 100,
+        solErdaQuantity: 1,
+      },
+      {
+        id: costs[1]?.id,
+        typeId: kindId.skill,
+        fromLevel: 1,
+        fragmentQuantity: 30,
+        solErdaQuantity: 2,
+      },
+    ])
+    expect(await newDb.select().from(schema.hexaStats)).toEqual([
+      {
+        id: stat?.id,
+        key: 'hexa_stat_1',
+        name: '헥사 스탯 Ⅰ',
+        activationFragmentQuantity: 10,
+        sortOrder: 0,
+      },
+    ])
+  })
+
+  it('헥사: 모든 직업에 있는 코어의 그림이 직업마다 다르거나 종류를 정하지 못하는 코어가 있으면 알리고 아무것도 옮기지 않는다', async () => {
+    await insertOldHexaTypes()
+    const a = await insertOldAsset('skills/a.webp')
+    const b = await insertOldAsset('skills/b.webp')
+    await oldDb.insert(oldSchema.hexaJobCores).values([
+      { job: '렌', name: '솔 야누스', apiType: '공용 코어', iconAssetId: a, sortOrder: 0 },
+      { job: '히어로', name: '솔 야누스', apiType: '공용 코어', iconAssetId: b, sortOrder: 0 },
+    ])
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new SharedCoreMismatch('솔 야누스'))
+    expect(await newDb.select().from(schema.jobs)).toEqual([])
+
+    await oldDb.delete(oldSchema.hexaJobCores)
+    await oldDb
+      .insert(oldSchema.hexaJobCores)
+      .values({ job: '렌', name: '오리진', apiType: '오리진 코어', iconAssetId: a, sortOrder: 0 })
+    await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownHexaCoreType('렌 · 오리진'))
+    expect(await newDb.select().from(schema.hexaCores)).toEqual([])
   })
 })

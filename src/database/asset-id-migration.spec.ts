@@ -30,6 +30,8 @@ describeDb('0029 그림 id 이관', () => {
     const url = new URL(TEST_DATABASE_URL ?? '')
     url.pathname = `/${name}`
     pool = new Pool({ connectionString: url.toString() })
+    // DB 를 지울 때 남은 연결이 끊기며 내는 오류다. 처리기가 없으면 다음 테스트의 실패로 올라온다.
+    pool.on('error', () => undefined)
     db = drizzle(pool)
     await migrate(db, { migrationsFolder: folders[BEFORE] })
     // 0014 가 넣은 가계부 분류 줄은 이 스펙이 넣는 그림을 안 가리켜 0029 를 멈추게 한다. 스펙마다 볼 표만 남긴다.

@@ -108,7 +108,6 @@ export const ASSET_REFS = {
   itemIcon: { categories: ['item', 'item_ring'], key: 'fileName' },
   mapBackground: { categories: ['map'], key: 'slug' },
   mapIcon: { categories: ['map_icon'], key: 'slug' },
-  skillIcon: { categories: ['skill'], key: 'fileName' },
 } as const satisfies Record<
   string,
   { categories: readonly AssetCategory[]; key: 'slug' | 'fileName' }

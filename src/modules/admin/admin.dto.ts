@@ -400,31 +400,31 @@ const hexaText = (max: number) => z.string().trim().min(1).max(max)
 const fragmentCount = z.number().int().min(0).max(2_000_000_000)
 
 /** 고칠 때는 칸 전부를 받는다. 빠진 칸을 기본값으로 채우면 기본 종류가 몰래 풀린다. */
-const hexaKindBase = z.object({
+const hexaTypeBase = z.object({
   key: snakeKey,
   name: hexaText(30),
   /** 넥슨 hexa_core_type 글자. */
   apiType: hexaText(30),
   isDefault: z.boolean(),
   maxLevel: z.number().int().min(1).max(100),
-  iconFile: z.string().min(1).max(200),
+  iconAssetId: z.string().uuid(),
 })
-export const hexaKindCreateBody = hexaKindBase.extend({
+export const hexaTypeCreateBody = hexaTypeBase.extend({
   isDefault: z.boolean().default(false),
   maxLevel: z.number().int().min(1).max(100).default(30),
 })
-export type HexaKindCreateBody = z.infer<typeof hexaKindCreateBody>
-export const hexaKindUpdateBody = hexaKindBase.omit({ key: true })
-export type HexaKindUpdateBody = z.infer<typeof hexaKindUpdateBody>
+export type HexaTypeCreateBody = z.infer<typeof hexaTypeCreateBody>
+export const hexaTypeUpdateBody = hexaTypeBase.omit({ key: true })
+export type HexaTypeUpdateBody = z.infer<typeof hexaTypeUpdateBody>
 
 /** 종류의 비용 줄 전부. 레벨이 0 부터 만렙 - 1 까지 꼭 한 번씩인지는 만렙을 아는 리포지토리가 본다. */
 export const hexaCostsBody = z.object({
   costs: z
     .array(
       z.object({
-        level: z.number().int().min(0),
-        fragments: fragmentCount,
-        solErda: fragmentCount,
+        fromLevel: z.number().int().min(0),
+        fragmentQuantity: fragmentCount,
+        solErdaQuantity: fragmentCount,
       }),
     )
     .min(1)
@@ -432,26 +432,26 @@ export const hexaCostsBody = z.object({
 })
 export type HexaCostsBody = z.infer<typeof hexaCostsBody>
 
-/** 넥슨 응답의 코어 이름은 끝에 공백이 붙어 올 때가 있어 걷어서 적는다. */
-export const hexaNameKindBody = z.object({ name: hexaText(100), kind: snakeKey })
-export type HexaNameKindBody = z.infer<typeof hexaNameKindBody>
+/** 넥슨 character_class 글자. */
+export const hexaJobBody = z.object({ name: hexaText(50) })
+export type HexaJobBody = z.infer<typeof hexaJobBody>
 
-export const hexaJobCoreCreateBody = z.object({
-  /** 넥슨 character_class 글자. */
-  job: hexaText(50),
+/** 넥슨 응답의 코어 이름은 끝에 공백이 붙어 올 때가 있어 걷어서 적는다. */
+export const hexaCoreCreateBody = z.object({
+  jobId: z.string().uuid(),
   name: hexaText(100),
-  apiType: hexaText(30),
-  iconFile: z.string().min(1).max(200),
+  typeKey: snakeKey,
+  iconAssetId: z.string().uuid(),
 })
-export type HexaJobCoreCreateBody = z.infer<typeof hexaJobCoreCreateBody>
-export const hexaJobCoreUpdateBody = hexaJobCoreCreateBody.omit({ job: true })
-export type HexaJobCoreUpdateBody = z.infer<typeof hexaJobCoreUpdateBody>
+export type HexaCoreCreateBody = z.infer<typeof hexaCoreCreateBody>
+export const hexaCoreUpdateBody = hexaCoreCreateBody.omit({ jobId: true })
+export type HexaCoreUpdateBody = z.infer<typeof hexaCoreUpdateBody>
 
 /** 활성화 비용을 모르는 스탯은 비운다. 앱이 활성화 체크를 막는다. */
 export const hexaStatCreateBody = z.object({
   key: snakeKey,
   name: hexaText(30),
-  activationFragments: fragmentCount.nullish(),
+  activationFragmentQuantity: fragmentCount.nullish(),
 })
 export type HexaStatCreateBody = z.infer<typeof hexaStatCreateBody>
 export const hexaStatUpdateBody = hexaStatCreateBody.omit({ key: true })

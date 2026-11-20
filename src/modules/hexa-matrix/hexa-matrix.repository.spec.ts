@@ -1,51 +1,51 @@
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
+import { AssetNotFound } from '../assets/asset-refs'
 import {
   CostLevelsMismatch,
-  DefaultKindTaken,
-  HexaKindExists,
+  DefaultTypeTaken,
+  HexaCoreExists,
   HexaMatrixRepository,
   HexaStatExists,
-  JobCoreExists,
+  HexaTypeExists,
+  JobExists,
   LevelsAboveMax,
-  NameKindExists,
-  NoHexaKind,
+  NoHexaType,
+  NoJob,
 } from './hexa-matrix.repository'
 
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
-const SPEC_ASSETS = [
-  'items/hexa_core_skill.webp',
-  'items/x.webp',
-  'skills/hexa_core_skill.webp',
-  'skills/x.webp',
-  // core() 가 `${name}.webp` 로 짓는 직업별 코어 그림
-  'skills/레이지 익스플로젼.webp',
-  'skills/스피릿 칼리버.webp',
-  'skills/창룡파천검 : 만참.webp',
-]
-
-const skill = {
-  key: 'skill',
-  name: '스킬 코어',
-  apiType: '스킬 코어',
-  isDefault: true,
-  maxLevel: 3,
-  iconFile: 'hexa_core_skill.webp',
-}
-const skill3rd = { ...skill, key: 'skill_3rd', name: '3rd 스킬 코어', isDefault: false }
-const costs = (base: number) =>
-  [0, 1, 2].map((level) => ({ level, fragments: base + level, solErda: level + 1 }))
+const SPEC_ASSETS = ['items/hexa_core_skill.webp', 'skills/a.webp', 'skills/b.webp']
+const NO_ASSET = '00000000-0000-4000-8000-000000000000'
 
 describeDb('HexaMatrixRepository', () => {
   let db: TestDb
   let close: () => Promise<void>
   let truncate: () => Promise<void>
   let repo: HexaMatrixRepository
-  let assetIds: Record<string, string>
-  /** 칸이 내는 줄. 그림 이름 옆에 그 그림의 id 가 선다 */
-  const withIcon = <T extends { iconFile: string }>(dir: 'items' | 'skills', row: T) => ({
-    ...row,
-    iconAssetId: assetIds[`${dir}/${row.iconFile}`],
+  let icon: Record<string, string>
+
+  const skillType = () => ({
+    key: 'skill',
+    name: '스킬 코어',
+    apiType: '스킬 코어',
+    isDefault: true,
+    maxLevel: 3,
+    iconAssetId: icon['items/hexa_core_skill.webp'] ?? '',
   })
+  const skill3rdType = () => ({
+    ...skillType(),
+    key: 'skill_3rd',
+    name: '3rd 스킬 코어',
+    isDefault: false,
+  })
+  const costs = (base: number) =>
+    [0, 1, 2].map((fromLevel) => ({
+      fromLevel,
+      fragmentQuantity: base + fromLevel,
+      solErdaQuantity: fromLevel + 1,
+    }))
+  const typeId = async (key: string) =>
+    (await repo.section()).hexaCoreTypes.find((t) => t.key === key)?.id ?? ''
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -53,167 +53,203 @@ describeDb('HexaMatrixRepository', () => {
   })
   beforeEach(async () => {
     await truncate()
-    assetIds = await insertAssets(db, SPEC_ASSETS)
+    icon = await insertAssets(db, SPEC_ASSETS)
   })
   afterAll(() => close())
 
-  it('빈 표는 칸 전부가 빈다', async () => {
+  it('빈 표는 표 이름의 배열 다섯이 모두 빈다', async () => {
     expect(await repo.section()).toEqual({
       updatedAt: null,
-      kinds: [],
-      levelCosts: [],
-      nameKinds: [],
-      jobCores: [],
-      stats: [],
+      jobs: [],
+      hexaCoreTypes: [],
+      hexaCores: [],
+      hexaCoreLevelCosts: [],
+      hexaStats: [],
     })
   })
 
-  it('종류를 더한 차례로 내고 비용은 종류 차례 → 레벨 차례다. 참조는 key 로 낸다', async () => {
-    await repo.createKind(skill3rd)
-    await repo.createKind(skill)
-    await expect(repo.createKind(skill)).rejects.toBeInstanceOf(HexaKindExists)
+  it('종류는 더한 차례로 줄 id 와 차례를 들고, 비용은 종류 차례 · 레벨 차례로 종류 줄 id 를 든다', async () => {
+    await repo.createType(skill3rdType())
+    await repo.createType(skillType())
+    await expect(repo.createType(skillType())).rejects.toBeInstanceOf(HexaTypeExists)
+    await expect(
+      repo.createType({ ...skillType(), key: 'x', isDefault: false, iconAssetId: NO_ASSET }),
+    ).rejects.toBeInstanceOf(AssetNotFound)
     await repo.replaceCosts('skill', costs(100))
     await repo.replaceCosts('skill_3rd', costs(140))
-    await repo.addNameKind({ name: '  레이지 익스플로젼 ', kind: 'skill_3rd' })
 
     const section = await repo.section()
     expect(section.updatedAt).not.toBeNull()
-    expect(section.kinds).toEqual([withIcon('items', skill3rd), withIcon('items', skill)])
-    expect(section.levelCosts).toEqual([
-      ...costs(140).map((c) => ({ kind: 'skill_3rd', ...c })),
-      ...costs(100).map((c) => ({ kind: 'skill', ...c })),
+    expect(section.hexaCoreTypes).toEqual([
+      { id: await typeId('skill_3rd'), ...skill3rdType(), sortOrder: 0 },
+      { id: await typeId('skill'), ...skillType(), sortOrder: 1 },
     ])
-    expect(section.nameKinds).toEqual([{ name: '레이지 익스플로젼', kind: 'skill_3rd' }])
+    expect(section.hexaCoreLevelCosts).toEqual([
+      ...costs(140).map((c) => ({ typeId: section.hexaCoreTypes[0]?.id, ...c })),
+      ...costs(100).map((c) => ({ typeId: section.hexaCoreTypes[1]?.id, ...c })),
+    ])
   })
 
-  // API 타입마다 기본 종류가 둘이면 이름 표에 없는 코어의 종류가 하나로 안 정해진다.
-  it('같은 API 타입에 기본 종류를 둘 두면 DefaultKindTaken 이다. 더할 때도 고칠 때도 그렇다', async () => {
-    await repo.createKind(skill)
-    await repo.createKind(skill3rd)
-    await expect(repo.createKind({ ...skill, key: 'skill_new' })).rejects.toBeInstanceOf(
-      DefaultKindTaken,
+  // 넥슨 타입마다 기본 종류가 둘이면 표에 없는 코어를 넥슨 타입으로 맞출 때 종류가 하나로 안 정해진다.
+  it('같은 넥슨 타입에 기본 종류를 둘 두면 DefaultTypeTaken 이다. 더할 때도 고칠 때도 그렇다', async () => {
+    await repo.createType(skillType())
+    await repo.createType(skill3rdType())
+    await expect(repo.createType({ ...skillType(), key: 'skill_new' })).rejects.toBeInstanceOf(
+      DefaultTypeTaken,
     )
     await expect(
-      repo.updateKind('skill_3rd', { ...skill3rd, isDefault: true }),
-    ).rejects.toBeInstanceOf(DefaultKindTaken)
+      repo.updateType('skill_3rd', { ...skill3rdType(), isDefault: true }),
+    ).rejects.toBeInstanceOf(DefaultTypeTaken)
     // 자기 자신은 겹침으로 안 본다.
-    expect(await repo.updateKind('skill', { ...skill, name: '스킬 코어!' })).toBe(true)
-    expect(await repo.updateKind('nobody', skill)).toBe(false)
-    expect((await repo.section()).kinds[0]?.name).toBe('스킬 코어!')
+    expect(await repo.updateType('skill', { ...skillType(), name: '스킬 코어!' })).toBe(true)
+    expect(await repo.updateType('nobody', skillType())).toBe(false)
+    expect((await repo.section()).hexaCoreTypes[0]?.name).toBe('스킬 코어!')
   })
 
   // 레벨 하나라도 비면 앱이 그 구간의 조각 합을 낼 수 없다.
   it('비용은 0 부터 만렙 - 1 까지 꼭 한 번씩이어야 하고, 어기면 CostLevelsMismatch 로 아무것도 안 바꾼다', async () => {
-    await repo.createKind(skill)
+    await repo.createType(skillType())
     await repo.replaceCosts('skill', costs(100))
     await expect(repo.replaceCosts('skill', costs(1).slice(0, 2))).rejects.toBeInstanceOf(
       CostLevelsMismatch,
     )
     await expect(
-      repo.replaceCosts('skill', [...costs(1).slice(0, 2), { level: 1, fragments: 1, solErda: 1 }]),
+      repo.replaceCosts('skill', [
+        ...costs(1).slice(0, 2),
+        { fromLevel: 1, fragmentQuantity: 1, solErdaQuantity: 1 },
+      ]),
     ).rejects.toBeInstanceOf(CostLevelsMismatch)
-    await expect(
-      repo.replaceCosts('skill', [...costs(1), { level: 3, fragments: 1, solErda: 1 }]),
-    ).rejects.toBeInstanceOf(CostLevelsMismatch)
-    await expect(repo.replaceCosts('nobody', costs(1))).rejects.toBeInstanceOf(NoHexaKind)
-    expect((await repo.section()).levelCosts.map((c) => c.fragments)).toEqual([100, 101, 102])
-
-    await repo.replaceCosts('skill', costs(200))
-    expect((await repo.section()).levelCosts.map((c) => c.fragments)).toEqual([200, 201, 202])
+    await expect(repo.replaceCosts('nobody', costs(1))).rejects.toBeInstanceOf(NoHexaType)
+    expect((await repo.section()).hexaCoreLevelCosts.map((c) => c.fragmentQuantity)).toEqual([
+      100, 101, 102,
+    ])
   })
 
   it('만렙을 비용 줄 아래로 내리면 LevelsAboveMax 다. 올리는 것은 된다', async () => {
-    await repo.createKind(skill)
+    await repo.createType(skillType())
     await repo.replaceCosts('skill', costs(100))
-    await expect(repo.updateKind('skill', { ...skill, maxLevel: 2 })).rejects.toBeInstanceOf(
+    await expect(repo.updateType('skill', { ...skillType(), maxLevel: 2 })).rejects.toBeInstanceOf(
       LevelsAboveMax,
     )
-    expect(await repo.updateKind('skill', { ...skill, maxLevel: 4 })).toBe(true)
-    expect((await repo.section()).kinds[0]?.maxLevel).toBe(4)
+    expect(await repo.updateType('skill', { ...skillType(), maxLevel: 4 })).toBe(true)
   })
 
-  it('이름 표는 이름 차례로 내고, 같은 이름은 NameKindExists · 모르는 종류는 NoHexaKind 다. 지우면 사라진다', async () => {
-    await repo.createKind(skill3rd)
-    await repo.addNameKind({ name: '인페르날 웨이브', kind: 'skill_3rd' })
-    await repo.addNameKind({ name: '레이지 익스플로젼', kind: 'skill_3rd' })
-    await expect(
-      repo.addNameKind({ name: '레이지 익스플로젼 ', kind: 'skill_3rd' }),
-    ).rejects.toBeInstanceOf(NameKindExists)
-    await expect(repo.addNameKind({ name: '무아지경', kind: 'nobody' })).rejects.toBeInstanceOf(
-      NoHexaKind,
-    )
+  it('직업은 이름 차례로 내고 더하고 이름을 고친다. 같은 이름은 JobExists, 모르는 직업은 false 다', async () => {
+    const { id } = await repo.createJob({ name: '히어로' })
+    const ren = (await repo.createJob({ name: '렌' })).id
+    await expect(repo.createJob({ name: '렌' })).rejects.toBeInstanceOf(JobExists)
+    expect(await repo.updateJob(id, { name: '팔라딘' })).toBe(true)
+    await expect(repo.updateJob(id, { name: '렌' })).rejects.toBeInstanceOf(JobExists)
+    expect(await repo.updateJob(NO_ASSET, { name: '비숍' })).toBe(false)
 
-    const rows = await repo.adminRows()
-    expect(rows.nameKinds.map((n) => n.name)).toEqual(['레이지 익스플로젼', '인페르날 웨이브'])
-    expect(await repo.removeNameKind(rows.nameKinds[0]?.id ?? '')).toBe(true)
-    expect(await repo.removeNameKind(rows.nameKinds[0]?.id ?? '')).toBe(false)
-    expect((await repo.section()).nameKinds).toEqual([
-      { name: '인페르날 웨이브', kind: 'skill_3rd' },
+    expect((await repo.section()).jobs).toEqual([
+      { id: ren, name: '렌', isAllJobs: false },
+      { id, name: '팔라딘', isAllJobs: false },
     ])
   })
 
-  it('직업별 코어는 직업 → 직업 안 차례로 내고, 직업 안 맨 뒤에 더해 옮기고 고치고 지운다', async () => {
-    const core = (job: string, name: string) => ({
-      job,
+  // 차례는 한 직업의 같은 종류 안에서만 뜻이 있다. 앱이 전직업의 코어를 섞어 종류 차례 · 코어 차례로 다시 늘어놓는다.
+  it('코어는 직업 · 종류 안 맨 뒤에 더하고, 종류를 바꾸면 새 종류의 맨 뒤로 가며, 옮기기는 같은 직업 · 같은 종류 안에서 한다', async () => {
+    await repo.createType(skillType())
+    await repo.createType(skill3rdType())
+    const ren = (await repo.createJob({ name: '렌' })).id
+    const hero = (await repo.createJob({ name: '히어로' })).id
+    const a = icon['skills/a.webp'] ?? ''
+    const core = (jobId: string, name: string, typeKey: string) => ({
+      jobId,
       name,
-      apiType: '스킬 코어',
-      iconFile: `${name}.webp`,
+      typeKey,
+      iconAssetId: a,
     })
-    await repo.createJobCore(core('히어로', '스피릿 칼리버'))
-    await repo.createJobCore(core('렌', '창룡파천검 : 만참'))
-    await repo.createJobCore(core('히어로', '레이지 익스플로젼'))
-    await expect(repo.createJobCore(core('히어로', '스피릿 칼리버'))).rejects.toBeInstanceOf(
-      JobCoreExists,
-    )
 
-    let rows = await repo.adminRows()
-    const id = (name: string) => rows.jobCores.find((c) => c.name === name)?.id ?? ''
-    expect(await repo.moveJobCore(id('레이지 익스플로젼'), 'up')).toBe(true)
-    expect(await repo.moveJobCore(id('레이지 익스플로젼'), 'up')).toBe(true)
-    expect(await repo.moveJobCore('0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b', 'up')).toBe(false)
+    const first = await repo.createCore(core(ren, '창룡파천검', 'skill'))
+    const second = await repo.createCore(core(ren, '염화무극', 'skill'))
+    const third = await repo.createCore(core(ren, '천예', 'skill_3rd'))
+    await repo.createCore(core(hero, '창룡파천검', 'skill'))
+    await expect(repo.createCore(core(ren, '창룡파천검', 'skill'))).rejects.toBeInstanceOf(
+      HexaCoreExists,
+    )
+    await expect(repo.createCore(core(NO_ASSET, 'x', 'skill'))).rejects.toBeInstanceOf(NoJob)
+    await expect(repo.createCore(core(ren, 'x', 'nobody'))).rejects.toBeInstanceOf(NoHexaType)
+    await expect(
+      repo.createCore({ ...core(ren, 'x', 'skill'), iconAssetId: NO_ASSET }),
+    ).rejects.toBeInstanceOf(AssetNotFound)
+
+    const rows = async () =>
+      (await repo.section()).hexaCores
+        .filter((c) => c.jobId === ren)
+        .map((c) => [c.name, c.sortOrder])
+    expect(await rows()).toEqual([
+      ['창룡파천검', 0],
+      ['염화무극', 1],
+      ['천예', 0],
+    ])
+    expect((await repo.section()).hexaCores[0]).toEqual({
+      id: first.id,
+      jobId: ren,
+      name: '창룡파천검',
+      typeId: await typeId('skill'),
+      iconAssetId: a,
+      sortOrder: 0,
+    })
+
+    expect(await repo.moveCore(second.id, 'up')).toBe(true)
+    // 같은 종류의 끝이라 다른 종류의 코어와 자리를 바꾸지 않는다.
+    expect(await repo.moveCore(third.id, 'up')).toBe(true)
+    expect(await rows()).toEqual([
+      ['염화무극', 0],
+      ['창룡파천검', 1],
+      ['천예', 0],
+    ])
+
+    const b = icon['skills/b.webp'] ?? ''
     expect(
-      await repo.updateJobCore(id('스피릿 칼리버'), {
-        name: '스피릿 칼리버!',
-        apiType: '스킬 코어',
-        iconFile: 'x.webp',
+      await repo.updateCore(first.id, {
+        name: '창룡파천검!',
+        typeKey: 'skill_3rd',
+        iconAssetId: b,
       }),
     ).toBe(true)
-    await expect(
-      repo.updateJobCore(id('스피릿 칼리버'), {
-        name: '레이지 익스플로젼',
-        apiType: '스킬 코어',
-        iconFile: 'x.webp',
-      }),
-    ).rejects.toBeInstanceOf(JobCoreExists)
-    expect((await repo.section()).jobCores).toEqual([
-      withIcon('skills', core('렌', '창룡파천검 : 만참')),
-      withIcon('skills', core('히어로', '레이지 익스플로젼')),
-      withIcon('skills', {
-        ...core('히어로', '스피릿 칼리버'),
-        name: '스피릿 칼리버!',
-        iconFile: 'x.webp',
-      }),
+    expect(await rows()).toEqual([
+      ['염화무극', 0],
+      ['천예', 0],
+      ['창룡파천검!', 1],
     ])
-
-    rows = await repo.adminRows()
-    expect(await repo.removeJobCore(id('창룡파천검 : 만참'))).toBe(true)
-    expect(await repo.removeJobCore(id('창룡파천검 : 만참'))).toBe(false)
-    expect((await repo.section()).jobCores.map((c) => c.job)).toEqual(['히어로', '히어로'])
+    expect(await repo.updateCore(NO_ASSET, core(ren, 'x', 'skill'))).toBe(false)
+    expect(await repo.removeCore(third.id)).toBe(true)
+    expect(await repo.removeCore(third.id)).toBe(false)
+    expect(await rows()).toEqual([
+      ['염화무극', 0],
+      ['창룡파천검!', 1],
+    ])
   })
 
-  it('스탯은 더한 차례로 내고 활성화 비용은 비울 수 있다. 같은 key 는 HexaStatExists 다', async () => {
-    await repo.createStat({ key: 'hexa_stat_2', name: '헥사 스탯 Ⅱ', activationFragments: 200 })
-    await repo.createStat({ key: 'hexa_stat_4', name: '헥사 스탯 Ⅳ', activationFragments: null })
+  it('스탯은 더한 차례로 줄 id 와 함께 내고 활성화 조각은 비울 수 있다. 같은 key 는 HexaStatExists 다', async () => {
+    const { id } = await repo.createStat({
+      key: 'hexa_stat_1',
+      name: '헥사 스탯 Ⅰ',
+      activationFragmentQuantity: 10,
+    })
+    await repo.createStat({
+      key: 'hexa_stat_2',
+      name: '헥사 스탯 Ⅱ',
+      activationFragmentQuantity: null,
+    })
     await expect(
-      repo.createStat({ key: 'hexa_stat_2', name: 'x', activationFragments: 1 }),
+      repo.createStat({ key: 'hexa_stat_1', name: 'x', activationFragmentQuantity: null }),
     ).rejects.toBeInstanceOf(HexaStatExists)
     expect(
-      await repo.updateStat('hexa_stat_4', { name: '헥사 스탯 Ⅳ', activationFragments: 500 }),
+      await repo.updateStat('hexa_stat_1', { name: '헥사 스탯 1', activationFragmentQuantity: 20 }),
     ).toBe(true)
-    expect(await repo.updateStat('nobody', { name: 'x', activationFragments: null })).toBe(false)
-    expect((await repo.section()).stats).toEqual([
-      { key: 'hexa_stat_2', name: '헥사 스탯 Ⅱ', activationFragments: 200 },
-      { key: 'hexa_stat_4', name: '헥사 스탯 Ⅳ', activationFragments: 500 },
+    expect(await repo.updateStat('nobody', { name: 'x', activationFragmentQuantity: null })).toBe(
+      false,
+    )
+
+    const stats = (await repo.section()).hexaStats
+    expect(stats.map((s) => [s.key, s.name, s.activationFragmentQuantity])).toEqual([
+      ['hexa_stat_1', '헥사 스탯 1', 20],
+      ['hexa_stat_2', '헥사 스탯 Ⅱ', null],
     ])
+    expect(stats[0]?.id).toBe(id)
   })
 })

@@ -221,7 +221,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   `src/database/old-schema.ts` 로 읽는다. 줄 id 는 그대로 옮긴다. 새 DB 의 옮길 표는 먼저 비우고 다시 채운다. 옛 마이그레이션 0041
   이 빈 DB 에도 아이템 묶음 줄을 넣기 때문이고, 다시 돌려도 같은 줄이 두 번 들어가지 않는다. 옛 DB 와 새 DB 를 바꿔 넣지 않게
   옛 DB 에 `assets.path`, 새 DB 에 `assets.category` 가 있는지 먼저 본다. 지금은 그림 · 보스 · 난이도와 아이템 묶음 · 아이템 · 거래권
-  · 월드 · 월드 기간을 옮기고 반지 레벨 줄과 상자 연마석 줄을 만든다. 표 묶음 PR 마다 그 묶음의 표를 더한다. 운영 서버의 hotfix 가 표를 바꾸면 main 을 develop 에
+  · 월드 · 월드 기간 · 헥사 매트릭스 표를 옮기고 반지 레벨 줄 · 상자 연마석 줄 · 직업 줄을 만든다. 표 묶음 PR 마다 그 묶음의 표를 더한다. 운영 서버의 hotfix 가 표를 바꾸면 main 을 develop 에
   머지할 때 `old-schema.ts` 도 고친다. 사본이 운영 표와 다르면 옛 칸을 읽지 못한다.
 - **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 이미 있는 보스의 줄인 이름 · 유효 기간, 난이도 줄 더하기 · 레벨 · 유효 기간 · 지우기다.
   시즌 보스 표시와 난이도의 주기는 보스와 난이도 줄을 더할 때 정한다. 보스와 마지막
@@ -231,7 +231,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   (앱 저장소 `ADR-349` 정정 1 · `ADR-350`).
 - **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-350`). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
   든다. 서버는 응답을 메모리에 담아 두고, 칸 시각이 바뀌거나 담은 지 5분이 지나면 다시 만든다(앱 저장소 `ADR-020` 결정 2). 요청마다 만들면
-  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `items` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열다섯이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
+  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `items` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열넷이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
   `/admin/items` 하나에서 고친다(앱 저장소 `ADR-187` 결정 6. 분류 트리 · 그림 격자 · 편집 서랍이고, 역할은 붙이기만 한다). 드롭 묶음의 관리 화면은
   `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 지출 카탈로그는 `/admin/spend-catalog`,
   심볼 비용은 `/admin/symbol-costs` 다(ADR-350 정정 3. 묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 컨텐츠는 `/admin/contents` 다(ADR-350 정정 4.
@@ -244,6 +244,10 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   못한다. 이름을 NFC 로 맞추고 공백을 지웠을 때 다른 key 의 아이템과 같으면 더하거나 고칠 수 없다. 한 물건이 두 key 로 서면
   기록이 갈려서다. 같은 물건의 따로 둔 줄은 원래 줄과 이름이 같아 이 검사에서 뺀다. 시세는 소비 묶음 아이템을 월드마다, 그 밖을
   거래권(`trade_groups`)마다 잰다.
+- **헥사 코어는 직업 줄(`jobs`)과 종류 줄(`hexa_core_types`)을 가리킨다**(앱 저장소 `ADR-099` 결정 35 · 65). 모든 직업이 함께 쓰는
+  코어(솔 야누스 · 솔 헤카테)는 `전직업` 줄(`jobs.is_all_jobs`)을 가리킨다. 한 직업의 코어 목록은 그 직업과 전직업의 코어를
+  종류의 차례, 같은 종류 안에서는 코어의 차례로 섞어 만든다. 그래서 코어의 차례(`hexa_cores.sort_order`)는 같은 직업 · 같은 종류
+  안의 차례다. 관리 화면은 `/admin/hexa-matrix` 이고, 직업은 더하고 이름만 고친다.
 - **게임 데이터의 그림 칸은 그림 표의 id 를 낸다**(앱 저장소 `ADR-187` 결정 4). `assets` 칸의 줄은 `id` 와 디스크 파일 이름
   `file` 을 들고, 그림 칸은 `portraitAssetId` · `iconAssetId` 같은 id 칸이다. 크롭 줄은 `assetId` 를 든다. 옛 앱이 읽던 글자 칸
   (`iconFile` · `emblem` · `backgroundMap` 등)은 1.0.15 의 서버에서 걷는다. 보스의 `portraitSlug` 는 첫 묶음에서 걷었고, 다른 표의

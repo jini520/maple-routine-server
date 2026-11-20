@@ -57,6 +57,9 @@ export interface MoveResult {
   symbolGroups: number
   symbols: number
   symbolLevelCosts: number
+  huntingRegions: number
+  huntingGrounds: number
+  huntingGroundLevels: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -128,6 +131,9 @@ const MOVED_TABLES = [
   schema.symbolGroups,
   schema.symbols,
   schema.symbolLevelCosts,
+  schema.huntingRegions,
+  schema.huntingGrounds,
+  schema.huntingGroundLevels,
 ]
 
 /**
@@ -300,6 +306,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const content = await contentRows(oldDb)
   const cashbook = await cashbookReferenceRows(oldDb)
   const symbol = await symbolRows(oldDb)
+  const hunting = await huntingGroundRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -337,6 +344,9 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.symbolGroups, symbol.symbolGroups)
     await insertAll(tx, schema.symbols, symbol.symbols)
     await insertAll(tx, schema.symbolLevelCosts, symbol.symbolLevelCosts)
+    await insertAll(tx, schema.huntingRegions, hunting.huntingRegions)
+    await insertAll(tx, schema.huntingGrounds, hunting.huntingGrounds)
+    await insertAll(tx, schema.huntingGroundLevels, hunting.huntingGroundLevels)
   })
   return {
     assets: assets.length,
@@ -373,6 +383,43 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     symbolGroups: symbol.symbolGroups.length,
     symbols: symbol.symbols.length,
     symbolLevelCosts: symbol.symbolLevelCosts.length,
+    huntingRegions: hunting.huntingRegions.length,
+    huntingGrounds: hunting.huntingGrounds.length,
+    huntingGroundLevels: hunting.huntingGroundLevels.length,
+  }
+}
+
+/** 사냥터 표 셋의 새 줄. 줄 id 는 그대로이고 칸 이름만 바뀐다. */
+async function huntingGroundRows(oldDb: OldDb) {
+  const [regions, grounds, levels] = await Promise.all([
+    oldDb.select().from(oldSchema.huntingRegions),
+    oldDb.select().from(oldSchema.huntingGrounds),
+    oldDb.select().from(oldSchema.huntingGroundLevels),
+  ])
+  return {
+    huntingRegions: regions.map((r) => ({
+      id: r.id,
+      key: r.key,
+      name: r.name,
+      forceType: r.forceType,
+      iconAssetId: r.iconMapAssetId,
+      sortOrder: r.sortOrder,
+    })),
+    huntingGrounds: grounds.map((g) => ({
+      id: g.id,
+      key: g.key,
+      regionId: g.regionId,
+      name: g.name,
+      requiredForce: g.force,
+      mobQuantity: g.mobs,
+      sortOrder: g.sortOrder,
+      isPopular: g.popular,
+    })),
+    huntingGroundLevels: levels.map((l) => ({
+      id: l.id,
+      groundId: l.groundId,
+      mobLevel: l.level,
+    })),
   }
 }
 

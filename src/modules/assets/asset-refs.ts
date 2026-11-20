@@ -23,14 +23,6 @@ export function refValueOf(ref: AssetRef, asset: { fileName: string; extension: 
     : asset.fileName
 }
 
-/** refValueOf 의 그림이 없을 수 있는 칸. */
-export function optionalRefValueOf(
-  ref: AssetRef,
-  asset: { fileName: string; extension: string } | null,
-): string | null {
-  return asset === null ? null : refValueOf(ref, asset)
-}
-
 /** 그림 칸 값이 가리킬 그림이 표에 없다. message 가 그 값이다. */
 export class AssetNotFound extends Error {}
 
@@ -58,13 +50,4 @@ export async function resolveAssetId(db: DbOrTx, ref: AssetRef, value: string): 
     .find((r) => r !== undefined)
   if (hit === undefined) throw new AssetNotFound(value)
   return hit.id
-}
-
-/** 비운 칸(null · undefined)은 null 이다. */
-export async function resolveOptionalAssetId(
-  db: DbOrTx,
-  ref: AssetRef,
-  value: string | null | undefined,
-): Promise<string | null> {
-  return value == null ? null : resolveAssetId(db, ref, value)
 }

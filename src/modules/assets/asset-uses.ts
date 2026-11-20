@@ -53,7 +53,7 @@ export const ASSET_USES = [
     kind: '컨텐츠 지역 아이콘',
     name: 'name',
   },
-  { table: 'hunting_regions', column: 'icon_map_asset_id', kind: '사냥 지역 아이콘', name: 'name' },
+  { table: 'hunting_regions', column: 'icon_asset_id', kind: '사냥 지역 아이콘', name: 'name' },
   { table: 'app_images', column: 'asset_id', kind: '앱 그림', name: 'key' },
   { table: 'superior_items', column: 'icon_asset_id', kind: '슈페리얼 장비', name: 'name' },
 ] as const satisfies readonly {

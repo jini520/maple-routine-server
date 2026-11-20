@@ -1009,4 +1009,78 @@ describeDb('moveOldDb', () => {
       },
     ])
   })
+
+  it('사냥터: 줄 id 를 두고 지역 아이콘 · 요구 포스 · 마릿수 · 인기 · 몬스터 레벨을 새 칸 이름으로 옮긴다', async () => {
+    const icon = await insertOldAsset('maps/icons/specRegion.png')
+    const regions = await oldDb
+      .insert(oldSchema.huntingRegions)
+      .values([
+        {
+          key: 'spec_region',
+          name: '시험 지역',
+          forceType: 'arcane',
+          iconMapAssetId: icon,
+          sortOrder: 0,
+        },
+        { key: 'spec_bare', name: '아이콘 없는 지역', forceType: 'authentic', sortOrder: 1 },
+      ])
+      .returning({ id: oldSchema.huntingRegions.id, key: oldSchema.huntingRegions.key })
+    const regionId = regions.find((r) => r.key === 'spec_region')?.id ?? ''
+    const [ground] = await oldDb
+      .insert(oldSchema.huntingGrounds)
+      .values({
+        key: 'spec_region_ground',
+        regionId,
+        name: '시험 사냥터',
+        force: 30,
+        mobs: 22,
+        sortOrder: 0,
+        popular: true,
+      })
+      .returning({ id: oldSchema.huntingGrounds.id })
+    const levels = await oldDb
+      .insert(oldSchema.huntingGroundLevels)
+      .values([
+        { groundId: ground?.id ?? '', level: 200 },
+        { groundId: ground?.id ?? '', level: 201 },
+      ])
+      .returning({ id: oldSchema.huntingGroundLevels.id })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({
+      huntingRegions: 2,
+      huntingGrounds: 1,
+      huntingGroundLevels: 2,
+    })
+    expect(
+      Object.fromEntries(
+        (await newDb.select().from(schema.huntingRegions)).map((r) => [
+          r.key,
+          [r.id, r.iconAssetId],
+        ]),
+      ),
+    ).toEqual({
+      spec_region: [regionId, icon],
+      spec_bare: [regions.find((r) => r.key === 'spec_bare')?.id, null],
+    })
+    expect(await newDb.select().from(schema.huntingGrounds)).toEqual([
+      {
+        id: ground?.id,
+        key: 'spec_region_ground',
+        regionId,
+        name: '시험 사냥터',
+        requiredForce: 30,
+        mobQuantity: 22,
+        sortOrder: 0,
+        isPopular: true,
+      },
+    ])
+    expect(
+      (await newDb.select().from(schema.huntingGroundLevels)).sort(
+        (a, b) => a.mobLevel - b.mobLevel,
+      ),
+    ).toEqual([
+      { id: levels[0]?.id, groundId: ground?.id, mobLevel: 200 },
+      { id: levels[1]?.id, groundId: ground?.id, mobLevel: 201 },
+    ])
+  })
 })

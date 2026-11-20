@@ -1,5 +1,5 @@
 import { describeDb, insertAssets, openTestDb, type TestDb } from '../../database/test-db'
-import { AssetNotFound, refValueOf, resolveAssetId, resolveOptionalAssetId } from './asset-refs'
+import { AssetNotFound, refValueOf, resolveAssetId } from './asset-refs'
 
 describe('refValueOf', () => {
   it('파일 이름 칸은 확장자까지, slug 칸은 확장자를 뗀 이름을 돌려준다', () => {
@@ -39,8 +39,7 @@ describeDb('그림 칸 값을 그림 id 로 풀기', () => {
     )
   })
 
-  it('표에 없는 그림은 AssetNotFound 이고, 비운 칸은 null 이다', async () => {
+  it('표에 없는 그림은 AssetNotFound 다', async () => {
     await expect(resolveAssetId(db, 'mapIcon', 'reboot')).rejects.toThrow(AssetNotFound)
-    expect(await resolveOptionalAssetId(db, 'mapIcon', null)).toBeNull()
   })
 })

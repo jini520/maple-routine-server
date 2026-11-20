@@ -157,6 +157,51 @@ describe('NoticePoller', () => {
     eventStart: '2026-10-18T00:00+09:00',
     eventEnd: '2026-10-18T23:59+09:00',
   })
+  const IMAGE = '<div><img src="https://img/x.png"></div>'
+
+  // 넥슨은 썬데이 글을 미리 써 두고 늦게 공개하기도 해서, 처음 본 순간 date 가 이미 6시간을 넘긴다.
+  it('썬데이는 올라온 지 6시간이 지나도 이벤트가 끝나기 전이면 알린다', async () => {
+    const { poller, nexon, push, stored, lists } = build()
+    stored.push({ noticeKey: 'event-0', kind: 'event', title: '씨', publishedAt: NOW })
+    lists.event = [item(1, '스페셜 썬데이 메이플', 16 * 60)]
+    nexon.noticeDetail.mockResolvedValue(sunday(IMAGE))
+
+    const summary = await poller.tick()
+
+    expect(push.sendNotice).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-1' }))
+    expect(summary).toEqual({ stored: 1, notified: 1, scheduled: 0 })
+  })
+
+  it('이벤트가 끝난 썬데이는 저장만 한다', async () => {
+    const { poller, nexon, repo, push, stored, lists } = build()
+    stored.push({ noticeKey: 'event-0', kind: 'event', title: '씨', publishedAt: NOW })
+    lists.event = [item(1, '썬데이 메이플', 5 * 24 * 60)]
+    nexon.noticeDetail.mockResolvedValue({
+      ...sunday(IMAGE),
+      eventStart: '2026-10-11T00:00+09:00',
+      eventEnd: '2026-10-11T23:59+09:00',
+    })
+
+    await poller.tick()
+
+    expect(repo.insert).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-1' }))
+    expect(push.sendNotice).not.toHaveBeenCalled()
+  })
+
+  it('기간의 끝을 못 읽은 썬데이는 6시간 규칙을 따른다', async () => {
+    const { poller, nexon, push, stored, lists } = build()
+    stored.push({ noticeKey: 'event-0', kind: 'event', title: '씨', publishedAt: NOW })
+    lists.event = [
+      item(1, '썬데이 메이플', STALE_MS / 60_000 + 1),
+      item(2, '스페셜 썬데이 메이플', 3),
+    ]
+    nexon.noticeDetail.mockResolvedValue({ ...sunday(IMAGE), eventEnd: null })
+
+    await poller.tick()
+
+    expect(push.sendNotice).toHaveBeenCalledTimes(1)
+    expect(push.sendNotice).toHaveBeenCalledWith(expect.objectContaining({ noticeKey: 'event-2' }))
+  })
 
   // 제목이 빈 글은 제목 없는 알림이 되고, 날짜를 못 읽으면 저장이 터져 그 분류의 남은 새 글까지 그 회차에 빠진다.
   it('제목이나 날짜가 빈 글은 그 회차에 건너뛰고 나머지 새 글은 저장하고 알린다', async () => {

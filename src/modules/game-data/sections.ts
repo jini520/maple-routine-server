@@ -39,6 +39,21 @@ export async function touchSection(db: DbOrTx, key: SectionKey): Promise<void> {
     .onConflictDoUpdate({ target: gameDataSections.key, set: { updatedAt: sql`now()` } })
 }
 
+/**
+ * 게임 데이터 응답이 바뀌었는지 가리는 값. 칸 시각 전부와 `bosses` 칸의 시각을 내는 보스 줄 · 규칙 줄의 시각을 이은 글자.
+ *
+ * 요청마다 부르므로 쿼리 하나다.
+ */
+export async function gameDataStamp(db: Db): Promise<string> {
+  const result = await db.execute<{ stamp: string }>(sql`
+    select
+      coalesce((select string_agg(key || '=' || updated_at::text, ',' order by key) from game_data_sections), '')
+      || '|' || coalesce((select max(updated_at)::text from bosses), '')
+      || '|' || coalesce((select max(updated_at)::text from game_rules), '') as stamp
+  `)
+  return result.rows[0]?.stamp ?? ''
+}
+
 /** 한 번도 안 넣었으면 null. */
 export async function sectionUpdatedAt(db: DbOrTx, key: SectionKey): Promise<string | null> {
   const [row] = await db

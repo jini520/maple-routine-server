@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto'
+
+import type { Db } from '../../database/database.module'
 import type { AppImagesRepository } from '../app-images/app-images.repository'
 import type { AssetsRepository } from '../assets/assets.repository'
 import type { ImageCropsRepository } from '../assets/image-crops.repository'
@@ -24,7 +27,20 @@ import { GameDataService } from './game-data.service'
 const empty = (body: object) => ({
   section: jest.fn().mockResolvedValue({ updatedAt: null, ...body }),
 })
-function service(bosses: { catalog: jest.Mock }): GameDataService {
+
+/** 칸 시각 쿼리만 흉내 내는 DB. `set` 으로 다음 쿼리가 낼 시각을 바꾼다. */
+function stampDb(initial: string): { db: Db; set: (stamp: string) => void } {
+  let stamp = initial
+  const db = { execute: jest.fn(() => Promise.resolve({ rows: [{ stamp }] })) }
+  return {
+    db: db as unknown as Db,
+    set: (next) => {
+      stamp = next
+    },
+  }
+}
+
+function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): GameDataService {
   return new GameDataService(
     bosses as unknown as BossesRepository,
     empty({ items: [] }) as unknown as DropItemsRepository,
@@ -72,6 +88,7 @@ function service(bosses: { catalog: jest.Mock }): GameDataService {
     empty({ crops: [] }) as unknown as ImageCropsRepository,
     empty({ images: [] }) as unknown as AppImagesRepository,
     empty({ items: [] }) as unknown as ItemsRepository,
+    db,
   )
 }
 
@@ -152,5 +169,82 @@ describe('GameDataService', () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(emptyCatalog) }
 
     await expect(service(bosses).snapshot()).resolves.toMatchObject({ bosses: emptyCatalog })
+  })
+})
+
+// 요청마다 응답을 만들면 304 로 끝나도 칸을 다 읽고 1MB 를 직렬화해서, 푸시 직후 몰리는 때 서버가 막혔다.
+describe('GameDataService.response', () => {
+  afterEach(() => jest.restoreAllMocks())
+
+  it('칸 시각이 같으면 칸을 다시 읽지 않고 담아 둔 응답을 낸다', async () => {
+    const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
+    const sut = service(bosses, stampDb('a').db)
+
+    const first = await sut.response()
+    const second = await sut.response()
+
+    expect(second).toEqual(first)
+    expect(bosses.catalog).toHaveBeenCalledTimes(1)
+  })
+
+  it('칸 시각이 바뀌면 다음 요청이 다시 읽은 응답이다', async () => {
+    const changed: Catalog = { ...catalog, updatedAt: '2026-11-20T01:00:00.000Z' }
+    const bosses = { catalog: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed) }
+    const stamps = stampDb('a')
+    const sut = service(bosses, stamps.db)
+
+    const first = await sut.response()
+    stamps.set('b')
+    const second = await sut.response()
+
+    expect(bosses.catalog).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(second.body)).toMatchObject({ bosses: changed })
+    expect(second.etag).not.toBe(first.etag)
+  })
+
+  // 칸 시각을 안 올리는 쓰기(빠진 경로 · SQL 직접 수정)도 이 간격 안에 앱에 닿아야 한다.
+  it('담은 지 5분이 지나면 칸 시각이 같아도 다시 만든다', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-20T03:00:00.000Z'))
+    const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
+    const sut = service(bosses, stampDb('a').db)
+
+    await sut.response()
+    now.mockReturnValue(Date.parse('2026-11-20T03:04:59.999Z'))
+    await sut.response()
+    expect(bosses.catalog).toHaveBeenCalledTimes(1)
+
+    now.mockReturnValue(Date.parse('2026-11-20T03:05:00.000Z'))
+    await sut.response()
+    expect(bosses.catalog).toHaveBeenCalledTimes(2)
+  })
+
+  it('동시에 온 요청은 응답을 한 번만 만들고 같은 응답을 받는다', async () => {
+    let release: (value: Catalog) => void = () => undefined
+    const bosses = {
+      catalog: jest.fn(
+        () =>
+          new Promise<Catalog>((resolve) => {
+            release = resolve
+          }),
+      ),
+    }
+    const sut = service(bosses, stampDb('a').db)
+
+    const pending = [sut.response(), sut.response(), sut.response()]
+    await new Promise((resolve) => setImmediate(resolve))
+    release(catalog)
+    const results = await Promise.all(pending)
+
+    expect(bosses.catalog).toHaveBeenCalledTimes(1)
+    expect(new Set(results.map((r) => r.etag)).size).toBe(1)
+  })
+
+  // 시각으로 ETag 를 만들면 기기들이 든 ETag 가 배포 직후 모두 어긋나 1MB 를 한꺼번에 다시 받는다.
+  it('ETag 는 담아 둔 몸의 해시다', async () => {
+    const sut = service({ catalog: jest.fn().mockResolvedValue(catalog) }, stampDb('a').db)
+
+    const { body, etag } = await sut.response()
+
+    expect(etag).toBe(`"${createHash('sha1').update(body).digest('hex')}"`)
   })
 })

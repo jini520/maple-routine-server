@@ -24,8 +24,8 @@ export function isItemKind(value: string): value is ItemKind {
 }
 
 /**
- * 시세를 월드마다 재는 묶음 종류. 소비 아이템은 월드끼리 거래할 수 없다. 그 밖은 거래권마다 재고, 기타 · 캐시는 범위를 정할
- * 때까지 거래권으로 잰다.
+ * 시세를 월드마다 재는 묶음 종류. 소비 아이템은 월드끼리 거래할 수 없다. 그 밖은 거래권마다 잰다. 판매가는 드롭 표의
+ * 장비 · 소비 칸에서 고른 기록에만 있어서 기타 · 캐시 묶음에는 시세가 생기지 않는다.
  */
 export const WORLD_BOUND_TYPE = 'consumable' satisfies ItemKind
 

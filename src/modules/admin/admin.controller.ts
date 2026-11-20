@@ -309,7 +309,11 @@ import { UsageDashboardService } from './usage-dashboard.service'
 import { SPEND_CATALOG_HTML } from './views/spend-catalog'
 import { SYMBOL_COSTS_HTML } from './views/symbol-costs'
 import { CONTENTS_HTML } from './views/contents'
-import { ENHANCEMENT_COSTS_HTML } from './views/enhancement-costs'
+import {
+  ENHANCEMENT_POTENTIAL_HTML,
+  ENHANCEMENT_STARFORCE_HTML,
+  ENHANCEMENT_SUPERIOR_HTML,
+} from './views/enhancement-costs'
 import { FAQ_SHEET_HTML, FAQS_HTML } from './views/faqs'
 import { HEXA_MATRIX_HTML } from './views/hexa-matrix'
 import { HUNTING_GROUNDS_HTML } from './views/hunting-grounds'
@@ -1884,7 +1888,21 @@ export class AdminController {
   @Header('content-type', 'text/html; charset=utf-8')
   @Header('cache-control', 'no-store')
   enhancementCostsPage(): string {
-    return ENHANCEMENT_COSTS_HTML
+    return ENHANCEMENT_POTENTIAL_HTML
+  }
+
+  @Get('enhancement-costs/starforce')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  enhancementStarforcePage(): string {
+    return ENHANCEMENT_STARFORCE_HTML
+  }
+
+  @Get('enhancement-costs/superior')
+  @Header('content-type', 'text/html; charset=utf-8')
+  @Header('cache-control', 'no-store')
+  enhancementSuperiorPage(): string {
+    return ENHANCEMENT_SUPERIOR_HTML
   }
 
   @Get('enhancement-costs/rows')

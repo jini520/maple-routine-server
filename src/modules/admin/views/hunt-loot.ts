@@ -24,7 +24,7 @@ export const HUNT_LOOT_HTML = layout(
   <header><h2>새 전리품</h2><p>key 는 snake_case 이고 key · 분류는 한 번 정하면 못 바꾼다. 맨 뒤에 선다. 그림은 그림 화면에서 먼저 올린다</p></header>
   <div class="body"><div class="row">
     <div class="field"><label for="c-key">key</label><input id="c-key" class="mono" placeholder="suspicious_magnifier"></div>
-    <div class="field w-sm"><label for="c-kind">분류</label><select id="c-kind"><option value="event">이벤트</option><option value="consumable">소비</option><option value="fragment">조각</option></select></div>
+    <div class="field w-sm"><label for="c-kind">종류</label><select id="c-kind"><option value="event">이벤트</option><option value="consumable">소비</option><option value="fragment">조각</option></select></div>
     <div class="field"><label for="c-name">이름</label><input id="c-name" placeholder="수상한 돋보기"></div>
     <div class="field"><label>그림 <small>아이템 분류의 그림</small></label><div class="inline"><span id="c-icon" class="mono dim">고르지 않았다</span><button id="c-icon-pick" class="btn ghost sm" type="button">고르기</button></div></div>
     <div class="field w-sm"><label for="c-price">NPC 가격 <small>소비만</small></label><input id="c-price" type="number" min="1" placeholder="2750"></div>
@@ -35,7 +35,7 @@ export const HUNT_LOOT_HTML = layout(
 </section>
 <section class="card">
   <header><h2>전리품</h2><p>차례가 곧 앱의 차례</p></header>
-  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>분류</th><th>이름</th><th>그림 파일</th><th>NPC 가격</th><th>시작</th><th>끝</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
+  <div class="table"><table><thead><tr><th>#</th><th>key</th><th>종류</th><th>이름</th><th>그림</th><th>NPC 가격</th><th>시작</th><th>끝</th><th></th></tr></thead><tbody id="items"></tbody></table></div>
 </section>
 ${ASSET_PICKER}
 <script>
@@ -53,11 +53,11 @@ ${ASSET_PICKER}
   function itemRow(item, i, count) {
     var editing = state.editing === item.key;
     var tr = el('tr', undefined, editing ? 'open' : '');
-    cell(tr, i + 1, 'n'); cell(tr, item.key, 'mono'); cell(tr, KINDS[item.kind] || item.kind);
+    cell(tr, i + 1, 'n'); cell(tr, item.key, 'mono'); cell(tr, KINDS[item.type] || item.type);
     if (!editing) {
       cell(tr, item.name); cell(tr, iconText(item.iconAssetId), 'mono');
       cell(tr, item.npcPriceMeso === null ? '-' : item.npcPriceMeso.toLocaleString(), 'n');
-      cell(tr, item.from || '-', 'mono'); cell(tr, item.until || '-', 'mono');
+      cell(tr, item.validFrom || '-', 'mono'); cell(tr, item.validUntil || '-', 'mono');
       var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), edit = button('수정', 'btn ghost sm');
       up.disabled = i === 0; down.disabled = i === count - 1;
       up.addEventListener('click', function () { move(item, 'up'); });
@@ -69,14 +69,14 @@ ${ASSET_PICKER}
     var name = input('text'); name.value = item.name;
     var icon = { id: item.iconAssetId }; var iconLabel = span(iconText(icon.id), 'mono'); var pick = button('고르기', 'btn ghost sm');
     pick.addEventListener('click', function () { pickIcon(icon.id, function (id) { icon.id = id; iconLabel.textContent = iconText(id); }); });
-    var price = input('number'); price.value = item.npcPriceMeso === null ? '' : item.npcPriceMeso; price.disabled = item.kind !== 'consumable';
-    var from = input('text', 'mono'); from.value = item.from || '';
-    var until = input('text', 'mono'); until.value = item.until || '';
+    var price = input('number'); price.value = item.npcPriceMeso === null ? '' : item.npcPriceMeso; price.disabled = item.type !== 'consumable';
+    var from = input('text', 'mono'); from.value = item.validFrom || '';
+    var until = input('text', 'mono'); until.value = item.validUntil || '';
     cell(tr, name); cell(tr, inline(iconLabel, pick)); cell(tr, price); cell(tr, from); cell(tr, until);
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
       var r = await call('PUT', '/admin/hunt-loot/' + item.key, {
-        name: name.value.trim(), iconAssetId: icon.id, npcPriceMeso: priceOf(price.value), from: orNull(from.value), until: orNull(until.value),
+        name: name.value.trim(), iconAssetId: icon.id, npcPriceMeso: priceOf(price.value), validFrom: orNull(from.value), validUntil: orNull(until.value),
       });
       show(r.ok ? item.key + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) state.editing = null; load();
     });
@@ -104,7 +104,7 @@ ${ASSET_PICKER}
 
   document.getElementById('c-add').addEventListener('click', async function () {
     var v = function (id) { return document.getElementById(id).value.trim(); };
-    var body = { key: v('c-key'), kind: v('c-kind'), name: v('c-name'), iconAssetId: state.newIcon, npcPriceMeso: v('c-kind') === 'consumable' ? priceOf(v('c-price')) : null, from: orNull(v('c-from')), until: orNull(v('c-until')) };
+    var body = { key: v('c-key'), type: v('c-kind'), name: v('c-name'), iconAssetId: state.newIcon, npcPriceMeso: v('c-kind') === 'consumable' ? priceOf(v('c-price')) : null, validFrom: orNull(v('c-from')), validUntil: orNull(v('c-until')) };
     var r = await call('POST', '/admin/hunt-loot', body);
     show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok);
     if (r.ok) { ['c-key', 'c-name', 'c-price', 'c-from', 'c-until'].forEach(function (id) { document.getElementById(id).value = ''; }); state.newIcon = null; document.getElementById('c-icon').textContent = iconText(null); }

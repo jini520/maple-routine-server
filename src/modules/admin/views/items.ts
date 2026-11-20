@@ -124,7 +124,7 @@ ${ASSET_PICKER}
   function roleOk(it) {
     if (state.role === 'drop') return it.isDrop;
     if (state.role === 'equipment') return it.isEquipment;
-    if (state.role === 'loot') return it.huntLootKind !== null;
+    if (state.role === 'loot') return it.huntLootType !== null;
     if (state.role === 'noicon') return it.icon === null;
     return true;
   }
@@ -245,7 +245,7 @@ ${ASSET_PICKER}
     var tags = el('div', undefined, 'tags');
     if (it.isDrop) tags.appendChild(span('드롭', 'tag'));
     if (it.isEquipment) tags.appendChild(span('강화', 'tag'));
-    if (it.huntLootKind !== null) tags.appendChild(span('사냥 전리품', 'tag'));
+    if (it.huntLootType !== null) tags.appendChild(span('사냥 전리품', 'tag'));
     b.appendChild(tags);
     b.addEventListener('click', function () { openEditor(it); });
     return b;
@@ -297,7 +297,7 @@ ${ASSET_PICKER}
     var drop = document.getElementById('ed-drop'); drop.checked = !isNew && it.isDrop; drop.disabled = !isNew && it.isDrop;
     var eq = document.getElementById('ed-equipment'); eq.checked = !isNew && it.isEquipment; eq.disabled = !isNew && it.isEquipment;
     var loot = document.getElementById('ed-loot');
-    loot.hidden = isNew || it.huntLootKind === null; loot.textContent = '사냥 전리품 · 사냥 전리품 화면에서 고친다';
+    loot.hidden = isNew || it.huntLootType === null; loot.textContent = '사냥 전리품 · 사냥 전리품 화면에서 고친다';
     showIcon();
     document.getElementById('scrim').hidden = false; document.getElementById('drawer').hidden = false;
     document.getElementById('ed-name').focus();

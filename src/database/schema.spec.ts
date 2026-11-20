@@ -37,6 +37,15 @@ const CONVERTED = [
   'boss_manual_completion_periods',
   'content_categories',
   'contents',
+  'cashbook_categories',
+  'cashbook_item_types',
+  'hunt_loot_items',
+  'spend_reward_types',
+  'spend_groups',
+  'spend_tiles',
+  'spend_items',
+  'spend_item_options',
+  'spend_item_reward_types',
 ]
 
 interface DesignColumn {

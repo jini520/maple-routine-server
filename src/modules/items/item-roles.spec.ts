@@ -80,12 +80,12 @@ describeDb('아이템 표의 역할', () => {
     await expect(
       loot.create({
         key: 'terror_loot',
-        kind: 'event',
+        type: 'event',
         name: '거대한 공포',
         iconAssetId: assetIds['items/sol_erda_fragment.webp'] ?? '',
         npcPriceMeso: null,
-        from: null,
-        until: null,
+        validFrom: null,
+        validUntil: null,
       }),
     ).rejects.toBeInstanceOf(HuntLootNameTaken)
   })
@@ -94,12 +94,12 @@ describeDb('아이템 표의 역할', () => {
     await insertItems(db, [{ key: 'sol_erda_fragment', name: '솔 에르다 조각', isDrop: true }])
     await loot.create({
       key: 'sol_erda_fragment',
-      kind: 'fragment',
+      type: 'fragment',
       name: '솔 에르다 조각',
       iconAssetId: assetIds['items/sol_erda_fragment.webp'] ?? '',
       npcPriceMeso: null,
-      from: null,
-      until: null,
+      validFrom: null,
+      validUntil: null,
     })
     expect(await db.select({ key: items.key }).from(items)).toEqual([{ key: 'sol_erda_fragment' }])
     expect((await drops.adminSection()).items).toEqual([

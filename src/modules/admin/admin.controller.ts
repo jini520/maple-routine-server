@@ -68,7 +68,7 @@ import {
   NoSpendGroup,
   NoSpendTile,
   SpendCatalogRepository,
-  type SpendForm,
+  type SpendRewardType,
   SpendGroupExists,
   SpendItemExists,
   SpendItemShape,
@@ -192,8 +192,8 @@ import {
   type CashbookCategoryUpdateBody,
   cashbookCategoryUpdateBody,
   cashbookEntryType,
-  type CashbookItemKindUpdateBody,
-  cashbookItemKindUpdateBody,
+  type CashbookItemTypeUpdateBody,
+  cashbookItemTypeUpdateBody,
   type HexaCoreCreateBody,
   hexaCoreCreateBody,
   type HexaCoreUpdateBody,
@@ -214,9 +214,9 @@ import {
   huntLootCreateBody,
   type HuntLootUpdateBody,
   huntLootUpdateBody,
-  spendFormKey,
-  type SpendFormUpdateBody,
-  spendFormUpdateBody,
+  spendRewardTypeKey,
+  type SpendRewardTypeUpdateBody,
+  spendRewardTypeUpdateBody,
   type SpendGroupCreateBody,
   spendGroupCreateBody,
   type SpendGroupUpdateBody,
@@ -956,11 +956,11 @@ export class AdminController {
     return SPEND_CATALOG_HTML
   }
 
-  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  /** 화면이 부른다. 묶음 · 타일 · 항목을 key 로 이은 관리 줄이다. */
   @Get('spend-catalog/rows')
   @Header('cache-control', 'no-store')
   spendCatalogRows() {
-    return this.spend.section()
+    return this.spend.adminRows()
   }
 
   /** 관세율과 주화 판매가를 적는다. */
@@ -989,7 +989,7 @@ export class AdminController {
     }
   }
 
-  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. 닫기가 곧 active 끄기다. 모르는 묶음 · 갈래는 404 다. */
+  /** 이름 · 갈래 · 카드 제목 · 열림을 갈아 끼운다. 닫기가 곧 isActive 끄기다. 모르는 묶음 · 갈래는 404 다. */
   @Put('spend-catalog/groups/:key')
   @HttpCode(204)
   async updateSpendGroup(
@@ -1006,15 +1006,15 @@ export class AdminController {
     }
   }
 
-  /** 에픽던전 형태의 이름을 바꾼다. 형태는 앱 코드가 key 로 갈려 더하기가 없다. */
-  @Put('spend-catalog/forms/:key')
+  /** 에픽던전 추가 리워드 종류의 이름을 바꾼다. 종류는 앱 코드가 key 로 갈려 더하기가 없다. */
+  @Put('spend-catalog/reward-types/:key')
   @HttpCode(204)
-  async updateSpendForm(
-    @Param('key', new ZodValidationPipe(spendFormKey)) key: SpendForm,
-    @Body(new ZodValidationPipe(spendFormUpdateBody)) body: SpendFormUpdateBody,
+  async updateSpendRewardType(
+    @Param('key', new ZodValidationPipe(spendRewardTypeKey)) key: SpendRewardType,
+    @Body(new ZodValidationPipe(spendRewardTypeUpdateBody)) body: SpendRewardTypeUpdateBody,
   ): Promise<void> {
-    if (!(await this.spend.updateForm(key, body.name)))
-      throw new NotFoundException(`모르는 형태다: ${key}`)
+    if (!(await this.spend.updateRewardType(key, body.name)))
+      throw new NotFoundException(`모르는 추가 리워드 종류다: ${key}`)
   }
 
   @Post('spend-catalog/groups/:key/move')
@@ -1027,27 +1027,22 @@ export class AdminController {
       throw new NotFoundException(`모르는 묶음이다: ${key}`)
   }
 
-  /** 타일을 더한다. 같은 key 는 409 다. */
+  /** 타일을 더한다. 같은 key 는 409, 없는 그림은 400 이다. */
   @Post('spend-catalog/tiles')
   @HttpCode(201)
   async createSpendTile(
     @Body(new ZodValidationPipe(spendTileCreateBody)) body: SpendTileCreateBody,
   ) {
-    await this.requireAssets([
-      ['itemIcon', body.iconFile],
-      ['mapIcon', body.iconMap],
-    ])
     try {
       return await this.spend.createTile({
         key: body.key,
         name: body.name,
-        iconFile: body.iconFile ?? null,
-        iconMap: body.iconMap ?? null,
+        iconAssetId: body.iconAssetId ?? null,
       })
     } catch (error) {
       if (error instanceof SpendTileExists)
         throw new ConflictException(`이미 있는 타일이다: ${body.key}`)
-      throw error
+      throw assetRejection(error)
     }
   }
 
@@ -1057,18 +1052,16 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(spendTileUpdateBody)) body: SpendTileUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([
-      ['itemIcon', body.iconFile],
-      ['mapIcon', body.iconMap],
-    ])
-    if (
-      !(await this.spend.updateTile(key, {
+    let found: boolean
+    try {
+      found = await this.spend.updateTile(key, {
         name: body.name,
-        iconFile: body.iconFile ?? null,
-        iconMap: body.iconMap ?? null,
-      }))
-    )
-      throw new NotFoundException(`모르는 타일이다: ${key}`)
+        iconAssetId: body.iconAssetId ?? null,
+      })
+    } catch (error) {
+      throw assetRejection(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 타일이다: ${key}`)
   }
 
   /** 항목을 묶음 맨 뒤에 더한다. 모르는 묶음 · 타일은 404, 같은 key 는 409, 시트가 못 가르는 모양은 400 이다. */
@@ -1135,13 +1128,12 @@ export class AdminController {
   async createCashbookCategory(
     @Body(new ZodValidationPipe(cashbookCategoryCreateBody)) body: CashbookCategoryCreateBody,
   ) {
-    await this.requireAssets([['itemIcon', body.iconFile]])
     try {
       return await this.cashbook.createCategory({ ...body, unit: body.unit ?? null })
     } catch (error) {
       if (error instanceof CashbookCategoryExists)
         throw new ConflictException(`이미 있는 갈래다: ${body.entryType}.${body.key}`)
-      throw error
+      throw assetRejection(error)
     }
   }
 
@@ -1152,9 +1144,16 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(cashbookCategoryUpdateBody)) body: CashbookCategoryUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([['itemIcon', body.iconFile]])
-    if (!(await this.cashbook.updateCategory(entryType, key, { ...body, unit: body.unit ?? null })))
-      throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
+    let found: boolean
+    try {
+      found = await this.cashbook.updateCategory(entryType, key, {
+        ...body,
+        unit: body.unit ?? null,
+      })
+    } catch (error) {
+      throw assetRejection(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 갈래다: ${entryType}.${key}`)
   }
 
   @Post('cashbook-categories/:entryType/:key/move')
@@ -1169,14 +1168,14 @@ export class AdminController {
   }
 
   /** 아이템 종류의 이름 · 단위 · 관세 여부를 바꾼다. 종류는 앱 코드가 key 로 갈려 더하기가 없다. */
-  @Put('cashbook-item-kinds/:key')
+  @Put('cashbook-item-types/:key')
   @HttpCode(204)
-  async updateCashbookItemKind(
+  async updateCashbookItemType(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
-    @Body(new ZodValidationPipe(cashbookItemKindUpdateBody)) body: CashbookItemKindUpdateBody,
+    @Body(new ZodValidationPipe(cashbookItemTypeUpdateBody)) body: CashbookItemTypeUpdateBody,
   ): Promise<void> {
     if (
-      !(await this.cashbook.updateItemKind(key, {
+      !(await this.cashbook.updateItemType(key, {
         name: body.name,
         unit: body.unit ?? null,
         hasTariff: body.hasTariff,
@@ -1194,11 +1193,11 @@ export class AdminController {
     return HUNT_LOOT_HTML
   }
 
-  /** 화면이 부른다. 앱이 받는 칸 그대로다. */
+  /** 화면이 부른다. 아이템 key · 이름 · 그림을 함께 든 관리 줄이다. */
   @Get('hunt-loot/rows')
   @Header('cache-control', 'no-store')
   huntLootRows() {
-    return this.huntLoot.section()
+    return this.huntLoot.adminRows()
   }
 
   /** 맨 뒤에 더한다. 같은 key 와 이름이 같은 다른 key 의 아이템은 409 다. */
@@ -1209,8 +1208,8 @@ export class AdminController {
       return await this.huntLoot.create({
         ...body,
         npcPriceMeso: body.npcPriceMeso ?? null,
-        from: body.from ?? null,
-        until: body.until ?? null,
+        validFrom: body.validFrom ?? null,
+        validUntil: body.validUntil ?? null,
       })
     } catch (error) {
       if (error instanceof HuntLootExists)
@@ -1230,8 +1229,8 @@ export class AdminController {
       found = await this.huntLoot.update(key, {
         ...body,
         npcPriceMeso: body.npcPriceMeso ?? null,
-        from: body.from ?? null,
-        until: body.until ?? null,
+        validFrom: body.validFrom ?? null,
+        validUntil: body.validUntil ?? null,
       })
     } catch (error) {
       if (error instanceof HuntLootPriceShape)
@@ -2265,17 +2264,16 @@ function spendItemFields(body: SpendItemUpdateBody) {
   return {
     tile: body.tile,
     name: body.name,
-    shortName: body.shortName ?? null,
     tier: body.tier ?? null,
     currency: body.currency,
     unitPrice: body.unitPrice ?? null,
     unit: body.unit,
     maxQuantity: body.maxQuantity ?? null,
-    rewardCoins: body.rewardCoins ?? null,
-    from: body.from ?? null,
-    until: body.until ?? null,
+    rewardCoinQuantity: body.rewardCoinQuantity ?? null,
+    validFrom: body.validFrom ?? null,
+    validUntil: body.validUntil ?? null,
     options: body.options,
-    forms: body.forms,
+    rewardTypes: body.rewardTypes,
   }
 }
 
@@ -2326,6 +2324,13 @@ function worldRejection(error: unknown): unknown {
     return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
   if (error instanceof NoTradeGroup)
     return new BadRequestException(`거래권 표에 없는 거래권이다: ${error.message}`)
+  return error
+}
+
+/** 그림 줄 id 를 받는 쓰기의 거절. 그림 표에 없는 그림은 400 이다. */
+function assetRejection(error: unknown): unknown {
+  if (error instanceof AssetNotFound)
+    return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
   return error
 }
 

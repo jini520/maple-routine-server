@@ -77,10 +77,13 @@ const ROW_COLUMNS = {
 
 const DETAIL_COLUMNS = { ...ROW_COLUMNS, blocks: notices.blocks }
 
-/** 상세의 이벤트 시작일. 없으면 올린 날짜다. 썬데이 기록의 정렬 축이다. */
-/** 게시 시각이 지났다. 예약한 운영자 공지는 그 시각 전에 앱에 보이지 않는다. */
-const PUBLISHED = lte(notices.publishedAt, sql`now()`)
+/**
+ * 게시 시각이 지났다. 예약한 운영자 공지는 그 시각 전에 앱에 보이지 않는다. 게시 시각은 서버 시계로 적으므로 DB 의 now() 가
+ * 아니라 서버 시계와 견준다. 두 시계가 어긋나면 지금 올린 공지가 그만큼 목록에서 빠진다.
+ */
+const published = () => lte(notices.publishedAt, new Date())
 
+/** 상세의 이벤트 시작일. 없으면 올린 날짜다. 썬데이 기록의 정렬 축이다. */
 const STARTS_OR_PUBLISHED = sql`coalesce(${notices.startsAt}, ${notices.publishedAt})`
 
 @Injectable()
@@ -92,7 +95,7 @@ export class NoticesRepository {
     return this.db
       .select(ROW_COLUMNS)
       .from(notices)
-      .where(and(PUBLISHED, kinds === null ? undefined : inArray(notices.type, [...kinds])))
+      .where(and(published(), kinds === null ? undefined : inArray(notices.type, [...kinds])))
       .orderBy(desc(notices.publishedAt), desc(notices.id))
       .limit(limit)
   }
@@ -101,7 +104,7 @@ export class NoticesRepository {
     const [row] = await this.db
       .select(DETAIL_COLUMNS)
       .from(notices)
-      .where(and(eq(notices.key, noticeKey), PUBLISHED))
+      .where(and(eq(notices.key, noticeKey), published()))
       .limit(1)
     return row === undefined ? null : asDetail(row)
   }

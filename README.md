@@ -2,7 +2,7 @@
 
 메이플 루틴 앱의 서버. NestJS MVC 에 Fastify 어댑터, DB 는 Drizzle 로 PostgreSQL.
 
-설계 문서는 앱 저장소 `docs/adr/ADR-347.md`(무엇을 만드나)와 `docs/adr/ADR-348.md`(어떤 집에 넣나)다.
+설계 문서는 앱 저장소 `docs/foundation/server.md` 와 `ADR-016` 이다.
 
 ```
 src/
@@ -39,7 +39,7 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
 ## 배포와 운영
 
 기계 둘이다. **앱 박스**(Oracle `10.0.0.55`, `ubuntu@158.179.175.230`)가 nginx 와 이 서버를 돌리고, **DB 박스**
-(`10.0.0.192`)가 PostgreSQL 16 을 돌린다. DB 는 사설망에서만 받는다. 설계는 앱 저장소 `ADR-347` 결정 15 다.
+(`10.0.0.192`)가 PostgreSQL 16 을 돌린다. DB 는 사설망에서만 받는다. 설계는 앱 저장소 `ADR-016` 결정 3 이다.
 
 ```
 앱 박스
@@ -159,6 +159,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   - `location /v1/ota/` 블록에는 `gzip off;` 를 넣는다. 매니페스트는 9KB 라 얻을 것이 적고, 잘못되면 모든 사용자가 업데이트를 못 받는다.
   - 프렌즈 스트림 블록은 이미 `gzip off;` 다. 서버가 NDJSON 을 줄여 보낸다.
   - nginx 는 줄이며 ETag 앞에 `W/` 를 붙인다. `game-data` · 시세의 `If-None-Match` 비교는 `W/` 를 떼고 본다. 이 비교를 바꾸면 304 가 사라진다.
+
 - **Docker 데몬은 `live-restore` 로 두고, 배포 끝에 다시 켠다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). 데몬 메모리는
   이미지를 불러오는 작업으로 분다. 2026-11-20 아침 RSS 222MB · 스왑 264MB 이던 데몬이 같은 날 배포(`docker load` 185초)와 정리 뒤
   311MB · 372MB 가 됐고, 다시 켜니 87MB · 0MB 였다. 서버(node)는 91MB 다. `/etc/docker/daemon.json` 에 `{"live-restore": true}` 를 두면
@@ -234,15 +235,15 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   시즌 보스 표시와 난이도의 주기는 보스와 난이도 줄을 더할 때 정한다. 보스와 마지막
   난이도는 못 지운다. 화면은 보스 표 하나이고, 줄의 수정을 누르면 그 아래로 난이도 편집기가 펼쳐지며 새 보스는 같은
   편집기가 표 맨 위에 열린다(2026-10-16 사용자 선택, 구조 시안 셋 중 A). 난이도 표를 따로 두면 보스 이름이 56번
-  반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 가고, 번들 사본은 앱 저장소에서 `node scripts/sync-game-data.mjs` 로 맞춘다
-  (앱 저장소 `ADR-349` 정정 1 · `ADR-350`).
-- **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-350`). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
+  반복되고, 몇 달에 한 번 쓰는 새 보스 폼이 늘 펼쳐져 목록을 밀어내서다. 바꾸면 앱이 다음에 켤 때 받아 간다(앱 저장소 `ADR-020` 결정 13).
+  앱에는 번들 사본이 없다. 처음 켜면 이 서버에서 다 받기 전까지 잠근다(같은 ADR 결정 12).
+- **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-020` 결정 2). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
   든다. 서버는 응답을 메모리에 담아 두고, 칸 시각이 바뀌거나 담은 지 5분이 지나면 다시 만든다(앱 저장소 `ADR-020` 결정 2). 요청마다 만들면
-  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `items` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열넷이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
+  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `cashbookCategories` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `huntLoot` · `hexaMatrix` · `faqs` · `assets` · `imageCrops` · `appImages` · `items` 열아홉이다(`game-data/sections.ts` 의 `SECTION_KEYS` 와 `bosses`). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
   `/admin/items` 하나에서 고친다(앱 저장소 `ADR-187` 결정 6. 분류 트리 · 그림 격자 · 편집 서랍이고, 역할은 붙이기만 한다). 드롭 묶음의 관리 화면은
-  `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 지출 카탈로그는 `/admin/spend-catalog`,
-  심볼 비용은 `/admin/symbol-costs` 다(ADR-350 정정 3. 묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 컨텐츠는 `/admin/contents` 다(ADR-350 정정 4.
-  갈래 표 8줄은 ENUM 과 일대일이라 글자 · 태그 · 주간 최대 횟수 · 차례만 고치고, 컨텐츠는 같은 주기의 맨 끝에 더하며 API 이름은 공백을 지워도 다른 줄과 달라야 한다. 완료 조건이 횟수인 줄만 최대 횟수를 든다. 지우지 않고 validUntil 로 닫는다). 강화 비용은 `/admin/enhancement-costs`, MVP 등급은 `/admin/mvp-grades` 다(ADR-350 정정 5. 비용 표는 기간 줄 없이 지금 값 하나다. 강화 기록은 서버에 안 두고 앱이 합계로 저장하므로 고친 값은 다음 수집분부터 쓰인다. 잠재 구간은 등급 넷을 한 번에 더하고 1 구간은 못 지우며, 스타포스 단계는 끝 성수만 더하고 지운다). 사냥터는 `/admin/hunting-grounds` 다(ADR-350 정정 6. 사냥터 key 는 지역 key 로 시작하고 이름은 전역 유일이며 몬스터 레벨은 줄 표다. 지우지 않는다). 헥사 매트릭스는 `/admin/hexa-matrix` 다(앱 저장소 `ADR-137`. 코어 종류 · 레벨 비용 · 이름 표 · 직업별 코어 · 헥사 스탯 다섯 표를 한 칸으로 낸다. 이름 표에 없는 코어는 그 API 타입의 기본 종류로 보므로 기본 종류는 API 타입마다 하나다. 비용은 기간 줄 없이 레벨 0 부터 만렙 - 1 까지 한 번에 갈아 끼운다). FAQ 는 `/admin/faqs` 다(앱 저장소 `ADR-150`. 앱 화면의 물음표가 여는 시트 문구다. 묶음 목록이 코드가 아니라 표의 줄이라 새 페이지는 같은 key 의 묶음 하나만 더하면 된다. key 는 소문자 · 숫자 · 붙임표이고 못 바꾼다. 문항은 묶음 화면 `/admin/faqs/sheets/<key>` 에서 쓰고, 답은 빈 줄로 문단을 나눈 글로 받아 문단 블록으로 바꾼다. 묶음을 지우면 문항도 지워진다). 결정석의 새 가격은 지금 줄을 닫고 새 줄을 연다. 시작은 그
+  `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다. 지출 카탈로그는 `/admin/spend-catalog`,
+  심볼 비용은 `/admin/symbol-costs` 다(묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 컨텐츠는 `/admin/contents` 다(
+  갈래 표 8줄은 ENUM 과 일대일이라 글자 · 태그 · 주간 최대 횟수 · 차례만 고치고, 컨텐츠는 같은 주기의 맨 끝에 더하며 API 이름은 공백을 지워도 다른 줄과 달라야 한다. 완료 조건이 횟수인 줄만 최대 횟수를 든다. 지우지 않고 validUntil 로 닫는다). 강화 비용은 `/admin/enhancement-costs`, MVP 등급은 `/admin/mvp-grades` 다(비용 표는 기간 줄 없이 지금 값 하나다. 강화 기록은 서버에 안 두고 앱이 합계로 저장하므로 고친 값은 다음 수집분부터 쓰인다. 잠재 구간은 등급 넷을 한 번에 더하고 1 구간은 못 지우며, 스타포스 단계는 끝 성수만 더하고 지운다). 사냥터는 `/admin/hunting-grounds` 다(사냥터 key 는 지역 key 로 시작하고 이름은 전역 유일이며 몬스터 레벨은 줄 표다. 지우지 않는다). 헥사 매트릭스는 `/admin/hexa-matrix` 다(앱 저장소 `ADR-137`. 코어 종류 · 레벨 비용 · 이름 표 · 직업별 코어 · 헥사 스탯 다섯 표를 한 칸으로 낸다. 이름 표에 없는 코어는 그 API 타입의 기본 종류로 보므로 기본 종류는 API 타입마다 하나다. 비용은 기간 줄 없이 레벨 0 부터 만렙 - 1 까지 한 번에 갈아 끼운다). FAQ 는 `/admin/faqs` 다(앱 저장소 `ADR-150`. 앱 화면의 물음표가 여는 시트 문구다. 묶음 목록이 코드가 아니라 표의 줄이라 새 페이지는 같은 key 의 묶음 하나만 더하면 된다. key 는 소문자 · 숫자 · 붙임표이고 못 바꾼다. 문항은 묶음 화면 `/admin/faqs/sheets/<key>` 에서 쓰고, 답은 빈 줄로 문단을 나눈 글로 받아 문단 블록으로 바꾼다. 묶음을 지우면 문항도 지워진다). 결정석의 새 가격은 지금 줄을 닫고 새 줄을 연다. 시작은 그
   보스의 기간 경계(주간 · 시즌 목요일, 월간 1일)여야 한다. 심볼의 새 비용도 같다. 시작은 KST 날짜이고 지금 줄의 시작보다 뒤면 된다. 새 심볼은 레벨 전부를 한 번에 넣는다.
 - **드롭 아이템 · 강화 장비 · 사냥 전리품 · 반지 레벨은 아이템 표(`items`) 하나를 나눠 쓴다**(앱 저장소 `ADR-187` 결정 1 · `ADR-099`
   결정 28 · 30 · 65). key 가 같으면 한 줄이고 `is_drop` · `is_equipment` 와 사냥 전리품 줄(`hunt_loot_items.item_id`)이 역할을
@@ -264,7 +265,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   프레임 등)은 `app_images`(key 와 그림 id)이고 게임 데이터 칸 `appImages` 로 나간다. key 는 앱 코드가 그림을 찾는 이름이다.
   지역 아이콘은 고르는 칸이 아직 없어서, 컨텐츠의 지도 배경을 바꾸면 같은 파일 이름의 지역 아이콘(`map_icon`) 그림이 따라간다. `app_images`
   를 고치는 화면도 아직 없다.
-- **시각은 timestamptz 로 저장하고, 사람이 보는 글자는 전부 KST `YYYY-MM-DD HH:mm:ss` 다**(앱 저장소 `ADR-347` 정정 2). 관리 화면은
+- **시각은 timestamptz 로 저장하고, 사람이 보는 글자는 전부 KST `YYYY-MM-DD HH:mm:ss` 다**(앱 저장소 `ADR-016` 결정 5). 관리 화면은
   `layout.ts` 의 `when()` 으로만 시각을 그리고 `datetime-local` 입력도 KST 로 읽는다. CLI 는 `common/kst.ts` 의 `formatKst` 다. 브라우저와
   컨테이너의 시간대에 기대지 않는다.
 - **운영자 공지는 `/admin/notices` 다.** CLI(`npm run notice -- send|list|push`)는 SSH 로 급히 쓸 때만이다.
@@ -278,7 +279,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   기간은 한국 시각 오늘까지 세고(오늘 값은 새로고침할 때마다 늘어난다), 일별 막대 아래에 그 날 보낸 앱 공지 · 게임 알림 수를 둔다. 화면 이름의 한국어
   대응표는 `views/screen-names.ts` 다.
 - **옛 서버의 공지 151줄은 2026-10-15 에 한 번 옮겼다.** 칸이 1:1 이라 `pg_dump --data-only --column-inserts -t notices`
-  를 그대로 psql 에 넣었다. 다시 할 일은 없다(앱 저장소 `ADR-347` 결정 2).
+  를 그대로 psql 에 넣었다. 다시 할 일은 없다.
 - **FCM 키 파일은 컨테이너 사용자(`node`, uid 1000) 소유여야 한다.** compose 가 호스트 파일을 권한 그대로 거는데
   호스트의 `ubuntu` 는 uid 1001 이다. `ubuntu` 소유 600 이면 컨테이너가 못 읽어 운영자 공지와 넥슨 공지 알림이
   전부 `EACCES` 로 실패한다. 저장은 발송보다 먼저라 공지는 남고 알림만 빠진다(2026-10-15 전환 뒤 하루 동안 알림

@@ -30,6 +30,8 @@ describeDb('0033 그림 이름 칸과 안 쓰는 그림 하나', () => {
     const url = new URL(TEST_DATABASE_URL ?? '')
     url.pathname = `/${name}`
     pool = new Pool({ connectionString: url.toString() })
+    // DB 를 지울 때 남은 연결이 끊기며 내는 오류다. 처리기가 없으면 다음 테스트의 실패로 올라온다.
+    pool.on('error', () => undefined)
     db = drizzle(pool)
     await migrate(db, { migrationsFolder: folders[BEFORE] })
   })

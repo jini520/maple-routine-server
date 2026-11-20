@@ -77,6 +77,8 @@ docker logs --since 5m maple-routine-server
 # 정리. 태그 없는 이미지와 빌드 캐시를 지운다. prod · prev 는 태그가 있어 남는다(-a 를 붙이면 prev 까지 지운다)
 docker image prune -f && docker builder prune -af
 rm ~/maple-routine-server-image.tar.gz
+# 데몬을 다시 켠다. 이미지를 불러오면 데몬 메모리가 분다(아래 Docker 데몬). live-restore 라 컨테이너는 그대로이고 502 는 2초쯤이다
+sudo systemctl restart docker && sleep 3 && curl -s http://127.0.0.1:4000/healthz
 
 # 되돌릴 때
 docker tag maple-routine-server:prev maple-routine-server:prod && docker compose up -d --no-build
@@ -156,10 +158,11 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   - `location /v1/ota/` 블록에는 `gzip off;` 를 넣는다. 매니페스트는 9KB 라 얻을 것이 적고, 잘못되면 모든 사용자가 업데이트를 못 받는다.
   - 프렌즈 스트림 블록은 이미 `gzip off;` 다. 서버가 NDJSON 을 줄여 보낸다.
   - nginx 는 줄이며 ETag 앞에 `W/` 를 붙인다. `game-data` · 시세의 `If-None-Match` 비교는 `W/` 를 떼고 본다. 이 비교를 바꾸면 304 가 사라진다.
-- **Docker 데몬은 `live-restore` 로 두고, 불어나면 다시 켠다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). 2026-11-20 에 데몬이
-  37일 동안 RSS 222MB · 스왑 264MB 까지 불었다. 서버(node)는 91MB 였다. `/etc/docker/daemon.json` 에 `{"live-restore": true}` 를 두면
-  `sudo systemctl restart docker` 를 해도 컨테이너가 멈추지 않는다. 그래도 포트 전달이 끊길 수 있어 재시작은 배포처럼 한국 시각 3 ~ 7시에 하고,
-  끝나면 `curl -s http://127.0.0.1:4000/healthz` 로 확인한다. 끊겼으면 `docker compose up -d --no-build --force-recreate` 다.
+- **Docker 데몬은 `live-restore` 로 두고, 배포 끝에 다시 켠다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). 데몬 메모리는
+  이미지를 불러오는 작업으로 분다. 2026-11-20 아침 RSS 222MB · 스왑 264MB 이던 데몬이 같은 날 배포(`docker load` 185초)와 정리 뒤
+  311MB · 372MB 가 됐고, 다시 켜니 87MB · 0MB 였다. 서버(node)는 91MB 다. `/etc/docker/daemon.json` 에 `{"live-restore": true}` 를 두면
+  `sudo systemctl restart docker` 를 해도 컨테이너가 멈추지 않고 포트 전달만 2초쯤 끊긴다(2026-11-20 탐침 120번 중 502 4번). 그래서 위 배포
+  명령 끝에 넣었다. 끝나면 `curl -s http://127.0.0.1:4000/healthz` 로 확인한다. 응답이 없으면 `docker compose up -d --no-build --force-recreate` 다.
   데몬 메모리가 다시 불어나면 Docker 를 빼고 서버를 systemd 로 직접 돌린다. 그 전환은 1.0.15 서버 전환 · 도메인 분리(앱 저장소 #1090)와 함께 한다.
 - **점검 잠금은 맥에서 `npm run maintenance` 로 켜고 끈다**(앱 저장소 `ADR-261`). 앱 전체를 점검 화면으로 막는다. 서버의 표를 옮길
   때처럼 앱이 서버에 쓰면 안 되는 작업에만 쓴다. 재시작만 하는 배포에는 켜지 않는다.

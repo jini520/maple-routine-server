@@ -1330,8 +1330,8 @@ export const huntingRegions = pgTable('hunting_regions', {
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
   forceType: forceTypeEnum('force_type').notNull(),
-  /** 지역 아이콘 그림. 앱에는 그림 이름(확장자를 뗀 것)을 iconMap 으로 낸다. 가계부 사냥 시트의 지역 드롭다운에 선다. 비면 이름만 선다. */
-  iconMapAssetId: uuid('icon_map_asset_id').references(() => assets.id),
+  /** 지역 아이콘 그림. 가계부 사냥 시트의 지역 드롭다운에 선다. 비면 이름만 선다. */
+  iconAssetId: uuid('icon_asset_id').references(() => assets.id),
   /** 파일의 차례. 앱은 역순으로 세운다. */
   sortOrder: integer('sort_order').notNull(),
 })
@@ -1349,17 +1349,17 @@ export const huntingGrounds = pgTable(
     /** 전역 유일. 이름만 든 옛 기록을 key 로 옮기는 이관이 이름으로 찾는다. */
     name: text('name').notNull().unique(),
     /** 아케인 · 어센틱 포스 요구치. 어느 쪽인지는 지역이 안다. */
-    force: integer('force').notNull(),
+    requiredForce: integer('required_force').notNull(),
     /** 맵에 한 번에 뜨는 마릿수. 효율 조각이 이 수로 퍼센트를 만든다. */
-    mobs: integer('mobs').notNull(),
+    mobQuantity: integer('mob_quantity').notNull(),
     /** 지역 안의 차례. 레벨 차이 · 마릿수가 동률일 때의 차례다. */
     sortOrder: integer('sort_order').notNull(),
     /** 인기 사냥터 여부. 사용자가 고르는 값이라 모두 false 로 시작하고 관리 화면 목록 줄에서 고른다. */
-    popular: boolean('popular').notNull().default(false),
+    isPopular: boolean('is_popular').notNull().default(false),
   },
   (t) => [
-    check('hunting_grounds_force_nonnegative', sql`${t.force} >= 0`),
-    check('hunting_grounds_mobs_positive', sql`${t.mobs} >= 1`),
+    check('hunting_grounds_required_force_nonnegative', sql`${t.requiredForce} >= 0`),
+    check('hunting_grounds_mob_quantity_positive', sql`${t.mobQuantity} >= 1`),
   ],
 )
 
@@ -1371,11 +1371,11 @@ export const huntingGroundLevels = pgTable(
     groundId: uuid('ground_id')
       .notNull()
       .references(() => huntingGrounds.id, { onDelete: 'cascade' }),
-    level: integer('level').notNull(),
+    mobLevel: integer('mob_level').notNull(),
   },
   (t) => [
-    unique('hunting_ground_levels_ground_level_unique').on(t.groundId, t.level),
-    check('hunting_ground_levels_level_positive', sql`${t.level} >= 1`),
+    unique('hunting_ground_levels_ground_mob_level_unique').on(t.groundId, t.mobLevel),
+    check('hunting_ground_levels_mob_level_positive', sql`${t.mobLevel} >= 1`),
   ],
 )
 

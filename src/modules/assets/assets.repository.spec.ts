@@ -73,22 +73,6 @@ describeDb('AssetsRepository', () => {
     expect(after.updatedAt).not.toBe(first)
   })
 
-  it('칸 값마다 그림이 없는 것만 돌려준다', async () => {
-    await repo.put(BELLONA, SHA_A, { sizeBytes: 20, width: 10, height: 20 })
-    await repo.put({ category: 'item_ring', fileName: 'ring', extension: 'png' }, SHA_A, {
-      sizeBytes: 20,
-      width: 10,
-      height: 20,
-    })
-    expect(
-      await repo.missing([
-        { ref: 'bossPortrait', value: 'bellona' },
-        { ref: 'itemIcon', value: 'ring.png' },
-        { ref: 'bossPortrait', value: 'nobody' },
-      ]),
-    ).toEqual(['nobody'])
-  })
-
   it('관리 목록은 이름이 비면 쓰는 곳의 이름, 쓰는 곳도 없으면 파일 이름을 보이고 아이템 분류를 든다', async () => {
     const ids = await insertAssets(db, [
       'items/pendant.png',

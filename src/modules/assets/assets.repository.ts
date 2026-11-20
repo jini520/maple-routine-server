@@ -1,16 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { assets, imageCrops } from '../../database/schema'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
-import {
-  type AssetKey,
-  assetKeyText,
-  type AssetRef,
-  refCandidates,
-  storedFileName,
-} from './asset-paths'
+import { type AssetKey, storedFileName } from './asset-paths'
 import { type AssetUse, assetUses } from './asset-uses'
 
 export interface AssetFileView {
@@ -141,27 +135,6 @@ export class AssetsRepository {
       await touchSection(tx, 'assets')
       return current === undefined ? 'created' : 'updated'
     })
-  }
-
-  /** 그림 칸 값 가운데 가리키는 그림이 표에 없는 값. 겹치는 값은 한 번만 낸다. */
-  async missing(refs: readonly { ref: AssetRef; value: string }[]): Promise<string[]> {
-    if (refs.length === 0) return []
-    const candidates = refs.map((r) => refCandidates(r.ref, r.value))
-    const fileNames = [...new Set(candidates.flat().map((c) => c.fileName))]
-    const rows =
-      fileNames.length === 0
-        ? []
-        : await this.db
-            .select({
-              category: assets.category,
-              fileName: assets.fileName,
-              extension: assets.extension,
-            })
-            .from(assets)
-            .where(inArray(assets.fileName, fileNames))
-    const present = new Set(rows.map(assetKeyText))
-    const missing = refs.filter((_, i) => !candidates[i]?.some((c) => present.has(assetKeyText(c))))
-    return [...new Set(missing.map((r) => r.value))]
   }
 }
 

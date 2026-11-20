@@ -18,9 +18,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
-import type { AssetRef } from '../assets/asset-paths'
 import { AssetNotFound } from '../assets/asset-refs'
-import { AssetsRepository } from '../assets/assets.repository'
 import {
   type BossInput,
   bossInput,
@@ -363,22 +361,8 @@ export class AdminController {
     private readonly huntLoot: HuntLootRepository,
     private readonly hexa: HexaMatrixRepository,
     private readonly faqs: FaqsRepository,
-    private readonly assets: AssetsRepository,
     private readonly dashboard: UsageDashboardService,
   ) {}
-
-  /**
-   * 그림 칸이 가리키는 그림이 그림 표에 있어야 쓴다. 앱은 번들 없이 서버 그림만 그리므로, 없는 그림을 가리키면
-   * 앱이 에러 없이 그림만 빈 채로 그린다. 그래서 쓰기 전에 막는다. 빈 칸은 보지 않는다.
-   */
-  private async requireAssets(
-    refs: readonly [AssetRef, string | null | undefined][],
-  ): Promise<void> {
-    const present = refs.flatMap(([ref, value]) => (value == null ? [] : [{ ref, value }]))
-    const missing = await this.assets.missing(present)
-    if (missing.length > 0)
-      throw new BadRequestException(`그림 표에 없는 그림이다: ${missing.join(', ')}`)
-  }
 
   @Get()
   @Header('content-type', 'text/html; charset=utf-8')
@@ -2119,35 +2103,41 @@ export class AdminController {
   @Get('hunting-grounds/rows')
   @Header('cache-control', 'no-store')
   huntingGroundRows() {
-    return this.hunting.section()
+    return this.hunting.adminRows()
   }
 
-  /** 지역을 맨 뒤에 더한다. 같은 key 는 409 다. */
+  /** 지역을 맨 뒤에 더한다. 같은 key 는 409, 그림 표에 없는 그림은 400 이다. */
   @Post('hunting-grounds/regions')
   @HttpCode(201)
   async createHuntingRegion(
     @Body(new ZodValidationPipe(huntingRegionCreateBody)) body: HuntingRegionCreateBody,
   ) {
-    await this.requireAssets([['mapIcon', body.iconMap]])
     try {
-      return await this.hunting.createRegion({ ...body, iconMap: body.iconMap ?? null })
+      return await this.hunting.createRegion({ ...body, iconAssetId: body.iconAssetId ?? null })
     } catch (error) {
       if (error instanceof RegionExists)
         throw new ConflictException(`이미 있는 지역이다: ${body.key}`)
-      throw error
+      throw assetRejection(error)
     }
   }
 
-  /** 이름 · 힘 종류 · 아이콘을 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 404 다. */
+  /** 이름 · 힘 종류 · 아이콘을 갈아 끼운다. key 는 사냥터가 들어 못 바꾼다. 모르면 404, 그림 표에 없는 그림은 400 이다. */
   @Put('hunting-grounds/regions/:key')
   @HttpCode(204)
   async updateHuntingRegion(
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(huntingRegionUpdateBody)) body: HuntingRegionUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([['mapIcon', body.iconMap]])
-    if (!(await this.hunting.updateRegion(key, { ...body, iconMap: body.iconMap ?? null })))
-      throw new NotFoundException(`모르는 지역이다: ${key}`)
+    let found: boolean
+    try {
+      found = await this.hunting.updateRegion(key, {
+        ...body,
+        iconAssetId: body.iconAssetId ?? null,
+      })
+    } catch (error) {
+      throw assetRejection(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 지역이다: ${key}`)
   }
 
   @Post('hunting-grounds/regions/:key/move')
@@ -2205,7 +2195,7 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(huntingGroundPopularBody)) body: HuntingGroundPopularBody,
   ): Promise<void> {
-    if (!(await this.hunting.setGroundPopular(key, body.popular)))
+    if (!(await this.hunting.setGroundPopular(key, body.isPopular)))
       throw new NotFoundException(`모르는 사냥터다: ${key}`)
   }
 }
@@ -2221,7 +2211,6 @@ function huntingGroundError(error: unknown, key: string): unknown {
   return error
 }
 
-/** 사냥 전리품 쓰기에서 이름이 같은 다른 key 의 아이템을 409 로 옮긴다. 한 물건이 두 key 로 서면 기록이 갈린다. */
 /** 사냥 전리품 쓰기의 거절. 이름이 같은 다른 아이템은 409, 그림 표에 없는 그림은 400 이다. */
 function nameTakenError(error: unknown): unknown {
   if (error instanceof HuntLootNameTaken)

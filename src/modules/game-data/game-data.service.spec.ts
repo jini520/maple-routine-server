@@ -73,7 +73,11 @@ function service(bosses: { section: jest.Mock }, db: Db = stampDb('a').db): Game
       superiorItems: [],
     }) as unknown as EnhancementCostsRepository,
     empty({ grades: [] }) as unknown as MvpGradesRepository,
-    empty({ regions: [], grounds: [], groundLevels: [] }) as unknown as HuntingGroundsRepository,
+    empty({
+      huntingRegions: [],
+      huntingGrounds: [],
+      huntingGroundLevels: [],
+    }) as unknown as HuntingGroundsRepository,
     empty({ huntLootItems: [] }) as unknown as HuntLootRepository,
     empty({
       jobs: [],
@@ -144,7 +148,12 @@ describe('GameDataService', () => {
         superiorItems: [],
       },
       mvpGrades: { updatedAt: null, grades: [] },
-      huntingGrounds: { updatedAt: null, regions: [], grounds: [], groundLevels: [] },
+      huntingGrounds: {
+        updatedAt: null,
+        huntingRegions: [],
+        huntingGrounds: [],
+        huntingGroundLevels: [],
+      },
       huntLoot: { updatedAt: null, huntLootItems: [] },
       hexaMatrix: {
         updatedAt: null,

@@ -580,30 +580,31 @@ export const huntingRegionCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
   forceType: z.enum(FORCE_TYPES),
-  iconMap: z.string().min(1).max(100).nullish(),
+  iconAssetId: z.string().uuid().nullish(),
 })
 export type HuntingRegionCreateBody = z.infer<typeof huntingRegionCreateBody>
 export const huntingRegionUpdateBody = huntingRegionCreateBody.omit({ key: true })
 export type HuntingRegionUpdateBody = z.infer<typeof huntingRegionUpdateBody>
 
-/** 사냥터 하나. 레벨은 하나 이상이고 겹치지 않는다. 모양 검사(지역 key 접두 · 이름 유일)는 리포지토리가 한다. */
+/** 사냥터 하나. 몬스터 레벨은 하나 이상이고 겹치지 않는다. 모양 검사(지역 key 접두 · 이름 유일)는 리포지토리가 한다. */
 const huntingGroundBase = z.object({
   key: snakeKey,
   region: snakeKey,
   name: z.string().min(1).max(100),
-  force: z.number().int().min(0),
-  mobs: z.number().int().min(1),
-  levels: z.array(z.number().int().min(1).max(400)).min(1).max(5),
+  requiredForce: z.number().int().min(0),
+  mobQuantity: z.number().int().min(1),
+  mobLevels: z.array(z.number().int().min(1).max(400)).min(1).max(5),
 })
-const distinctLevels = (g: { levels: number[] }) => new Set(g.levels).size === g.levels.length
-const LEVELS_MESSAGE = { message: '같은 레벨은 못 겹친다', path: ['levels'] }
+const distinctLevels = (g: { mobLevels: number[] }) =>
+  new Set(g.mobLevels).size === g.mobLevels.length
+const LEVELS_MESSAGE = { message: '같은 레벨은 못 겹친다', path: ['mobLevels'] }
 export const huntingGroundCreateBody = huntingGroundBase.refine(distinctLevels, LEVELS_MESSAGE)
 export type HuntingGroundCreateBody = z.infer<typeof huntingGroundCreateBody>
 export const huntingGroundUpdateBody = huntingGroundBase
   .omit({ key: true, region: true })
   .refine(distinctLevels, LEVELS_MESSAGE)
 export type HuntingGroundUpdateBody = z.infer<typeof huntingGroundUpdateBody>
-export const huntingGroundPopularBody = z.object({ popular: z.boolean() })
+export const huntingGroundPopularBody = z.object({ isPopular: z.boolean() })
 export type HuntingGroundPopularBody = z.infer<typeof huntingGroundPopularBody>
 
 /* ── FAQ ── */

@@ -78,7 +78,6 @@ import {
 import { MarkdownRejected, markdownToNotice } from '../notices/markdown-blocks'
 import { OperatorNoticesService, SchedulePassed } from '../notices/operator-notices.service'
 import { DropMarketService } from '../drop-market/drop-market.service'
-import { AssetsRepository } from '../assets/assets.repository'
 import { AdminController } from './admin.controller'
 import { UsageDashboardService } from './usage-dashboard.service'
 
@@ -211,7 +210,7 @@ describe('AdminController', () => {
   }
   const mvpRepo = { section: jest.fn(), update: jest.fn(), move: jest.fn() }
   const huntingRepo = {
-    section: jest.fn(),
+    adminRows: jest.fn(),
     createRegion: jest.fn(),
     updateRegion: jest.fn(),
     moveRegion: jest.fn(),
@@ -256,7 +255,6 @@ describe('AdminController', () => {
     moveItem: jest.fn(),
   }
 
-  const assetsRepo = { missing: jest.fn() }
   const dashboard = { forUsers: jest.fn(), forUsage: jest.fn(), forScreen: jest.fn() }
 
   beforeAll(async () => {
@@ -283,7 +281,6 @@ describe('AdminController', () => {
         { provide: HuntLootRepository, useValue: huntLootRepo },
         { provide: HexaMatrixRepository, useValue: hexaRepo },
         { provide: FaqsRepository, useValue: faqRepo },
-        { provide: AssetsRepository, useValue: assetsRepo },
         { provide: UsageDashboardService, useValue: dashboard },
       ],
     }).compile()
@@ -317,7 +314,6 @@ describe('AdminController', () => {
     ]) {
       mock.mockReset()
     }
-    assetsRepo.missing.mockReset().mockResolvedValue([])
   })
 
   const PAGES = [
@@ -2591,37 +2587,53 @@ describe('AdminController', () => {
       key: 'road_of_vanishing_weathered_land_of_joy',
       region: 'road_of_vanishing',
       name: '풍화된 기쁨의 땅',
-      force: 30,
-      mobs: 22,
-      levels: [200],
+      requiredForce: 30,
+      mobQuantity: 22,
+      mobLevels: [200],
     }
 
-    it('지역 아이콘은 그림 표에 있어야 적고, 없으면 400 이다', async () => {
-      huntingRepo.createRegion.mockResolvedValue({ id: ROW })
+    it('지역 아이콘은 그림 줄 id 로 받아 넘기고, 그림 표에 없으면 400 · 줄 id 가 아니면 저장소를 안 부르고 400 이다', async () => {
       huntingRepo.updateRegion.mockResolvedValue(true)
       expect(
         (
           await app.inject({
             method: 'PUT',
             url: '/admin/hunting-grounds/regions/cernium',
-            payload: { name: '세르니움', forceType: 'authentic', iconMap: 'cernium' },
+            payload: { name: '세르니움', forceType: 'authentic', iconAssetId: ROW },
           })
         ).statusCode,
       ).toBe(204)
-      expect(assetsRepo.missing).toHaveBeenCalledWith([{ ref: 'mapIcon', value: 'cernium' }])
       expect(huntingRepo.updateRegion).toHaveBeenCalledWith('cernium', {
         name: '세르니움',
         forceType: 'authentic',
-        iconMap: 'cernium',
+        iconAssetId: ROW,
       })
+      huntingRepo.updateRegion.mockRejectedValue(new AssetNotFound(ROW))
+      const missing = await app.inject({
+        method: 'PUT',
+        url: '/admin/hunting-grounds/regions/cernium',
+        payload: { name: '세르니움', forceType: 'authentic', iconAssetId: ROW },
+      })
+      expect(missing.statusCode).toBe(400)
+      expect(missing.json<{ message: string }>().message).toContain(ROW)
 
-      assetsRepo.missing.mockResolvedValue(['maps/icons/nobody'])
+      huntingRepo.createRegion.mockRejectedValue(new AssetNotFound(ROW))
       expect(
         (
           await app.inject({
             method: 'POST',
             url: '/admin/hunting-grounds/regions',
-            payload: { key: 'limen', name: '리멘', forceType: 'arcane', iconMap: 'nobody' },
+            payload: { key: 'limen', name: '리멘', forceType: 'arcane', iconAssetId: ROW },
+          })
+        ).statusCode,
+      ).toBe(400)
+      huntingRepo.createRegion.mockClear()
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/hunting-grounds/regions',
+            payload: { key: 'limen', name: '리멘', forceType: 'arcane', iconAssetId: 'limen' },
           })
         ).statusCode,
       ).toBe(400)
@@ -2629,7 +2641,7 @@ describe('AdminController', () => {
     })
 
     it('지역 POST 201 · 같은 key 409, PUT 204 · 모르면 404, move 204 다', async () => {
-      huntingRepo.section.mockResolvedValue({
+      huntingRepo.adminRows.mockResolvedValue({
         updatedAt: null,
         regions: [],
         grounds: [],
@@ -2653,7 +2665,7 @@ describe('AdminController', () => {
         key: 'road_of_vanishing',
         name: '소멸의 여로',
         forceType: 'arcane',
-        iconMap: null,
+        iconAssetId: null,
       })
       huntingRepo.createRegion.mockRejectedValue(new RegionExists('road_of_vanishing'))
       expect(
@@ -2749,7 +2761,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/hunting-grounds/grounds',
-            payload: { ...joy, levels: [200, 200] },
+            payload: { ...joy, mobLevels: [200, 200] },
           })
         ).statusCode,
       ).toBe(400)
@@ -2761,15 +2773,20 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/hunting-grounds/grounds/' + joy.key,
-            payload: { name: '풍화된 기쁨의 땅', force: 30, mobs: 30, levels: [200, 201] },
+            payload: {
+              name: '풍화된 기쁨의 땅',
+              requiredForce: 30,
+              mobQuantity: 30,
+              mobLevels: [200, 201],
+            },
           })
         ).statusCode,
       ).toBe(204)
       expect(huntingRepo.updateGround).toHaveBeenCalledWith(joy.key, {
         name: '풍화된 기쁨의 땅',
-        force: 30,
-        mobs: 30,
-        levels: [200, 201],
+        requiredForce: 30,
+        mobQuantity: 30,
+        mobLevels: [200, 201],
       })
       huntingRepo.updateGround.mockResolvedValue(false)
       expect(
@@ -2777,7 +2794,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/hunting-grounds/grounds/nobody',
-            payload: { name: 'x', force: 0, mobs: 1, levels: [1] },
+            payload: { name: 'x', requiredForce: 0, mobQuantity: 1, mobLevels: [1] },
           })
         ).statusCode,
       ).toBe(404)
@@ -2801,7 +2818,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
-            payload: { popular: true },
+            payload: { isPopular: true },
           })
         ).statusCode,
       ).toBe(204)
@@ -2811,7 +2828,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
-            payload: { popular: 'true' },
+            payload: { isPopular: 'true' },
           })
         ).statusCode,
       ).toBe(400)
@@ -2823,7 +2840,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/hunting-grounds/grounds/nobody/popular',
-            payload: { popular: false },
+            payload: { isPopular: false },
           })
         ).statusCode,
       ).toBe(404)

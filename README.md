@@ -108,9 +108,9 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 - **그림은 `/admin/assets` 에서 올린다**(앱 저장소 `ADR-103`). 파일은 `/srv/maple-routine-assets/` 에 내용 해시 이름으로 쌓이고,
   표 `assets` 의 한 줄이 분류(`category`) · 파일 이름(`file_name`) · 확장자(`extension`)와 해시를 잇는다(앱 저장소 `ADR-099` 결정 61).
   옛 해시 파일은 지우지 않는다. 옛 목록을 받은 앱이 아직 받는 중일 수 있다. 게임 데이터 표의 그림 칸은 그림 표의 `id` 를 FK 로
-  가리킨다(앱 저장소 `ADR-187` 결정 3). 그래서 쓰이는 그림은 지울 수 없다. 보스의 관리 API 는 그림 id 를 받는다. 아직 새 표로 바꾸지
-  않은 표의 관리 API 는 파일 이름 · slug 글자를 받아 그림 id 로 풀고(없으면 400), 그 표의 게임 데이터는 파일 이름 · 확장자에서 그
-  글자를 다시 만든다(앱 저장소 `ADR-099` 결정 65). 그림 여러 장을 한 번에 올릴 때는 맥에서
+  가리킨다(앱 저장소 `ADR-187` 결정 3). 그래서 쓰이는 그림은 지울 수 없다. 관리 API 는 그림 id 를 받는다. 아직 새 표로 바꾸지
+  않은 그림 크롭만 slug 글자를 받아 그림 id 로 풀고(없으면 400), 크롭의 게임 데이터는 파일 이름에서 그 글자를 다시 만든다(앱 저장소
+  `ADR-099` 결정 65). 그림 여러 장을 한 번에 올릴 때는 맥에서
   `npm run build && ADMIN_AUTH=아이디:비밀번호 node dist/cli/seed-assets.js https://admin.mapleroutine.store <그림 폴더>` 이다. 관리 화면은
   admin 주소에서만 열리므로(앱 저장소 `ADR-016` 결정 14) 루트 주소를 주면 404 다. 폴더 안의
   `<폴더>/<이름>.<확장자>`(`bosses/bellona.webp`)를 분류로 읽고, 이미 있는 그림은 건너뛴다. nginx(`snippets/mapleroutine-api.conf`)는 이렇게 둔다.
@@ -221,7 +221,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   `src/database/old-schema.ts` 로 읽는다. 줄 id 는 그대로 옮긴다. 새 DB 의 옮길 표는 먼저 비우고 다시 채운다. 옛 마이그레이션 0041
   이 빈 DB 에도 아이템 묶음 줄을 넣기 때문이고, 다시 돌려도 같은 줄이 두 번 들어가지 않는다. 옛 DB 와 새 DB 를 바꿔 넣지 않게
   옛 DB 에 `assets.path`, 새 DB 에 `assets.category` 가 있는지 먼저 본다. 지금은 그림 · 보스 · 난이도와 아이템 묶음 · 아이템 · 거래권
-  · 월드 · 월드 기간 · 헥사 매트릭스 표 · 보스가 쓰는 기준 표 · 컨텐츠 표 · 가계부 기준 표 · 지출 목록 · 심볼 표를 옮기고 반지 레벨 줄 · 상자 연마석 줄 · 직업 줄을 만든다. 상자
+  · 월드 · 월드 기간 · 헥사 매트릭스 표 · 보스가 쓰는 기준 표 · 컨텐츠 표 · 가계부 기준 표 · 지출 목록 · 심볼 표 · 사냥터 표를 옮기고 반지 레벨 줄 · 상자 연마석 줄 · 직업 줄을 만든다. 상자
   내용물 가운데 연마석을 가리키던 줄은 상자 연마석 줄을 가리키게 바꾸고, 드롭 표의 고정 보상 개수는 글자 끝의 `개` 를 떼고
   정수로 옮긴다. 컨텐츠의 완료 조건(`check_type`)은 지금 앱이 컨텐츠 key 와 분류로 가르던 것을 적고, 최대 횟수는 횟수로 세는
   줄에만 남긴다. 지출 타일의 그림 두 칸은 한 칸으로 합치고 지출 항목의 줄인 이름은 옮기지 않는다. 표 묶음 PR 마다 그 묶음의 표를 더한다. 운영 서버의 hotfix 가 표를 바꾸면 main 을 develop 에
@@ -253,8 +253,8 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   안의 차례다. 관리 화면은 `/admin/hexa-matrix` 이고, 직업은 더하고 이름만 고친다.
 - **게임 데이터의 그림 칸은 그림 표의 id 를 낸다**(앱 저장소 `ADR-187` 결정 4). `assets` 칸의 줄은 `id` 와 디스크 파일 이름
   `file` 을 들고, 그림 칸은 `portraitAssetId` · `iconAssetId` 같은 id 칸이다. 크롭 줄은 `assetId` 를 든다. 옛 앱이 읽던 글자 칸
-  (`iconFile` · `emblem` · `backgroundMap` 등)은 1.0.15 의 서버에서 걷는다. 보스의 `portraitSlug` 는 첫 묶음에서 걷었고, 다른 표의
-  글자 칸은 그 표를 새 표로 바꾸는 묶음에서 걷는다(앱 저장소 `ADR-099` 결정 43 · 65).
+  (`iconFile` · `emblem` · `backgroundMap` 등)은 표를 새 표로 바꾸는 묶음마다 걷었다. 남은 것은 그림 크롭 줄의 `slug` 이고 그림
+  묶음에서 걷는다(앱 저장소 `ADR-099` 결정 43 · 65).
 - **앱 코드가 쓰는 그림도 표에 붙어 있다**(앱 저장소 `ADR-187` 결정 8). MVP 명패는 `mvp_grades.plate_asset_id`, 컨텐츠 카드의
   지역 아이콘은 `contents.region_icon_asset_id`, 붙일 표가 없는 72장(결정석 칩 · 강화 다섯 · 메소 주머니 · 포스 · 드롭 연출
   프레임 등)은 `app_images`(key 와 그림 id)이고 게임 데이터 칸 `appImages` 로 나간다. key 는 앱 코드가 그림을 찾는 이름이다.

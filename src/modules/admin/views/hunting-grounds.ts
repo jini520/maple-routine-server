@@ -28,7 +28,7 @@ export const HUNTING_GROUNDS_HTML = layout(
     <div class="field"><label for="n-key">key</label><input id="n-key" class="mono" placeholder="geardrak"></div>
     <div class="field"><label for="n-name">이름</label><input id="n-name" placeholder="기어드락"></div>
     <div class="field w-md"><label for="n-force">힘 종류</label><select id="n-force"></select></div>
-    <div class="field"><label for="n-map">지역 아이콘 (maps/icons)</label><input id="n-map" class="mono" placeholder="geardrak" data-asset="mapIcon"></div>
+    <div class="field"><label>지역 아이콘 <small>지역 아이콘 분류의 그림</small></label><div class="inline"><span id="n-icon" class="mono dim">고르지 않았다</span><button id="n-icon-pick" class="btn ghost sm" type="button">고르기</button></div></div>
     <button id="n-add" class="btn" type="button">지역 추가</button>
   </div></div>
 </section>
@@ -39,11 +39,16 @@ export const HUNTING_GROUNDS_HTML = layout(
 ${ASSET_PICKER}
 <script>
   var FORCES = [['arcane', '아케인'], ['authentic', '어센틱']];
-  var state = { data: null, open: null, editingRegion: null, editingGround: null };
+  // assets 는 그림 id 에서 그림 줄을 찾는 표다. 그림 칸에 파일 이름을 보인다.
+  var state = { data: null, open: null, editingRegion: null, editingGround: null, assets: {}, newIcon: null };
+  function iconText(id) { var a = id ? state.assets[id] : null; return id == null ? '고르지 않았다' : a ? a.fileName + '.' + a.extension : '그림 표에 없다'; }
+  function pickIcon(current, onPick) {
+    openAssetPicker({ categories: ['map_icon'], uploadCategory: 'map_icon', current: current, onPick: function (f) { onPick(f ? f.id : null); } });
+  }
 
   function nameOf(pairs, key) { for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === key) return pairs[i][1]; return key; }
   function groundsOf(regionKey) { return state.data.grounds.filter(function (g) { return g.region === regionKey; }); }
-  function levelsOf(groundKey) { return state.data.groundLevels.filter(function (l) { return l.ground === groundKey; }).map(function (l) { return l.level; }); }
+  function levelsOf(groundKey) { return state.data.groundLevels.filter(function (l) { return l.ground === groundKey; }).map(function (l) { return l.mobLevel; }); }
   function parseLevels(text) { return text.split(/[,\\s]+/).filter(function (s) { return s !== ''; }).map(Number); }
 
   function regionRow(r, i) {
@@ -51,7 +56,7 @@ ${ASSET_PICKER}
     var tr = el('tr', undefined, isOpen || editing ? 'open' : '');
     cell(tr, i + 1, 'n'); cell(tr, r.key, 'mono');
     if (!editing) {
-      cell(tr, r.name); cell(tr, span(nameOf(FORCES, r.forceType), 'tag')); cell(tr, r.iconMap || '-', 'mono'); cell(tr, groundsOf(r.key).length, 'num');
+      cell(tr, r.name); cell(tr, span(nameOf(FORCES, r.forceType), 'tag')); cell(tr, r.iconAssetId ? iconText(r.iconAssetId) : '-', 'mono'); cell(tr, groundsOf(r.key).length, 'num');
       var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), edit = button('수정', 'btn ghost sm'), toggle = button(isOpen ? '접기' : '사냥터', 'btn ghost sm');
       up.addEventListener('click', async function () { var x = await call('POST', '/admin/hunting-grounds/regions/' + r.key + '/move', { direction: 'up' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
       down.addEventListener('click', async function () { var x = await call('POST', '/admin/hunting-grounds/regions/' + r.key + '/move', { direction: 'down' }); if (!x.ok) show(fail('못 옮겼다', x), true); load(); });
@@ -59,11 +64,13 @@ ${ASSET_PICKER}
       toggle.addEventListener('click', function () { state.open = isOpen ? null : r.key; state.editingGround = null; render(); });
       cell(tr, inline(up, down, edit, toggle), 'act'); return tr;
     }
-    var name = input('text'); name.value = r.name; var force = select(FORCES, r.forceType); var iconMap = input('text', 'mono'); iconMap.value = r.iconMap || '';
-    cell(tr, name); cell(tr, force); cell(tr, inline(iconMap, assetPickButton(iconMap, 'mapIcon'))); cell(tr, groundsOf(r.key).length, 'num');
+    var name = input('text'); name.value = r.name; var force = select(FORCES, r.forceType);
+    var icon = { id: r.iconAssetId }; var iconLabel = span(iconText(icon.id), 'mono'); var pick = button('고르기', 'btn ghost sm');
+    pick.addEventListener('click', function () { pickIcon(icon.id, function (id) { icon.id = id; iconLabel.textContent = iconText(id); }); });
+    cell(tr, name); cell(tr, force); cell(tr, inline(iconLabel, pick)); cell(tr, groundsOf(r.key).length, 'num');
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
     save.addEventListener('click', async function () {
-      var x = await call('PUT', '/admin/hunting-grounds/regions/' + r.key, { name: name.value.trim(), forceType: force.value, iconMap: orNull(iconMap.value) });
+      var x = await call('PUT', '/admin/hunting-grounds/regions/' + r.key, { name: name.value.trim(), forceType: force.value, iconAssetId: icon.id });
       show(x.ok ? r.key + ' 를 적었다' : fail('못 적었다', x), !x.ok); if (x.ok) state.editingRegion = null; load();
     });
     close.addEventListener('click', function () { state.editingRegion = null; render(); });
@@ -77,11 +84,11 @@ ${ASSET_PICKER}
     groundsOf(r.key).forEach(function (g, i) {
       var row = el('tr', undefined, state.editingGround === g.key ? 'open' : '');
       cell(row, i + 1, 'n'); cell(row, g.key.slice(r.key.length + 1), 'mono'); cell(row, g.name);
-      cell(row, g.force, 'num'); cell(row, g.mobs, 'num'); cell(row, 'lv.' + levelsOf(g.key).join('-'), 'mono');
-      var popular = input('checkbox'); popular.checked = g.popular; popular.setAttribute('aria-label', g.name + ' 인기');
+      cell(row, g.requiredForce, 'num'); cell(row, g.mobQuantity, 'num'); cell(row, 'lv.' + levelsOf(g.key).join('-'), 'mono');
+      var popular = input('checkbox'); popular.checked = g.isPopular; popular.setAttribute('aria-label', g.name + ' 인기');
       var popularLabel = el('label', undefined, 'check'); popularLabel.appendChild(popular);
       popular.addEventListener('change', async function () {
-        var x = await call('PUT', '/admin/hunting-grounds/grounds/' + g.key + '/popular', { popular: popular.checked });
+        var x = await call('PUT', '/admin/hunting-grounds/grounds/' + g.key + '/popular', { isPopular: popular.checked });
         show(x.ok ? g.key + (popular.checked ? ' 를 인기로 적었다' : ' 를 인기에서 뺐다') : fail('못 적었다', x), !x.ok); load();
       });
       cell(row, popularLabel);
@@ -104,7 +111,7 @@ ${ASSET_PICKER}
     var key = input('text', 'mono'); key.placeholder = 'weathered_land_of_joy';
     var name = input('text'); var force = input('number'); force.min = '0'; var mobs = input('number'); mobs.min = '1';
     var levels = input('text', 'mono'); levels.placeholder = '217, 219';
-    if (g) { name.value = g.name; force.value = g.force; mobs.value = g.mobs; levels.value = levelsOf(g.key).join(', '); }
+    if (g) { name.value = g.name; force.value = g.requiredForce; mobs.value = g.mobQuantity; levels.value = levelsOf(g.key).join(', '); }
     var grid = el('div', undefined, 'grid2');
     if (!g) grid.appendChild(field('key', '지역 key ' + r.key + '_ 뒤에 붙는다. 한 번 정하면 못 바꾼다', key));
     grid.appendChild(field('이름', '전역에서 유일해야 한다', name));
@@ -112,7 +119,7 @@ ${ASSET_PICKER}
     grid.appendChild(field('마릿수', '맵에 한 번에 뜨는 수', mobs));
     grid.appendChild(field('몬스터 레벨', '쉼표로 적는다. 둘이면 레벨마다 재서 평균낸다', levels));
     box.appendChild(grid);
-    function body() { return { name: name.value.trim(), force: Number(force.value), mobs: Number(mobs.value), levels: parseLevels(levels.value) }; }
+    function body() { return { name: name.value.trim(), requiredForce: Number(force.value), mobQuantity: Number(mobs.value), mobLevels: parseLevels(levels.value) }; }
     var actions = el('div', undefined, 'actions');
     if (g) {
       var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
@@ -139,15 +146,20 @@ ${ASSET_PICKER}
 
   FORCES.forEach(function (f) { var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1]; document.getElementById('n-force').appendChild(o); });
   document.getElementById('n-add').addEventListener('click', async function () {
-    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), forceType: document.getElementById('n-force').value, iconMap: orNull(document.getElementById('n-map').value) };
+    var body = { key: document.getElementById('n-key').value.trim(), name: document.getElementById('n-name').value.trim(), forceType: document.getElementById('n-force').value, iconAssetId: state.newIcon };
     var x = await call('POST', '/admin/hunting-grounds/regions', body);
     show(x.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', x), !x.ok);
-    if (x.ok) { document.getElementById('n-key').value = ''; document.getElementById('n-name').value = ''; document.getElementById('n-map').value = ''; }
+    if (x.ok) { document.getElementById('n-key').value = ''; document.getElementById('n-name').value = ''; state.newIcon = null; document.getElementById('n-icon').textContent = iconText(null); }
     load();
+  });
+  document.getElementById('n-icon-pick').addEventListener('click', function () {
+    pickIcon(state.newIcon, function (id) { state.newIcon = id; document.getElementById('n-icon').textContent = iconText(id); });
   });
 
   async function load() {
     var x = await call('GET', '/admin/hunting-grounds/rows');
+    var a = await call('GET', '/admin/assets/list');
+    if (a.ok) { state.assets = {}; a.json.rows.forEach(function (row) { state.assets[row.id] = row; }); }
     if (!x.ok) { show('못 읽었다 ' + x.status, true); return; }
     state.data = x.json;
     document.getElementById('stat-regions').textContent = x.json.regions.length;
@@ -156,6 +168,5 @@ ${ASSET_PICKER}
     render();
   }
   load();
-  attachAssetPickers();
 </script>`,
 )

@@ -49,6 +49,9 @@ const CONVERTED = [
   'symbol_groups',
   'symbols',
   'symbol_level_costs',
+  'hunting_regions',
+  'hunting_grounds',
+  'hunting_ground_levels',
 ]
 
 interface DesignColumn {

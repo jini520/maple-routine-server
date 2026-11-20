@@ -50,6 +50,7 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   /etc/nginx/sites-available/mapleroutine /v1 · /admin 을 127.0.0.1:4000 으로 넘기고, /assets/ 는 아래 디렉터리를 바로 낸다
   /srv/maple-routine-assets/              그림 파일(<sha256>.<확장자>). compose 가 /data/assets 로 건다. 주인은 uid 1000(컨테이너의 node)
   /srv/maple-routine-ota/                 OTA 매니페스트 · latest · releases.json 과 files/(번들 · 에셋). compose 가 /data/ota 로 읽기 전용으로 건다. 주인은 ubuntu
+  /srv/maple-routine-maintenance/         점검 파일 maintenance.json. 있으면 점검 중이다. 서버는 읽지 않고 nginx 만 읽는다. 주인은 ubuntu
 ```
 
 ```
@@ -132,6 +133,58 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
   디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-ota /srv/maple-routine-ota/files` 로 만든다. 서버는 읽기만
   하므로 주인이 ubuntu 여도 된다. `/v1/` 의 속도 제한은 매니페스트에만 걸리고 `/ota/files/` 에는 안 걸린다.
+
+- **점검 잠금은 맥에서 `npm run maintenance` 로 켜고 끈다**(앱 저장소 `ADR-261`). 앱 전체를 점검 화면으로 막는다. 서버의 표를 옮길
+  때처럼 앱이 서버에 쓰면 안 되는 작업에만 쓴다. 재시작만 하는 배포에는 켜지 않는다.
+
+  ```
+  npm run build
+  npm run maintenance -- on --until "2026-12-02 06:00"   # 켠다. 종료 예정 시각은 한국 시각이고 안 적어도 된다
+  npm run maintenance -- status                          # 앱이 묻는 주소에 그대로 물어 본다
+  npm run maintenance -- off                             # 끈다
+  ```
+
+  점검 상태는 앱 박스의 `/srv/maple-routine-maintenance/maintenance.json` 하나다. 파일이 있으면 점검 중이다. 스크립트가 SSH 로 그
+  파일을 쓰고 지운다. 서버가 아니라 nginx 가 읽는 것은 서버 컨테이너를 내린 동안에도 앱이 점검 중인 것을 알아야 하기 때문이다.
+  - 앱은 `GET /v1/maintenance` 로 묻는다. 파일이 있으면 그 내용이 200 으로, 없으면 204 가 간다. 앱은 켜자마자, 돌아올 때, 쓰는
+    동안 5분마다, 잠긴 동안 30초마다 묻는다. 그래서 켠 뒤 5분이 지나면 켜져 있던 앱도 잠기고, 끈 뒤 30초 안에 풀린다.
+  - 점검 중에는 nginx 가 `/v1/` 요청을 서버로 넘기지 않고 503 으로 답한다. 잠금 코드가 없는 옛 번들도 서버의 값을 바꾸지 못하게
+    하려는 것이다. `/v1/maintenance` 와 OTA 확인(`/v1/ota/`)만 예외다. `/admin` 은 막지 않는다.
+  - 503 으로 점검을 알리지 않는 것은 nginx 가 속도 제한에 걸린 요청에도 503 을 내기 때문이다.
+
+  nginx 는 이렇게 둔다. `/v1/` 과 `/v1/friends/stream` 두 블록에는 맨 위에 `if` 를 넣고, 나머지 줄은 그대로 둔다.
+
+  ```
+  # 점검 상태. 파일이 있으면 점검 중이다.
+  location = /v1/maintenance {
+      root /srv/maple-routine-maintenance;
+      add_header Cache-Control "no-store" always;
+      try_files /maintenance.json =204;
+  }
+
+  # OTA 확인은 점검 중에도 서버로 넘긴다. 나머지 줄은 /v1/ 블록과 같다.
+  location /v1/ota/ {
+      limit_req zone=notice_api burst=20 nodelay;
+      proxy_pass http://127.0.0.1:4000;
+      ...
+  }
+
+  location /v1/ {
+      if (-f /srv/maple-routine-maintenance/maintenance.json) {
+          return 503;
+      }
+      ...
+  }
+  ```
+
+  디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-maintenance` 로 만든다. 설정을 고치면
+  `sudo nginx -t && sudo nginx -s reload` 다. 이 설정은 운영과 같은 nginx 1.18 컨테이너에서 켜기 전 · 켠 뒤 · 끈 뒤의 응답을
+  확인했다(2026-11-20).
+
+  **운영에는 `location = /v1/maintenance` 와 `location /v1/ota/` 만 넣었다(2026-11-20).** `/v1/` 과 `/v1/friends/stream` 의 `if` 는
+  아직 없다. 그래서 지금은 점검을 켜도 서버 요청이 막히지 않고, 잠금 코드가 든 앱만 잠긴다. 실기기에서 잠금 화면을 확인하려고
+  이렇게 나눴다. 확인한 뒤에 `if` 를 넣고 이 문단을 지운다. 넣기 전의 설정은 앱 박스의
+  `~/nginx-backups/mapleroutine.2026-11-20.before-maintenance` 에 있다.
 
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.

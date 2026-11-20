@@ -19,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "test:db": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "notice": "node dist/cli/notice.js",
+    "maintenance": "node dist/cli/maintenance.js",
     "migrate": "node dist/cli/migrate.js"
   },
   "jest": {

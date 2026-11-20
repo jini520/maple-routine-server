@@ -1966,3 +1966,253 @@ export const sharedContentProgress = pgTable(
       .nullsNotDistinct(),
   ],
 )
+
+/** 트래킹 모드. 넥슨에서 받아 자동으로 추적하는지, 사용자가 고른 항목만 추적하는지다. */
+export const trackingTypeEnum = pgEnum('tracking_type', ['auto', 'manual'])
+
+/** 파티 약속이 한 번인지 매주인지. 쓰는 칸이 달라 맞는 칸만 채우게 검사한다. */
+export const appointmentScheduleTypeEnum = pgEnum('appointment_schedule_type', ['once', 'weekly'])
+
+/** 분배 방식. 제외는 결정석을 팔지 않은 처치이고 인원과 내 몫이 없다. */
+export const splitTypeEnum = pgEnum('split_type', ['even', 'ratio', 'excluded'])
+
+/**
+ * 사람마다 값이 하나인 설정을 한 줄에 모은다. 앱 설정 · 마지막 입력 기억 · 닫은 안내는 기기마다 따로라 여기 없다. 설정은 지우지
+ * 않고 값만 바꿔 삭제 표식이 없다. 화면 이름은 앱 코드가 정한 값이라 가리킬 표가 없어 글자로 적는다.
+ */
+export const accountSettings = pgTable('account_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  nexonAccountId: uuid('nexon_account_id')
+    .notNull()
+    .unique()
+    .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+  /** 비어 있으면 아직 고르지 않음 */
+  trackingType: trackingTypeEnum('tracking_type'),
+  /** 빠른 이동의 줄 수 1 · 2 */
+  quickLinkRowCount: smallint('quick_link_row_count'),
+  /** 빠른 이동에 놓인 화면 이름. 놓인 차례다. */
+  quickLinkKeys: text('quick_link_keys').array(),
+  /** 하단바 그룹 다섯의 화면 이름. 놓인 차례다. */
+  barGroupKeys: text('bar_group_keys').array(),
+  /** 통계 누적 순 수익의 시작 날짜 `YYYY-MM-DD` */
+  statsCumulativeStartDate: text('stats_cumulative_start_date'),
+  isMvpWeeklyCheckOff: boolean('is_mvp_weekly_check_off').notNull().default(false),
+  /** 마지막으로 등급을 확인한 주 `W202647` */
+  mvpLastCheckedWeekCode: text('mvp_last_checked_week_code'),
+  isMvpBulkApplyAsked: boolean('is_mvp_bulk_apply_asked').notNull().default(false),
+  changeSeq: bigint('change_seq', { mode: 'number' })
+    .notNull()
+    .default(sql`nextval('record_change_seq')`),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})
+
+/** 하단바 그룹 하나의 하위 페이지 차례. 그룹마다 목록이 하나라 설정 표의 칸 하나로 담을 수 없다. */
+export const bottomBarSubPageOrders = pgTable(
+  'bottom_bar_sub_page_orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    nexonAccountId: uuid('nexon_account_id')
+      .notNull()
+      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+    groupKey: text('group_key').notNull(),
+    /** 그 그룹의 하위 페이지 화면 이름. 놓인 차례다. */
+    subPageKeys: text('sub_page_keys').array().notNull(),
+    changeSeq: bigint('change_seq', { mode: 'number' })
+      .notNull()
+      .default(sql`nextval('record_change_seq')`),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('bottom_bar_sub_page_orders_account_group_unique').on(t.nexonAccountId, t.groupKey),
+  ],
+)
+
+/**
+ * 추적하는 캐릭터 하나. 목록은 메인과 부계정의 캐릭터가 한 차례로 섞여 있어 넥슨 계정 줄에 붙인다. 캐릭터마다 한 줄이라 두 기기가
+ * 각자 하나씩 더해도 둘 다 남는다. 대표 캐릭터는 이 목록 안의 하나라 표시 칸으로 둔다.
+ */
+export const trackedCharacters = pgTable(
+  'tracked_characters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    nexonAccountId: uuid('nexon_account_id')
+      .notNull()
+      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull(),
+    isRepresentative: boolean('is_representative').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    unique('tracked_characters_account_character_unique').on(t.nexonAccountId, t.characterId),
+  ],
+)
+
+/**
+ * 파티 약속. 한 약속이 다른 메이플 ID 의 캐릭터로 도는 보스를 함께 담을 수 있어 넥슨 계정 줄에 붙인다. 손으로 적는 기록이라 줄
+ * id 는 기기의 약속 id 이고, 두 기기가 같은 약속을 따로 적으면 둘 다 남는다.
+ */
+export const partyAppointments = pgTable(
+  'party_appointments',
+  {
+    id: uuid('id').primaryKey(),
+    nexonAccountId: uuid('nexon_account_id')
+      .notNull()
+      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+    /** 시작 시각 `HH:mm` */
+    time: text('time').notNull(),
+    durationMinutes: integer('duration_minutes').notNull(),
+    /** 비어 있으면 알림 없음 */
+    alarmMinutesBefore: integer('alarm_minutes_before'),
+    scheduleType: appointmentScheduleTypeEnum('schedule_type').notNull(),
+    /** 한 번일 때의 날짜 `YYYY-MM-DD` */
+    date: text('date'),
+    /** 매주일 때의 요일 */
+    weekday: smallint('weekday'),
+    /** 매주일 때의 시작 주 `W202647` */
+    fromWeekCode: text('from_week_code'),
+    /** 매주일 때의 끝 주. 비어 있으면 끝이 없다. */
+    untilWeekCode: text('until_week_code'),
+    memo: text('memo'),
+    ...syncColumns(),
+  },
+  (t) => [
+    index('party_appointments_nexon_account_id_idx').on(t.nexonAccountId),
+    check(
+      'party_appointments_schedule_check',
+      sql`(${t.scheduleType} = 'once' AND ${t.date} IS NOT NULL AND ${t.weekday} IS NULL
+             AND ${t.fromWeekCode} IS NULL AND ${t.untilWeekCode} IS NULL)
+          OR (${t.scheduleType} = 'weekly' AND ${t.date} IS NULL AND ${t.weekday} IS NOT NULL
+             AND ${t.fromWeekCode} IS NOT NULL)`,
+    ),
+  ],
+)
+
+/** 매주 약속에서 한 주만 바꾼 값. 한 약속의 한 주에 하나다. */
+export const partyAppointmentExceptions = pgTable(
+  'party_appointment_exceptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    appointmentId: uuid('appointment_id')
+      .notNull()
+      .references(() => partyAppointments.id, { onDelete: 'cascade' }),
+    /** 바꾼 주 `W202647` */
+    weekCode: text('week_code').notNull(),
+    date: text('date').notNull(),
+    time: text('time').notNull(),
+    durationMinutes: integer('duration_minutes').notNull(),
+    alarmMinutesBefore: integer('alarm_minutes_before'),
+  },
+  (t) => [
+    unique('party_appointment_exceptions_appointment_week_unique').on(t.appointmentId, t.weekCode),
+  ],
+)
+
+/**
+ * 약속에서 도는 보스 한 판. 판마다 캐릭터와 난이도가 다를 수 있다. 한 주만 바꾼 약속의 보스 목록도 같은 표에 예외 칸을 채워
+ * 담는다. 예외가 빈 줄끼리도 차례가 겹치면 안 되어 유일 기준이 빈 값을 같게 본다.
+ */
+export const partyAppointmentBosses = pgTable(
+  'party_appointment_bosses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    appointmentId: uuid('appointment_id')
+      .notNull()
+      .references(() => partyAppointments.id, { onDelete: 'cascade' }),
+    /** 그 주만 바꾼 보스면 그 예외 */
+    exceptionId: uuid('exception_id').references(() => partyAppointmentExceptions.id, {
+      onDelete: 'cascade',
+    }),
+    /** 도는 차례 */
+    sortOrder: integer('sort_order').notNull(),
+    bossDifficultyId: uuid('boss_difficulty_id')
+      .notNull()
+      .references(() => bossDifficulties.id),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    unique('party_appointment_bosses_appointment_exception_order_unique')
+      .on(t.appointmentId, t.exceptionId, t.sortOrder)
+      .nullsNotDistinct(),
+  ],
+)
+
+/**
+ * 주간 보스 수익 계산기에서 저장한 기록. 여러 메이플 ID 의 캐릭터를 담을 수 있어 넥슨 계정 줄에 붙인다. 열 때마다 지금 가격으로
+ * 다시 세서 금액 칸이 없다. 줄 id 는 기기의 기록 id 다.
+ */
+export const bossProfitCalculatorRecords = pgTable(
+  'boss_profit_calculator_records',
+  {
+    id: uuid('id').primaryKey(),
+    nexonAccountId: uuid('nexon_account_id')
+      .notNull()
+      .references(() => nexonAccounts.id, { onDelete: 'cascade' }),
+    /** 저장한 시각. 기록의 제목이다. */
+    savedAt: timestamptz('saved_at').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [index('boss_profit_calculator_records_nexon_account_id_idx').on(t.nexonAccountId)],
+)
+
+/** 계산기 기록 안의 캐릭터 한 명. 기록 목록이 첫 캐릭터의 이름을 보여 차례 칸을 둔다. */
+export const bossProfitCalculatorRecordCharacters = pgTable(
+  'boss_profit_calculator_record_characters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recordId: uuid('record_id')
+      .notNull()
+      .references(() => bossProfitCalculatorRecords.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull(),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    unique('boss_profit_calculator_record_characters_record_order_unique').on(
+      t.recordId,
+      t.sortOrder,
+    ),
+  ],
+)
+
+/**
+ * 계산기 기록의 캐릭터가 계산에 넣은 보스 한 줄. 보스는 늘 보스 표의 차례로 놓여 차례 칸이 없다. 계산기 화면은 제외를 받지 않는다.
+ */
+export const bossProfitCalculatorRecordBosses = pgTable(
+  'boss_profit_calculator_record_bosses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** `characters` 의 줄이 아니라 계산기 기록 안의 캐릭터 줄이다. */
+    recordCharacterId: uuid('record_character_id')
+      .notNull()
+      .references(() => bossProfitCalculatorRecordCharacters.id, { onDelete: 'cascade' }),
+    bossDifficultyId: uuid('boss_difficulty_id')
+      .notNull()
+      .references(() => bossDifficulties.id),
+    splitType: splitTypeEnum('split_type').notNull(),
+    partySize: integer('party_size').notNull(),
+    /** 내 몫. % 에 1000 을 곱한 정수(0 ~ 100000) */
+    splitShareMillipercent: integer('split_share_millipercent'),
+    splitFeePercent: integer('split_fee_percent'),
+    splitFeeFollowsMvpGrade: boolean('split_fee_follows_mvp_grade').notNull(),
+  },
+  (t) => [
+    unique('boss_profit_calculator_record_bosses_character_difficulty_unique').on(
+      t.recordCharacterId,
+      t.bossDifficultyId,
+    ),
+    check(
+      'boss_profit_calculator_record_bosses_split_type_check',
+      sql`${t.splitType} <> 'excluded'`,
+    ),
+    check(
+      'boss_profit_calculator_record_bosses_share_check',
+      sql`${t.splitShareMillipercent} BETWEEN 0 AND 100000`,
+    ),
+  ],
+)

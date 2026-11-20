@@ -243,7 +243,7 @@ import {
   type EnhancementRulesBody,
   enhancementRulesBody,
   fromStarParam,
-  minLevelParam,
+  minRequiredLevelParam,
   mvpGradeParam,
   type MvpGradeUpdateBody,
   mvpGradeUpdateBody,
@@ -1890,7 +1890,7 @@ export class AdminController {
   @Get('enhancement-costs/rows')
   @Header('cache-control', 'no-store')
   enhancementCostRows() {
-    return this.enhancement.section()
+    return this.enhancement.adminRows()
   }
 
   /** 규칙 셋을 적는다. 셋 다 받는다. */
@@ -1903,16 +1903,19 @@ export class AdminController {
   }
 
   /** 잠재 재설정의 칸 하나를 고친다. 없는 칸은 404 다. */
-  @Put('enhancement-costs/potential/:type/:minLevel/:grade')
+  @Put('enhancement-costs/potential/:type/:minRequiredLevel/:grade')
   @HttpCode(204)
   async setPotentialResetCost(
     @Param('type', new ZodValidationPipe(potentialTypeParam)) type: PotentialResetType,
-    @Param('minLevel', new ZodValidationPipe(minLevelParam)) minLevel: number,
+    @Param('minRequiredLevel', new ZodValidationPipe(minRequiredLevelParam))
+    minRequiredLevel: number,
     @Param('grade', new ZodValidationPipe(potentialGradeParam)) grade: PotentialGrade,
     @Body(new ZodValidationPipe(costBody)) body: CostBody,
   ): Promise<void> {
-    if (!(await this.enhancement.setPotentialResetCost(type, minLevel, grade, body.costMeso)))
-      throw new NotFoundException(`모르는 구간이다: ${type}/${minLevel}/${grade}`)
+    if (
+      !(await this.enhancement.setPotentialResetCost(type, minRequiredLevel, grade, body.costMeso))
+    )
+      throw new NotFoundException(`모르는 구간이다: ${type}/${minRequiredLevel}/${grade}`)
   }
 
   /** 구간을 등급 넷과 함께 더한다. 같은 구간은 409 다. */
@@ -1922,7 +1925,7 @@ export class AdminController {
     @Body(new ZodValidationPipe(potentialBandBody)) body: PotentialBandBody,
   ): Promise<void> {
     try {
-      await this.enhancement.addPotentialResetBand(body.type, body.minLevel, body.costs)
+      await this.enhancement.addPotentialResetBand(body.type, body.minRequiredLevel, body.costs)
     } catch (error) {
       if (error instanceof BandExists)
         throw new ConflictException(`이미 있는 구간이다: ${error.message}`)
@@ -1930,20 +1933,21 @@ export class AdminController {
     }
   }
 
-  /** 구간을 등급 넷과 함께 지운다. min_level 1 은 409, 없으면 404 다. */
-  @Delete('enhancement-costs/potential/:type/:minLevel')
+  /** 구간을 등급 넷과 함께 지운다. 착용 레벨 1 구간은 409, 없으면 404 다. */
+  @Delete('enhancement-costs/potential/:type/:minRequiredLevel')
   @HttpCode(204)
   async removePotentialResetBand(
     @Param('type', new ZodValidationPipe(potentialTypeParam)) type: PotentialResetType,
-    @Param('minLevel', new ZodValidationPipe(minLevelParam)) minLevel: number,
+    @Param('minRequiredLevel', new ZodValidationPipe(minRequiredLevelParam))
+    minRequiredLevel: number,
   ): Promise<void> {
     try {
-      if (!(await this.enhancement.removePotentialResetBand(type, minLevel)))
-        throw new NotFoundException(`모르는 구간이다: ${type}/${minLevel}`)
+      if (!(await this.enhancement.removePotentialResetBand(type, minRequiredLevel)))
+        throw new NotFoundException(`모르는 구간이다: ${type}/${minRequiredLevel}`)
     } catch (error) {
       if (error instanceof BaseBand)
         throw new ConflictException(
-          'min_level 1 구간은 못 지운다. 어느 레벨이든 한 줄에 걸려야 한다',
+          '착용 레벨 1 구간은 못 지운다. 어느 레벨이든 한 줄에 걸려야 한다',
         )
       throw error
     }
@@ -2037,7 +2041,7 @@ export class AdminController {
   ): Promise<void> {
     let found: boolean
     try {
-      found = await this.enhancement.setSuperiorItemIcon(name, body.assetId)
+      found = await this.enhancement.setSuperiorItemIcon(name, body.iconAssetId)
     } catch (error) {
       if (error instanceof AssetNotFound)
         throw new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)

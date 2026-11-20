@@ -6,7 +6,7 @@ import { layout } from './layout'
  * 단계 표다. 칸을 제자리에서 고친다. 기간 줄이 없다.
  *
  * 고친 값은 앱이 다음에 수집하는 기록부터 쓰고 이미 저장한 합계는 안 바뀐다. 구간은 등급 넷을 한 번에 더하고 구간째 지우며
- * min_level 1 구간은 못 지운다. 단계는 끝 성수만 더하고 지운다. 맨 아래 슈페리얼 칸은 계열마다 스타포스 1회 비용과 그 계열의
+ * 착용 레벨 1 구간은 못 지운다. 단계는 끝 성수만 더하고 지운다. 맨 아래 슈페리얼 칸은 계열마다 스타포스 1회 비용과 그 계열의
  * 장비 이름 · 그림이다. 그림은 아이템 표에 없는 슈페리얼 장비가 펼친 강화 줄에 그림을 세우는 데 쓴다.
  */
 export const ENHANCEMENT_COSTS_HTML = layout(
@@ -40,7 +40,7 @@ export const ENHANCEMENT_COSTS_HTML = layout(
     <h3 style="margin:0;font-size:13.5px">새 구간</h3>
     <div class="row">
       <div class="field w-md"><label for="b-type">종류</label><select id="b-type"></select></div>
-      <div class="field w-sm"><label for="b-min">구간 시작 <small>레벨</small></label><input id="b-min" type="number" min="1" placeholder="275"></div>
+      <div class="field w-sm"><label for="b-min">구간 시작 <small>착용 레벨</small></label><input id="b-min" type="number" min="1" placeholder="275"></div>
       <div class="field w-sm"><label for="b-rare">레어</label><input id="b-rare" type="number" min="0"></div>
       <div class="field w-sm"><label for="b-epic">에픽</label><input id="b-epic" type="number" min="0"></div>
       <div class="field w-sm"><label for="b-unique">유니크</label><input id="b-unique" type="number" min="0"></div>
@@ -87,25 +87,25 @@ ${ASSET_PICKER}
 
   function nameOf(pairs, key) { for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === key) return pairs[i][1]; return key; }
   function bandsOf(type) {
-    var levels = []; state.data.potentialResetCosts.forEach(function (c) { if (c.type === type && levels.indexOf(c.minLevel) < 0) levels.push(c.minLevel); });
+    var levels = []; state.data.potentialResetCosts.forEach(function (c) { if (c.type === type && levels.indexOf(c.minRequiredLevel) < 0) levels.push(c.minRequiredLevel); });
     return levels.sort(function (a, b) { return b - a; });
   }
-  function costOf(type, minLevel, grade) { var c = state.data.potentialResetCosts.filter(function (x) { return x.type === type && x.minLevel === minLevel && x.grade === grade; })[0]; return c ? c.costMeso : null; }
+  function costOf(type, minRequiredLevel, grade) { var c = state.data.potentialResetCosts.filter(function (x) { return x.type === type && x.minRequiredLevel === minRequiredLevel && x.grade === grade; })[0]; return c ? c.costMeso : null; }
 
-  function bandRow(type, minLevel) {
-    var id = type + '/' + minLevel, editing = state.editingBand === id;
+  function bandRow(type, minRequiredLevel) {
+    var id = type + '/' + minRequiredLevel, editing = state.editingBand === id;
     var tr = el('tr', undefined, editing ? 'open' : '');
-    cell(tr, minLevel + ' 이상', 'mono');
+    cell(tr, minRequiredLevel + ' 이상', 'mono');
     var inputs = {};
     GRADES.forEach(function (g) {
-      var value = costOf(type, minLevel, g[0]);
+      var value = costOf(type, minRequiredLevel, g[0]);
       if (!editing) { cell(tr, value === null ? '-' : meso(value), 'num'); return; }
       var i = input('number'); i.min = '0'; i.value = value === null ? '' : value; inputs[g[0]] = i; cell(tr, i, 'num');
     });
     if (!editing) {
       var edit = button('수정', 'btn ghost sm'); edit.addEventListener('click', function () { state.editingBand = id; render(); });
-      var remove = button('지우기', 'btn danger sm'); remove.disabled = minLevel === 1; remove.title = minLevel === 1 ? '1 구간은 못 지운다' : '';
-      remove.addEventListener('click', async function () { var r = await call('DELETE', '/admin/enhancement-costs/potential/' + type + '/' + minLevel); show(r.ok ? minLevel + ' 구간을 지웠다' : fail('못 지웠다', r), !r.ok); load(); });
+      var remove = button('지우기', 'btn danger sm'); remove.disabled = minRequiredLevel === 1; remove.title = minRequiredLevel === 1 ? '1 구간은 못 지운다' : '';
+      remove.addEventListener('click', async function () { var r = await call('DELETE', '/admin/enhancement-costs/potential/' + type + '/' + minRequiredLevel); show(r.ok ? minRequiredLevel + ' 구간을 지웠다' : fail('못 지웠다', r), !r.ok); load(); });
       cell(tr, inline(edit, remove), 'act'); return tr;
     }
     var save = button('저장', 'btn sm'), close = button('닫기', 'btn ghost sm');
@@ -114,11 +114,11 @@ ${ASSET_PICKER}
       var failed = null;
       for (var i = 0; i < GRADES.length; i++) {
         var g = GRADES[i][0], next = Number(inputs[g].value);
-        if (inputs[g].value.trim() === '' || next === costOf(type, minLevel, g)) continue;
-        var r = await call('PUT', '/admin/enhancement-costs/potential/' + type + '/' + minLevel + '/' + g, { costMeso: next });
+        if (inputs[g].value.trim() === '' || next === costOf(type, minRequiredLevel, g)) continue;
+        var r = await call('PUT', '/admin/enhancement-costs/potential/' + type + '/' + minRequiredLevel + '/' + g, { costMeso: next });
         if (!r.ok) { failed = r; break; }
       }
-      show(failed ? fail('못 적었다', failed) : minLevel + ' 구간을 적었다', !!failed); if (!failed) state.editingBand = null; load();
+      show(failed ? fail('못 적었다', failed) : minRequiredLevel + ' 구간을 적었다', !!failed); if (!failed) state.editingBand = null; load();
     });
     close.addEventListener('click', function () { state.editingBand = null; render(); });
     cell(tr, inline(save, close), 'act'); return tr;
@@ -128,7 +128,7 @@ ${ASSET_PICKER}
     var box = document.getElementById('potential'); box.innerHTML = '';
     TYPES.forEach(function (t) {
       var wrap = el('div', undefined, 'sub'); wrap.appendChild(el('h3', t[1] + ' · 구간 ' + bandsOf(t[0]).length, 'editor'));
-      var tbody = el('tbody'); bandsOf(t[0]).forEach(function (minLevel) { tbody.appendChild(bandRow(t[0], minLevel)); });
+      var tbody = el('tbody'); bandsOf(t[0]).forEach(function (minRequiredLevel) { tbody.appendChild(bandRow(t[0], minRequiredLevel)); });
       if (bandsOf(t[0]).length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 6; tbody.appendChild(tr); }
       wrap.appendChild(mini(['구간', '레어', '에픽', '유니크', '레전드리', ''], tbody)); box.appendChild(wrap);
     });
@@ -202,8 +202,8 @@ ${ASSET_PICKER}
     openAssetPicker({
       categories: ['item'], uploadCategory: 'item', current: item.iconAssetId,
       onPick: async function (f) {
-        if (f === null) { show('그림을 비우는 길은 없다. 다른 그림을 고른다', true); return; }
-        var r = await call('PUT', '/admin/enhancement-costs/superior-items/' + encodeURIComponent(item.name) + '/icon', { assetId: f.id });
+        if (f === null) { show('그림은 비울 수 없다. 다른 그림을 고른다', true); return; }
+        var r = await call('PUT', '/admin/enhancement-costs/superior-items/' + encodeURIComponent(item.name) + '/icon', { iconAssetId: f.id });
         show(r.ok ? item.name + ' 의 그림을 바꿨다' : fail('못 바꿨다', r), !r.ok);
         if (r.ok) load();
       },
@@ -241,8 +241,8 @@ ${ASSET_PICKER}
   function render() {
     renderPotential(); renderSoul(); renderSuperior();
     var stars = document.getElementById('stars'); stars.innerHTML = '';
-    state.data.starforceSteps.forEach(function (s) { stars.appendChild(starRow(s)); });
-    if (state.data.starforceSteps.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 4; stars.appendChild(tr); }
+    state.data.starforceCostSteps.forEach(function (s) { stars.appendChild(starRow(s)); });
+    if (state.data.starforceCostSteps.length === 0) { var tr = el('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = 4; stars.appendChild(tr); }
   }
 
   TYPES.forEach(function (t) { var o = document.createElement('option'); o.value = t[0]; o.textContent = t[1]; document.getElementById('b-type').appendChild(o); });
@@ -251,14 +251,14 @@ ${ASSET_PICKER}
     show(r.ok ? '규칙을 적었다' : fail('못 적었다', r), !r.ok); load();
   });
   document.getElementById('b-add').addEventListener('click', async function () {
-    var body = { type: document.getElementById('b-type').value, minLevel: Number(document.getElementById('b-min').value), costs: { rare: Number(document.getElementById('b-rare').value), epic: Number(document.getElementById('b-epic').value), unique: Number(document.getElementById('b-unique').value), legendary: Number(document.getElementById('b-legendary').value) } };
+    var body = { type: document.getElementById('b-type').value, minRequiredLevel: Number(document.getElementById('b-min').value), costs: { rare: Number(document.getElementById('b-rare').value), epic: Number(document.getElementById('b-epic').value), unique: Number(document.getElementById('b-unique').value), legendary: Number(document.getElementById('b-legendary').value) } };
     var r = await call('POST', '/admin/enhancement-costs/potential', body);
-    show(r.ok ? body.minLevel + ' 구간을 더했다' : fail('더하지 못했다', r), !r.ok);
+    show(r.ok ? body.minRequiredLevel + ' 구간을 더했다' : fail('더하지 못했다', r), !r.ok);
     if (r.ok) ['b-min', 'b-rare', 'b-epic', 'b-unique', 'b-legendary'].forEach(function (id) { document.getElementById(id).value = ''; });
     load();
   });
   document.getElementById('s-add').addEventListener('click', async function () {
-    var last = state.data.starforceSteps[state.data.starforceSteps.length - 1];
+    var last = state.data.starforceCostSteps[state.data.starforceCostSteps.length - 1];
     var r = await call('POST', '/admin/enhancement-costs/starforce', { exponent: last ? last.exponent : 1, divisor: last ? last.divisor : 36 });
     show(r.ok ? r.json.fromStar + ' 성을 더했다. 지수 · 제수는 끝 줄을 복사했으니 고쳐라' : fail('더하지 못했다', r), !r.ok); load();
   });
@@ -289,7 +289,7 @@ ${ASSET_PICKER}
     state.data = r.json;
     state.assets = {}; a.json.rows.forEach(function (x) { state.assets[x.id] = x; });
     document.getElementById('stat-bands').textContent = bandsOf('potential').length + ' · ' + bandsOf('additional').length;
-    document.getElementById('stat-stars').textContent = r.json.starforceSteps.length;
+    document.getElementById('stat-stars').textContent = r.json.starforceCostSteps.length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
     document.getElementById('r-free').value = r.json.rules.cubeAppraisalFreeMaxLevel == null ? '' : r.json.rules.cubeAppraisalFreeMaxLevel;
     document.getElementById('r-coef').value = r.json.rules.cubeAppraisalCoefficient == null ? '' : r.json.rules.cubeAppraisalCoefficient;

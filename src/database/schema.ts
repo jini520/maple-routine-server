@@ -1233,14 +1233,14 @@ export const potentialResetCosts = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     type: potentialResetTypeEnum('type').notNull(),
-    /** 구간의 시작. 장비 레벨 이하인 줄 중 가장 큰 것이 그 레벨의 줄이다. 종류마다 1 이 있어야 한다. */
-    minLevel: integer('min_level').notNull(),
+    /** 장비 착용 레벨 구간의 시작. 착용 레벨 이하인 줄 중 가장 큰 것이 그 장비의 줄이다. 종류마다 1 이 있어야 한다. */
+    minRequiredLevel: integer('min_required_level').notNull(),
     grade: potentialGradeEnum('grade').notNull(),
     costMeso: bigint('cost_meso', { mode: 'number' }).notNull(),
   },
   (t) => [
-    unique('potential_reset_costs_cell_unique').on(t.type, t.minLevel, t.grade),
-    check('potential_reset_costs_min_level_positive', sql`${t.minLevel} >= 1`),
+    unique('potential_reset_costs_cell_unique').on(t.type, t.minRequiredLevel, t.grade),
+    check('potential_reset_costs_min_required_level_positive', sql`${t.minRequiredLevel} >= 1`),
     check('potential_reset_costs_cost_nonnegative', sql`${t.costMeso} >= 0`),
   ],
 )
@@ -1257,8 +1257,8 @@ export const soulPotentialResetCosts = pgTable(
 )
 
 /** 스타포스 한 단계의 식 재료. 식 자체는 앱 코드가 든다. 0 부터 빠짐없이 있어야 한다. */
-export const starforceSteps = pgTable(
-  'starforce_steps',
+export const starforceCostSteps = pgTable(
+  'starforce_cost_steps',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /** 시도 전 성수. */
@@ -1267,8 +1267,8 @@ export const starforceSteps = pgTable(
     divisor: integer('divisor').notNull(),
   },
   (t) => [
-    check('starforce_steps_from_star_nonnegative', sql`${t.fromStar} >= 0`),
-    check('starforce_steps_divisor_positive', sql`${t.divisor} >= 1`),
+    check('starforce_cost_steps_from_star_nonnegative', sql`${t.fromStar} >= 0`),
+    check('starforce_cost_steps_divisor_positive', sql`${t.divisor} >= 1`),
   ],
 )
 
@@ -1279,7 +1279,7 @@ export const superiorSeries = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull().unique(),
     name: text('name').notNull(),
-    starforceCostMeso: integer('starforce_cost_meso').notNull(),
+    starforceCostMeso: bigint('starforce_cost_meso', { mode: 'number' }).notNull(),
   },
   (t) => [check('superior_series_starforce_cost_positive', sql`${t.starforceCostMeso} >= 1`)],
 )

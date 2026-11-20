@@ -8,7 +8,7 @@ import {
   gameRules,
   potentialResetCosts,
   soulPotentialResetCosts,
-  starforceSteps,
+  starforceCostSteps,
   superiorItems,
   superiorSeries,
 } from '../../database/schema'
@@ -32,7 +32,7 @@ export type EnhancementRuleField = keyof typeof ENHANCEMENT_RULE_KEYS
 
 export interface PotentialResetCostView {
   type: PotentialResetType
-  minLevel: number
+  minRequiredLevel: number
   grade: PotentialGrade
   costMeso: number
 }
@@ -42,14 +42,14 @@ export interface SoulPotentialResetCostView {
   costMeso: number
 }
 
-export interface StarforceStepView {
+export interface StarforceCostStepView {
   fromStar: number
   exponent: number
   divisor: number
 }
 
 /** 슈페리얼 장비의 계열. 스타포스 1회 비용이 계열마다 하나다. */
-export interface SuperiorSeriesView {
+export interface SuperiorSeriesInput {
   key: string
   name: string
   starforceCostMeso: number
@@ -57,8 +57,8 @@ export interface SuperiorSeriesView {
 
 /** 슈페리얼 장비 하나. 앱이 넥슨 응답의 장비 이름과 공백을 지운 뒤 맞춘다. */
 export interface SuperiorItemView {
+  seriesId: string
   name: string
-  seriesKey: string
   /** 펼친 강화 줄의 장비 그림. 없으면 null 이고 앱은 이름부터 세운다 */
   iconAssetId: string | null
 }
@@ -69,18 +69,27 @@ export interface EnhancementCostsSection {
   rules: Record<EnhancementRuleField, number | null>
   potentialResetCosts: PotentialResetCostView[]
   soulPotentialResetCosts: SoulPotentialResetCostView[]
-  starforceSteps: StarforceStepView[]
-  superiorSeries: SuperiorSeriesView[]
+  starforceCostSteps: StarforceCostStepView[]
+  superiorSeries: (SuperiorSeriesInput & { id: string })[]
   superiorItems: SuperiorItemView[]
+}
+
+/** 관리 화면의 줄. 슈페리얼 장비는 계열을 key 로 가리킨다. 쓰기 경로가 key 로 받아서다. */
+export type EnhancementCostsAdminRows = Omit<
+  EnhancementCostsSection,
+  'superiorSeries' | 'superiorItems'
+> & {
+  superiorSeries: SuperiorSeriesInput[]
+  superiorItems: (Omit<SuperiorItemView, 'seriesId'> & { seriesKey: string })[]
 }
 
 export type EnhancementRulesInput = Record<EnhancementRuleField, number>
 export type PotentialBandCosts = Record<PotentialGrade, number>
-export type StarforceStepInput = Omit<StarforceStepView, 'fromStar'>
+export type StarforceStepInput = Omit<StarforceCostStepView, 'fromStar'>
 
 /** 그 종류에 그 구간이 이미 있다. */
 export class BandExists extends Error {}
-/** min_level 1 구간은 못 지운다. 어느 레벨이든 한 줄에 걸려야 해서다. */
+/** 착용 레벨 1 구간은 못 지운다. 어느 레벨이든 한 줄에 걸려야 해서다. */
 export class BaseBand extends Error {}
 /** 그 key 의 슈페리얼 계열이 이미 있다. */
 export class SuperiorSeriesExists extends Error {}
@@ -98,6 +107,42 @@ export class EnhancementCostsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<EnhancementCostsSection> {
+    const { series, items, ...rest } = await this.rows()
+    return {
+      ...rest,
+      superiorSeries: series.map((s) => ({
+        id: s.id,
+        key: s.key,
+        name: s.name,
+        starforceCostMeso: s.starforceCostMeso,
+      })),
+      superiorItems: items.map((i) => ({
+        seriesId: i.seriesId,
+        name: i.name,
+        iconAssetId: i.iconAssetId,
+      })),
+    }
+  }
+
+  /** 관리 화면이 부른다. section 과 같은 줄이고 슈페리얼 장비는 계열 key 를 든다. */
+  async adminRows(): Promise<EnhancementCostsAdminRows> {
+    const { series, items, ...rest } = await this.rows()
+    return {
+      ...rest,
+      superiorSeries: series.map((s) => ({
+        key: s.key,
+        name: s.name,
+        starforceCostMeso: s.starforceCostMeso,
+      })),
+      superiorItems: items.map((i) => ({
+        seriesKey: i.seriesKey,
+        name: i.name,
+        iconAssetId: i.iconAssetId,
+      })),
+    }
+  }
+
+  private async rows() {
     const [rules, potential, soul, steps, series, items, updatedAt] = await Promise.all([
       this.db
         .select()
@@ -106,14 +151,14 @@ export class EnhancementCostsRepository {
       this.db
         .select({
           type: potentialResetCosts.type,
-          minLevel: potentialResetCosts.minLevel,
+          minRequiredLevel: potentialResetCosts.minRequiredLevel,
           grade: potentialResetCosts.grade,
           costMeso: potentialResetCosts.costMeso,
         })
         .from(potentialResetCosts)
         .orderBy(
           asc(potentialResetCosts.type),
-          asc(potentialResetCosts.minLevel),
+          asc(potentialResetCosts.minRequiredLevel),
           asc(potentialResetCosts.grade),
         ),
       this.db
@@ -125,14 +170,15 @@ export class EnhancementCostsRepository {
         .orderBy(asc(soulPotentialResetCosts.grade)),
       this.db
         .select({
-          fromStar: starforceSteps.fromStar,
-          exponent: starforceSteps.exponent,
-          divisor: starforceSteps.divisor,
+          fromStar: starforceCostSteps.fromStar,
+          exponent: starforceCostSteps.exponent,
+          divisor: starforceCostSteps.divisor,
         })
-        .from(starforceSteps)
-        .orderBy(asc(starforceSteps.fromStar)),
+        .from(starforceCostSteps)
+        .orderBy(asc(starforceCostSteps.fromStar)),
       this.db
         .select({
+          id: superiorSeries.id,
           key: superiorSeries.key,
           name: superiorSeries.name,
           starforceCostMeso: superiorSeries.starforceCostMeso,
@@ -141,8 +187,9 @@ export class EnhancementCostsRepository {
         .orderBy(asc(superiorSeries.key)),
       this.db
         .select({
-          name: superiorItems.name,
+          seriesId: superiorItems.seriesId,
           seriesKey: superiorSeries.key,
+          name: superiorItems.name,
           iconAssetId: superiorItems.iconAssetId,
         })
         .from(superiorItems)
@@ -161,9 +208,9 @@ export class EnhancementCostsRepository {
       },
       potentialResetCosts: potential,
       soulPotentialResetCosts: soul,
-      starforceSteps: steps,
-      superiorSeries: series,
-      superiorItems: items,
+      starforceCostSteps: steps,
+      series,
+      items,
     }
   }
 
@@ -187,7 +234,7 @@ export class EnhancementCostsRepository {
   /** 칸 하나를 고친다. 없는 칸은 false 다. */
   async setPotentialResetCost(
     type: PotentialResetType,
-    minLevel: number,
+    minRequiredLevel: number,
     grade: PotentialGrade,
     costMeso: number,
   ): Promise<boolean> {
@@ -198,7 +245,7 @@ export class EnhancementCostsRepository {
         .where(
           and(
             eq(potentialResetCosts.type, type),
-            eq(potentialResetCosts.minLevel, minLevel),
+            eq(potentialResetCosts.minRequiredLevel, minRequiredLevel),
             eq(potentialResetCosts.grade, grade),
           ),
         )
@@ -212,31 +259,42 @@ export class EnhancementCostsRepository {
   /** 구간을 등급 넷과 함께 더한다. 같은 구간은 BandExists 다. */
   async addPotentialResetBand(
     type: PotentialResetType,
-    minLevel: number,
+    minRequiredLevel: number,
     costs: PotentialBandCosts,
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       try {
-        await tx
-          .insert(potentialResetCosts)
-          .values(
-            POTENTIAL_GRADES.map((grade) => ({ type, minLevel, grade, costMeso: costs[grade] })),
-          )
+        await tx.insert(potentialResetCosts).values(
+          POTENTIAL_GRADES.map((grade) => ({
+            type,
+            minRequiredLevel,
+            grade,
+            costMeso: costs[grade],
+          })),
+        )
       } catch (error) {
-        if (isUniqueViolation(error)) throw new BandExists(`${type}/${minLevel}`)
+        if (isUniqueViolation(error)) throw new BandExists(`${type}/${minRequiredLevel}`)
         throw error
       }
       await touchSection(tx, 'enhancementCosts')
     })
   }
 
-  /** 구간을 등급 넷과 함께 지운다. min_level 1 은 BaseBand 다. 없으면 false 다. */
-  async removePotentialResetBand(type: PotentialResetType, minLevel: number): Promise<boolean> {
-    if (minLevel === 1) throw new BaseBand(type)
+  /** 구간을 등급 넷과 함께 지운다. 착용 레벨 1 구간은 BaseBand 다. 없으면 false 다. */
+  async removePotentialResetBand(
+    type: PotentialResetType,
+    minRequiredLevel: number,
+  ): Promise<boolean> {
+    if (minRequiredLevel === 1) throw new BaseBand(type)
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .delete(potentialResetCosts)
-        .where(and(eq(potentialResetCosts.type, type), eq(potentialResetCosts.minLevel, minLevel)))
+        .where(
+          and(
+            eq(potentialResetCosts.type, type),
+            eq(potentialResetCosts.minRequiredLevel, minRequiredLevel),
+          ),
+        )
         .returning({ id: potentialResetCosts.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'enhancementCosts')
@@ -259,10 +317,10 @@ export class EnhancementCostsRepository {
   async setStarforceStep(fromStar: number, input: StarforceStepInput): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
-        .update(starforceSteps)
+        .update(starforceCostSteps)
         .set({ exponent: input.exponent, divisor: input.divisor })
-        .where(eq(starforceSteps.fromStar, fromStar))
-        .returning({ id: starforceSteps.id })
+        .where(eq(starforceCostSteps.fromStar, fromStar))
+        .returning({ id: starforceCostSteps.id })
       if (rows.length === 0) return false
       await touchSection(tx, 'enhancementCosts')
       return true
@@ -273,12 +331,12 @@ export class EnhancementCostsRepository {
   async addStarforceStep(input: StarforceStepInput): Promise<{ fromStar: number }> {
     return this.db.transaction(async (tx) => {
       const [last] = await tx
-        .select({ fromStar: starforceSteps.fromStar })
-        .from(starforceSteps)
-        .orderBy(desc(starforceSteps.fromStar))
+        .select({ fromStar: starforceCostSteps.fromStar })
+        .from(starforceCostSteps)
+        .orderBy(desc(starforceCostSteps.fromStar))
         .limit(1)
       const fromStar = (last?.fromStar ?? -1) + 1
-      await tx.insert(starforceSteps).values({ fromStar, ...input })
+      await tx.insert(starforceCostSteps).values({ fromStar, ...input })
       await touchSection(tx, 'enhancementCosts')
       return { fromStar }
     })
@@ -288,19 +346,19 @@ export class EnhancementCostsRepository {
   async removeLastStarforceStep(): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [last] = await tx
-        .select({ id: starforceSteps.id })
-        .from(starforceSteps)
-        .orderBy(desc(starforceSteps.fromStar))
+        .select({ id: starforceCostSteps.id })
+        .from(starforceCostSteps)
+        .orderBy(desc(starforceCostSteps.fromStar))
         .limit(1)
       if (last === undefined) return false
-      await tx.delete(starforceSteps).where(eq(starforceSteps.id, last.id))
+      await tx.delete(starforceCostSteps).where(eq(starforceCostSteps.id, last.id))
       await touchSection(tx, 'enhancementCosts')
       return true
     })
   }
 
   /** 슈페리얼 계열을 더한다. 같은 key 는 SuperiorSeriesExists 다. */
-  async addSuperiorSeries(input: SuperiorSeriesView): Promise<void> {
+  async addSuperiorSeries(input: SuperiorSeriesInput): Promise<void> {
     await this.db.transaction(async (tx) => {
       try {
         await tx.insert(superiorSeries).values(input)
@@ -313,7 +371,7 @@ export class EnhancementCostsRepository {
   }
 
   /** 계열의 이름과 금액을 고친다. 없는 key 는 false 다. */
-  async setSuperiorSeries(key: string, input: Omit<SuperiorSeriesView, 'key'>): Promise<boolean> {
+  async setSuperiorSeries(key: string, input: Omit<SuperiorSeriesInput, 'key'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .update(superiorSeries)
@@ -348,13 +406,16 @@ export class EnhancementCostsRepository {
   }
 
   /** 슈페리얼 장비의 그림을 바꾼다. 없는 장비는 false, 그림 표에 없는 그림은 AssetNotFound 다. */
-  async setSuperiorItemIcon(name: string, assetId: string): Promise<boolean> {
+  async setSuperiorItemIcon(name: string, iconAssetId: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      const [asset] = await tx.select({ id: assets.id }).from(assets).where(eq(assets.id, assetId))
-      if (asset === undefined) throw new AssetNotFound(assetId)
+      const [asset] = await tx
+        .select({ id: assets.id })
+        .from(assets)
+        .where(eq(assets.id, iconAssetId))
+      if (asset === undefined) throw new AssetNotFound(iconAssetId)
       const rows = await tx
         .update(superiorItems)
-        .set({ iconAssetId: assetId })
+        .set({ iconAssetId })
         .where(eq(superiorItems.name, name))
         .returning({ id: superiorItems.id })
       if (rows.length === 0) return false

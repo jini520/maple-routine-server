@@ -30,7 +30,7 @@ describeDb('EnhancementCostsRepository', () => {
     starforceDestroyDefenceSurchargePercent: 200,
   }
 
-  it('비어 있으면 규칙이 null 이고 배열이 빈다. 규칙 셋은 한 번에 적는다', async () => {
+  it('비어 있으면 규칙이 null 이고 표 이름의 배열이 빈다. 규칙 셋은 한 번에 적는다', async () => {
     expect(await repo.section()).toEqual({
       updatedAt: null,
       rules: {
@@ -40,7 +40,7 @@ describeDb('EnhancementCostsRepository', () => {
       },
       potentialResetCosts: [],
       soulPotentialResetCosts: [],
-      starforceSteps: [],
+      starforceCostSteps: [],
       superiorSeries: [],
       superiorItems: [],
     })
@@ -64,7 +64,7 @@ describeDb('EnhancementCostsRepository', () => {
 
     const rows = (await repo.section()).potentialResetCosts
     // 종류 · 구간 · 등급 차례다. ENUM 의 선언 차례가 곧 정렬이다.
-    expect(rows.map((r) => `${r.type}/${r.minLevel}/${r.grade}`)).toEqual([
+    expect(rows.map((r) => `${r.type}/${r.minRequiredLevel}/${r.grade}`)).toEqual([
       'potential/1/rare',
       'potential/1/epic',
       'potential/1/unique',
@@ -79,7 +79,7 @@ describeDb('EnhancementCostsRepository', () => {
       'additional/1/legendary',
     ])
     expect(
-      rows.find((r) => r.type === 'potential' && r.minLevel === 250 && r.grade === 'epic')
+      rows.find((r) => r.type === 'potential' && r.minRequiredLevel === 250 && r.grade === 'epic')
         ?.costMeso,
     ).toBe(20_000_000)
     expect(await repo.removePotentialResetBand('potential', 250)).toBe(true)
@@ -104,13 +104,13 @@ describeDb('EnhancementCostsRepository', () => {
     expect(await repo.setStarforceStep(1, { exponent: 1, divisor: 40 })).toBe(true)
     expect(await repo.setStarforceStep(9, { exponent: 1, divisor: 40 })).toBe(false)
     expect(await repo.removeLastStarforceStep()).toBe(true)
-    expect((await repo.section()).starforceSteps).toEqual([
+    expect((await repo.section()).starforceCostSteps).toEqual([
       { fromStar: 0, exponent: 1, divisor: 36 },
       { fromStar: 1, exponent: 1, divisor: 40 },
     ])
   })
 
-  it('슈페리얼 계열과 장비를 칸에 싣는다. 같은 계열 key 는 SuperiorSeriesExists, 공백만 다른 장비 이름은 SuperiorItemNameTaken, 없는 계열은 NoSuperiorSeries 다', async () => {
+  it('슈페리얼 계열과 장비를 칸에 싣고 장비는 계열을 줄 id 로, 관리 줄은 key 로 잇는다. 같은 계열 key 는 SuperiorSeriesExists, 공백만 다른 장비 이름은 SuperiorItemNameTaken, 없는 계열은 NoSuperiorSeries 다', async () => {
     await repo.addSuperiorSeries({ key: 'tyrant', name: '타일런트', starforceCostMeso: 55_382_200 })
     await repo.addSuperiorSeries({ key: 'nova', name: '노바', starforceCostMeso: 18_507_900 })
     await expect(
@@ -138,19 +138,30 @@ describeDb('EnhancementCostsRepository', () => {
     ).toBe(false)
 
     const section = await repo.section()
+    const nova = section.superiorSeries[0]?.id
+    const tyrant = section.superiorSeries[1]?.id
     expect(section.superiorSeries).toEqual([
+      { id: nova, key: 'nova', name: '노바', starforceCostMeso: 18_507_900 },
+      { id: tyrant, key: 'tyrant', name: '타일런트', starforceCostMeso: 55_000_000 },
+    ])
+    expect(section.superiorItems).toEqual([
+      { seriesId: nova, name: '노바 히아데스 클록', iconAssetId: null },
+      { seriesId: tyrant, name: '타일런트 리카온 벨트', iconAssetId: null },
+    ])
+    const admin = await repo.adminRows()
+    expect(admin.superiorSeries).toEqual([
       { key: 'nova', name: '노바', starforceCostMeso: 18_507_900 },
       { key: 'tyrant', name: '타일런트', starforceCostMeso: 55_000_000 },
     ])
-    expect(section.superiorItems).toEqual([
-      { name: '노바 히아데스 클록', seriesKey: 'nova', iconAssetId: null },
-      { name: '타일런트 리카온 벨트', seriesKey: 'tyrant', iconAssetId: null },
+    expect(admin.superiorItems).toEqual([
+      { seriesKey: 'nova', name: '노바 히아데스 클록', iconAssetId: null },
+      { seriesKey: 'tyrant', name: '타일런트 리카온 벨트', iconAssetId: null },
     ])
 
     expect(await repo.removeSuperiorItem('타일런트 리카온 벨트')).toBe(true)
     expect(await repo.removeSuperiorItem('타일런트 리카온 벨트')).toBe(false)
     expect((await repo.section()).superiorItems).toEqual([
-      { name: '노바 히아데스 클록', seriesKey: 'nova', iconAssetId: null },
+      { seriesId: nova, name: '노바 히아데스 클록', iconAssetId: null },
     ])
   })
 
@@ -166,8 +177,8 @@ describeDb('EnhancementCostsRepository', () => {
     await expect(
       repo.setSuperiorItemIcon('타일런트 리카온 벨트', '00000000-0000-4000-8000-000000000000'),
     ).rejects.toBeInstanceOf(AssetNotFound)
-    expect((await repo.section()).superiorItems).toEqual([
-      { name: '타일런트 리카온 벨트', seriesKey: 'tyrant', iconAssetId: icon },
+    expect((await repo.section()).superiorItems).toMatchObject([
+      { name: '타일런트 리카온 벨트', iconAssetId: icon },
     ])
   })
 

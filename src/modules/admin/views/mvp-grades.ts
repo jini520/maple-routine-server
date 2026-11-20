@@ -59,7 +59,7 @@ export const MVP_GRADES_HTML = layout(
   async function load() {
     var r = await call('GET', '/admin/mvp-grades/rows');
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
-    state.grades = r.json.grades;
+    state.grades = r.json.mvpGrades;
     document.getElementById('stat-grades').textContent = state.grades.length;
     document.getElementById('stat-updated').textContent = r.json.updatedAt ? when(r.json.updatedAt) : '없음';
     render();

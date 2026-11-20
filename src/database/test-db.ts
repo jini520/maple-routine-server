@@ -31,7 +31,7 @@ const TABLES = [
   'hunting_regions',
   'potential_reset_costs',
   'soul_potential_reset_costs',
-  'starforce_steps',
+  'starforce_cost_steps',
   'superior_items',
   'superior_series',
   'mvp_grades',

@@ -60,6 +60,12 @@ export interface MoveResult {
   huntingRegions: number
   huntingGrounds: number
   huntingGroundLevels: number
+  potentialResetCosts: number
+  soulPotentialResetCosts: number
+  starforceCostSteps: number
+  superiorSeries: number
+  superiorItems: number
+  mvpGrades: number
 }
 
 /** 옛 DB 와 새 DB 를 바꿔 넣었다. 그대로 돌리면 옛 DB 를 비운다. */
@@ -134,6 +140,12 @@ const MOVED_TABLES = [
   schema.huntingRegions,
   schema.huntingGrounds,
   schema.huntingGroundLevels,
+  schema.potentialResetCosts,
+  schema.soulPotentialResetCosts,
+  schema.starforceCostSteps,
+  schema.superiorSeries,
+  schema.superiorItems,
+  schema.mvpGrades,
 ]
 
 /**
@@ -307,6 +319,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const cashbook = await cashbookReferenceRows(oldDb)
   const symbol = await symbolRows(oldDb)
   const hunting = await huntingGroundRows(oldDb)
+  const enhancement = await enhancementCostRows(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -347,6 +360,12 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.huntingRegions, hunting.huntingRegions)
     await insertAll(tx, schema.huntingGrounds, hunting.huntingGrounds)
     await insertAll(tx, schema.huntingGroundLevels, hunting.huntingGroundLevels)
+    await insertAll(tx, schema.potentialResetCosts, enhancement.potentialResetCosts)
+    await insertAll(tx, schema.soulPotentialResetCosts, enhancement.soulPotentialResetCosts)
+    await insertAll(tx, schema.starforceCostSteps, enhancement.starforceCostSteps)
+    await insertAll(tx, schema.superiorSeries, enhancement.superiorSeries)
+    await insertAll(tx, schema.superiorItems, enhancement.superiorItems)
+    await insertAll(tx, schema.mvpGrades, enhancement.mvpGrades)
   })
   return {
     assets: assets.length,
@@ -386,6 +405,41 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     huntingRegions: hunting.huntingRegions.length,
     huntingGrounds: hunting.huntingGrounds.length,
     huntingGroundLevels: hunting.huntingGroundLevels.length,
+    potentialResetCosts: enhancement.potentialResetCosts.length,
+    soulPotentialResetCosts: enhancement.soulPotentialResetCosts.length,
+    starforceCostSteps: enhancement.starforceCostSteps.length,
+    superiorSeries: enhancement.superiorSeries.length,
+    superiorItems: enhancement.superiorItems.length,
+    mvpGrades: enhancement.mvpGrades.length,
+  }
+}
+
+/**
+ * 강화 비용 · MVP 등급 여섯 표의 새 줄. 줄 id 는 그대로다. 잠재 비용의 구간 시작과 스타포스 단계 표의 이름만 바뀐다. 옛
+ * 마이그레이션 0043 이 새 DB 에도 슈페리얼 계열 · 장비 줄을 넣지만, 옮길 표를 먼저 비워 옛 DB 의 줄만 남는다.
+ */
+async function enhancementCostRows(oldDb: OldDb) {
+  const [potential, soul, steps, series, items, grades] = await Promise.all([
+    oldDb.select().from(oldSchema.potentialResetCosts),
+    oldDb.select().from(oldSchema.soulPotentialResetCosts),
+    oldDb.select().from(oldSchema.starforceSteps),
+    oldDb.select().from(oldSchema.superiorSeries),
+    oldDb.select().from(oldSchema.superiorItems),
+    oldDb.select().from(oldSchema.mvpGrades),
+  ])
+  return {
+    potentialResetCosts: potential.map((p) => ({
+      id: p.id,
+      type: p.type,
+      minRequiredLevel: p.minLevel,
+      grade: p.grade,
+      costMeso: p.costMeso,
+    })),
+    soulPotentialResetCosts: soul,
+    starforceCostSteps: steps,
+    superiorSeries: series,
+    superiorItems: items,
+    mvpGrades: grades,
   }
 }
 

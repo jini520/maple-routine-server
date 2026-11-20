@@ -379,6 +379,13 @@
       "when": 1795176095465,
       "tag": "0053_hunting_ground_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795177156396,
+      "tag": "0054_enhancement_cost_bundle",
+      "breakpoints": true
     }
   ]
 }

@@ -79,6 +79,7 @@ const CONVERTED = [
   'maspi_daily_closes',
   'usage_events',
   'enhancement_anomalies',
+  'app_images',
 ]
 
 interface DesignColumn {

@@ -2,86 +2,102 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, eq, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { serverCashbookEntries, serverCashbookEntryItems } from '../../database/schema'
-import type { IdentityContext, IdentitySource } from '../identity/identity.guard'
-import { assertOwnsMapleId, ownedMapleIds } from '../users/maple-id-ownership'
+import {
+  cashbookEntries,
+  cashbookEntryExchangeInputs,
+  cashbookEntryFragmentUses,
+  cashbookEntryHuntInputs,
+  cashbookEntryItems,
+  cashbookEntryTransferInputs,
+} from '../../database/schema'
+import type { IdentityContext } from '../identity/identity.guard'
+import { characterIdFor, mapleIdRowFor, ownedMapleIdRows } from '../users/characters'
+import { MapleIdNotOwned } from '../users/maple-id-ownership'
 import type { CashbookEntryBody } from './cashbook-entries.dto'
 
 /** 전송값 그대로에 신원을 더한 것. */
-export interface CashbookEntryInput extends Omit<CashbookEntryBody, 'ocid'> {
+export interface CashbookEntryInput extends CashbookEntryBody {
   /** 보낸 신원의 넥슨 계정. 메이플 ID 가 이 계정의 것이어야 적는다. */
   nexonAccountId: string
-  identifiedBy: IdentitySource
-  ocid: string | null
 }
 
 /**
- * 가계부 기록의 사본. 같은 메이플 ID 의 같은 기록 id 는 한 줄이고, 품목은 다시 받을 때마다 통째로 갈아 끼운다. 사용자가 직접 적는
- * 기록이라 내용으로 가리지 않는다.
+ * 가계부 기록의 사본. 줄 id 는 기기의 기록 id 이고, 딸린 줄(품목 · 입력 · 조각 사용)은 다시 받을 때마다 통째로 갈아 끼운다.
+ * 사용자가 직접 적는 기록이라 내용으로 가리지 않는다.
  */
 @Injectable()
 export class CashbookEntriesRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** 메이플 ID 와 기록 id 로 덮어 적는다. 지운 줄도 다시 적으면 되살아난다. 남의 메이플 ID 는 MapleIdNotOwned 다. */
+  /**
+   * 줄 id 로 덮어 적는다. 지운 줄도 다시 적으면 되살아난다. 남의 메이플 ID 나 캐릭터, 남의 줄 id 는 MapleIdNotOwned 다. 남의
+   * 줄을 덮지 못한 채 딸린 줄만 갈아 끼우면 그 사람의 품목이 바뀌기 때문이다.
+   */
   async upsert(input: CashbookEntryInput): Promise<void> {
-    const { nexonAccountId, entryRecordId, mapleId, items, ...values } = input
+    const { nexonAccountId, mapleId: mapleIdHash, ocid, id, items, ...rest } = input
+    const { huntInput, transferInput, exchangeInput, fragmentUses, ...values } = rest
     await this.db.transaction(async (tx) => {
-      await assertOwnsMapleId(tx, nexonAccountId, mapleId)
-      const [entry] = await tx
-        .insert(serverCashbookEntries)
-        .values({ mapleId, entryRecordId, ...values })
+      const mapleId = await mapleIdRowFor(tx, nexonAccountId, mapleIdHash)
+      const characterId =
+        ocid === null ? null : await characterIdFor(tx, nexonAccountId, mapleIdHash, ocid)
+      const row = { ...values, mapleId, characterId }
+      const [written] = await tx
+        .insert(cashbookEntries)
+        .values({ id, ...row })
         .onConflictDoUpdate({
-          target: [serverCashbookEntries.mapleId, serverCashbookEntries.entryRecordId],
-          set: { ...values, deletedAt: null, updatedAt: sql`now()` },
+          target: cashbookEntries.id,
+          set: { ...row, deletedAt: null, updatedAt: sql`now()` },
+          setWhere: sql`${cashbookEntries.mapleId} IN ${ownedMapleIdRows(nexonAccountId)}`,
         })
-        .returning({ id: serverCashbookEntries.id })
-      if (entry === undefined) throw new Error('가계부 기록을 적지 못했다')
-      await tx
-        .delete(serverCashbookEntryItems)
-        .where(eq(serverCashbookEntryItems.entryId, entry.id))
-      await tx.insert(serverCashbookEntryItems).values(
-        items.map((item, sortOrder) => ({
-          entryId: entry.id,
-          sortOrder,
-          itemKey: item.itemKey ?? null,
-          itemName: item.itemName ?? null,
-          formKey: item.formKey ?? null,
-          itemKindKey: item.itemKindKey ?? null,
-          quantity: item.quantity ?? null,
-          fromLevel: item.fromLevel ?? null,
-          toLevel: item.toLevel ?? null,
-          amountMeso: item.amountMeso ?? null,
-          tariffMeso: item.tariffMeso ?? null,
-          saleFeePercent: item.saleFeePercent ?? null,
-          saleFeeMeso: item.saleFeeMeso ?? null,
-          amountPoint: item.amountPoint ?? null,
-          pointPer100mMeso: item.pointPer100mMeso ?? null,
-          amountCash: item.amountCash ?? null,
-          fragmentCount: item.fragmentCount ?? null,
-          untradableFragmentCount: item.untradableFragmentCount ?? null,
-          fragmentPriceMeso: item.fragmentPriceMeso ?? null,
-          hexaActivation: item.hexaActivation ?? null,
-        })),
-      )
+        .returning({ id: cashbookEntries.id })
+      if (written === undefined) throw new MapleIdNotOwned(mapleIdHash)
+
+      for (const table of [
+        cashbookEntryItems,
+        cashbookEntryHuntInputs,
+        cashbookEntryTransferInputs,
+        cashbookEntryExchangeInputs,
+        cashbookEntryFragmentUses,
+      ])
+        await tx.delete(table).where(eq(table.entryId, id))
+      await tx.insert(cashbookEntryItems).values(items.map((item) => ({ ...item, entryId: id })))
+      if (huntInput !== null)
+        await tx.insert(cashbookEntryHuntInputs).values({ ...huntInput, entryId: id })
+      if (exchangeInput !== null)
+        await tx.insert(cashbookEntryExchangeInputs).values({ ...exchangeInput, entryId: id })
+      if (transferInput !== null) {
+        const { receiverOcid, ...transfer } = transferInput
+        const receiverCharacterId =
+          receiverOcid === null
+            ? null
+            : await characterIdFor(tx, nexonAccountId, mapleIdHash, receiverOcid)
+        await tx
+          .insert(cashbookEntryTransferInputs)
+          .values({ ...transfer, receiverCharacterId, entryId: id })
+      }
+      for (const use of fragmentUses) {
+        const { ocid: from, ...fragment } = use
+        const fromCharacterId =
+          from === null ? null : await characterIdFor(tx, nexonAccountId, mapleIdHash, from)
+        await tx
+          .insert(cashbookEntryFragmentUses)
+          .values({ ...fragment, characterId: fromCharacterId, entryId: id })
+      }
     })
   }
 
-  /** 내 계정의 메이플 ID 줄에 지운 시각을 적는다. 품목은 남긴다. 없는 줄이면 아무 일도 없다. */
-  async markDeleted(
-    identity: Pick<IdentityContext, 'nexonAccountId'>,
-    entryRecordId: string,
-  ): Promise<void> {
+  /** 내 계정의 메이플 ID 줄에 지운 시각을 적는다. 딸린 줄은 남긴다. 없는 줄이면 아무 일도 없다. */
+  async markDeleted(identity: Pick<IdentityContext, 'nexonAccountId'>, id: string): Promise<void> {
     await this.db
-      .update(serverCashbookEntries)
+      .update(cashbookEntries)
       .set({
-        deletedAt: sql`COALESCE(${serverCashbookEntries.deletedAt}, now())`,
+        deletedAt: sql`COALESCE(${cashbookEntries.deletedAt}, now())`,
         updatedAt: sql`now()`,
       })
       .where(
         and(
-          eq(serverCashbookEntries.entryRecordId, entryRecordId),
-          sql`${serverCashbookEntries.mapleId} IN ${ownedMapleIds(identity.nexonAccountId)}`,
+          eq(cashbookEntries.id, id),
+          sql`${cashbookEntries.mapleId} IN ${ownedMapleIdRows(identity.nexonAccountId)}`,
         ),
       )
   }

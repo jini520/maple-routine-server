@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -16,6 +17,7 @@ import {
   eachInBatch,
   recordIdOf,
 } from '../../common/batch'
+import { isCheckViolation, isForeignKeyViolation } from '../../common/pg-errors'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { uuidLike } from '../../common/uuid-like'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from '../identity/identity.guard'
@@ -27,6 +29,13 @@ import { CashbookEntriesRepository } from './cashbook-entries.repository'
  * 가계부 기록. 신원이 있어야 하고, key 는 글자 그대로 받아 표에 없는 key 도 거절하지 않는다. DELETE 는 기기에서 기록이
  * 사라진 때다.
  */
+function reasonOf(error: unknown): string | null {
+  if (error instanceof MapleIdNotOwned) return `이 계정의 메이플 ID 가 아니다: ${error.message}`
+  if (isCheckViolation(error)) return '함께 있을 수 없는 칸 값이다'
+  if (isForeignKeyViolation(error)) return '표에 없는 줄 id 다'
+  return null
+}
+
 @Controller()
 @UseGuards(IdentityGuard)
 export class CashbookEntriesController {
@@ -44,6 +53,8 @@ export class CashbookEntriesController {
     } catch (error) {
       if (error instanceof MapleIdNotOwned)
         throw new ConflictException({ code: 'maple_id_not_registered' })
+      const reason = reasonOf(error)
+      if (reason !== null) throw new BadRequestException(reason)
       throw error
     }
     return { ok: true }
@@ -59,30 +70,24 @@ export class CashbookEntriesController {
     const results = await eachInBatch(
       body.items,
       cashbookEntryBody,
-      (raw) => recordIdOf(raw, 'entryRecordId'),
+      (raw) => recordIdOf(raw, 'id'),
       (item) => this.save(identity, item),
-      (error) =>
-        error instanceof MapleIdNotOwned ? `이 계정의 메이플 ID 가 아니다: ${error.message}` : null,
+      reasonOf,
     )
     return { results }
   }
 
   /** 기기에서 그 기록이 사라졌다. 줄은 남고 지운 시각이 적힌다. 없어도 204 다. */
-  @Delete('v1/cashbook-entries/:entryRecordId')
+  @Delete('v1/cashbook-entries/:id')
   @HttpCode(204)
   async remove(
     @CurrentIdentity() identity: IdentityContext,
-    @Param('entryRecordId', new ZodValidationPipe(uuidLike)) entryRecordId: string,
+    @Param('id', new ZodValidationPipe(uuidLike)) id: string,
   ): Promise<void> {
-    await this.entries.markDeleted(identity, entryRecordId)
+    await this.entries.markDeleted(identity, id)
   }
 
   private save(identity: IdentityContext, body: CashbookEntryBody): Promise<void> {
-    return this.entries.upsert({
-      ...body,
-      nexonAccountId: identity.nexonAccountId,
-      identifiedBy: identity.source,
-      ocid: body.ocid ?? null,
-    })
+    return this.entries.upsert({ ...body, nexonAccountId: identity.nexonAccountId })
   }
 }

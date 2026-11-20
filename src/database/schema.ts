@@ -55,8 +55,6 @@ const syncColumns = () => ({
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
 export const platformEnum = pgEnum('platform', ['ios', 'android'])
 export const noticeTypeEnum = pgEnum('notice_type', ['app', 'game', 'event', 'update', 'cashshop'])
-/** 쓰기 경로가 사람을 어느 헤더로 찾았나. key 는 증명이 없어 집계 때 가중을 가른다. */
-export const identitySourceEnum = pgEnum('identity_source', ['login', 'key'])
 /** 앱 BOSS_DIFFICULTIES 그대로. 넥슨 API 값이고 선언 순서가 정렬 순서다. */
 export const bossDifficultyEnum = pgEnum('boss_difficulty', [
   'easy',
@@ -1344,75 +1342,6 @@ export const huntingGroundLevels = pgTable(
   ],
 )
 
-/**
- * 가계부 기록 한 건의 최종값. 기기의 cashbook_entries 사본이다. 금액은 품목 줄에 있다.
- *
- * key 는 글자 그대로다. 분류마다 다른 표를 가리켜 외래키로 바꾸면 표에 없는 key 의 기록을 거절하게 된다.
- */
-export const serverCashbookEntries = pgTable(
-  'cashbook_entries',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    identifiedBy: identitySourceEnum('identified_by').notNull(),
-    /**
-     * 기기의 기록 id. 메이플 ID 안에서만 유일하다. 사용자가 직접 적는 기록이라 내용으로 가리지 않는다. 같은 날 같은 물건을 두 번
-     * 산 기록은 내용이 같아도 둘 다 맞는 기록이다.
-     */
-    entryRecordId: uuid('entry_record_id').notNull(),
-    /** 기록의 메이플 ID. 캐릭터 기록은 그 캐릭터의 메이플 ID 다. 계정을 삭제하면 줄도 지워진다. */
-    mapleId: text('maple_id')
-      .notNull()
-      .references(() => mapleIds.hash, { onDelete: 'cascade', onUpdate: 'cascade' }),
-    /** NULL 은 메이플 ID 기록이다. */
-    ocid: text('ocid'),
-    entryType: cashbookEntryTypeEnum('entry_type').notNull(),
-    categoryKey: text('category_key').notNull(),
-    /** 돈이 오간 날(KST YYYY-MM-DD). */
-    entryDate: text('entry_date').notNull(),
-    deletedAt: timestamptz('deleted_at'),
-    createdAt: timestamptz('created_at').notNull().defaultNow(),
-    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
-  },
-  (t) => [
-    unique('cashbook_entries_maple_record_unique').on(t.mapleId, t.entryRecordId),
-    index('cashbook_entries_category_date_idx').on(t.entryType, t.categoryKey, t.entryDate),
-  ],
-)
-
-/** 가계부 기록의 품목. 기록을 다시 받으면 통째로 갈아 끼운다. */
-export const serverCashbookEntryItems = pgTable(
-  'cashbook_entry_items',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    entryId: uuid('entry_id')
-      .notNull()
-      .references(() => serverCashbookEntries.id, { onDelete: 'cascade' }),
-    sortOrder: integer('sort_order').notNull(),
-    itemKey: text('item_key'),
-    /** 사용자가 직접 친 품목 이름. key 가 있으면 NULL 이다. */
-    itemName: text('item_name'),
-    formKey: text('form_key'),
-    itemKindKey: text('item_kind_key'),
-    quantity: integer('quantity'),
-    fromLevel: integer('from_level'),
-    toLevel: integer('to_level'),
-    amountMeso: bigint('amount_meso', { mode: 'number' }),
-    tariffMeso: bigint('tariff_meso', { mode: 'number' }),
-    saleFeePercent: integer('sale_fee_percent'),
-    saleFeeMeso: bigint('sale_fee_meso', { mode: 'number' }),
-    amountPoint: bigint('amount_point', { mode: 'number' }),
-    pointPer100mMeso: integer('point_per_100m_meso'),
-    amountCash: bigint('amount_cash', { mode: 'number' }),
-    /** 헥사 강화에 든 솔 에르다 조각. 금액은 (이 값 - 교환 불가) × 개당 가격이다. */
-    fragmentCount: integer('fragment_count'),
-    untradableFragmentCount: integer('untradable_fragment_count'),
-    fragmentPriceMeso: bigint('fragment_price_meso', { mode: 'number' }),
-    /** 헥사 스탯 기록이 활성화 비용을 포함하는가. 다시 열 때 활성화 체크를 세운다. */
-    hexaActivation: boolean('hexa_activation'),
-  },
-  (t) => [unique('cashbook_entry_items_entry_order_unique').on(t.entryId, t.sortOrder)],
-)
-
 /** 강화 분류. 앱 화면이 가르는 다섯이고, 잠재를 본 잠재와 에디셔널로 나눈다. */
 export const enhancementCategoryEnum = pgEnum('enhancement_category', [
   'cube_reset',
@@ -1700,7 +1629,11 @@ export const characters = pgTable(
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
-  (t) => [index('characters_maple_id_idx').on(t.mapleId)],
+  (t) => [
+    index('characters_maple_id_idx').on(t.mapleId),
+    // 가계부 기록이 캐릭터와 메이플 ID 를 함께 가리켜, 캐릭터 줄과 어긋난 메이플 ID 가 들어가지 못하게 한다.
+    unique('characters_id_maple_id_unique').on(t.id, t.mapleId),
+  ],
 )
 
 /** 월드 리프 한 번. 다른 기기가 이 줄을 받아 옛 ocid 의 기기 기록을 새 ocid 로 옮긴다. 옛 ocid 는 한 번만 옮겨 간다. */
@@ -2286,5 +2219,209 @@ export const bossSplitSettings = pgTable(
       'boss_split_settings_fee_check',
       sql`${t.splitFeeFollowsMvpGrade} = (${t.splitFeePercent} IS NULL)`,
     ),
+  ],
+)
+
+/** 가계부 품목이 가리키는 표. 기타 · 솔 에르다 조각 · 직접 친 품목은 대상이 없다. */
+export const cashbookItemTargetTypeEnum = pgEnum('cashbook_item_target_type', [
+  'hunting_ground',
+  'item',
+  'spend_item',
+  'symbol',
+  'hexa_core',
+  'hexa_stat',
+])
+
+/** 헥사 강화에 쓴 조각을 가져온 곳. 사냥 기록의 조각이거나 인벤토리에 넣은 기타 조각이다. */
+export const fragmentSourceEnum = pgEnum('fragment_source', ['hunt', 'inventory'])
+
+/**
+ * 가계부 기록 한 건. 손으로 적는 기록이라 내용으로 가리지 않고 줄 id(기기의 기록 id)로만 가린다. 같은 날 같은 물건을 두 번 산
+ * 기록도 맞는 기록이다. 메이플 ID 는 늘 적고, 캐릭터 기록이면 캐릭터 줄도 적는다. 두 칸을 묶어 캐릭터 표를 참조해 어긋난 값이
+ * 들어가지 못한다. 수입인지 지출인지는 분류 줄에서 읽는다. 금액은 품목 줄에 있다.
+ */
+export const cashbookEntries = pgTable(
+  'cashbook_entries',
+  {
+    id: uuid('id').primaryKey(),
+    mapleId: uuid('maple_id')
+      .notNull()
+      .references(() => mapleIds.id, { onDelete: 'cascade' }),
+    /** 비어 있으면 메이플 ID 에 붙은 기록이다. */
+    characterId: uuid('character_id'),
+    /** 캐릭터 기록을 적을 때의 월드. 메이플 ID 에 붙은 기록은 비어 있다. */
+    worldId: uuid('world_id').references(() => worlds.id),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => cashbookCategories.id),
+    /** 돈이 오간 날(KST `YYYY-MM-DD`) */
+    date: text('date').notNull(),
+    memo: text('memo'),
+    /** 기기가 그 기록을 저장한 시각. 같은 날의 차례이고 고쳐도 바뀌지 않는다. */
+    recordedAt: timestamptz('recorded_at').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [
+    foreignKey({
+      name: 'cashbook_entries_character_maple_id_fk',
+      columns: [t.characterId, t.mapleId],
+      foreignColumns: [characters.id, characters.mapleId],
+    }).onDelete('cascade'),
+    index('cashbook_entries_maple_id_idx').on(t.mapleId),
+  ],
+)
+
+/**
+ * 인벤토리에 넣은 아이템. 장비가 아니면 메이플 ID · 월드 · 아이템마다 한 줄이고, 장비는 같은 아이템도 하나씩 따로라 줄 id 로
+ * 가린다. 장비가 아닌 줄에만 거는 기준은 종류가 다른 표에 있어 마이그레이션의 트리거가 지킨다. 줄 id 는 기기의 줄 id 다.
+ */
+export const inventoryItems = pgTable(
+  'inventory_items',
+  {
+    id: uuid('id').primaryKey(),
+    mapleId: uuid('maple_id')
+      .notNull()
+      .references(() => mapleIds.id, { onDelete: 'cascade' }),
+    worldId: uuid('world_id')
+      .notNull()
+      .references(() => worlds.id),
+    /** 레벨이 있는 반지는 레벨 줄이다. */
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id),
+    cashbookItemTypeId: uuid('cashbook_item_type_id')
+      .notNull()
+      .references(() => cashbookItemTypes.id),
+    /** 넣은 개수의 합. 판 것과 쓴 것을 포함한다. */
+    addedQuantity: integer('added_quantity').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [index('inventory_items_maple_world_item_idx').on(t.mapleId, t.worldId, t.itemId)],
+)
+
+/**
+ * 가계부 기록의 품목 한 줄. 에픽 던전 추가 리워드는 종류마다 한 줄이고, 종류가 없는 기록은 품목이 하나다. 대상은 종류와 줄 id
+ * 로 가리키고, 두 칸이 한 표를 가리키지 않아 참조를 걸 수 없다. 직접 친 품목은 대상 없이 이름만 있다.
+ */
+export const cashbookEntryItems = pgTable(
+  'cashbook_entry_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entryId: uuid('entry_id')
+      .notNull()
+      .references(() => cashbookEntries.id, { onDelete: 'cascade' }),
+    targetType: cashbookItemTargetTypeEnum('target_type'),
+    targetId: uuid('target_id'),
+    /** 직접 친 품목의 이름. 대상과 함께 채우지 않는다. */
+    itemName: text('item_name'),
+    spendRewardTypeId: uuid('spend_reward_type_id').references(() => spendRewardTypes.id),
+    /** 아이템 구매 · 판매의 종류. 직접 친 품목은 종류를 이 칸에서만 안다. */
+    itemTypeId: uuid('item_type_id').references(() => cashbookItemTypes.id),
+    quantity: integer('quantity'),
+    fromLevel: integer('from_level'),
+    toLevel: integer('to_level'),
+    amountMeso: bigint('amount_meso', { mode: 'number' }),
+    tariffMeso: bigint('tariff_meso', { mode: 'number' }),
+    saleFeePercent: integer('sale_fee_percent'),
+    saleFeeMeso: bigint('sale_fee_meso', { mode: 'number' }),
+    amountMaplePoint: bigint('amount_maple_point', { mode: 'number' }),
+    /** 기록할 때의 1억 메소당 메이플포인트 시세 */
+    maplePointPer100mMeso: integer('maple_point_per_100m_meso'),
+    amountCash: bigint('amount_cash', { mode: 'number' }),
+    fragmentQuantity: integer('fragment_quantity'),
+    untradableFragmentQuantity: integer('untradable_fragment_quantity'),
+    fragmentPriceMeso: bigint('fragment_price_meso', { mode: 'number' }),
+    includesHexaActivation: boolean('includes_hexa_activation'),
+    saleFeeFollowsMvpGrade: boolean('sale_fee_follows_mvp_grade'),
+    mesoMarketFeePercent: integer('meso_market_fee_percent'),
+    usesStoredFragments: boolean('uses_stored_fragments'),
+    countsStoredFragmentsAsSpend: boolean('counts_stored_fragments_as_spend'),
+    inventoryItemId: uuid('inventory_item_id').references(() => inventoryItems.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (t) => [
+    unique('cashbook_entry_items_entry_reward_type_unique')
+      .on(t.entryId, t.spendRewardTypeId)
+      .nullsNotDistinct(),
+    check(
+      'cashbook_entry_items_target_check',
+      sql`(${t.targetType} IS NULL) = (${t.targetId} IS NULL)
+          AND (${t.itemName} IS NULL OR ${t.targetId} IS NULL)`,
+    ),
+  ],
+)
+
+/** 계산기 사냥 기록의 입력. 직접 입력 사냥은 친 메소가 있고 켠 효과 두 칸이 비어 있다. */
+export const cashbookEntryHuntInputs = pgTable('cashbook_entry_hunt_inputs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  entryId: uuid('entry_id')
+    .notNull()
+    .unique()
+    .references(() => cashbookEntries.id, { onDelete: 'cascade' }),
+  characterLevel: integer('character_level'),
+  missedMobQuantity: integer('missed_mob_quantity'),
+  /** 소형 재물 획득의 비약을 켰는지 */
+  usesWealthPotion: boolean('uses_wealth_potion'),
+  /** 유니온의 부를 켰는지 */
+  usesUnionWealth: boolean('uses_union_wealth'),
+  /** 유니온의 부 단계 1 ~ 3 */
+  unionWealthTier: integer('union_wealth_tier'),
+  fragmentQuantity: integer('fragment_quantity'),
+  fragmentPriceMeso: bigint('fragment_price_meso', { mode: 'number' }),
+  /** 그때의 캐릭터 메소 획득량(%) */
+  mesoAcquisitionPercent: integer('meso_acquisition_percent'),
+  /** 직접 입력 사냥에 친 메소. 차 있으면 직접 입력이다. */
+  typedMeso: bigint('typed_meso', { mode: 'number' }),
+})
+
+/** 메소 이전 기록의 입력. 이전 시트를 다시 열 때 쓴다. */
+export const cashbookEntryTransferInputs = pgTable('cashbook_entry_transfer_inputs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  entryId: uuid('entry_id')
+    .notNull()
+    .unique()
+    .references(() => cashbookEntries.id, { onDelete: 'cascade' }),
+  receiverCharacterId: uuid('receiver_character_id').references(() => characters.id, {
+    onDelete: 'set null',
+  }),
+  transferMeso: bigint('transfer_meso', { mode: 'number' }).notNull(),
+  feePercent: integer('fee_percent'),
+  feeFollowsMvpGrade: boolean('fee_follows_mvp_grade').notNull(),
+})
+
+/** 메소 · 메이플포인트 환전 기록의 입력. 환전 시트를 다시 열 때 쓴다. */
+export const cashbookEntryExchangeInputs = pgTable('cashbook_entry_exchange_inputs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  entryId: uuid('entry_id')
+    .notNull()
+    .unique()
+    .references(() => cashbookEntries.id, { onDelete: 'cascade' }),
+  soldMeso: bigint('sold_meso', { mode: 'number' }),
+  sellMaplePointPer100mMeso: integer('sell_maple_point_per_100m_meso'),
+  boughtMeso: bigint('bought_meso', { mode: 'number' }),
+  buyMaplePointPer100mMeso: integer('buy_maple_point_per_100m_meso'),
+  mesoMarketFeePercent: integer('meso_market_fee_percent'),
+})
+
+/**
+ * 헥사 강화에 쓴 조각을 가져온 곳 한 줄. 기타 조각은 기록의 메이플 ID · 월드에서만 가져와 캐릭터가 비어 있고, 사냥 조각은 기록의
+ * 캐릭터와 다른 캐릭터에서 가져올 수 있어 그 캐릭터를 적는다. 캐릭터가 빈 줄끼리도 한 줄이어야 해서 유일 기준이 빈 값을 같게 본다.
+ */
+export const cashbookEntryFragmentUses = pgTable(
+  'cashbook_entry_fragment_uses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    entryId: uuid('entry_id')
+      .notNull()
+      .references(() => cashbookEntries.id, { onDelete: 'cascade' }),
+    fragmentSource: fragmentSourceEnum('fragment_source').notNull(),
+    characterId: uuid('character_id').references(() => characters.id, { onDelete: 'cascade' }),
+    fragmentQuantity: integer('fragment_quantity').notNull(),
+  },
+  (t) => [
+    unique('cashbook_entry_fragment_uses_entry_source_character_unique')
+      .on(t.entryId, t.fragmentSource, t.characterId)
+      .nullsNotDistinct(),
   ],
 )

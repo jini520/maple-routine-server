@@ -13,23 +13,15 @@ const M1 = sha256Hex('m1')
 const OCID1 = sha256Hex('ocid-1')
 
 const RECORD = '0f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
+const CATEGORY = '1f1e2d3c-4b5a-4978-8a9b-0c1d2e3f4a5b'
 const body = {
-  entryRecordId: RECORD,
+  id: RECORD,
   mapleId: M1,
   ocid: OCID1,
-  entryType: 'income',
-  categoryKey: 'item_sale',
-  entryDate: '2026-10-26',
-  items: [
-    {
-      itemName: '루즈 컨트롤 머신 마크',
-      itemKindKey: 'consumable',
-      quantity: 10,
-      amountMeso: 950_000_000,
-      saleFeePercent: 5,
-      saleFeeMeso: 50_000_000,
-    },
-  ],
+  categoryId: CATEGORY,
+  date: '2026-10-26',
+  recordedAt: '2026-10-26T12:00:00+09:00',
+  items: [{ itemName: '루즈 컨트롤 머신 마크', quantity: 10, amountMeso: 950_000_000 }],
 }
 
 describe('CashbookEntriesController', () => {
@@ -71,7 +63,8 @@ describe('CashbookEntriesController', () => {
     expect(entries.upsert).not.toHaveBeenCalled()
   })
 
-  it('신원의 넥슨 계정과 메이플 ID 를 더해 그대로 적는다', async () => {
+  // 빠진 칸은 비어 있는 칸이다. 저장소는 몸을 읽은 그대로 받아 칸마다 null 을 따로 채우지 않는다.
+  it('신원의 넥슨 계정을 더하고, 빠진 칸은 비우며 저장 시각은 시각으로 읽는다', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/cashbook-entries',
@@ -83,10 +76,13 @@ describe('CashbookEntriesController', () => {
     expect(entries.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         nexonAccountId: 'a1',
-        identifiedBy: 'login',
-        mapleId: M1,
-        ocid: OCID1,
-        categoryKey: 'item_sale',
+        id: RECORD,
+        worldId: null,
+        memo: null,
+        huntInput: null,
+        fragmentUses: [],
+        recordedAt: new Date('2026-10-26T03:00:00Z'),
+        items: [expect.objectContaining({ itemName: '루즈 컨트롤 머신 마크', targetId: null })],
       }),
     )
   })

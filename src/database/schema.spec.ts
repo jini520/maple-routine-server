@@ -103,6 +103,13 @@ const CONVERTED = [
   'boss_drops',
   'boss_split_settings',
   'drop_sale_prices',
+  'cashbook_entries',
+  'cashbook_entry_items',
+  'cashbook_entry_hunt_inputs',
+  'cashbook_entry_transfer_inputs',
+  'cashbook_entry_exchange_inputs',
+  'cashbook_entry_fragment_uses',
+  'inventory_items',
 ]
 
 interface DesignColumn {

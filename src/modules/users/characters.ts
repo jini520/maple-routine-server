@@ -15,19 +15,34 @@ export async function characterIdFor(
   mapleIdHash: string,
   ocid: string,
 ): Promise<string> {
-  await assertOwnsMapleId(tx, nexonAccountId, mapleIdHash)
-  const [mapleId] = await tx
-    .select({ id: mapleIds.id })
-    .from(mapleIds)
-    .where(eq(mapleIds.hash, mapleIdHash))
-  if (mapleId === undefined) throw new MapleIdNotOwned(mapleIdHash)
-  await tx.insert(characters).values({ mapleId: mapleId.id, ocid }).onConflictDoNothing()
+  const mapleId = await mapleIdRowFor(tx, nexonAccountId, mapleIdHash)
+  await tx.insert(characters).values({ mapleId, ocid }).onConflictDoNothing()
   const [character] = await tx
     .select({ id: characters.id })
     .from(characters)
-    .where(and(eq(characters.ocid, ocid), eq(characters.mapleId, mapleId.id)))
+    .where(and(eq(characters.ocid, ocid), eq(characters.mapleId, mapleId)))
   if (character === undefined) throw new MapleIdNotOwned(mapleIdHash)
   return character.id
+}
+
+/** 기록이 가리킬 메이플 ID 줄 id. 보낸 신원이 쓸 수 있는 메이플 ID 가 아니면 MapleIdNotOwned 다. */
+export async function mapleIdRowFor(
+  tx: Tx,
+  nexonAccountId: string,
+  mapleIdHash: string,
+): Promise<string> {
+  await assertOwnsMapleId(tx, nexonAccountId, mapleIdHash)
+  const [row] = await tx
+    .select({ id: mapleIds.id })
+    .from(mapleIds)
+    .where(eq(mapleIds.hash, mapleIdHash))
+  if (row === undefined) throw new MapleIdNotOwned(mapleIdHash)
+  return row.id
+}
+
+/** 그 넥슨 계정이 쓸 수 있는 메이플 ID 줄 id 들 */
+export function ownedMapleIdRows(nexonAccountId: string): SQL {
+  return sql`(SELECT ${mapleIds.id} FROM ${mapleIds} WHERE ${mapleIds.hash} IN ${ownedMapleIds(nexonAccountId)})`
 }
 
 /** 그 넥슨 계정이 쓸 수 있는 메이플 ID 의 캐릭터 줄 id 들. 지우기 같은 쓰기가 남의 줄을 건드리지 않게 거른다. */

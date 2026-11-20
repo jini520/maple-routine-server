@@ -8,7 +8,7 @@ import { layout } from './layout'
 export const DROP_MARKET_HTML = layout(
   '/admin/drop-market',
   '드롭 시세',
-  `<div class="head"><div><h1>드롭 시세</h1><p>장비는 거래권마다, 소비 아이템은 월드마다 센 시세다. 잘못 적은 값은 IQR 울타리로 빼고 센다. 금일은 KST 0시부터, 금주는 목요일 0시부터다. 거래권은 <a href="/admin/worlds">월드</a>, 소비 여부는 <a href="/admin/drop-items">드롭 아이템</a> 화면에서 바꾼다.</p></div></div>
+  `<div class="head"><div><h1>드롭 시세</h1><p>장비는 거래권마다, 소비 아이템은 월드마다 센 시세다. 잘못 적은 값은 IQR 울타리로 빼고 센다. 금일은 KST 0시부터, 금주는 목요일 0시부터다. 거래권은 <a href="/admin/worlds">월드</a>, 소비 여부는 <a href="/admin/items">아이템</a> 화면에서 그 아이템이 든 묶음의 종류로 정한다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="toolbar">
   <div id="kinds" class="seg" role="group" aria-label="종류"></div>

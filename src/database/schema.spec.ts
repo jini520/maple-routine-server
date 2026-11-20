@@ -14,7 +14,18 @@ import * as schema from './schema'
  * 새 표로 바꾼 표. 묶음 PR 마다 더한다. 아직 바꾸지 않은 표는 설계와 이름이 같아도 옛 칸을 들고 있어 견주지 않는다.
  * 설계의 표가 모두 여기 들면 새 스키마가 다 된 것이다.
  */
-const CONVERTED = ['assets', 'bosses', 'boss_difficulties']
+const CONVERTED = [
+  'assets',
+  'bosses',
+  'boss_difficulties',
+  'item_groups',
+  'items',
+  'ring_level_items',
+  'same_item_links',
+  'trade_groups',
+  'worlds',
+  'world_open_periods',
+]
 
 interface DesignColumn {
   name: string

@@ -88,14 +88,14 @@ describeDb('DropPricesRepository', () => {
     ])
     // 가격 줄이 아이템 · 월드 표의 줄을 가리킨다. 스펙이 쓰는 key 둘과 월드 하나를 먼저 세운다.
     await db.insert(items).values([
-      { key: 'ring', name: '반지', valuable: true, isDrop: true },
-      { key: 'cape', name: '망토', valuable: false, isDrop: true },
+      { key: 'ring', name: '반지', isValuable: true, isDrop: true },
+      { key: 'cape', name: '망토', isValuable: false, isDrop: true },
     ])
     await db.insert(worlds).values({
       key: 'scania',
       name: '스카니아',
-      challengers: false,
-      event: false,
+      isChallengers: false,
+      isEvent: false,
       sortOrder: 0,
     })
   })
@@ -345,7 +345,7 @@ describeDb('DropPricesRepository', () => {
       // 반지 상자. 기기는 상자에서 나온 드롭에 상자의 아이템 key 를 단다.
       const [box] = await db
         .insert(items)
-        .values({ key: 'ring-box', name: '반지 상자', valuable: false, isDrop: true })
+        .values({ key: 'ring-box', name: '반지 상자', isValuable: false, isDrop: true })
         .returning({ id: items.id })
       ringBox = box.id
       await db.insert(dropBoxes).values({ itemId: ringBox, levelMin: 1, levelMax: 4 })
@@ -551,7 +551,7 @@ describeDb('DropPricesRepository', () => {
       })
       const [box] = await db
         .insert(items)
-        .values({ key: 'ring-box', name: '반지 상자', valuable: false, isDrop: true })
+        .values({ key: 'ring-box', name: '반지 상자', isValuable: false, isDrop: true })
         .returning({ id: items.id })
       await db.insert(dropBoxes).values({ itemId: box.id, levelMin: 1, levelMax: 4 })
       const owned = (ocid: string) => ({ bossId: created.id, owner: { mapleId: 'm-me', ocid } })

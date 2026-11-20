@@ -132,6 +132,7 @@ import {
 } from '../hunt-loot/hunt-loot.repository'
 import { FaqSheetExists, FaqsRepository, NoFaqSheet } from '../faqs/faqs.repository'
 import {
+  NoTradeGroup,
   NoWorld,
   PeriodNotAfter,
   PeriodOverlap,
@@ -874,12 +875,11 @@ export class AdminController {
   @Post('worlds')
   @HttpCode(201)
   async createWorld(@Body(new ZodValidationPipe(worldCreateBody)) body: WorldCreateBody) {
-    await this.requireAssets([['worldEmblem', body.emblem]])
     try {
-      return await this.worlds.create({ ...body, emblem: body.emblem ?? null })
+      return await this.worlds.create({ ...body, emblemAssetId: body.emblemAssetId ?? null })
     } catch (error) {
       if (error instanceof WorldExists) throw new ConflictException(`이미 있는 월드다: ${body.key}`)
-      throw error
+      throw worldRejection(error)
     }
   }
 
@@ -890,9 +890,13 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(worldUpdateBody)) body: WorldUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([['worldEmblem', body.emblem]])
-    if (!(await this.worlds.update(key, { ...body, emblem: body.emblem ?? null })))
-      throw new NotFoundException(`모르는 월드다: ${key}`)
+    let found: boolean
+    try {
+      found = await this.worlds.update(key, { ...body, emblemAssetId: body.emblemAssetId ?? null })
+    } catch (error) {
+      throw worldRejection(error)
+    }
+    if (!found) throw new NotFoundException(`모르는 월드다: ${key}`)
   }
 
   @Post('worlds/:key/move')
@@ -913,7 +917,10 @@ export class AdminController {
     @Body(new ZodValidationPipe(worldPeriodBody)) body: WorldPeriodBody,
   ) {
     try {
-      return await this.worlds.addPeriod(key, { from: body.from, until: body.until })
+      return await this.worlds.addPeriod(key, {
+        validFrom: body.validFrom,
+        validUntil: body.validUntil,
+      })
     } catch (error) {
       if (error instanceof NoWorld) throw new NotFoundException(`모르는 월드다: ${key}`)
       throw periodRejection(error)
@@ -929,7 +936,10 @@ export class AdminController {
   ): Promise<void> {
     let found: boolean
     try {
-      found = await this.worlds.updatePeriod(id, { from: body.from, until: body.until })
+      found = await this.worlds.updatePeriod(id, {
+        validFrom: body.validFrom,
+        validUntil: body.validUntil,
+      })
     } catch (error) {
       throw periodRejection(error)
     }
@@ -1201,7 +1211,6 @@ export class AdminController {
   @Post('hunt-loot')
   @HttpCode(201)
   async createHuntLoot(@Body(new ZodValidationPipe(huntLootCreateBody)) body: HuntLootCreateBody) {
-    await this.requireAssets([['itemIcon', body.iconFile]])
     try {
       return await this.huntLoot.create({
         ...body,
@@ -1222,7 +1231,6 @@ export class AdminController {
     @Param('key', new ZodValidationPipe(snakeKey)) key: string,
     @Body(new ZodValidationPipe(huntLootUpdateBody)) body: HuntLootUpdateBody,
   ): Promise<void> {
-    await this.requireAssets([['itemIcon', body.iconFile]])
     let found: boolean
     try {
       found = await this.huntLoot.update(key, {
@@ -1543,7 +1551,7 @@ export class AdminController {
 
   /* ── 드롭 아이템 목록 ── */
 
-  /** 드롭 표 화면이 아이템을 고를 때 부른다. 앱이 받는 칸에 월드 간 거래 불가를 더했다. 아이템은 아이템 화면이 고친다. */
+  /** 드롭 표 화면이 아이템을 고를 때 부른다. 아이템은 아이템 화면이 고친다. */
   @Get('drop-items/rows')
   @Header('cache-control', 'no-store')
   dropItemRows() {
@@ -1563,7 +1571,7 @@ export class AdminController {
   @Get('drop-boxes/rows')
   @Header('cache-control', 'no-store')
   async dropBoxRows() {
-    const [section, items] = await Promise.all([this.boxes.section(), this.items.section()])
+    const [section, items] = await Promise.all([this.boxes.section(), this.items.adminSection()])
     const nameOf = new Map(items.items.map((i) => [i.key, i.name]))
     return {
       updatedAt: section.updatedAt,
@@ -2219,9 +2227,12 @@ function huntingGroundError(error: unknown, key: string): unknown {
 }
 
 /** 사냥 전리품 쓰기에서 이름이 같은 다른 key 의 아이템을 409 로 옮긴다. 한 물건이 두 key 로 서면 기록이 갈린다. */
+/** 사냥 전리품 쓰기의 거절. 이름이 같은 다른 아이템은 409, 그림 표에 없는 그림은 400 이다. */
 function nameTakenError(error: unknown): unknown {
   if (error instanceof HuntLootNameTaken)
     return new ConflictException(`이름이 같은 아이템이 다른 key 로 있다: ${error.message}`)
+  if (error instanceof AssetNotFound)
+    return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
   return error
 }
 
@@ -2315,6 +2326,16 @@ function markdownRejection(error: unknown): unknown {
 function periodRejection(error: unknown): unknown {
   if (error instanceof PeriodOverlap)
     return new BadRequestException('같은 월드의 다른 기간과 겹친다')
-  if (error instanceof PeriodNotAfter) return new BadRequestException('until 은 from 보다 뒤다')
+  if (error instanceof PeriodNotAfter)
+    return new BadRequestException('validUntil 은 validFrom 보다 뒤다')
+  return error
+}
+
+/** 월드 쓰기의 거절. 그림 표에 없는 엠블럼과 거래권 표에 없는 거래권은 400 이다. */
+function worldRejection(error: unknown): unknown {
+  if (error instanceof AssetNotFound)
+    return new BadRequestException(`그림 표에 없는 그림이다: ${error.message}`)
+  if (error instanceof NoTradeGroup)
+    return new BadRequestException(`거래권 표에 없는 거래권이다: ${error.message}`)
   return error
 }

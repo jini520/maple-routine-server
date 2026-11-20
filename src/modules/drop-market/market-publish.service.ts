@@ -216,7 +216,7 @@ export class MarketPublishService {
       this.repo.judgementSums(shiftDay(MASPI_BASE_TO, -29), MASPI_BASE_TO),
       this.repo.worlds(),
     ])
-    const excluded = new Set([EXCLUDED_GROUP, ...worlds.filter((w) => w.priceGroup === EXCLUDED_GROUP).map((w) => w.key)])
+    const excluded = new Set([EXCLUDED_GROUP, ...worlds.filter((w) => w.tradeGroupKey === EXCLUDED_GROUP).map((w) => w.key)])
     const weightOf = (p: string): number => trustWeight(judgements.get(p) ?? { judged: 0, excluded: 0 })
     const byMarket = new Map<string, MarketRow[]>()
     for (const r of rows) {

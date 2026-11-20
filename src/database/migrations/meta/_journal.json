@@ -330,6 +330,13 @@
       "when": 1795150206657,
       "tag": "0046_first_bundle_assets_bosses",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795155169573,
+      "tag": "0047_item_bundle",
+      "breakpoints": true
     }
   ]
 }

@@ -216,10 +216,12 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.
-- **1.0.15 의 새 DB 는 마이그레이션을 처음부터 적용한 빈 DB 에 옛 DB 의 줄을 옮겨 만든다**(앱 저장소 `ADR-099` 결정 43 · 65).
+- **1.0.15 의 새 DB 는 마이그레이션을 처음부터 적용한 DB 에 옛 DB 의 줄을 옮겨 만든다**(앱 저장소 `ADR-099` 결정 43 · 65).
   `OLD_DATABASE_URL=<옛 DB> DATABASE_URL=<새 DB> node dist/cli/move-old-db.js` 다. 옛 DB 는 읽기만 하고, 옛 표는
-  `src/database/old-schema.ts` 로 읽는다. 줄 id 는 그대로 옮긴다. 새 DB 의 옮길 표에 줄이 있으면 아무것도 하지 않고 멈춘다. 지금은
-  그림 · 보스 · 난이도 표를 옮기고, 표 묶음 PR 마다 그 묶음의 표를 더한다. 운영 서버의 hotfix 가 표를 바꾸면 main 을 develop 에
+  `src/database/old-schema.ts` 로 읽는다. 줄 id 는 그대로 옮긴다. 새 DB 의 옮길 표는 먼저 비우고 다시 채운다. 옛 마이그레이션 0041
+  이 빈 DB 에도 아이템 묶음 줄을 넣기 때문이고, 다시 돌려도 같은 줄이 두 번 들어가지 않는다. 옛 DB 와 새 DB 를 바꿔 넣지 않게
+  옛 DB 에 `assets.path`, 새 DB 에 `assets.category` 가 있는지 먼저 본다. 지금은 그림 · 보스 · 난이도와 아이템 묶음 · 아이템 · 거래권
+  · 월드 · 월드 기간을 옮기고 반지 레벨 줄과 상자 연마석 줄을 만든다. 표 묶음 PR 마다 그 묶음의 표를 더한다. 운영 서버의 hotfix 가 표를 바꾸면 main 을 develop 에
   머지할 때 `old-schema.ts` 도 고친다. 사본이 운영 표와 다르면 옛 칸을 읽지 못한다.
 - **보스 표는 `/admin/bosses` 의 폼으로 고친다.** 규칙 둘, 새 보스, 이미 있는 보스의 줄인 이름 · 유효 기간, 난이도 줄 더하기 · 레벨 · 유효 기간 · 지우기다.
   시즌 보스 표시와 난이도의 주기는 보스와 난이도 줄을 더할 때 정한다. 보스와 마지막
@@ -229,16 +231,19 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   (앱 저장소 `ADR-349` 정정 1 · `ADR-350`).
 - **게임 데이터 표는 `GET /v1/game-data` 하나로 나간다**(앱 저장소 `ADR-350`). 칸 하나가 표 하나이고 칸마다 `updatedAt` 을
   든다. 서버는 응답을 메모리에 담아 두고, 칸 시각이 바뀌거나 담은 지 5분이 지나면 다시 만든다(앱 저장소 `ADR-020` 결정 2). 요청마다 만들면
-  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `dropItems` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `equipmentItems` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열다섯이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
+  304 로 끝나도 요청 하나가 CPU 를 0.7초 써서 푸시 직후 서버가 막혔다(2026-11-20). 칸은 `bosses` · `items` · `bossDrops` · `dropBoxes` · `crystalPrices` · `worlds` · `spendCatalog` · `symbolCosts` · `contents` · `enhancementCosts` · `mvpGrades` · `huntingGrounds` · `hexaMatrix` · `faqs` 열다섯이고 결정 2 의 표 전부가 옮겨 왔다(앱 저장소 `ADR-350` 정정 1 ~ 6). 아이템(드롭 아이템 · 강화 장비 · 사냥 전리품의 이름 · 분류 · 그림 · 고가 · 착용 레벨 · 역할)은
   `/admin/items` 하나에서 고친다(앱 저장소 `ADR-187` 결정 6. 분류 트리 · 그림 격자 · 편집 서랍이고, 역할은 붙이기만 한다). 드롭 묶음의 관리 화면은
   `/admin/drop-boxes` · `/admin/boss-drops` · `/admin/crystal-prices` 다. 월드는 `/admin/worlds` 다(ADR-350 정정 2). 지출 카탈로그는 `/admin/spend-catalog`,
   심볼 비용은 `/admin/symbol-costs` 다(ADR-350 정정 3. 묶음의 열림 스위치가 앱에서 고를 수 있는지를 정하고, 항목은 지우지 않고 until 로 닫는다). 컨텐츠는 `/admin/contents` 다(ADR-350 정정 4.
   갈래 표 8줄은 ENUM 과 일대일이라 글자 · 태그 · 한도 · 차례만 고치고, 컨텐츠는 섹션 맨 끝에 더하며 API 이름은 공백을 지워도 다른 줄과 달라야 한다. 지우지 않고 until 로 닫는다). 강화 비용은 `/admin/enhancement-costs`, MVP 등급은 `/admin/mvp-grades` 다(ADR-350 정정 5. 비용 표는 기간 줄 없이 지금 값 하나다. 강화 기록은 서버에 안 두고 앱이 합계로 저장하므로 고친 값은 다음 수집분부터 쓰인다. 잠재 구간은 등급 넷을 한 번에 더하고 1 구간은 못 지우며, 스타포스 단계는 끝 성수만 더하고 지운다). 사냥터는 `/admin/hunting-grounds` 다(ADR-350 정정 6. 사냥터 key 는 지역 key 로 시작하고 이름은 전역 유일이며 몬스터 레벨은 줄 표다. 지우지 않는다). 헥사 매트릭스는 `/admin/hexa-matrix` 다(앱 저장소 `ADR-137`. 코어 종류 · 레벨 비용 · 이름 표 · 직업별 코어 · 헥사 스탯 다섯 표를 한 칸으로 낸다. 이름 표에 없는 코어는 그 API 타입의 기본 종류로 보므로 기본 종류는 API 타입마다 하나다. 비용은 기간 줄 없이 레벨 0 부터 만렙 - 1 까지 한 번에 갈아 끼운다). FAQ 는 `/admin/faqs` 다(앱 저장소 `ADR-150`. 앱 화면의 물음표가 여는 시트 문구다. 묶음 목록이 코드가 아니라 표의 줄이라 새 페이지는 같은 key 의 묶음 하나만 더하면 된다. key 는 소문자 · 숫자 · 붙임표이고 못 바꾼다. 문항은 묶음 화면 `/admin/faqs/sheets/<key>` 에서 쓰고, 답은 빈 줄로 문단을 나눈 글로 받아 문단 블록으로 바꾼다. 묶음을 지우면 문항도 지워진다). 결정석의 새 가격은 지금 줄을 닫고 새 줄을 연다. 시작은 그
   보스의 기간 경계(주간 · 시즌 목요일, 월간 1일)여야 한다. 심볼의 새 비용도 같다. 시작은 KST 날짜이고 지금 줄의 시작보다 뒤면 된다. 새 심볼은 레벨 전부를 한 번에 넣는다.
-- **드롭 아이템 · 강화 장비 · 사냥 전리품은 아이템 표(`items`) 하나를 나눠 쓴다**(앱 저장소 `ADR-187` 결정 1). key 가 같으면
-  한 줄이고 `is_drop` · `is_equipment` 와 사냥 전리품 줄(`hunt_loot_items.item_id`)이 역할을 가른다. `dropItems` · `equipmentItems` ·
-  `huntLoot` 칸은 자기 역할의 줄만 내므로 응답 모양은 그대로다. 이름을 NFC 로 맞추고 공백을 지웠을 때 다른 key 의 아이템과
-  같으면 더하거나 고칠 수 없다. 한 물건이 두 key 로 서면 기록이 갈려서다.
+- **드롭 아이템 · 강화 장비 · 사냥 전리품 · 반지 레벨은 아이템 표(`items`) 하나를 나눠 쓴다**(앱 저장소 `ADR-187` 결정 1 · `ADR-099`
+  결정 28 · 30 · 65). key 가 같으면 한 줄이고 `is_drop` · `is_equipment` 와 사냥 전리품 줄(`hunt_loot_items.item_id`)이 역할을
+  가른다. 게임 데이터는 `items` 칸 하나에 아이템 전부와 묶음 · 반지 레벨(`ring_level_items`) · 같은 물건 연결(`same_item_links`)을
+  싣는다. 반지 레벨 줄과 같은 물건의 따로 둔 줄은 원래 아이템을 고치면 같은 저장에서 따라 바뀌고, 관리 화면에서 직접 고치지
+  못한다. 이름을 NFC 로 맞추고 공백을 지웠을 때 다른 key 의 아이템과 같으면 더하거나 고칠 수 없다. 한 물건이 두 key 로 서면
+  기록이 갈려서다. 같은 물건의 따로 둔 줄은 원래 줄과 이름이 같아 이 검사에서 뺀다. 시세는 소비 묶음 아이템을 월드마다, 그 밖을
+  거래권(`trade_groups`)마다 잰다.
 - **게임 데이터의 그림 칸은 그림 표의 id 를 낸다**(앱 저장소 `ADR-187` 결정 4). `assets` 칸의 줄은 `id` 와 디스크 파일 이름
   `file` 을 들고, 그림 칸은 `portraitAssetId` · `iconAssetId` 같은 id 칸이다. 크롭 줄은 `assetId` 를 든다. 옛 앱이 읽던 글자 칸
   (`iconFile` · `emblem` · `backgroundMap` 등)은 1.0.15 의 서버에서 걷는다. 보스의 `portraitSlug` 는 첫 묶음에서 걷었고, 다른 표의

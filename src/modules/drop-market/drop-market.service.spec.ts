@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { dropPrices, items, users, worlds } from '../../database/schema'
+import { dropPrices, items, tradeGroups, users, worlds } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
 import { shiftDay } from './daily-reference'
 import { DropMarketRepository } from './drop-market.repository'
@@ -59,7 +59,14 @@ describeDb('DropMarketService', () => {
       ])
       .returning({ id: items.id, key: items.key })
     for (const r of itemRows) item[r.key] = r.id
-    ;[{ id: scania }] = await db.insert(worlds).values({ key: 'scania', name: '스카니아', sortOrder: 0 }).returning({ id: worlds.id })
+    const [general] = await db
+      .insert(tradeGroups)
+      .values({ key: 'general', name: '일반 월드' })
+      .returning({ id: tradeGroups.id })
+    ;[{ id: scania }] = await db
+      .insert(worlds)
+      .values({ key: 'scania', name: '스카니아', sortOrder: 0, tradeGroupId: general?.id })
+      .returning({ id: worlds.id })
 
     const prices = { ring: 30 * EOK, belt: 20 * EOK, eye: 10 * EOK }
     for (let d = '2026-10-22'; d <= '2026-11-05'; d = shiftDay(d, 1)) {

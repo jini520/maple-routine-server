@@ -15,7 +15,7 @@ export interface ItemKindTree {
 
 /** 묶음 고치기 본문. key 는 따로 받는다. 앱이 묶음 key 로 고르기 목록을 걸러 못 바꾸기 때문이다. */
 export interface ItemGroupInput {
-  kind: ItemKind
+  type: ItemKind
   name: string
 }
 
@@ -33,13 +33,13 @@ export class ItemGroupsRepository {
 
   async tree(): Promise<ItemKindTree[]> {
     const rows = await this.db
-      .select({ key: itemGroups.key, kind: itemGroups.kind, name: itemGroups.name })
+      .select({ key: itemGroups.key, type: itemGroups.type, name: itemGroups.name })
       .from(itemGroups)
       .orderBy(asc(itemGroups.sortOrder), asc(itemGroups.key))
     return ITEM_KINDS.map((kind) => ({
       key: kind.key,
       name: kind.name,
-      groups: rows.filter((r) => r.kind === kind.key).map(({ key, name }) => ({ key, name })),
+      groups: rows.filter((r) => r.type === kind.key).map(({ key, name }) => ({ key, name })),
     }))
   }
 
@@ -52,28 +52,28 @@ export class ItemGroupsRepository {
         .where(eq(itemGroups.key, input.key))
       if (same !== undefined) throw new ItemGroupExists(input.key)
       await checkName(tx, input.key, input)
-      await tx.insert(itemGroups).values({ ...input, sortOrder: await nextOrder(tx, input.kind) })
+      await tx.insert(itemGroups).values({ ...input, sortOrder: await nextOrder(tx, input.type) })
     })
   }
 
   /**
-   * 이름 · 종류를 고친다. 다른 종류로 옮기면 그 종류의 맨 뒤에 서고, 묶음에 아이템이 있으면 그 아이템의 종류가 바뀌므로
+   * 이름 · 종류를 고친다. 다른 종류로 옮기면 그 종류의 맨 뒤에 서고, 묶음에 아이템이 있으면 앱이 그 아이템의 종류를 다르게 읽으므로
    * items 칸의 시각을 민다. 모르는 key 는 false 다.
    */
   async update(key: string, input: ItemGroupInput): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [current] = await tx
-        .select({ id: itemGroups.id, kind: itemGroups.kind })
+        .select({ id: itemGroups.id, type: itemGroups.type })
         .from(itemGroups)
         .where(eq(itemGroups.key, key))
       if (current === undefined) return false
       await checkName(tx, key, input)
-      const moved = current.kind !== input.kind
+      const moved = current.type !== input.type
       await tx
         .update(itemGroups)
-        .set({ ...input, ...(moved ? { sortOrder: await nextOrder(tx, input.kind) } : {}) })
+        .set({ ...input, ...(moved ? { sortOrder: await nextOrder(tx, input.type) } : {}) })
         .where(eq(itemGroups.id, current.id))
-      if (moved && (await hasItems(tx, key))) await touchSection(tx, 'items')
+      if (moved && (await hasItems(tx, current.id))) await touchSection(tx, 'items')
       return true
     })
   }
@@ -82,14 +82,14 @@ export class ItemGroupsRepository {
   async move(key: string, direction: 'up' | 'down'): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [current] = await tx
-        .select({ kind: itemGroups.kind })
+        .select({ type: itemGroups.type })
         .from(itemGroups)
         .where(eq(itemGroups.key, key))
       if (current === undefined) return false
       const rows = await tx
         .select({ id: itemGroups.id, key: itemGroups.key, sortOrder: itemGroups.sortOrder })
         .from(itemGroups)
-        .where(eq(itemGroups.kind, current.kind))
+        .where(eq(itemGroups.type, current.type))
         .orderBy(asc(itemGroups.sortOrder), asc(itemGroups.key))
       const at = rows.findIndex((r) => r.key === key)
       const mine = rows[at]
@@ -110,7 +110,12 @@ export class ItemGroupsRepository {
   /** 빈 묶음만 지운다. 아이템이 든 묶음은 ItemGroupInUse 이고, 모르는 key 는 false 다. */
   async remove(key: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      if (await hasItems(tx, key)) throw new ItemGroupInUse(key)
+      const [group] = await tx
+        .select({ id: itemGroups.id })
+        .from(itemGroups)
+        .where(eq(itemGroups.key, key))
+      if (group === undefined) return false
+      if (await hasItems(tx, group.id)) throw new ItemGroupInUse(key)
       const deleted = await tx
         .delete(itemGroups)
         .where(eq(itemGroups.key, key))
@@ -126,7 +131,7 @@ async function checkName(db: DbOrTx, key: string, input: ItemGroupInput): Promis
     .from(itemGroups)
     .where(
       and(
-        eq(itemGroups.kind, input.kind),
+        eq(itemGroups.type, input.type),
         eq(itemGroups.name, input.name),
         ne(itemGroups.key, key),
       ),
@@ -138,15 +143,15 @@ async function nextOrder(db: DbOrTx, kind: ItemKind): Promise<number> {
   const [row] = await db
     .select({ last: max(itemGroups.sortOrder) })
     .from(itemGroups)
-    .where(eq(itemGroups.kind, kind))
+    .where(eq(itemGroups.type, kind))
   return (row?.last ?? 0) + 1
 }
 
-async function hasItems(db: DbOrTx, key: string): Promise<boolean> {
+async function hasItems(db: DbOrTx, groupId: string): Promise<boolean> {
   const [row] = await db
     .select({ id: items.id })
     .from(items)
-    .where(eq(items.category, key))
+    .where(eq(items.groupId, groupId))
     .limit(1)
   return row !== undefined
 }

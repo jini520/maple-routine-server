@@ -1,3 +1,4 @@
+import * as schema from '../../database/schema'
 import {
   describeDb,
   insertAssets,
@@ -35,40 +36,40 @@ describeDb('DropItemsRepository · DropBoxesRepository', () => {
   })
   afterAll(() => close())
 
-  // 소비 여부는 시세만 쓴다. 앱의 게임 데이터에 실리면 기기 사본까지 바뀐다.
-  it('드롭 아이템만 key 차례로 내고, 소비 여부는 adminSection 에만 보인다', async () => {
-    expect(await items.section()).toEqual({ updatedAt: null, items: [] })
+  // 드롭 표와 상자의 내용물은 원래 반지를 가리킨다. 레벨 줄을 고르면 상자에서 레벨을 찾지 못한다.
+  it('드롭 아이템만 key 차례로 내고, 반지 레벨 줄은 고르는 목록에서 뺀다', async () => {
+    expect(await items.adminSection()).toEqual({ updatedAt: null, items: [] })
     await insertItems(db, [
       {
         key: 'restraint_ring',
         name: '리스트레인트 링',
         iconAssetId: assetIds['items/Restraint_Ring.png'],
-        valuable: true,
+        isValuable: true,
         isDrop: true,
       },
-      { key: 'life_whetstone', name: '생명의 연마석', worldBound: true, isDrop: true },
-      { key: 'absolab_bow', name: '앱솔랩스 슈팅보우', level: 160, isEquipment: true },
+      { key: 'restraint_ring_lv4', name: '리스트레인트 링 lv.4', isValuable: true, isDrop: true },
+      { key: 'life_whetstone', name: '생명의 연마석', isDrop: true },
+      { key: 'absolab_bow', name: '앱솔랩스 슈팅보우', requiredLevel: 160, isEquipment: true },
     ])
+    const id = new Map(
+      (await db.select({ id: schema.items.id, key: schema.items.key }).from(schema.items)).map(
+        (r) => [r.key, r.id],
+      ),
+    )
+    await db.insert(schema.ringLevelItems).values({
+      itemId: id.get('restraint_ring_lv4') ?? '',
+      ringItemId: id.get('restraint_ring') ?? '',
+      ringLevel: 4,
+    })
 
-    expect((await items.section()).items).toEqual([
-      {
-        key: 'life_whetstone',
-        name: '생명의 연마석',
-        iconFile: null,
-        iconAssetId: null,
-        valuable: false,
-      },
+    expect((await items.adminSection()).items).toEqual([
+      { key: 'life_whetstone', name: '생명의 연마석', iconAssetId: null, isValuable: false },
       {
         key: 'restraint_ring',
         name: '리스트레인트 링',
-        iconFile: 'Restraint_Ring.png',
         iconAssetId: assetIds['items/Restraint_Ring.png'],
-        valuable: true,
+        isValuable: true,
       },
-    ])
-    expect((await items.adminSection()).items.map((i) => [i.key, i.worldBound])).toEqual([
-      ['life_whetstone', true],
-      ['restraint_ring', false],
     ])
   })
 

@@ -193,7 +193,7 @@ describeDb('UsersRepository', () => {
     beforeEach(async () => {
       const [item] = await db
         .insert(items)
-        .values({ key: 'ring', name: '반지', valuable: true, isDrop: true })
+        .values({ key: 'ring', name: '반지', isValuable: true, isDrop: true })
         .returning({ id: items.id })
       itemId = item.id
     })

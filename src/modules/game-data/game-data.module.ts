@@ -9,7 +9,6 @@ import { ContentsModule } from '../contents/contents.module'
 import { CrystalPricesModule } from '../crystal-prices/crystal-prices.module'
 import { DropItemsModule } from '../drop-items/drop-items.module'
 import { EnhancementCostsModule } from '../enhancement-costs/enhancement-costs.module'
-import { EquipmentItemsModule } from '../equipment-items/equipment-items.module'
 import { FaqsModule } from '../faqs/faqs.module'
 import { HexaMatrixModule } from '../hexa-matrix/hexa-matrix.module'
 import { HuntingGroundsModule } from '../hunting-grounds/hunting-grounds.module'
@@ -33,7 +32,6 @@ import { GameDataService } from './game-data.service'
     SpendCatalogModule,
     SymbolCostsModule,
     ContentsModule,
-    EquipmentItemsModule,
     EnhancementCostsModule,
     MvpGradesModule,
     HuntingGroundsModule,

@@ -2,8 +2,18 @@ import { randomUUID } from 'node:crypto'
 
 import { eq, type AnyColumn } from 'drizzle-orm'
 
-import { dropPrices, items, marketDays, marketJudgements, marketResponses, maspiDays, users, worlds } from '../../database/schema'
-import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import {
+  dropPrices,
+  items,
+  marketDays,
+  marketJudgements,
+  marketResponses,
+  maspiDays,
+  tradeGroups,
+  users,
+  worlds,
+} from '../../database/schema'
+import { describeDb, itemGroupId, openTestDb, type TestDb } from '../../database/test-db'
 import { shiftDay } from './daily-reference'
 import { MarketDailyRepository } from './market-daily.repository'
 import { MarketPublishService } from './market-publish.service'
@@ -65,15 +75,23 @@ describeDb('MarketPublishService', () => {
       .insert(items)
       .values([
         { key: 'ring', name: '반지', isDrop: true },
-        { key: 'whetstone', name: '연마석', worldBound: true, isDrop: true },
+        // 소비 묶음의 아이템은 시세를 월드마다 잰다.
+        { key: 'whetstone', name: '연마석', groupId: await itemGroupId(db, 'boss_loot'), isDrop: true },
       ])
       .returning({ id: items.id, key: items.key })
     for (const r of itemRows) item[r.key] = r.id
+    const [general, heliosEos] = await db
+      .insert(tradeGroups)
+      .values([
+        { key: 'general', name: '일반 월드' },
+        { key: 'helios_eos', name: '에오스 · 핼리오스' },
+      ])
+      .returning({ id: tradeGroups.id })
     const worldRows = await db
       .insert(worlds)
       .values([
-        { key: 'scania', name: '스카니아', sortOrder: 0 },
-        { key: 'eos', name: '에오스', sortOrder: 1, priceGroup: 'helios_eos' },
+        { key: 'scania', name: '스카니아', sortOrder: 0, tradeGroupId: general?.id },
+        { key: 'eos', name: '에오스', sortOrder: 1, tradeGroupId: heliosEos?.id },
       ])
       .returning({ id: worlds.id, key: worlds.key })
     for (const r of worldRows) world[r.key] = r.id

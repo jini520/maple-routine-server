@@ -1,78 +1,42 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
-import { assets, items } from '../../database/schema'
-import { assetNameColumns, optionalRefValueOf } from '../assets/asset-refs'
+import { items, ringLevelItems } from '../../database/schema'
 import { sectionUpdatedAt } from '../game-data/sections'
 
-export interface DropItemView {
+/** 관리 화면의 드롭 표 · 상자 화면이 고르는 드롭 아이템 한 줄. */
+export interface DropItemAdminView {
   key: string
   name: string
-  /** 옛 앱이 읽는 그림 이름 */
-  iconFile: string | null
   iconAssetId: string | null
-  valuable: boolean
+  isValuable: boolean
 }
 
-/** GET /v1/game-data 의 dropItems 칸. */
-export interface DropItemsSection {
-  updatedAt: string | null
-  items: DropItemView[]
-}
-
-/** 관리 화면이 보는 아이템. 월드 간 거래 불가는 시세만 쓰고 앱에 안 싣는다. */
-export interface DropItemAdminView extends DropItemView {
-  worldBound: boolean
-}
-
-/** 아이템 표에서 드롭 아이템(is_drop)만 앱 칸과 드롭 표 화면으로 낸다. 고치기는 관리 화면의 아이템 화면이 한다. */
+/**
+ * 아이템 표에서 드롭 아이템(is_drop)을 드롭 표 · 상자 화면에 낸다. 고치기는 관리 화면의 아이템 화면이 한다. 앱에는 게임
+ * 데이터의 items 칸이 아이템을 모두 낸다.
+ */
 @Injectable()
 export class DropItemsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** key 차례. 앱은 key 로만 찾아 차례가 없다. */
-  async section(): Promise<DropItemsSection> {
-    const rows = await this.rows()
-    return {
-      updatedAt: await sectionUpdatedAt(this.db, 'dropItems'),
-      items: rows.map((r) => ({
-        key: r.key,
-        name: r.name,
-        iconFile: r.iconFile,
-        iconAssetId: r.iconAssetId,
-        valuable: r.valuable,
-      })),
-    }
-  }
-
-  /** 관리 화면의 표. section 에 월드 간 거래 불가를 더한 것이다. */
+  /**
+   * key 차례. 반지 레벨 줄은 뺀다. 드롭 표와 상자의 내용물은 원래 반지를 가리키고, 레벨 줄은 기록만 가리키기 때문이다.
+   */
   async adminSection(): Promise<{ updatedAt: string | null; items: DropItemAdminView[] }> {
-    return { updatedAt: await sectionUpdatedAt(this.db, 'dropItems'), items: await this.rows() }
-  }
-
-  private async rows(): Promise<DropItemAdminView[]> {
     const rows = await this.db
       .select({
         key: items.key,
         name: items.name,
-        iconAsset: assetNameColumns(assets),
         iconAssetId: items.iconAssetId,
-        valuable: items.valuable,
-        worldBound: items.worldBound,
+        isValuable: items.isValuable,
       })
       .from(items)
-      .leftJoin(assets, eq(assets.id, items.iconAssetId))
-      .where(eq(items.isDrop, true))
+      .leftJoin(ringLevelItems, eq(ringLevelItems.itemId, items.id))
+      .where(and(eq(items.isDrop, true), isNull(ringLevelItems.id)))
       .orderBy(asc(items.key))
-    return rows.map((r) => ({
-      key: r.key,
-      name: r.name,
-      iconFile: optionalRefValueOf('itemIcon', r.iconAsset),
-      iconAssetId: r.iconAssetId,
-      valuable: r.valuable,
-      worldBound: r.worldBound,
-    }))
+    return { updatedAt: await sectionUpdatedAt(this.db, 'items'), items: rows }
   }
 
   async findByKey(key: string): Promise<{ id: string } | null> {

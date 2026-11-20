@@ -10,9 +10,7 @@ import type { CashbookCategoriesRepository } from '../cashbook-categories/cashbo
 import type { ContentsRepository } from '../contents/contents.repository'
 import type { CrystalPricesRepository } from '../crystal-prices/crystal-prices.repository'
 import type { DropBoxesRepository } from '../drop-items/drop-boxes.repository'
-import type { DropItemsRepository } from '../drop-items/drop-items.repository'
 import type { EnhancementCostsRepository } from '../enhancement-costs/enhancement-costs.repository'
-import type { EquipmentItemsRepository } from '../equipment-items/equipment-items.repository'
 import type { FaqsRepository } from '../faqs/faqs.repository'
 import type { HuntingGroundsRepository } from '../hunting-grounds/hunting-grounds.repository'
 import type { HexaMatrixRepository } from '../hexa-matrix/hexa-matrix.repository'
@@ -43,7 +41,6 @@ function stampDb(initial: string): { db: Db; set: (stamp: string) => void } {
 function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): GameDataService {
   return new GameDataService(
     bosses as unknown as BossesRepository,
-    empty({ items: [] }) as unknown as DropItemsRepository,
     empty({ rewards: [] }) as unknown as BossDropsRepository,
     empty({ boxes: [] }) as unknown as DropBoxesRepository,
     empty({ prices: [] }) as unknown as CrystalPricesRepository,
@@ -59,7 +56,6 @@ function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): Game
     }) as unknown as SpendCatalogRepository,
     empty({ groups: [], symbols: [], levelCosts: [] }) as unknown as SymbolCostsRepository,
     empty({ categories: [], contents: [] }) as unknown as ContentsRepository,
-    empty({ items: [] }) as unknown as EquipmentItemsRepository,
     empty({
       rules: {
         cubeAppraisalFreeMaxLevel: null,
@@ -87,7 +83,7 @@ function service(bosses: { catalog: jest.Mock }, db: Db = stampDb('a').db): Game
     empty({ files: [] }) as unknown as AssetsRepository,
     empty({ crops: [] }) as unknown as ImageCropsRepository,
     empty({ images: [] }) as unknown as AppImagesRepository,
-    empty({ items: [] }) as unknown as ItemsRepository,
+    empty({ items: [], groups: [], ringLevelItems: [], sameItemLinks: [] }) as unknown as ItemsRepository,
     db,
   )
 }
@@ -99,12 +95,11 @@ const catalog: Catalog = {
 }
 
 describe('GameDataService', () => {
-  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 스물은 각 리포지토리의 section 이다', async () => {
+  it('표마다 칸 하나다. bosses 칸은 보스 리포지토리의 catalog 그대로이고 나머지 열여덟은 각 리포지토리의 section 이다', async () => {
     const bosses = { catalog: jest.fn().mockResolvedValue(catalog) }
 
     await expect(service(bosses).snapshot()).resolves.toEqual({
       bosses: catalog,
-      dropItems: { updatedAt: null, items: [] },
       bossDrops: { updatedAt: null, rewards: [] },
       dropBoxes: { updatedAt: null, boxes: [] },
       crystalPrices: { updatedAt: null, prices: [] },
@@ -122,7 +117,6 @@ describe('GameDataService', () => {
       cashbookCategories: { updatedAt: null, categories: [], itemKinds: [] },
       symbolCosts: { updatedAt: null, groups: [], symbols: [], levelCosts: [] },
       contents: { updatedAt: null, categories: [], contents: [] },
-      equipmentItems: { updatedAt: null, items: [] },
       enhancementCosts: {
         updatedAt: null,
         rules: {
@@ -151,7 +145,7 @@ describe('GameDataService', () => {
       assets: { updatedAt: null, files: [] },
       imageCrops: { updatedAt: null, crops: [] },
       appImages: { updatedAt: null, images: [] },
-      items: { updatedAt: null, items: [] },
+      items: { updatedAt: null, items: [], groups: [], ringLevelItems: [], sameItemLinks: [] },
     })
   })
 

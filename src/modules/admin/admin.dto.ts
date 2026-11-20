@@ -126,7 +126,7 @@ export type RequiredLevelBody = z.infer<typeof requiredLevelBody>
 export const shortNameBody = z.object({ shortName: z.string().trim().min(1).max(100) })
 export type ShortNameBody = z.infer<typeof shortNameBody>
 
-/** 드롭 시세의 범위. 장비는 거래권(worlds.price_group), 소비는 월드 key 다. */
+/** 드롭 시세의 범위. 장비는 거래권 key, 소비는 월드 key 다. */
 export const dropMarketQuery = z.object({
   kind: z.enum(['equipment', 'consumable']).default('equipment'),
   key: snakeKey.max(50).default('general'),
@@ -193,17 +193,17 @@ export type MaxPartySizeBody = z.infer<typeof maxPartySizeBody>
 export const worldCreateBody = z.object({
   key: snakeKey,
   name: z.string().min(1).max(50),
-  emblem: z.string().min(1).max(100).nullish(),
-  challengers: z.boolean().default(false),
-  event: z.boolean().default(false),
-  /** null 이면 시세에서 빠진다. */
-  priceGroup: snakeKey.max(50).nullable().default('general'),
+  emblemAssetId: z.string().uuid().nullish(),
+  isChallengers: z.boolean().default(false),
+  isEvent: z.boolean().default(false),
+  /** 거래권 key. null 이면 시세에서 빠진다. */
+  tradeGroupKey: snakeKey.max(50).nullable().default('general'),
 })
 export type WorldCreateBody = z.infer<typeof worldCreateBody>
 // 고칠 때 기본값을 두면 거래권을 안 보낸 요청이 핼리오스 · 에오스를 general 로 되돌린다.
 export const worldUpdateBody = worldCreateBody
   .omit({ key: true })
-  .extend({ priceGroup: snakeKey.max(50).nullable().optional() })
+  .extend({ tradeGroupKey: snakeKey.max(50).nullable().optional() })
 export type WorldUpdateBody = z.infer<typeof worldUpdateBody>
 
 /** 달력에 있는 KST 날짜 글자. 2025-13-01 처럼 형식만 맞는 날은 거른다. */
@@ -217,10 +217,10 @@ const calendarDate = z
     },
     { message: '달력에 없는 날이다' },
   )
-/** 월드가 열린 기간. until 은 닫힌 다음 날이라 from 보다 뒤다. */
+/** 월드가 열린 기간. validUntil 은 닫힌 다음 날이라 validFrom 보다 뒤다. */
 export const worldPeriodBody = z
-  .object({ from: calendarDate, until: calendarDate })
-  .refine((b) => b.until > b.from, { message: 'until 은 from 보다 뒤다' })
+  .object({ validFrom: calendarDate, validUntil: calendarDate })
+  .refine((b) => b.validUntil > b.validFrom, { message: 'validUntil 은 validFrom 보다 뒤다' })
 export type WorldPeriodBody = z.infer<typeof worldPeriodBody>
 
 /* ── 지출 카탈로그 ── */
@@ -328,7 +328,7 @@ const huntLootBase = z.object({
   key: snakeKey,
   kind: z.enum(HUNT_LOOT_KINDS),
   name: z.string().min(1).max(30),
-  iconFile: z.string().min(1).max(200),
+  iconAssetId: z.string().uuid(),
   npcPriceMeso: z.number().int().min(1).max(2_000_000_000).nullish(),
   from: periodText,
   until: periodText,

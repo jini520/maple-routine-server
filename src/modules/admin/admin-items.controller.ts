@@ -24,7 +24,8 @@ import {
 } from '../items/item-groups.repository'
 import { ITEM_KIND_KEYS } from '../items/items'
 import {
-  InvalidItemCategory,
+  FollowingItem,
+  InvalidItemGroup,
   type ItemInput,
   ItemExists,
   ItemNameTaken,
@@ -36,17 +37,16 @@ import { ITEMS_HTML } from './views/items'
 
 const itemBody = z.object({
   name: z.string().trim().min(1).max(100),
-  category: z.string().min(1).nullable(),
+  groupKey: z.string().min(1).nullable(),
   iconAssetId: z.string().uuid().nullable(),
-  valuable: z.boolean(),
-  worldBound: z.boolean(),
-  level: z.number().int().min(1).max(300).nullable(),
+  isValuable: z.boolean(),
+  requiredLevel: z.number().int().min(1).max(300).nullable(),
   isDrop: z.boolean(),
   isEquipment: z.boolean(),
 })
 const itemCreateBody = itemBody.extend({ key: snakeKey.max(80) })
 
-const groupBody = z.object({ kind: z.enum(ITEM_KIND_KEYS), name: z.string().trim().min(1).max(50) })
+const groupBody = z.object({ type: z.enum(ITEM_KIND_KEYS), name: z.string().trim().min(1).max(50) })
 const groupCreateBody = groupBody.extend({ key: snakeKey.max(80) })
 
 const ROLE_NAMES: Record<string, string> = { isDrop: '드롭 아이템', isEquipment: '강화 장비' }
@@ -161,8 +161,12 @@ function httpError(error: unknown): unknown {
     return new ConflictException(
       `붙은 역할은 뺄 수 없다: ${ROLE_NAMES[error.message] ?? error.message}`,
     )
-  if (error instanceof InvalidItemCategory)
+  if (error instanceof InvalidItemGroup)
     return new BadRequestException(`분류 트리에 없는 묶음이다: ${error.message}`)
+  if (error instanceof FollowingItem)
+    return new ConflictException(
+      `원래 아이템 ${error.message} 을 따라 바뀌는 줄이라 직접 못 고친다`,
+    )
   if (error instanceof ItemGroupExists)
     return new ConflictException(`이미 있는 묶음이다: ${error.message}`)
   if (error instanceof ItemGroupNameTaken)

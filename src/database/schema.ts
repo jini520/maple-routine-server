@@ -16,6 +16,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  smallint,
   text,
   timestamp,
   unique,
@@ -502,52 +503,101 @@ export const appImages = pgTable('app_images', {
     .references(() => assets.id),
 })
 
+/** 아이템 묶음의 종류. 앱이 가계부 아이템 종류를 정하고 시세가 범위를 가르는 key 라 관리 화면에서 더하지 않는다. */
+export const itemGroupTypeEnum = pgEnum('item_group_type', [
+  'equipment',
+  'accessory',
+  'consumable',
+  'etc',
+  'cash',
+])
+
 /**
- * 아이템 묶음. 분류의 둘째 단이고 관리 화면의 아이템 화면에서 더하고 고친다. 첫 단인 종류(`kind`)는 서버 코드의
- * ITEM_KINDS 에 있는 key 다. key 는 앱이 고르기 목록을 거르는 데 써서 못 바꾼다.
+ * 아이템 묶음. 분류의 둘째 단이고 관리 화면의 아이템 화면에서 더하고 고친다. 첫 단인 종류는 enum 이다. key 는 앱이 고르기
+ * 목록을 거르는 데 써서 못 바꾼다.
  */
 export const itemGroups = pgTable(
   'item_groups',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull().unique(),
-    kind: text('kind').notNull(),
+    type: itemGroupTypeEnum('type').notNull(),
     /** 소비 · 기타에 `보스 전리품` 이 하나씩 있어 이름은 종류 안에서만 유일하다. */
     name: text('name').notNull(),
     /** 같은 종류 안의 차례. */
     sortOrder: integer('sort_order').notNull(),
   },
-  (t) => [unique('item_groups_kind_name_unique').on(t.kind, t.name)],
+  (t) => [unique('item_groups_type_name_unique').on(t.type, t.name)],
 )
 
 /**
- * 아이템 표 하나. 드롭 아이템 · 강화 장비 · 사냥 전리품이 모두 여기 한 줄이다(앱 저장소 ADR-187 결정 1). 기기 기록과
- * 강화 합계가 key 를 들어 key 는 못 바꾸고 줄을 지우지 않는다. 드롭 표 · 상자 · 드롭 가격은 id 를 FK 로 든다.
+ * 아이템 표 하나. 드롭 아이템 · 강화 장비 · 사냥 전리품 · 반지 레벨 줄이 모두 여기 한 줄이다. 기록이 줄을 가리켜 key 는 못
+ * 바꾸고 줄을 지우지 않는다.
  */
 export const items = pgTable(
   'items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull().unique(),
-    /** 띄어 쓴 게임 표기. NFC · 공백 제거 뒤에도 표 전체에서 유일하다(쓰기 검사). 앱이 넥슨 이름과 그 모양으로 맞춘다. */
+    /** 띄어 쓴 게임 표기. NFC · 공백 제거 뒤에도 표 전체에서 유일하다(쓰기 검사). 같은 물건으로 이은 줄만 원래 줄과 같다. */
     name: text('name').notNull(),
-    /** 묶음 key. 아직 안 정했으면 NULL 이다. */
-    category: text('category').references(() => itemGroups.key),
-    /** 그림. 앱에는 파일 이름을 iconFile 로 낸다. 없으면 앱이 자리 그림을 그린다. */
+    /** 묶음. 아직 안 정했으면 NULL 이다. */
+    groupId: uuid('group_id').references(() => itemGroups.id),
+    /** 그림. 없으면 앱이 자리 그림을 그린다. */
     iconAssetId: uuid('icon_asset_id').references(() => assets.id),
     /** 고가 아이템. 드롭 연출과 최고가 위젯이 본다. */
-    valuable: boolean('valuable').notNull().default(false),
-    /** 월드끼리 거래할 수 없는 소비 아이템. 시세를 거래권이 아니라 월드 하나로 센다. 앱의 게임 데이터에는 안 싣는다. */
-    worldBound: boolean('world_bound').notNull().default(false),
+    isValuable: boolean('is_valuable').notNull().default(false),
     /** 착용 레벨. 강화 장비만 든다. NULL 은 모른다는 뜻이고 0 이 아니다. 그 장비의 스타포스는 안 매기고 건수만 센다. */
-    level: integer('level'),
-    /** 앱의 dropItems 칸에 서는 아이템. 드롭 기록 시트 · 드롭 가격이 쓴다. */
+    requiredLevel: integer('required_level'),
+    /** 드롭 기록 시트 · 드롭 가격이 쓰는 아이템. */
     isDrop: boolean('is_drop').notNull().default(false),
-    /** 앱의 equipmentItems 칸에 서는 장비. 앱이 강화 기록의 장비 이름에서 key 를 찾는다. */
+    /** 앱이 강화 기록의 장비 이름에서 찾는 장비. */
     isEquipment: boolean('is_equipment').notNull().default(false),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
-  (t) => [check('items_level_positive', sql`${t.level} IS NULL OR ${t.level} >= 1`)],
+  (t) => [
+    check('items_required_level_positive', sql`${t.requiredLevel} IS NULL OR ${t.requiredLevel} >= 1`),
+  ],
+)
+
+/** 반지 한 레벨이 아이템 한 줄이다. 이 표는 그 줄이 어느 반지의 몇 레벨인지 적는다. 레벨 줄 하나에 줄 하나다. */
+export const ringLevelItems = pgTable(
+  'ring_level_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .unique()
+      .references(() => items.id),
+    ringItemId: uuid('ring_item_id')
+      .notNull()
+      .references(() => items.id),
+    ringLevel: smallint('ring_level').notNull(),
+  },
+  (t) => [
+    unique('ring_level_items_ring_level_unique').on(t.ringItemId, t.ringLevel),
+    check('ring_level_items_level_positive', sql`${t.ringLevel} >= 1`),
+    check('ring_level_items_not_self', sql`${t.itemId} <> ${t.ringItemId}`),
+  ],
+)
+
+/**
+ * 줄은 다르지만 같은 물건인 아이템. 따로 둔 줄 하나에 줄이 하나다. 원래 줄은 다른 줄의 따로 둔 줄이 될 수 없다. 두 번
+ * 이어지면 원래 아이템을 찾을 때마다 끝까지 따라가야 해서다.
+ */
+export const sameItemLinks = pgTable(
+  'same_item_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .unique()
+      .references(() => items.id),
+    originalItemId: uuid('original_item_id')
+      .notNull()
+      .references(() => items.id),
+  },
+  (t) => [check('same_item_links_not_self', sql`${t.itemId} <> ${t.originalItemId}`)],
 )
 
 /** 드롭 표. 보스 한 난이도의 보상 한 줄. sort_order 가 드롭 시트의 타일 차례다. */
@@ -630,44 +680,52 @@ export const bossCrystalPrices = pgTable(
   ],
 )
 
-/** 월드 마스터 표. 기록 · 원장 · drop_prices.world_key 가 key 를 든다. 챌린저스 넷은 월드마다 key 이고 엠블럼만 같이 쓴다. */
+/** 장비를 관세 내고 서로 거래할 수 있는 월드 묶음. 장비 시세를 이 단위로 센다. 서버 코드가 key 로 가른다. */
+export const tradeGroups = pgTable('trade_groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+})
+
+/** 월드 마스터 표. 챌린저스 넷은 월드마다 줄이고 엠블럼만 같이 쓴다. */
 export const worlds = pgTable('worlds', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   /** API world_name 표기. 보이는 이름이다. */
   name: text('name').notNull(),
-  /** 엠블럼 그림. 앱에는 그림 이름(확장자를 뗀 것)을 emblem 으로 낸다. 스페셜은 없다. */
+  /** 엠블럼 그림. 스페셜은 없다. */
   emblemAssetId: uuid('emblem_asset_id').references(() => assets.id),
   /** 시즌 보스를 보이고 월드 리프를 묻는 월드. */
-  challengers: boolean('challengers').notNull().default(false),
+  isChallengers: boolean('is_challengers').notNull().default(false),
   /** 재화에 가치가 없어 강화 지출에서 빼는 월드. */
-  event: boolean('event').notNull().default(false),
+  isEvent: boolean('is_event').notNull().default(false),
   /**
-   * 장비를 관세 내고 서로 거래할 수 있는 월드끼리 같은 값인 거래권. 장비 시세를 이 단위로 센다.
-   * 챌린저스는 시즌마다 붙는 거래권이 달라 운영자가 고친다. NULL 이면 시세에서 빠진다. 앱의 게임 데이터에는 안 싣는다.
+   * 거래권. 챌린저스는 시즌마다 붙는 거래권이 달라 운영자가 고친다. NULL 이면 시세에서 빠진다. 앱의 게임 데이터에는 안 싣는다.
    */
-  priceGroup: text('price_group').default('general'),
+  tradeGroupId: uuid('trade_group_id').references(() => tradeGroups.id),
   /** 배열 순서가 곧 화면 순서다. */
   sortOrder: integer('sort_order').notNull(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
 
 /**
- * 월드가 열린 기간. 이벤트 · 챌린저스 월드는 시즌마다 같은 이름으로 다시 열려 한 월드에 여러 줄이다.
- * from 은 연 날, until 은 닫힌 다음 날인 KST 글자(YYYY-MM-DD)이고 보스 기간과 경계의 뜻이 같다. 같은 월드의 기간은 안 겹친다.
+ * 한 월드가 열려 있던 기간 하나. 이벤트 · 챌린저스 월드는 같은 이름으로 다시 열려 여러 줄이다. 경계의 뜻은 보스 기간과
+ * 같고, 같은 월드의 기간은 안 겹친다.
  */
-export const worldPeriods = pgTable(
-  'world_periods',
+export const worldOpenPeriods = pgTable(
+  'world_open_periods',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     worldId: uuid('world_id')
       .notNull()
       .references(() => worlds.id, { onDelete: 'cascade' }),
-    from: text('from').notNull(),
-    until: text('until').notNull(),
+    /** KST `YYYY-MM-DD`. 연 날이다. */
+    validFrom: text('valid_from').notNull(),
+    /** 닫힌 다음 날이라 기간에 안 든다. */
+    validUntil: text('valid_until').notNull(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   },
-  (t) => [unique('world_periods_world_from_unique').on(t.worldId, t.from)],
+  (t) => [unique('world_open_periods_world_from_unique').on(t.worldId, t.validFrom)],
 )
 
 /** 가계부 기록이 수입인지 지출인지. */
@@ -1603,7 +1661,7 @@ export const marketDays = pgTable(
       .notNull()
       .references(() => items.id),
     ringLevel: integer('ring_level'),
-    /** 장비는 거래권(`worlds.price_group`), 소비 아이템은 월드 key */
+    /** 장비는 거래권 key(`trade_groups.key`), 소비 아이템은 월드 key */
     scope: text('scope').notNull(),
     source: marketReferenceSourceEnum('source').notNull(),
     refMeso: bigint('ref_meso', { mode: 'number' }).notNull(),

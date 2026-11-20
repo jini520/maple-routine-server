@@ -56,7 +56,7 @@ describe('UsageEventsController', () => {
 
     expect(res.statusCode).toBe(200)
     expect(events.insert).toHaveBeenCalledWith(
-      { userId: 'u1', identifiedBy: 'login', platform: 'ios', appVersion: '1.0.13' },
+      { userId: 'u1', platform: 'ios', appVersion: '1.0.13' },
       [{ type: 'screen', name: 'Boss', durationMs: 4200, at: new Date(screen.at) }],
     )
   })

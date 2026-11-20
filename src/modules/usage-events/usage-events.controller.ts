@@ -20,7 +20,6 @@ export class UsageEventsController {
     await this.events.insert(
       {
         userId: identity.userId,
-        identifiedBy: identity.source,
         platform: body.platform,
         appVersion: body.appVersion,
       },

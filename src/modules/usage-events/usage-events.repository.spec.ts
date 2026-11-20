@@ -12,7 +12,6 @@ describeDb('UsageEventsRepository', () => {
 
   const batchOf = (userId: string, platform: 'ios' | 'android' = 'ios') => ({
     userId,
-    identifiedBy: 'key' as const,
     platform,
     appVersion: '1.0.13',
   })
@@ -113,10 +112,11 @@ describeDb('UsageEventsRepository', () => {
     await repo.insert({ ...batchOf(me, 'ios'), appVersion: '1.0.13' }, [
       event('visit', '2026-11-03T01:00:00Z'),
     ])
-    await repo.insert(
-      { ...batchOf(me, 'android'), identifiedBy: 'login', appVersion: '1.0.13+1' },
-      [event('visit', '2026-11-03T05:00:00Z')],
-    )
+    await repo.insert({ ...batchOf(me, 'android'), appVersion: '1.0.13+1' }, [
+      event('visit', '2026-11-03T05:00:00Z'),
+    ])
+    // 신원은 사건이 아니라 사람의 값이다. 로그인한 넥슨 계정 줄이 있는 사람은 로그인으로 센다.
+    await db.insert(nexonAccounts).values({ userId: me, uidHash: 'u-me', referralCode: 'AAAAAAAA' })
     await repo.insert(batchOf(other, 'ios'), [event('visit', '2026-11-03T02:00:00Z')])
 
     const parts = await repo.composition(nov3)

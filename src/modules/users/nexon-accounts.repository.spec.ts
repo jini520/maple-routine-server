@@ -175,13 +175,11 @@ describeDb('NexonAccountsRepository', () => {
       const old = await users$.upsertByMapleId('m1')
       await backdate(old.nexonAccountId, '2026-10-01T00:00:00Z')
       const fresh = await users$.upsertByMapleId('m2')
-      const anomaly = (userId: string, nexonAccountId: string, itemName: string, at: string) => ({
-        userId,
+      const anomaly = (nexonAccountId: string, itemName: string, at: string) => ({
         nexonAccountId,
-        identifiedBy: 'key' as const,
         historyDate: '2026-11-01',
-        enhancementType: 'cube' as const,
-        anomalyType: 'no_cost' as const,
+        apiType: 'cube' as const,
+        reason: 'no_cost' as const,
         itemName,
         rowCount: 1,
         updatedAt: new Date(at),
@@ -189,19 +187,19 @@ describeDb('NexonAccountsRepository', () => {
       await db
         .insert(enhancementAnomalies)
         .values([
-          anomaly(old.id, old.nexonAccountId, '같은 장비', '2026-11-01T00:00:00Z'),
-          anomaly(fresh.id, fresh.nexonAccountId, '같은 장비', '2026-11-02T00:00:00Z'),
-          anomaly(fresh.id, fresh.nexonAccountId, '새 장비', '2026-11-02T00:00:00Z'),
+          anomaly(old.nexonAccountId, '같은 장비', '2026-11-01T00:00:00Z'),
+          anomaly(fresh.nexonAccountId, '같은 장비', '2026-11-02T00:00:00Z'),
+          anomaly(fresh.nexonAccountId, '새 장비', '2026-11-02T00:00:00Z'),
         ])
 
       await repo.reportMapleIds(fresh.nexonAccountId, ['m1'])
 
       const rows = await db.select().from(enhancementAnomalies)
       expect(
-        rows.map((r) => [r.itemName, r.nexonAccountId, r.userId, r.updatedAt.toISOString()]).sort(),
+        rows.map((r) => [r.itemName, r.nexonAccountId, r.updatedAt.toISOString()]).sort(),
       ).toEqual([
-        ['같은 장비', old.nexonAccountId, old.id, '2026-11-02T00:00:00.000Z'],
-        ['새 장비', old.nexonAccountId, old.id, '2026-11-02T00:00:00.000Z'],
+        ['같은 장비', old.nexonAccountId, '2026-11-02T00:00:00.000Z'],
+        ['새 장비', old.nexonAccountId, '2026-11-02T00:00:00.000Z'],
       ])
     })
 
@@ -229,22 +227,20 @@ describeDb('NexonAccountsRepository', () => {
       }
 
       // ocid 가 없는 드롭 줄과 사용 로그는 사람으로 찾는다. 사람을 지우면 그 칸이 비어 익명 줄이 된다.
-      it('키 사람에게 다른 줄이 없으면 옛 드롭 줄 · 강화 이상 보고 · 사용 로그를 로그인 사람으로 옮기고 사람을 지운다', async () => {
+      it('키 사람에게 다른 줄이 없으면 옛 드롭 줄 · 사용 로그를 로그인 사람으로, 강화 이상 보고를 로그인 계정으로 옮기고 사람을 지운다', async () => {
         const key = await users$.upsertByMapleId('m1')
         const login = await users$.upsertByNexonUid('uid-1')
         await db.insert(dropPrices).values(dropPrice(key.id, RECORD_A, '2026-11-01T00:00:00Z'))
         await db.insert(enhancementAnomalies).values({
-          userId: key.id,
-          identifiedBy: 'key',
+          nexonAccountId: key.nexonAccountId,
           historyDate: '2026-11-01',
-          enhancementType: 'cube',
-          anomalyType: 'event_world_unknown',
+          apiType: 'cube',
+          reason: 'event_world_unknown',
           itemName: '',
           rowCount: 1,
         })
         await db.insert(usageEvents).values({
           userId: key.id,
-          identifiedBy: 'key',
           type: 'visit',
           name: '',
           platform: 'ios',
@@ -259,7 +255,7 @@ describeDb('NexonAccountsRepository', () => {
           expect.objectContaining({ userId: login.id, dropRecordId: RECORD_A }),
         ])
         expect(await db.select().from(enhancementAnomalies)).toEqual([
-          expect.objectContaining({ userId: login.id }),
+          expect.objectContaining({ nexonAccountId: login.nexonAccountId }),
         ])
         expect((await db.select().from(usageEvents)).map((row) => row.userId)).toEqual([login.id])
       })

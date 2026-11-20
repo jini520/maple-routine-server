@@ -77,6 +77,8 @@ const CONVERTED = [
   'market_responses',
   'maspi_basket_items',
   'maspi_daily_closes',
+  'usage_events',
+  'enhancement_anomalies',
 ]
 
 interface DesignColumn {

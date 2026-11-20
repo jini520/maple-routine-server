@@ -3,7 +3,6 @@ import { and, eq, gte, lt, sql } from 'drizzle-orm'
 
 import { DB, type Db } from '../../database/database.module'
 import { usageEvents } from '../../database/schema'
-import type { IdentitySource } from '../identity/identity.guard'
 import { personOf, SUB_OWNERS, subOwnerOf } from '../users/sub-owners'
 
 /** 부계정을 메인과 한 명으로 세는 사람. */
@@ -12,7 +11,6 @@ const person = personOf(usageEvents.userId)
 /** 묶음이 함께 싣는 값. */
 export interface UsageBatch {
   userId: string
-  identifiedBy: IdentitySource
   platform: 'ios' | 'android'
   appVersion: string
 }
@@ -125,6 +123,7 @@ export class UsageEventsRepository {
 
   /**
    * 기간 방문자를 플랫폼 · 신원 · 앱 버전으로 나눈다. 한 사람은 기간 안의 마지막 사건 하나로만 센다. 부계정은 메인과 한 사람이다.
+   * 신원은 사건의 값이 아니라 사람의 값이다. 로그인한 넥슨 계정 줄이 있으면 키만 넣은 기기를 쓰는 동안에도 로그인으로 센다.
    * 둘 다 쓴 사람을 양쪽에 세면 나눈 합이 방문자보다 커진다.
    */
   async composition(
@@ -134,7 +133,10 @@ export class UsageEventsRepository {
     const platform = filter.platform ? sql`and platform = ${filter.platform}` : sql``
     const result = await this.db.execute<{ dim: string; name: string; value: number }>(sql`
       with last as (
-        select distinct on (${person}) platform::text as platform, identified_by::text as identity, app_version
+        select distinct on (${person}) platform::text as platform, app_version,
+               case when exists (select 1 from nexon_accounts a
+                                  where a.user_id = ${person} and a.uid_hash is not null)
+                    then 'login' else 'key' end as identity
           from ${usageEvents}
           left join ${SUB_OWNERS} on ${subOwnerOf(usageEvents.userId)}
          where user_id is not null and occurred_at >= ${range.since} and occurred_at < ${range.until} ${platform}

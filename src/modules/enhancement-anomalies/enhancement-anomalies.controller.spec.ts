@@ -9,9 +9,8 @@ import { EnhancementAnomaliesRepository } from './enhancement-anomalies.reposito
 
 const item = {
   historyDate: '2026-10-20',
-  enhancementType: 'starforce',
-  anomalyType: 'no_level',
-  itemKey: null,
+  apiType: 'starforce',
+  reason: 'no_level',
   itemName: '왕푸',
   rowCount: 2,
 }
@@ -79,7 +78,7 @@ describe('EnhancementAnomaliesController', () => {
       method: 'POST',
       url: '/v1/enhancement-anomalies',
       headers: bearer,
-      payload: { items: [{ ...item, anomalyType: 'flame' }] },
+      payload: { items: [{ ...item, reason: 'flame' }] },
     })
 
     expect(res.statusCode).toBe(400)

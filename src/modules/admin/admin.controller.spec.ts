@@ -337,6 +337,8 @@ describe('AdminController', () => {
     '/admin/hexa-matrix',
     '/admin/contents',
     '/admin/enhancement-costs',
+    '/admin/enhancement-costs/starforce',
+    '/admin/enhancement-costs/superior',
     '/admin/mvp-grades',
     '/admin/hunting-grounds',
   ]
@@ -362,12 +364,19 @@ describe('AdminController', () => {
     expect(res.body).not.toContain('boss_difficulties')
   })
 
+  const MENU_OF: Record<string, string> = {
+    '/admin/enhancement-costs/starforce': '/admin/enhancement-costs',
+    '/admin/enhancement-costs/superior': '/admin/enhancement-costs',
+  }
+
+  // 한 메뉴를 나눈 화면(강화 비용의 스타포스 등)은 그 메뉴 항목이 지금 화면이다. 화면 안의 전환 막대는 따로 센다.
   it('메뉴는 지금 보는 화면 하나에만 aria-current 를 단다', async () => {
     for (const url of PAGES) {
       const res = await app.inject({ method: 'GET', url })
-      const current = res.body.match(/<a [^>]*aria-current="page"[^>]*>/g) ?? []
+      const nav = res.body.slice(res.body.indexOf('<nav'), res.body.indexOf('</nav>'))
+      const current = nav.match(/<a [^>]*aria-current="page"[^>]*>/g) ?? []
       expect(current).toHaveLength(1)
-      expect(current[0]).toContain(`href="${url}"`)
+      expect(current[0]).toContain(`href="${MENU_OF[url] ?? url}"`)
     }
   })
 

@@ -1,3 +1,4 @@
+import { EDIT_CSS, EDIT_JS } from './edit-kit'
 import { MONEY_JS } from './price-format'
 
 type MenuItem =
@@ -411,6 +412,7 @@ export function layout(path: string, title: string, body: string): string {
   .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px }
 
   @media (prefers-reduced-motion: no-preference) { .btn, .nav a, .links a { transition: background-color .12s ease, color .12s ease } }
+  ${EDIT_CSS}
 </style>
 </head>
 <body>
@@ -454,6 +456,7 @@ export function layout(path: string, title: string, body: string): string {
   function orNull(v) { v = (v || '').trim(); return v === '' ? null : v; }
   function meso(n) { return Number(n).toLocaleString('ko-KR'); }
   ${MONEY_JS}
+  ${EDIT_JS}
   // 표 머리를 정렬 단추로 채운다. 같은 칸을 다시 누르면 방향이 바뀌고, 처음 누르면 글자 칸은 가나다 차례, 숫자 칸은 큰 것부터다.
   // cols 의 한 칸은 { label, key, num, text } 이고 key 가 없으면 정렬하지 않는 칸이다. sort 는 { key, dir } 이고 dir 은 1 · -1 이다.
   function sortHeader(tr, cols, sort, onSort) {

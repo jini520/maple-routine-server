@@ -1122,9 +1122,17 @@ export const contentCategoryEnum = pgEnum('content_category', [
   'guild',
 ])
 /** 넥슨 응답의 daily_contents · weekly_contents 중 어디서 오는가. */
-export const contentSectionEnum = pgEnum('content_section', ['daily', 'weekly'])
+export const contentCycleEnum = pgEnum('content_cycle', ['daily', 'weekly'])
 /** 카운트형(contents)과 퀘스트형(quest). 수동 모드 기본값과 완료 판정이 갈린다. */
 export const contentTypeEnum = pgEnum('content_type', ['contents', 'quest'])
+
+/** 넥슨 응답의 무엇을 보고 완료를 판정하는지. 넥슨의 type 은 둘인데 판정 방법은 넷이다. */
+export const contentCheckTypeEnum = pgEnum('content_check_type', [
+  'state_only',
+  'count_only',
+  'both',
+  'score',
+])
 /** 진행이 누구와 공유되는가. 캐릭터 · 월드 · 계정. */
 export const shareScopeEnum = pgEnum('share_scope', ['character', 'world', 'account'])
 
@@ -1138,40 +1146,39 @@ export const contentCategories = pgTable(
     name: text('name').notNull(),
     /** 갈래의 참고 태그. 글자와 숨김 중 하나다. */
     countTag: text('count_tag'),
-    hideCountTag: boolean('hide_count_tag').notNull().default(false),
-    /** 갈래의 주간 진행 한도. 등록 여부와 무관하게 완료한 항목 수를 센다. */
-    weeklyLimit: integer('weekly_limit'),
+    hidesCountTag: boolean('hides_count_tag').notNull().default(false),
+    /** 그 갈래에서 한 주에 완료할 수 있는 횟수. 등록 여부와 무관하게 완료한 항목 수를 센다. */
+    weeklyMaxCount: integer('weekly_max_count'),
     /** today 공유 위젯의 계열 차례. NULL 은 뒤에 선다. */
-    sharedOrder: integer('shared_order'),
+    sharedSortOrder: integer('shared_sort_order'),
     /** 관리 화면 주간 목록의 갈래 차례. */
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
-    check('content_categories_tag_one', sql`${t.countTag} IS NULL OR NOT ${t.hideCountTag}`),
+    check('content_categories_tag_one', sql`${t.countTag} IS NULL OR NOT ${t.hidesCountTag}`),
     check(
-      'content_categories_weekly_limit_positive',
-      sql`${t.weeklyLimit} IS NULL OR ${t.weeklyLimit} >= 1`,
+      'content_categories_weekly_max_count_positive',
+      sql`${t.weeklyMaxCount} IS NULL OR ${t.weeklyMaxCount} >= 1`,
     ),
   ],
 )
 
-/** 컨텐츠 한 줄. 공유 카탈로그의 줄은 이 표의 칸이다. 캐시 · 추적 목록 · 공유 원장이 key 를 들어 지우지 않는다. */
+/** 컨텐츠 한 줄. 캐시 · 추적 목록 · 공유 진행 기록이 줄을 가리켜 지우지 않는다. */
 export const contents = pgTable(
   'contents',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     key: text('key').notNull().unique(),
-    section: contentSectionEnum('section').notNull(),
-    /** 넥슨 응답의 content_name. 앱이 NFC · 공백 제거 뒤 완전 일치로 key 를 얻는다. */
+    cycle: contentCycleEnum('cycle').notNull(),
+    /** 넥슨 응답의 content_name. 앱이 NFC · 공백 제거 뒤 완전 일치로 줄을 찾는다. */
     apiName: text('api_name').notNull().unique(),
     categoryId: uuid('category_id')
       .notNull()
       .references(() => contentCategories.id),
-    displayName: text('display_name').notNull(),
+    name: text('name').notNull(),
+    /** 좁은 자리의 이름. 캐릭터 줄은 남은 스케줄, 공유 줄은 공유 컨텐츠 위젯에 쓴다. */
     shortName: text('short_name').notNull(),
-    /**
-     * 카드 그림. 지도 배경과 보스 초상 중 하나다. 앱에는 그림 id 와 옛 앱이 읽는 그림 이름(확장자를 뗀 것)을 함께 낸다.
-     */
+    /** 카드 그림. 지도 배경과 보스 초상 중 하나다. */
     backgroundMapAssetId: uuid('background_map_asset_id').references(() => assets.id),
     backgroundPortraitAssetId: uuid('background_portrait_asset_id').references(() => assets.id),
     /** 카드의 지역 아이콘. 지도 배경이 있는 카드가 그 옆에 세운다. */
@@ -1179,25 +1186,16 @@ export const contents = pgTable(
     /** 컨텐츠가 참고 태그를 덮는 글자. */
     countTag: text('count_tag'),
     type: contentTypeEnum('type').notNull(),
-    /** 수동 모드의 기본 상한. */
-    maxCount: integer('max_count').notNull(),
+    checkType: contentCheckTypeEnum('check_type').notNull(),
+    /** 완료로 세는 횟수. 넥슨이 준 최대 횟수 대신 쓴다. */
+    maxCount: integer('max_count'),
     /** 표시용 요구 레벨. 잠금이 아니다. */
     requiredLevel: integer('required_level'),
     /** KST 글자 그대로. 판정은 주간 기간의 첫날이다. */
-    from: text('from'),
-    until: text('until'),
+    validFrom: text('valid_from'),
+    validUntil: text('valid_until'),
     shareScope: shareScopeEnum('share_scope').notNull().default('character'),
-    /** today 공유 위젯의 글자. 공유 줄만 든다. */
-    sharedShortName: text('shared_short_name'),
-    /** 추적 중인 캐릭터 누구의 스케줄러에도 없으면 위젯이 안 그린다. */
-    onlyWhenScheduled: boolean('only_when_scheduled').notNull().default(false),
-    /** 병합이 이번 응답의 registration_flag 로 등록을 정한다. */
-    trustRegistrationFlag: boolean('trust_registration_flag').notNull().default(false),
-    /** 리셋 없이 누적되는 개인 점수. 후보 자격 판정에서 뺀다. */
-    cumulativeScore: boolean('cumulative_score').notNull().default(false),
-    /** API 의 알려진 오류를 덮는 값. 게임 규칙은 여기 적지 않는다. */
-    maxCountOverride: integer('max_count_override'),
-    /** 섹션 안의 차례. 관리 화면 목록의 차례다. */
+    /** 같은 주기 안의 차례. 관리 화면 목록의 차례다. */
     sortOrder: integer('sort_order').notNull(),
   },
   (t) => [
@@ -1205,22 +1203,15 @@ export const contents = pgTable(
       'contents_background_one',
       sql`${t.backgroundMapAssetId} IS NULL OR ${t.backgroundPortraitAssetId} IS NULL`,
     ),
+    // 다른 줄에 값이 있으면 앱이 그 값을 완료 판정에 쓸 수 있다.
     check(
-      'contents_shared_name_pairs_scope',
-      sql`(${t.shareScope} = 'character') = (${t.sharedShortName} IS NULL)`,
+      'contents_max_count_only_count',
+      sql`(${t.checkType} = 'count_only') = (${t.maxCount} IS NOT NULL)`,
     ),
-    check(
-      'contents_character_flags_off',
-      sql`${t.shareScope} <> 'character' OR (NOT ${t.onlyWhenScheduled} AND NOT ${t.trustRegistrationFlag})`,
-    ),
-    check('contents_max_count_nonnegative', sql`${t.maxCount} >= 0`),
+    check('contents_max_count_positive', sql`${t.maxCount} IS NULL OR ${t.maxCount} >= 1`),
     check(
       'contents_required_level_positive',
       sql`${t.requiredLevel} IS NULL OR ${t.requiredLevel} >= 1`,
-    ),
-    check(
-      'contents_max_count_override_positive',
-      sql`${t.maxCountOverride} IS NULL OR ${t.maxCountOverride} >= 1`,
     ),
   ],
 )

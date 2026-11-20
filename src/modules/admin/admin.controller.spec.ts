@@ -185,6 +185,7 @@ describe('AdminController', () => {
   }
   const contentsRepo = {
     section: jest.fn(),
+    adminRows: jest.fn(),
     updateCategory: jest.fn(),
     moveCategory: jest.fn(),
     createContent: jest.fn(),
@@ -2025,38 +2026,35 @@ describe('AdminController', () => {
     const highMountain = {
       apiName: '에픽 던전 : 하이마운틴',
       category: 'epic_dungeon',
-      displayName: '하이마운틴',
-      shortName: '에픽 던전 : 하이마운틴',
-      backgroundPortrait: 'ancientGodMitra',
+      name: '하이마운틴',
+      shortName: '하이마운틴',
+      backgroundPortraitAssetId: ROW,
       type: 'contents',
+      checkType: 'count_only',
       maxCount: 5,
       requiredLevel: 260,
       shareScope: 'account',
-      sharedShortName: '하이마운틴',
     }
     const highMountainFields = {
       apiName: '에픽 던전 : 하이마운틴',
       category: 'epic_dungeon',
-      displayName: '하이마운틴',
-      shortName: '에픽 던전 : 하이마운틴',
-      backgroundMap: null,
-      backgroundPortrait: 'ancientGodMitra',
+      name: '하이마운틴',
+      shortName: '하이마운틴',
       countTag: null,
       type: 'contents',
+      checkType: 'count_only',
       maxCount: 5,
       requiredLevel: 260,
-      from: null,
-      until: null,
+      validFrom: null,
+      validUntil: null,
       shareScope: 'account',
-      sharedShortName: '하이마운틴',
-      onlyWhenScheduled: false,
-      trustRegistrationFlag: false,
-      cumulativeScore: false,
-      maxCountOverride: null,
+      backgroundMapAssetId: null,
+      backgroundPortraitAssetId: ROW,
+      regionIconAssetId: null,
     }
 
-    it('rows 는 칸 그대로이고, 갈래는 PUT 204 · 모르면 404, move 는 204 다', async () => {
-      contentsRepo.section.mockResolvedValue({ updatedAt: null, categories: [], contents: [] })
+    it('rows 는 관리 줄 그대로이고, 갈래는 PUT 204 · 모르면 404, move 는 204 다', async () => {
+      contentsRepo.adminRows.mockResolvedValue({ updatedAt: null, categories: [], contents: [] })
       expect((await app.inject({ method: 'GET', url: '/admin/contents/rows' })).json()).toEqual({
         updatedAt: null,
         categories: [],
@@ -2069,16 +2067,21 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/contents/categories/epic_dungeon',
-            payload: { name: '에픽 던전', countTag: 'ID당 1회', weeklyLimit: 3, sharedOrder: 2 },
+            payload: {
+              name: '에픽 던전',
+              countTag: 'ID당 1회',
+              weeklyMaxCount: 3,
+              sharedSortOrder: 2,
+            },
           })
         ).statusCode,
       ).toBe(204)
       expect(contentsRepo.updateCategory).toHaveBeenCalledWith('epic_dungeon', {
         name: '에픽 던전',
         countTag: 'ID당 1회',
-        hideCountTag: false,
-        weeklyLimit: 3,
-        sharedOrder: 2,
+        hidesCountTag: false,
+        weeklyMaxCount: 3,
+        sharedSortOrder: 2,
       })
       // 글자와 숨김을 함께 못 든다. 갈래 key 는 ENUM 밖이면 경로에서 400 이다.
       expect(
@@ -2086,7 +2089,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/contents/categories/epic_dungeon',
-            payload: { name: '에픽 던전', countTag: 'ID당 1회', hideCountTag: true },
+            payload: { name: '에픽 던전', countTag: 'ID당 1회', hidesCountTag: true },
           })
         ).statusCode,
       ).toBe(400)
@@ -2123,17 +2126,17 @@ describe('AdminController', () => {
       expect(contentsRepo.moveCategory).toHaveBeenCalledWith('guild', 'up')
     })
 
-    it('컨텐츠 POST 는 201 · 모르는 갈래 404 · 같은 key 와 겹치는 API 이름 409 · 모양이 틀리면 400 이다', async () => {
+    it('컨텐츠 POST 는 201 · 모르는 갈래 404 · 같은 key 와 겹치는 API 이름 409 · 없는 그림과 모양이 틀리면 400 이다', async () => {
       contentsRepo.createContent.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
         url: '/admin/contents',
-        payload: { key: 'epic_dungeon_high_mountain', section: 'weekly', ...highMountain },
+        payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...highMountain },
       })
       expect(created.statusCode).toBe(201)
       expect(contentsRepo.createContent).toHaveBeenCalledWith({
         key: 'epic_dungeon_high_mountain',
-        section: 'weekly',
+        cycle: 'weekly',
         ...highMountainFields,
       })
 
@@ -2143,7 +2146,7 @@ describe('AdminController', () => {
           await app.inject({
             method: 'POST',
             url: '/admin/contents',
-            payload: { key: 'epic_dungeon_high_mountain', section: 'weekly', ...highMountain },
+            payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...highMountain },
           })
         ).statusCode,
       ).toBe(404)
@@ -2151,23 +2154,27 @@ describe('AdminController', () => {
       const taken = await app.inject({
         method: 'POST',
         url: '/admin/contents',
-        payload: { key: 'epic_dungeon_high_mountain_2', section: 'weekly', ...highMountain },
+        payload: { key: 'epic_dungeon_high_mountain_2', cycle: 'weekly', ...highMountain },
       })
       expect(taken.statusCode).toBe(409)
       expect(taken.json<{ message: string }>().message).toContain('epic_dungeon_high_mountain')
+      contentsRepo.createContent.mockRejectedValue(new AssetNotFound(ROW))
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/admin/contents',
+            payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...highMountain },
+          })
+        ).statusCode,
+      ).toBe(400)
 
-      // 캐릭터 줄이 위젯 글자를 들거나, 공유 줄이 안 들거나, 그림 둘을 다 들면 400 이다.
+      // 최대 횟수가 완료 조건과 어긋나거나, 그림 둘을 다 들거나, 기간이 거꾸로면 400 이다.
       for (const bad of [
-        { ...highMountain, shareScope: 'character' },
-        { ...highMountain, sharedShortName: null },
-        { ...highMountain, backgroundMap: 'highMountain' },
-        {
-          ...highMountain,
-          shareScope: 'character',
-          sharedShortName: null,
-          onlyWhenScheduled: true,
-        },
-        { ...highMountain, from: '2026-09-17', until: '2026-09-10' },
+        { ...highMountain, maxCount: null },
+        { ...highMountain, checkType: 'state_only' },
+        { ...highMountain, backgroundMapAssetId: ROW },
+        { ...highMountain, validFrom: '2026-09-17', validUntil: '2026-09-10' },
       ]) {
         contentsRepo.createContent.mockClear()
         expect(
@@ -2175,7 +2182,7 @@ describe('AdminController', () => {
             await app.inject({
               method: 'POST',
               url: '/admin/contents',
-              payload: { key: 'epic_dungeon_high_mountain', section: 'weekly', ...bad },
+              payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...bad },
             })
           ).statusCode,
         ).toBe(400)
@@ -2183,20 +2190,20 @@ describe('AdminController', () => {
       }
     })
 
-    it('컨텐츠 PUT 은 204 · 모르면 404 이고 key 와 섹션은 안 받는다. move 는 204 다', async () => {
+    it('컨텐츠 PUT 은 204 · 모르면 404 이고 key 와 주기는 안 받는다. move 는 204 다', async () => {
       contentsRepo.updateContent.mockResolvedValue(true)
       expect(
         (
           await app.inject({
             method: 'PUT',
             url: '/admin/contents/epic_dungeon_high_mountain',
-            payload: { ...highMountain, until: '2027-01-01' },
+            payload: { ...highMountain, validUntil: '2027-01-01' },
           })
         ).statusCode,
       ).toBe(204)
       expect(contentsRepo.updateContent).toHaveBeenCalledWith('epic_dungeon_high_mountain', {
         ...highMountainFields,
-        until: '2027-01-01',
+        validUntil: '2027-01-01',
       })
       contentsRepo.updateContent.mockResolvedValue(false)
       expect(

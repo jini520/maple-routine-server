@@ -1,11 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq, sql } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/pg-core'
+import { asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
 import { assets, contentCategories, contents } from '../../database/schema'
-import { assetNameColumns, optionalRefValueOf, resolveOptionalAssetId } from '../assets/asset-refs'
+import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 /** 앱 CONTENT_CATEGORIES 의 key 집합 그대로. 글자 · 태그 · 차례는 표가 든다. */
@@ -20,62 +19,60 @@ export const CONTENT_CATEGORIES = [
   'guild',
 ] as const
 export type ContentCategory = (typeof CONTENT_CATEGORIES)[number]
-export const CONTENT_SECTIONS = ['daily', 'weekly'] as const
-export type ContentSection = (typeof CONTENT_SECTIONS)[number]
+export const CONTENT_CYCLES = ['daily', 'weekly'] as const
+export type ContentCycle = (typeof CONTENT_CYCLES)[number]
 export const CONTENT_TYPES = ['contents', 'quest'] as const
 export type ContentType = (typeof CONTENT_TYPES)[number]
+export const CONTENT_CHECK_TYPES = ['state_only', 'count_only', 'both', 'score'] as const
+export type ContentCheckType = (typeof CONTENT_CHECK_TYPES)[number]
 export const SHARE_SCOPES = ['character', 'world', 'account'] as const
 export type ShareScope = (typeof SHARE_SCOPES)[number]
 
 export interface ContentCategoryView {
+  id: string
   key: ContentCategory
   name: string
   countTag: string | null
-  hideCountTag: boolean
-  weeklyLimit: number | null
-  sharedOrder: number | null
+  hidesCountTag: boolean
+  weeklyMaxCount: number | null
+  sharedSortOrder: number | null
 }
 
+/** 컨텐츠 한 줄. 칸 이름은 표를 따르고 분류 · 그림은 줄 id 다. */
 export interface ContentView {
+  id: string
   key: string
-  section: ContentSection
+  cycle: ContentCycle
   apiName: string
-  category: ContentCategory
-  displayName: string
+  categoryId: string
+  name: string
   shortName: string
-  backgroundMap: string | null
-  backgroundPortrait: string | null
   countTag: string | null
   type: ContentType
-  maxCount: number
+  checkType: ContentCheckType
+  maxCount: number | null
   requiredLevel: number | null
-  from: string | null
-  until: string | null
+  validFrom: string | null
+  validUntil: string | null
   shareScope: ShareScope
-  sharedShortName: string | null
-  onlyWhenScheduled: boolean
-  trustRegistrationFlag: boolean
-  cumulativeScore: boolean
-  maxCountOverride: number | null
-}
-
-/** GET /v1/game-data 의 contents 칸. 갈래는 sort_order 차례, 컨텐츠는 일간 뒤 주간이고 섹션 안이 sort_order 차례다. */
-/** 컨텐츠 카드의 그림 셋. 지역 아이콘은 지도 배경이 있는 카드가 그 옆에 세운다. */
-export interface ContentAssetIds {
   backgroundMapAssetId: string | null
   backgroundPortraitAssetId: string | null
   regionIconAssetId: string | null
 }
 
+/** GET /v1/game-data 의 contents 칸. 갈래는 sort_order 차례, 컨텐츠는 일간 뒤 주간이고 그 안이 sort_order 차례다. */
 export interface ContentsSection {
   updatedAt: string | null
-  categories: ContentCategoryView[]
-  /** backgroundMap · backgroundPortrait 는 옛 앱이 읽는 그림 이름이다 */
-  contents: (ContentView & ContentAssetIds)[]
+  contentCategories: ContentCategoryView[]
+  contents: ContentView[]
 }
 
-export type ContentCategoryInput = Omit<ContentCategoryView, 'key'>
-export type ContentInput = ContentView
+/** 관리 화면의 컨텐츠. 갈래의 key 를 함께 든다. */
+export type ContentAdminRow = ContentView & { category: ContentCategory }
+
+export type ContentCategoryInput = Omit<ContentCategoryView, 'id' | 'key'>
+/** 갈래는 key 로, 그림은 그림 줄 id 로 받는다. */
+export type ContentInput = Omit<ContentAdminRow, 'id' | 'categoryId'>
 
 export class ContentExists extends Error {}
 /** 공백 · 정규화만 다른 API 이름이 이미 있다. message 가 그 줄의 key 다. */
@@ -87,55 +84,49 @@ export function comparableApiName(name: string): string {
   return name.normalize('NFC').replace(/\s+/g, '')
 }
 
-const BACKGROUND_MAP_ASSET = alias(assets, 'background_map_asset')
-const BACKGROUND_PORTRAIT_ASSET = alias(assets, 'background_portrait_asset')
-
 const CONTENT_COLUMNS = {
+  id: contents.id,
   key: contents.key,
-  section: contents.section,
+  cycle: contents.cycle,
   apiName: contents.apiName,
+  categoryId: contents.categoryId,
   category: contentCategories.key,
-  displayName: contents.displayName,
+  name: contents.name,
   shortName: contents.shortName,
-  backgroundMapAsset: assetNameColumns(BACKGROUND_MAP_ASSET),
-  backgroundPortraitAsset: assetNameColumns(BACKGROUND_PORTRAIT_ASSET),
+  countTag: contents.countTag,
+  type: contents.type,
+  checkType: contents.checkType,
+  maxCount: contents.maxCount,
+  requiredLevel: contents.requiredLevel,
+  validFrom: contents.validFrom,
+  validUntil: contents.validUntil,
+  shareScope: contents.shareScope,
   backgroundMapAssetId: contents.backgroundMapAssetId,
   backgroundPortraitAssetId: contents.backgroundPortraitAssetId,
   regionIconAssetId: contents.regionIconAssetId,
-  countTag: contents.countTag,
-  type: contents.type,
-  maxCount: contents.maxCount,
-  requiredLevel: contents.requiredLevel,
-  from: contents.from,
-  until: contents.until,
-  shareScope: contents.shareScope,
-  sharedShortName: contents.sharedShortName,
-  onlyWhenScheduled: contents.onlyWhenScheduled,
-  trustRegistrationFlag: contents.trustRegistrationFlag,
-  cumulativeScore: contents.cumulativeScore,
-  maxCountOverride: contents.maxCountOverride,
 }
 
-/**
- * 지도 배경과 같은 이름의 지역 아이콘. 이관 전 앱이 배경 이름으로 지역 아이콘(`map_icon`)을 찾던 차례(webp · png · jpg)다. 없으면
- * null 이다. 아이콘을 고르는 칸이 관리 화면에 생기기 전까지 배경을 바꾸면 아이콘이 따라가게 쓰기마다 부른다.
- */
-export async function regionIconOf(
-  db: DbOrTx,
-  backgroundMap: string | null | undefined,
-): Promise<string | null> {
-  if (backgroundMap == null) return null
-  const rows = await db
-    .select({ id: assets.id, extension: assets.extension })
-    .from(assets)
-    .where(
-      and(eq(assets.category, 'map_icon'), eq(assets.fileName, backgroundMap.normalize('NFC'))),
-    )
-  return (
-    ['webp', 'png', 'jpg']
-      .map((ext) => rows.find((r) => r.extension === ext)?.id)
-      .find((id) => id !== undefined) ?? null
-  )
+function viewOf(r: ContentAdminRow): ContentView {
+  return {
+    id: r.id,
+    key: r.key,
+    cycle: r.cycle,
+    apiName: r.apiName,
+    categoryId: r.categoryId,
+    name: r.name,
+    shortName: r.shortName,
+    countTag: r.countTag,
+    type: r.type,
+    checkType: r.checkType,
+    maxCount: r.maxCount,
+    requiredLevel: r.requiredLevel,
+    validFrom: r.validFrom,
+    validUntil: r.validUntil,
+    shareScope: r.shareScope,
+    backgroundMapAssetId: r.backgroundMapAssetId,
+    backgroundPortraitAssetId: r.backgroundPortraitAssetId,
+    regionIconAssetId: r.regionIconAssetId,
+  }
 }
 
 /**
@@ -147,62 +138,52 @@ export class ContentsRepository {
   constructor(@Inject(DB) private readonly db: Db) {}
 
   async section(): Promise<ContentsSection> {
+    const { categories, rows, updatedAt } = await this.read()
+    return {
+      updatedAt,
+      contentCategories: categories,
+      contents: rows.map(viewOf),
+    }
+  }
+
+  async adminRows(): Promise<{
+    updatedAt: string | null
+    categories: ContentCategoryView[]
+    contents: ContentAdminRow[]
+  }> {
+    const { categories, rows, updatedAt } = await this.read()
+    return {
+      updatedAt,
+      categories,
+      contents: rows.map((r) => ({ ...viewOf(r), category: r.category })),
+    }
+  }
+
+  private async read() {
     const [categories, rows, updatedAt] = await Promise.all([
       this.db
-        .select()
+        .select({
+          id: contentCategories.id,
+          key: contentCategories.key,
+          name: contentCategories.name,
+          countTag: contentCategories.countTag,
+          hidesCountTag: contentCategories.hidesCountTag,
+          weeklyMaxCount: contentCategories.weeklyMaxCount,
+          sharedSortOrder: contentCategories.sharedSortOrder,
+        })
         .from(contentCategories)
         .orderBy(asc(contentCategories.sortOrder), asc(contentCategories.key)),
       this.db
         .select(CONTENT_COLUMNS)
         .from(contents)
         .innerJoin(contentCategories, eq(contents.categoryId, contentCategories.id))
-        .leftJoin(BACKGROUND_MAP_ASSET, eq(BACKGROUND_MAP_ASSET.id, contents.backgroundMapAssetId))
-        .leftJoin(
-          BACKGROUND_PORTRAIT_ASSET,
-          eq(BACKGROUND_PORTRAIT_ASSET.id, contents.backgroundPortraitAssetId),
-        )
-        .orderBy(asc(contents.section), asc(contents.sortOrder), asc(contents.key)),
+        .orderBy(asc(contents.cycle), asc(contents.sortOrder), asc(contents.key)),
       sectionUpdatedAt(this.db, 'contents'),
     ])
-    return {
-      updatedAt,
-      categories: categories.map((c) => ({
-        key: c.key,
-        name: c.name,
-        countTag: c.countTag,
-        hideCountTag: c.hideCountTag,
-        weeklyLimit: c.weeklyLimit,
-        sharedOrder: c.sharedOrder,
-      })),
-      contents: rows.map(({ backgroundMapAsset, backgroundPortraitAsset, ...r }) => ({
-        key: r.key,
-        section: r.section,
-        apiName: r.apiName,
-        category: r.category,
-        displayName: r.displayName,
-        shortName: r.shortName,
-        backgroundMap: optionalRefValueOf('mapBackground', backgroundMapAsset),
-        backgroundPortrait: optionalRefValueOf('bossPortrait', backgroundPortraitAsset),
-        backgroundMapAssetId: r.backgroundMapAssetId,
-        backgroundPortraitAssetId: r.backgroundPortraitAssetId,
-        regionIconAssetId: r.regionIconAssetId,
-        countTag: r.countTag,
-        type: r.type,
-        maxCount: r.maxCount,
-        requiredLevel: r.requiredLevel,
-        from: r.from,
-        until: r.until,
-        shareScope: r.shareScope,
-        sharedShortName: r.sharedShortName,
-        onlyWhenScheduled: r.onlyWhenScheduled,
-        trustRegistrationFlag: r.trustRegistrationFlag,
-        cumulativeScore: r.cumulativeScore,
-        maxCountOverride: r.maxCountOverride,
-      })),
-    }
+    return { categories, rows, updatedAt }
   }
 
-  /** 갈래의 글자 · 태그 · 한도 · 공유 차례를 갈아 끼운다. 모르면 false 다. */
+  /** 갈래의 글자 · 태그 · 주간 최대 횟수 · 공유 차례를 갈아 끼운다. 모르면 false 다. */
   async updateCategory(key: ContentCategory, input: ContentCategoryInput): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const rows = await tx
@@ -210,9 +191,9 @@ export class ContentsRepository {
         .set({
           name: input.name,
           countTag: input.countTag,
-          hideCountTag: input.hideCountTag,
-          weeklyLimit: input.weeklyLimit,
-          sharedOrder: input.sharedOrder,
+          hidesCountTag: input.hidesCountTag,
+          weeklyMaxCount: input.weeklyMaxCount,
+          sharedSortOrder: input.sharedSortOrder,
         })
         .where(eq(contentCategories.key, key))
         .returning({ id: contentCategories.id })
@@ -238,8 +219,8 @@ export class ContentsRepository {
   }
 
   /**
-   * 컨텐츠를 섹션 맨 뒤에 더한다. 모르는 갈래는 NoContentCategory, 공백만 다른 API 이름은 ApiNameTaken, 같은 key 는
-   * ContentExists 다.
+   * 컨텐츠를 같은 주기의 맨 뒤에 더한다. 모르는 갈래는 NoContentCategory, 공백만 다른 API 이름은 ApiNameTaken, 같은 key 는
+   * ContentExists, 그림 표에 없는 그림은 AssetNotFound 다.
    */
   async createContent(input: ContentInput): Promise<{ id: string }> {
     return this.db.transaction(async (tx) => {
@@ -249,7 +230,7 @@ export class ContentsRepository {
       const [last] = await tx
         .select({ max: sql<number | null>`max(${contents.sortOrder})` })
         .from(contents)
-        .where(eq(contents.section, input.section))
+        .where(eq(contents.cycle, input.cycle))
       let row: { id: string } | undefined
       try {
         ;[row] = await tx
@@ -257,7 +238,7 @@ export class ContentsRepository {
           .values({
             ...(await this.columns(tx, input)),
             key: input.key,
-            section: input.section,
+            cycle: input.cycle,
             categoryId,
             sortOrder: (last?.max ?? -1) + 1,
           })
@@ -272,8 +253,8 @@ export class ContentsRepository {
     })
   }
 
-  /** 컨텐츠를 갈아 끼운다. key 와 섹션은 못 바꾼다. 모르면 false 다. 갈래 · API 이름 검사는 더할 때와 같다. */
-  async updateContent(key: string, input: Omit<ContentInput, 'key' | 'section'>): Promise<boolean> {
+  /** 컨텐츠를 갈아 끼운다. key 와 주기는 못 바꾼다. 모르면 false 다. 갈래 · API 이름 · 그림 검사는 더할 때와 같다. */
+  async updateContent(key: string, input: Omit<ContentInput, 'key' | 'cycle'>): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx.select({ id: contents.id }).from(contents).where(eq(contents.key, key))
       if (row === undefined) return false
@@ -289,48 +270,49 @@ export class ContentsRepository {
     })
   }
 
-  /** 컨텐츠의 차례를 섹션 안에서 한 칸 옮긴다. 끝이면 그대로 true 다. 모르면 false 다. */
+  /** 컨텐츠의 차례를 같은 주기 안에서 한 칸 옮긴다. 끝이면 그대로 true 다. 모르면 false 다. */
   async moveContent(key: string, direction: 'up' | 'down'): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
-        .select({ section: contents.section })
+        .select({ cycle: contents.cycle })
         .from(contents)
         .where(eq(contents.key, key))
       if (row === undefined) return false
       const rows = await tx
         .select({ id: contents.id, key: contents.key, sortOrder: contents.sortOrder })
         .from(contents)
-        .where(eq(contents.section, row.section))
+        .where(eq(contents.cycle, row.cycle))
         .orderBy(asc(contents.sortOrder), asc(contents.key))
       return this.swap(tx, contents, rows, key, direction)
     })
   }
 
-  /** 입력의 배경 이름 둘을 그림 id 로 푼 표의 칸. 그림이 표에 없으면 AssetNotFound 다. */
-  private async columns(db: DbOrTx, input: Omit<ContentInput, 'key' | 'section'>) {
+  /** 입력을 표의 칸으로. 그림이 표에 없으면 AssetNotFound 다. */
+  private async columns(db: DbOrTx, input: Omit<ContentInput, 'key' | 'cycle'>) {
+    for (const id of [
+      input.backgroundMapAssetId,
+      input.backgroundPortraitAssetId,
+      input.regionIconAssetId,
+    ]) {
+      if (id === null) continue
+      const [asset] = await db.select({ id: assets.id }).from(assets).where(eq(assets.id, id))
+      if (asset === undefined) throw new AssetNotFound(id)
+    }
     return {
       apiName: input.apiName,
-      displayName: input.displayName,
+      name: input.name,
       shortName: input.shortName,
-      backgroundMapAssetId: await resolveOptionalAssetId(db, 'mapBackground', input.backgroundMap),
-      backgroundPortraitAssetId: await resolveOptionalAssetId(
-        db,
-        'bossPortrait',
-        input.backgroundPortrait,
-      ),
-      regionIconAssetId: await regionIconOf(db, input.backgroundMap),
+      backgroundMapAssetId: input.backgroundMapAssetId,
+      backgroundPortraitAssetId: input.backgroundPortraitAssetId,
+      regionIconAssetId: input.regionIconAssetId,
       countTag: input.countTag,
       type: input.type,
+      checkType: input.checkType,
       maxCount: input.maxCount,
       requiredLevel: input.requiredLevel,
-      from: input.from,
-      until: input.until,
+      validFrom: input.validFrom,
+      validUntil: input.validUntil,
       shareScope: input.shareScope,
-      sharedShortName: input.sharedShortName,
-      onlyWhenScheduled: input.onlyWhenScheduled,
-      trustRegistrationFlag: input.trustRegistrationFlag,
-      cumulativeScore: input.cumulativeScore,
-      maxCountOverride: input.maxCountOverride,
     }
   }
 

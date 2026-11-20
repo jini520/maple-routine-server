@@ -351,6 +351,13 @@
       "when": 1795164226855,
       "tag": "0049_boss_reference_bundle",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795165970727,
+      "tag": "0050_contents_bundle",
+      "breakpoints": true
     }
   ]
 }

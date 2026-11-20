@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { BOSS_CYCLES, BOSS_DIFFICULTIES } from '../bosses/bosses.dto'
 import {
   CONTENT_CATEGORIES,
-  CONTENT_SECTIONS,
+  CONTENT_CHECK_TYPES,
+  CONTENT_CYCLES,
   CONTENT_TYPES,
   SHARE_SCOPES,
 } from '../contents/contents.repository'
@@ -466,68 +467,62 @@ export type HexaStatUpdateBody = z.infer<typeof hexaStatUpdateBody>
 
 /* ── 컨텐츠 ── */
 
-/** 갈래의 글자 · 태그 · 한도 · 공유 차례. key 는 ENUM 이라 경로가 든다. 태그는 글자와 숨김 중 하나다. */
+/** 갈래의 글자 · 태그 · 주간 최대 횟수 · 공유 차례. key 는 ENUM 이라 경로가 든다. 태그는 글자와 숨김 중 하나다. */
 export const contentCategoryUpdateBody = z
   .object({
     name: z.string().min(1).max(50),
     countTag: z.string().min(1).max(50).nullish(),
-    hideCountTag: z.boolean().default(false),
-    weeklyLimit: z.number().int().min(1).nullish(),
-    sharedOrder: z.number().int().min(0).nullish(),
+    hidesCountTag: z.boolean().default(false),
+    weeklyMaxCount: z.number().int().min(1).nullish(),
+    sharedSortOrder: z.number().int().min(0).nullish(),
   })
-  .refine((c) => c.countTag == null || !c.hideCountTag, {
+  .refine((c) => c.countTag == null || !c.hidesCountTag, {
     message: '태그는 글자와 숨김 중 하나다',
-    path: ['hideCountTag'],
+    path: ['hidesCountTag'],
   })
 export type ContentCategoryUpdateBody = z.infer<typeof contentCategoryUpdateBody>
 export const contentCategoryParam = z.enum(CONTENT_CATEGORIES)
 
-/** 컨텐츠 한 줄. 공유 줄만 위젯 글자와 스위치 둘을 들고, 그림은 지도와 초상 중 하나다. */
+/** 컨텐츠 한 줄. 갈래는 key, 그림은 그림 줄 id 다. 카드 그림은 지도와 초상 중 하나다. */
 const contentBase = z.object({
   key: snakeKey,
-  section: z.enum(CONTENT_SECTIONS),
+  cycle: z.enum(CONTENT_CYCLES),
   apiName: z.string().min(1).max(100),
   category: z.enum(CONTENT_CATEGORIES),
-  displayName: z.string().min(1).max(100),
+  name: z.string().min(1).max(100),
   shortName: z.string().min(1).max(100),
-  backgroundMap: z.string().min(1).max(100).nullish(),
-  backgroundPortrait: z.string().min(1).max(100).nullish(),
   countTag: z.string().min(1).max(50).nullish(),
   type: z.enum(CONTENT_TYPES),
-  maxCount: z.number().int().min(0),
+  checkType: z.enum(CONTENT_CHECK_TYPES),
+  /** 완료로 세는 횟수. 완료 조건이 count_only 인 줄만 적는다. */
+  maxCount: z.number().int().min(1).nullish(),
   requiredLevel: z.number().int().min(1).nullish(),
-  from: periodText,
-  until: periodText,
+  validFrom: periodText,
+  validUntil: periodText,
   shareScope: z.enum(SHARE_SCOPES).default('character'),
-  sharedShortName: z.string().min(1).max(50).nullish(),
-  onlyWhenScheduled: z.boolean().default(false),
-  trustRegistrationFlag: z.boolean().default(false),
-  cumulativeScore: z.boolean().default(false),
-  maxCountOverride: z.number().int().min(1).nullish(),
+  backgroundMapAssetId: z.string().uuid().nullish(),
+  backgroundPortraitAssetId: z.string().uuid().nullish(),
+  regionIconAssetId: z.string().uuid().nullish(),
 })
-/** 규칙은 key · 섹션을 안 보므로 더하기와 고치기가 같은 검사를 쓴다. */
-type ContentRuleShape = Omit<z.infer<typeof contentBase>, 'key' | 'section'>
+/** 규칙은 key · 주기를 안 보므로 더하기와 고치기가 같은 검사를 쓴다. */
+type ContentRuleShape = Omit<z.infer<typeof contentBase>, 'key' | 'cycle'>
 const contentRules = <T extends z.ZodType<ContentRuleShape>>(schema: T) =>
   schema
-    .refine(periodOrder, PERIOD_MESSAGE)
-    .refine((c) => c.backgroundMap == null || c.backgroundPortrait == null, {
+    .refine((c) => periodOrder({ from: c.validFrom, until: c.validUntil }), {
+      message: '끝이 시작보다 뒤여야 한다',
+      path: ['validUntil'],
+    })
+    .refine((c) => c.backgroundMapAssetId == null || c.backgroundPortraitAssetId == null, {
       message: '그림은 지도와 초상 중 하나다',
-      path: ['backgroundPortrait'],
+      path: ['backgroundPortraitAssetId'],
     })
-    .refine((c) => (c.shareScope === 'character') === (c.sharedShortName == null), {
-      message: '공유 줄은 위젯 글자를 들고 캐릭터 줄은 못 든다',
-      path: ['sharedShortName'],
+    .refine((c) => (c.checkType === 'count_only') === (c.maxCount != null), {
+      message: '최대 횟수는 완료 조건이 count_only 인 줄에만 적는다',
+      path: ['maxCount'],
     })
-    .refine(
-      (c) => c.shareScope !== 'character' || (!c.onlyWhenScheduled && !c.trustRegistrationFlag),
-      {
-        message: '캐릭터 줄은 스위치 둘을 못 켠다',
-        path: ['shareScope'],
-      },
-    )
 export const contentCreateBody = contentRules(contentBase)
 export type ContentCreateBody = z.infer<typeof contentCreateBody>
-export const contentUpdateBody = contentRules(contentBase.omit({ key: true, section: true }))
+export const contentUpdateBody = contentRules(contentBase.omit({ key: true, cycle: true }))
 export type ContentUpdateBody = z.infer<typeof contentUpdateBody>
 
 /* ── 강화 비용 · MVP 등급 ── */

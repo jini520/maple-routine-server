@@ -675,4 +675,134 @@ describeDb('moveOldDb', () => {
     await expect(moveOldDb(oldDb, newDb)).rejects.toEqual(new UnknownHexaCoreType('렌 · 오리진'))
     expect(await newDb.select().from(schema.hexaCores)).toEqual([])
   })
+
+  /** 옛 컨텐츠 줄. 쓰지 않는 칸은 옛 표의 기본값이다. */
+  const oldContent = (
+    key: string,
+    categoryId: string,
+    over: Partial<typeof oldSchema.contents.$inferInsert> = {},
+  ): typeof oldSchema.contents.$inferInsert => ({
+    key,
+    section: 'weekly',
+    apiName: `${key} 이름`,
+    categoryId,
+    displayName: `${key} 표시`,
+    shortName: `${key} 짧은`,
+    type: 'quest',
+    maxCount: 0,
+    sortOrder: 0,
+    ...over,
+  })
+
+  it('컨텐츠: 분류 칸을 새 이름으로, 컨텐츠는 결정 34 의 표대로 완료 조건을 정하고 최대 횟수는 횟수로 세는 줄에만, 공유 줄의 짧은 이름은 위젯 글자로 옮긴다', async () => {
+    const cats = await oldDb
+      .insert(oldSchema.contentCategories)
+      .values([
+        {
+          key: 'epic_dungeon',
+          name: '에픽 던전',
+          countTag: 'ID당 1회',
+          weeklyLimit: 3,
+          sharedOrder: 2,
+          sortOrder: 0,
+        },
+        { key: 'guild', name: '길드', hideCountTag: true, sortOrder: 1 },
+        { key: 'daily_quest', name: '일일 퀘스트', sortOrder: 2 },
+        { key: 'monster_park', name: '몬스터파크', sharedOrder: 0, sortOrder: 3 },
+        { key: 'arcane_river_quest', name: '아케인리버 지역 퀘스트', sortOrder: 4 },
+        { key: 'mu_lung_dojo', name: '무릉도장', sortOrder: 5 },
+      ])
+      .returning({ id: oldSchema.contentCategories.id, key: oldSchema.contentCategories.key })
+    const cat = Object.fromEntries(cats.map((c) => [c.key, c.id])) as Record<string, string>
+    const map = await insertOldAsset('maps/monsterPark.webp')
+    const rows = await oldDb
+      .insert(oldSchema.contents)
+      .values([
+        oldContent('epic_dungeon_high_mountain', cat.epic_dungeon ?? '', {
+          type: 'contents',
+          maxCount: 5,
+          shareScope: 'account',
+          sharedShortName: '하이마운틴',
+          from: '2026-09-17',
+        }),
+        oldContent('guild_underground_waterway', cat.guild ?? '', {
+          type: 'contents',
+          cumulativeScore: true,
+        }),
+        oldContent('guild_flag_race', cat.guild ?? '', { type: 'contents' }),
+        oldContent('guild_weekly_mission_points', cat.guild ?? '', {
+          type: 'contents',
+          maxCount: 10,
+          maxCountOverride: 10,
+        }),
+        oldContent('daily_quest_vanishing', cat.daily_quest ?? '', {
+          section: 'daily',
+          maxCount: 100,
+        }),
+        oldContent('monster_park', cat.monster_park ?? '', {
+          section: 'daily',
+          type: 'contents',
+          maxCount: 14,
+          shareScope: 'world',
+          sharedShortName: '일간',
+          backgroundMapAssetId: map,
+        }),
+        oldContent('monster_park_extreme', cat.monster_park ?? '', {
+          maxCount: 5,
+          shareScope: 'world',
+          sharedShortName: '익스트림 몬스터파커',
+        }),
+        oldContent('weekly_quest_faithful_investigation_reward', cat.arcane_river_quest ?? ''),
+        oldContent('enheim_defense', cat.arcane_river_quest ?? '', {
+          type: 'contents',
+          maxCount: 1,
+        }),
+        oldContent('mu_lung_dojo', cat.mu_lung_dojo ?? '', { type: 'contents' }),
+      ])
+      .returning({ id: oldSchema.contents.id, key: oldSchema.contents.key })
+
+    expect(await moveOldDb(oldDb, newDb)).toMatchObject({ contentCategories: 6, contents: 10 })
+    const categories = await newDb.select().from(schema.contentCategories)
+    expect(categories.find((c) => c.key === 'epic_dungeon')).toEqual({
+      id: cat.epic_dungeon,
+      key: 'epic_dungeon',
+      name: '에픽 던전',
+      countTag: 'ID당 1회',
+      hidesCountTag: false,
+      weeklyMaxCount: 3,
+      sharedSortOrder: 2,
+      sortOrder: 0,
+    })
+    expect(categories.find((c) => c.key === 'guild')?.hidesCountTag).toBe(true)
+
+    const moved = await newDb.select().from(schema.contents)
+    expect(moved.map((c) => c.id).sort()).toEqual(rows.map((r) => r.id).sort())
+    expect(Object.fromEntries(moved.map((c) => [c.key, [c.checkType, c.maxCount]]))).toEqual({
+      epic_dungeon_high_mountain: ['count_only', 5],
+      guild_underground_waterway: ['score', null],
+      guild_flag_race: ['score', null],
+      guild_weekly_mission_points: ['count_only', 10],
+      daily_quest_vanishing: ['state_only', null],
+      monster_park: ['count_only', 14],
+      monster_park_extreme: ['both', null],
+      weekly_quest_faithful_investigation_reward: ['both', null],
+      enheim_defense: ['count_only', 1],
+      mu_lung_dojo: ['score', null],
+    })
+    expect(moved.find((c) => c.key === 'monster_park')).toMatchObject({
+      cycle: 'daily',
+      name: 'monster_park 표시',
+      shortName: '일간',
+      shareScope: 'world',
+      backgroundMapAssetId: map,
+      categoryId: cat.monster_park,
+    })
+    expect(moved.find((c) => c.key === 'epic_dungeon_high_mountain')).toMatchObject({
+      cycle: 'weekly',
+      shortName: '하이마운틴',
+      validFrom: '2026-09-17',
+      validUntil: null,
+    })
+    expect(moved.find((c) => c.key === 'mu_lung_dojo')?.shortName).toBe('mu_lung_dojo 짧은')
+  })
 })

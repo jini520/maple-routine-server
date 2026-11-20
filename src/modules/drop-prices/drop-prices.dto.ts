@@ -33,7 +33,7 @@ export const dropPriceBody = z
     pricedAt: z.iso.datetime({ offset: true }).nullish(),
     /** 기록의 상태. 이 칸이 생기기 전 OTA 는 가격 있는 기록만 보내므로 없으면 completed 다. */
     status: dropRecordStatusBody.default('completed'),
-    /** 드롭한 캐릭터의 메이플 ID · ocid. 같은 드롭을 가리는 넥슨이 준 값이다. 1.0.13 앱은 둘 다 안 보낸다. */
+    /** 드롭한 캐릭터의 메이플 ID · ocid. 같은 드롭을 가리는 넥슨이 준 값이다. 1.0.13 앱과, 메이플 ID 를 못 찾은 1.0.14 앱은 둘 다 안 보낸다. */
     mapleId: mapleId.nullish(),
     ocid: nexonIdHash.nullish(),
     /** 상자에서 나온 드롭이면 그 상자의 아이템 key. 보스가 직접 떨군 드롭은 없다. */

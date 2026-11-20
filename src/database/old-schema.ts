@@ -326,12 +326,13 @@ export const dropPrices = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     /**
-     * 1.0.13 앱의 줄을 찾는 사람. 계정을 삭제하면 비우고 줄은 남긴다. 1.0.13 을 잠근 뒤 ocid 가 없는 줄과 함께 걷는다.
+     * 올린 사람. ocid 가 없는 줄(1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱)은 이 칸과 기록 id 로 찾는다. 계정을 삭제하면 비우고
+     * 줄은 남긴다.
      */
     userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     /** 기기가 만든 v4. 메이플 ID 안에서(옛 줄은 사람 안에서) 유일하다. 남의 기록 id 로 남의 줄을 못 덮는다. */
     dropRecordId: uuid('drop_record_id').notNull(),
-    /** 드롭한 캐릭터의 메이플 ID. 계정을 삭제하면 비운다. 1.0.13 앱의 줄은 NULL 이다. */
+    /** 드롭한 캐릭터의 메이플 ID. 계정을 삭제하면 비운다. 메이플 ID · ocid 없이 온 드롭(1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱)은 NULL 이다. */
     mapleId: text('maple_id').references(() => nexonAccountMapleIds.mapleId, {
       onDelete: 'set null',
       onUpdate: 'cascade',

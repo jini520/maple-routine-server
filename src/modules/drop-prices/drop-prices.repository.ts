@@ -45,7 +45,7 @@ export interface DropPriceInput {
   recordStatus: Exclude<DropRecordStatus, 'deleted'>
   /** 기기가 보낸 거래 시각. 이 칸을 안 보내는 옛 앱은 null 이고 그때는 받은 시각으로 적는다. */
   pricedAt: Date | null
-  /** 넥슨이 준 값 둘. 1.0.13 앱은 안 보내 null 이고, 그때는 사람 · 기록 id 로 가린다. */
+  /** 넥슨이 준 값 둘. 1.0.13 앱과 메이플 ID 를 못 찾은 1.0.14 앱은 안 보내 null 이고, 그때는 사람 · 기록 id 로 가린다. */
   owner: { mapleId: string; ocid: string } | null
   /** 상자에서 나온 드롭이면 그 상자의 아이템 key. 보스가 직접 떨군 드롭은 null. */
   boxOriginKey: string | null
@@ -83,8 +83,8 @@ export interface DropPriceAdminRow {
 }
 
 /**
- * 획득처. 상자 칸이 있으면 상자, 없고 ocid 가 있으면 보스가 직접 떨군 드롭, 둘 다 없으면 1.0.13 앱이 보냈거나 아직 다시 올리지
- * 않은 옛 줄이다. 직접 떨군 드롭도 상자 칸이 비어 있어 ocid 로 가른다. 메이플 ID 는 계정을 지우면 비므로 쓰지 않는다.
+ * 획득처. 상자 칸이 있으면 상자, 없고 ocid 가 있으면 보스가 직접 떨군 드롭이다. 둘 다 없으면 메이플 ID · ocid 없이 온 드롭
+ * (1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱)이거나 아직 다시 올리지 않은 옛 줄이다. 직접 떨군 드롭도 상자 칸이 비어 있어 ocid 로 가른다. 메이플 ID 는 계정을 지우면 비므로 쓰지 않는다.
  */
 export type DropSource = 'box' | 'direct' | 'unknown'
 
@@ -158,7 +158,7 @@ export class NoDropBox extends Error {}
 
 /**
  * 시세 표본. 같은 드롭(ocid · 보스 · 기간 · 아이템 · 획득처)은 누가 보냈든 한 줄이고, 다시 보낸 기록은 메이플 ID · 기록 id 로
- * 찾는다. 1.0.13 앱의 줄은 사람 · 기록 id 로 찾는다. 기기에서 사라진 기록은 deleted 로 남는다.
+ * 찾는다. ocid 가 없는 줄은 사람 · 기록 id 로 찾는다. 기기에서 사라진 기록은 deleted 로 남는다.
  */
 @Injectable()
 export class DropPricesRepository {
@@ -350,7 +350,7 @@ export class DropPricesRepository {
     }
   }
 
-  /** 1.0.13 앱의 줄. 사람과 기록 id 로 덮어 적는다. 넥슨이 준 값이 없어 같은 드롭을 가리지 못한다. */
+  /** ocid 가 없는 줄(1.0.13 앱 · 메이플 ID 를 못 찾은 1.0.14 앱). 사람과 기록 id 로 덮어 적는다. 넥슨이 준 값이 없어 같은 드롭을 가리지 못한다. */
   private async upsertLegacy(input: DropPriceInput, resolved: Resolved): Promise<void> {
     const values = this.valuesOf(input, resolved)
     await this.db

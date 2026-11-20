@@ -18,7 +18,7 @@ export interface WorldOpenPeriodRow extends WorldOpenPeriod {
   id: string
 }
 
-/** 게임 데이터 worlds 칸의 월드. 칸 이름은 표를 따르고, 기록은 id 로 가리킨다. 열린 기간은 validFrom 차례다. */
+/** 게임 데이터 worlds 칸의 월드. 칸 이름은 표를 따르고, 기록은 id 로 가리킨다. */
 export interface WorldView {
   id: string
   key: string
@@ -26,17 +26,22 @@ export interface WorldView {
   emblemAssetId: string | null
   isChallengers: boolean
   isEvent: boolean
-  openPeriods: WorldOpenPeriod[]
 }
 
-/** GET /v1/game-data 의 worlds 칸. 차례가 곧 앱의 월드 차례다. */
+/** 게임 데이터 worlds 칸의 열린 기간 한 줄. 월드를 줄 id 로 가리킨다. */
+export interface WorldOpenPeriodView extends WorldOpenPeriod {
+  worldId: string
+}
+
+/** GET /v1/game-data 의 worlds 칸. 월드 차례가 곧 앱의 월드 차례이고, 기간은 월드 차례 안에서 validFrom 차례다. */
 export interface WorldsSection {
   updatedAt: string | null
   worlds: WorldView[]
+  worldOpenPeriods: WorldOpenPeriodView[]
 }
 
 /** 관리 화면이 보는 월드. 거래권은 앱에 안 싣고 여기에만 있다. NULL 이면 시세에서 빠진다. */
-export interface WorldAdminView extends Omit<WorldView, 'openPeriods'> {
+export interface WorldAdminView extends WorldView {
   tradeGroupKey: string | null
   openPeriods: WorldOpenPeriodRow[]
 }
@@ -82,12 +87,18 @@ export class WorldsRepository {
         emblemAssetId: r.emblemAssetId,
         isChallengers: r.isChallengers,
         isEvent: r.isEvent,
-        openPeriods: r.openPeriods.map(({ validFrom, validUntil }) => ({ validFrom, validUntil })),
       })),
+      worldOpenPeriods: rows.flatMap((r) =>
+        r.openPeriods.map(({ validFrom, validUntil }) => ({
+          worldId: r.id,
+          validFrom,
+          validUntil,
+        })),
+      ),
     }
   }
 
-  /** 관리 화면의 표. section 에 거래권과 기간 줄 id 를 더하고, 고를 수 있는 거래권을 함께 낸다. */
+  /** 관리 화면의 표. 월드마다 거래권과 기간 줄(줄 id 포함)을 들고, 고를 수 있는 거래권을 함께 낸다. */
   async adminSection(): Promise<{
     updatedAt: string | null
     worlds: WorldAdminView[]

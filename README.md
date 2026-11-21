@@ -125,7 +125,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
     ```
 
   - 처음 한 번 박스를 꾸미는 순서: Node 22 를 nodejs.org 의 linux-x64 묶음(SHASUMS256 확인)으로 `/usr/local/lib/nodejs` 에 두고
-    `/usr/bin/node` 를 잇는다. `apt install nginx`. 시스템 사용자 `mapleroutine`, 위 폴더들, `createuser mapleroutine` ·
+    `/usr/bin/node` 를 잇는다. `apt install nginx rsync`(rsync 는 `deploy.sh` 가 쓴다). 시스템 사용자 `mapleroutine`, 위 폴더들, `createuser mapleroutine` ·
     `createdb -O mapleroutine maple_routine_next`, 환경 파일, 유닛 · nginx 사이트, 첫 `deploy.sh`, 옮기기 순서다. 방화벽(앱 박스에서
     오는 8080 만)은 DB 박스 iptables 와 오라클 보안 목록 둘 다 열어야 한다.
 

@@ -31,6 +31,8 @@ R=/srv/maple-routine-server/releases/$SHA
 rm -rf "\$R"
 mv /tmp/maple-routine-server-$SHA "\$R"
 chown -R root:root "\$R"
+# 맥의 mktemp 폴더는 700 이라 그대로 올라온다. 서비스 사용자가 읽고 들어갈 수 있게 연다.
+chmod -R u=rwX,go=rX "\$R"
 systemd-run --quiet --wait --pipe --uid=mapleroutine --gid=mapleroutine \
   --property=EnvironmentFile=/etc/maple-routine-server/env --working-directory="\$R" \
   /usr/bin/node dist/cli/migrate.js

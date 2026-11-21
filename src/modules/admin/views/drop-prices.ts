@@ -3,7 +3,7 @@ import { layout } from './layout'
 /**
  * 드롭 판매가 보기. 읽기만 한다. 왼쪽은 아이템 목록이고, 줄을 고르면 오른쪽에 그 아이템의 값 · 가격 분포 점그림 · 기록이 뜬다.
  * 판매가 표에는 가격을 적은 드롭만 있다. 보스 · 기간 · 획득처는 드롭 기록에서 읽어, 드롭 기록이 없는 옛 줄은 비어 보인다.
- * 기간 · 획득처 고르기는 목록과 상세에 함께 걸린다.
+ * 기간 · 획득처 고르기는 목록과 상세에 함께 걸린다. 목록과 기록은 화면 아래 끝까지 채운 칸 안에서 스크롤하고 쪽으로 나누지 않는다.
  */
 export const DROP_PRICES_HTML = layout(
   '/admin/drop-prices',
@@ -20,13 +20,19 @@ export const DROP_PRICES_HTML = layout(
 </div>
 <section class="card">
   <header><h2>아이템</h2><p id="item-count"></p></header>
-  <div class="split-view even">
-    <div class="table"><table class="rank"><thead><tr id="item-head"></tr></thead><tbody id="items"></tbody></table></div>
+  <div class="split-view even" id="split">
+    <div class="table fill"><table class="rank"><thead><tr id="item-head"></tr></thead><tbody id="items"></tbody></table></div>
     <aside class="detail" id="detail" aria-label="고른 아이템" aria-live="polite"></aside>
   </div>
 </section>
+<style>
+  #split { flex-wrap: nowrap }
+  #split > .table { overflow: auto }
+  #split > .detail { overflow: hidden }
+  #split .records { flex: 1; min-height: 0 }
+</style>
 <script>
-  var PAGE = 50;
+  var PAGE = 200;
   var DIFFICULTY = { easy: '이지', normal: '노멀', hard: '하드', chaos: '카오스', extreme: '익스트림' };
   var COLS = [
     { label: '아이템', key: 'itemName', text: true },
@@ -34,7 +40,7 @@ export const DROP_PRICES_HTML = layout(
     { label: '중앙값', key: 'median', num: true },
     { label: '최소 ~ 최대', num: true },
   ];
-  var state = { period: '', source: 'all', q: '', sort: { key: 'count', dir: -1 }, items: [], sel: null, rows: [], offset: 0 };
+  var state = { period: '', source: 'all', q: '', sort: { key: 'count', dir: -1 }, items: [], sel: null, rows: [], offset: 0, hasMore: false, loading: false };
 
   // 기간 값은 주간 W202647 · 월간 M202611 이다.
   function periodLabel(code) {
@@ -137,28 +143,32 @@ export const DROP_PRICES_HTML = layout(
     box.appendChild(facts);
     box.appendChild(strip(points, it.median));
     var body = el('tbody'); body.id = 'detail-rows';
-    var list = el('div', undefined, 'block');
-    list.appendChild(el('div', '기록 · 최근 것부터. 줄에 마우스를 올리면 보낸 사람이 보인다', 'hint'));
+    box.appendChild(el('div', '기록 · 최근 것부터. 줄에 마우스를 올리면 보낸 사람이 보인다', 'hint'));
+    var list = el('div', undefined, 'records fill');
     list.appendChild(mini(['고친 때', '월드', '보스 · 획득처', '가격', '기간'], body));
     list.querySelectorAll('th')[3].className = 'num';
-    var more = button('더 보기', 'more'); more.id = 'more'; more.hidden = true;
-    more.addEventListener('click', loadRows);
-    list.appendChild(more);
+    // 끝까지 내리면 다음 줄을 이어 읽는다. 기록이 천 줄을 넘는 아이템도 있어 한 번에 다 읽지 않는다.
+    list.addEventListener('scroll', function () {
+      if (state.hasMore && !state.loading && list.scrollTop + list.clientHeight >= list.scrollHeight - 80) loadRows();
+    });
     box.appendChild(list);
   }
 
   async function loadRows() {
+    state.loading = true;
     var r = await call('GET', '/admin/drop-prices/rows?' + query({ itemKey: state.sel, limit: PAGE, offset: state.offset }));
+    state.loading = false;
     if (!r.ok) { show(fail('기록을 못 읽었다', r), true); return; }
     var body = document.getElementById('detail-rows');
     if (!body) return;
     r.json.rows.forEach(function (row) { body.appendChild(rowLine(row)); });
     state.offset += r.json.rows.length;
-    document.getElementById('more').hidden = !r.json.hasMore;
+    state.hasMore = r.json.hasMore;
   }
 
   async function loadDetail() {
     state.offset = 0;
+    state.hasMore = false;
     if (!state.sel) { renderDetail([]); return; }
     var r = await call('GET', '/admin/drop-prices/points?' + query({ itemKey: state.sel }));
     if (!r.ok) { show(fail('가격 분포를 못 읽었다', r), true); return; }
@@ -194,6 +204,7 @@ export const DROP_PRICES_HTML = layout(
     document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value; renderItems(); });
     await loadItems();
   }
+  fillToBottom(document.getElementById('split'), 32);
   init();
 </script>`,
 )

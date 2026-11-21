@@ -4,6 +4,7 @@ import { layout } from './layout'
  * 드롭 시세 한눈에 보기. 장비 · 소비를 고르고 장비는 거래권을, 소비는 월드를 고른다. 시세 하나(아이템 · 반지 레벨)가 한 줄이다.
  * 소비 아이템은 월드끼리 거래할 수 없어 값이 월드마다 다르고, 장비는 거래권 안에서 관세 10% 로 오가 차이가 작다.
  * 고른 것은 주소의 kind · key 에 남아 새로고침해도 그대로다. 정렬과 검색은 받은 줄 안에서 한다. 줄을 누르면 아이템 화면으로 간다.
+ * 표는 화면 아래 끝까지 채우고 그 안에서 스크롤한다. 한 화면에 들어오게 하되 쪽으로 나누지 않는다.
  */
 export const DROP_MARKET_HTML = layout(
   '/admin/drop-market',
@@ -20,7 +21,7 @@ export const DROP_MARKET_HTML = layout(
 </div>
 <section class="card">
   <header><div><h2 id="scope-name"></h2><p class="hint" id="scope-worlds"></p></div><p id="count"></p></header>
-  <div class="table"><table><thead><tr id="head"></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table fill" id="list"><table><thead><tr id="head"></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <script>
   var KINDS = [['equipment', '장비'], ['consumable', '소비']];
@@ -112,6 +113,7 @@ export const DROP_MARKET_HTML = layout(
     document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value; renderRows(); });
     select();
   }
+  fillToBottom(document.getElementById('list'), 32);
   load();
 </script>`,
 )

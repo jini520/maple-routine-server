@@ -93,6 +93,42 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   있는 동안(2026-11-20 부터 앱 저장소 #947 의 새 표)에는 develop 을 main 에 머지하지 않고, main 에서 딴 hotfix 만 머지해 배포한다
   (앱 저장소 `ADR-188` 결정 9). `git archive HEAD` 와 rsync 는 서 있는 체크아웃을
   그대로 보내므로, develop 에 선 채로 돌리면 검토하지 않은 작업이 박스에 올라간다.
+  운영 박스가 아닌 **DB 박스의 서버 develop** 은 develop 에서 올린다(아래 `도커 없이 돌리기`). 1.0.15 의 앱 작업과 심사가 보는
+  서버라서다(앱 저장소 `ADR-099` 결정 43).
+- **도커 없이 돌리기**(2026-11-21 사용자 지정, 앱 저장소 `ADR-016` 결정 3 · 이슈 #1176). 인스턴스 사양에 비해 Docker 가 무거워 새
+  운영 서버는 systemd 로 돌린다. 같은 묶음(`deploy/`)으로 먼저 **DB 박스**에 서버 develop 을 띄웠다. 앱 박스 nginx 의 `api` 가
+  upstream `maple_api`(`deploy/nginx/app-box-upstream.conf`) 를 거쳐 DB 박스 nginx 8080 으로 넘긴다. 서버를 앱 박스로 옮기면 upstream
+  한 줄만 바꾼다. 점검 잠금과 속도 제한은 앱 박스 nginx 가 그대로 한다(`deploy/nginx/app-box-api.conf`).
+
+  ```
+  DB 박스
+    /srv/maple-routine-server/releases/<커밋>/  dist · node_modules · package.json · 마이그레이션. current 가 지금 판을 가리킨다
+    /etc/maple-routine-server/env              값 전부(root:mapleroutine 640, 값은 큰따옴표). 서비스와 마이그레이션이 같이 읽는다
+    /etc/systemd/system/maple-routine-server.service   deploy/maple-routine-server.service. 127.0.0.1:4000, 메모리 상한 400MB
+    /etc/nginx/sites-available/maple-routine-server    deploy/nginx/db-box.conf. 10.0.0.192:8080 에서 그림 · OTA 파일과 서버
+    /srv/maple-routine-assets/ · /srv/maple-routine-ota/   앱 박스에서 떠 온 그림 · OTA. 그림은 서버(mapleroutine)가 쓴다
+  ```
+
+  - 올리기는 맥에서 `deploy/deploy.sh ubuntu@152.69.225.126` 이다. 맥에서 빌드하고 `npm ci --omit=dev` 로 받은 `node_modules` 를 함께
+    올린다(운영 의존성이 모두 순수 JS 다). 마이그레이션을 서비스와 같은 사용자 · 환경 파일로 돌린 뒤 판을 바꾸고 다시 켠다.
+  - DB 박스 서버의 값은 운영과 다르다. DB 는 `maple_routine_next`(운영 DB 를 떠서 옮긴 사본, 역할 `mapleroutine` 이 유닉스 소켓의
+    peer 로 붙는다), `HOST=127.0.0.1`, `DATABASE_POOL_MAX=3`(Postgres 연결 상한 20 을 운영 서버와 나눈다), `FRIENDS_NEXON_RPS=50`,
+    `PUBLIC_BASE_URL=https://api.mapleroutine.store`, 운영과 다른 `TOKEN_ENC_KEY_V1` 이다. `FCM_KEY` · `NEXON_KEY` 는 넣지 않는다.
+    사본에 실제 사용자의 푸시 토큰이 있어 알림이 한 번 더 가기 때문이다. 넥슨 로그인 값은 넥슨이 api 콜백을 승인한 뒤 넣는다.
+  - 데이터를 다시 뜨려면 서비스를 멈추고 DB 를 지워 다시 만든 뒤, 마이그레이션 다음에 `sudo -u postgres` 로 옮긴다. 옛 DB 를
+    읽어야 해서 슈퍼유저로 돌린다.
+
+    ```
+    sudo -u postgres env OLD_DATABASE_URL='postgresql:///maple_routine?host=/var/run/postgresql' \
+      DATABASE_URL='postgresql:///maple_routine_next?host=/var/run/postgresql' \
+      node /srv/maple-routine-server/current/dist/cli/move-old-db.js
+    ```
+
+  - 처음 한 번 박스를 꾸미는 순서: Node 22 를 nodejs.org 의 linux-x64 묶음(SHASUMS256 확인)으로 `/usr/local/lib/nodejs` 에 두고
+    `/usr/bin/node` 를 잇는다. `apt install nginx`. 시스템 사용자 `mapleroutine`, 위 폴더들, `createuser mapleroutine` ·
+    `createdb -O mapleroutine maple_routine_next`, 환경 파일, 유닛 · nginx 사이트, 첫 `deploy.sh`, 옮기기 순서다. 방화벽(앱 박스에서
+    오는 8080 만)은 DB 박스 iptables 와 오라클 보안 목록 둘 다 열어야 한다.
+
 - **배포 규칙. 빌드는 맥에서, 재시작은 한국 시각 3 ~ 7시에 한다**(2026-11-06 사용자 지정). 배포하는 동안 사용자가 기능을 못 쓸 수 있어서다.
   - 앱 박스는 메모리 952MB · CPU 2 다. 2026-11-06 에 박스에서 `docker compose build` 를 돌리자 10분 넘게 부하가 5.4 까지 오르고
     남은 메모리가 66MB 로 줄어 스왑을 썼다. 그동안 사용 중인 요청이 느려진다. 그래서 박스에서는 이미지를 받기만 한다.

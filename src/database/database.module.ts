@@ -21,6 +21,7 @@ export const DB = Symbol('DB')
       useFactory: (config: ConfigService<Env, true>) =>
         new Pool({
           connectionString: config.get('DATABASE_URL', { infer: true }),
+          max: config.get('DATABASE_POOL_MAX', { infer: true }),
           // DB 박스가 사설망 건너에 있어 연결 실패가 새 고장 모양이다. 매달리지 않고 깨끗이 실패한다.
           connectionTimeoutMillis: 5_000,
         }),

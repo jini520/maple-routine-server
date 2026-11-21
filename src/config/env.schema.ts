@@ -8,6 +8,13 @@ import { z } from 'zod'
 export const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(4000),
+  /** 서버가 듣는 주소. 컨테이너는 포트를 밖에서 열어 `0.0.0.0` 이고, 박스에서 바로 돌릴 때는 nginx 만 붙게 `127.0.0.1` 이다. */
+  HOST: z.string().min(1).default('0.0.0.0'),
+  /**
+   * DB 연결 풀의 상한. DB 박스의 `max_connections` 가 20 이라 운영 서버와 다른 서버가 함께 붙으면 합이 그 아래여야 한다. 넘치면
+   * 운영 서버가 연결을 못 얻는다.
+   */
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().max(15).default(10),
   /** 넥슨에 등록한 redirect_uri 의 호스트. 로컬에서는 바꿔 쓴다. */
   PUBLIC_BASE_URL: z.string().url().default('https://mapleroutine.store'),
   /** 그림 파일을 두는 디렉터리. 같은 박스의 nginx 가 `/assets/` 로 낸다. 컨테이너에서는 볼륨을 건 경로다. */

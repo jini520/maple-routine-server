@@ -22,7 +22,10 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks()
 
   const config = app.get(ConfigService<Env, true>)
-  await app.listen({ port: config.get('PORT', { infer: true }), host: '0.0.0.0' })
+  await app.listen({
+    port: config.get('PORT', { infer: true }),
+    host: config.get('HOST', { infer: true }),
+  })
 }
 
 void bootstrap()

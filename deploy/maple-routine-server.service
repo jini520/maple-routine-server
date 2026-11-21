@@ -1,0 +1,28 @@
+# 도커 없이 박스에서 서버를 돌리는 systemd 유닛. 설치와 배포는 README 의 `도커 없이 돌리기` 다.
+# 같은 박스의 Postgres 를 지키려고 메모리 상한을 둔다. 넘치면 서버만 죽고 3초 뒤 다시 뜬다.
+[Unit]
+Description=maple-routine server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mapleroutine
+Group=mapleroutine
+WorkingDirectory=/srv/maple-routine-server/current
+EnvironmentFile=/etc/maple-routine-server/env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --max-old-space-size=256 dist/main.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+MemoryHigh=300M
+MemoryMax=400M
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/srv/maple-routine-assets
+
+[Install]
+WantedBy=multi-user.target

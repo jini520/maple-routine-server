@@ -1,7 +1,8 @@
 import { layout } from './layout'
 
 /**
- * 드롭 시세 아이템 화면. 위는 최근 90일 차트(일봉 · 주봉), 아래는 같은 기간의 거래 줄과 판정이다.
+ * 드롭 시세 아이템 화면. 왼쪽은 최근 90일 차트(일봉 · 주봉), 오른쪽은 같은 기간의 거래 줄과 판정이다. 두 칸은 화면 아래
+ * 끝까지 채우고, 거래 줄은 그 안에서 스크롤한다.
  * 봉을 누르면 차트 위에 그 봉의 값이 뜬다. 처음엔 마지막 봉이고, 그 종가가 현재가다. 고른 봉 단위는 주소의 period 에 남는다.
  * 왜 빠졌는지 보이게 줄마다 하루 작업이 남긴 그날 울타리와 그 근거를 함께 보인다. 아직 내지 않은 오늘 줄은 판단 보류다.
  * 시세 하나는 주소의 kind · key · item · ring 이 정한다. 장비는 key 가 거래권, 소비는 월드다. ring 이 없으면 반지가 아닌 아이템이다.
@@ -13,21 +14,24 @@ export const DROP_MARKET_ITEM_HTML = layout(
   `<script src="/admin/assets/lightweight-charts.js"></script>
 <div class="head"><div><h1 id="title">드롭 시세</h1><p id="subtitle"></p></div><div><a class="btn ghost sm" id="back" href="/admin/drop-market">목록으로</a></div></div>
 <div id="message" class="msg" role="status" hidden></div>
-<section class="card">
-  <header><h2 id="scope-title">거래권</h2></header>
-  <div class="body"><div id="groups" class="actions"></div></div>
-</section>
-<section class="card">
-  <header><div id="periods" class="actions"></div><p>최근 90일. 오른 봉은 빨강, 내린 봉은 파랑이다. 아래 막대가 거래 수다. 봉을 누르면 위에 값이 뜬다. 주봉은 목요일부터다</p></header>
-  <div class="body">
-    <div class="stats" id="candle-info"></div>
-    <div id="chart" style="height:380px"></div>
-  </div>
-</section>
-<section class="card">
-  <header><h2>거래</h2><p id="count"></p></header>
-  <div class="table"><table><thead><tr><th>거래 (KST)</th><th>월드</th><th class="num">가격</th><th>판정</th><th class="num">울타리</th><th>근거</th></tr></thead><tbody id="rows"></tbody></table></div>
-</section>
+<div class="toolbar"><span class="hint" id="scope-title">거래권</span><div id="groups" class="actions"></div><div id="periods" class="actions" style="margin-left:auto"></div></div>
+<div class="market-split" id="split">
+  <section class="card chart-card">
+    <header><p>최근 90일. 오른 봉은 빨강, 내린 봉은 파랑이다. 아래 막대가 거래 수다. 봉을 누르면 위에 값이 뜬다. 주봉은 목요일부터다</p></header>
+    <div class="body"><div class="stats" id="candle-info"></div><div id="chart"></div></div>
+  </section>
+  <section class="card">
+    <header><h2>거래</h2><p id="count"></p></header>
+    <div class="table fill"><table><thead><tr><th>거래 (KST)</th><th>월드</th><th class="num">가격</th><th>판정</th><th class="num">울타리</th><th>근거</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+</div>
+<style>
+  .market-split { display: grid; grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: 16px }
+  .market-split > .card { display: flex; flex-direction: column; min-height: 0 }
+  .chart-card .body { flex: 1; display: flex; flex-direction: column; min-height: 0 }
+  .chart-card #chart { flex: 1; min-height: 240px }
+  .market-split .table { flex: 1; min-height: 0 }
+</style>
 <script>
   function eok(n) { return n >= 1e8 ? (n / 1e8).toFixed(2) + '억' : meso(n); }
   var VERDICT = { included: ['포함', 'tag ok'], pending: ['판단 보류', 'tag'], excluded: ['제외', 'tag accent'] };
@@ -35,6 +39,7 @@ export const DROP_MARKET_ITEM_HTML = layout(
   var params = new URLSearchParams(location.search);
   var PERIODS = [['day', '일봉', 'candles'], ['week', '주봉', 'weeklyCandles']];
   var state = { period: params.get('period') === 'week' ? 'week' : 'day', detail: null, kind: params.get('kind') === 'consumable' ? 'consumable' : 'equipment', key: params.get('key') || 'general', item: params.get('item') || '', ring: params.get('ring') };
+  fillToBottom(document.getElementById('split'), 32);
   var chart = LightweightCharts.createChart(document.getElementById('chart'), {
     autoSize: true,
     layout: { background: { color: 'transparent' }, textColor: '#4B5563', fontFamily: 'IBM Plex Sans KR, sans-serif' },

@@ -166,6 +166,8 @@ export function layout(path: string, title: string, body: string): string {
   .hint { margin: 0; color: var(--text-3); font-size: 12.5px }
   .card > .body { padding: 16px 20px 18px; display: grid; gap: 14px }
   .card > .table { margin-top: 14px; overflow-x: auto }
+  .fill { overflow: auto }
+  .fill thead th { position: sticky; top: 0; z-index: 1 }
   .card > .list { display: grid; gap: 4px; padding: 4px; background: var(--surface-2); margin-top: 14px }
   .sub { display: grid; gap: 12px; padding: 14px 16px; border-radius: var(--r-input); background: var(--surface-2) }
 
@@ -452,6 +454,15 @@ export function layout(path: string, title: string, body: string): string {
   function inline() { var d = el('div', undefined, 'inline'); for (var i = 0; i < arguments.length; i++) d.appendChild(arguments[i]); return d; }
   function field(label, small, control) { var d = el('div', undefined, 'field'); var l = el('label', label); if (small) { l.appendChild(document.createTextNode(' ')); l.appendChild(el('small', small)); } d.appendChild(l); d.appendChild(control); return d; }
   function mini(headers, tbody) { var wrap = el('div', undefined, 'mini'); var t = el('table'); var thead = el('thead'); var hr = el('tr'); headers.forEach(function (h) { hr.appendChild(el('th', h)); }); thead.appendChild(hr); t.appendChild(thead); t.appendChild(tbody); wrap.appendChild(t); return wrap; }
+  // 화면 아래 끝까지 채우는 칸. 긴 목록이 페이지를 늘리지 않고 그 칸 안에서 스크롤된다. 위의 글이 데이터를 받고 길어지거나
+  // 창 크기가 바뀌면 칸의 위치가 달라져 다시 잰다.
+  function fillToBottom(node, gap) {
+    function fit() {
+      var height = Math.max(320, Math.floor(innerHeight - (node.getBoundingClientRect().top + scrollY) - gap)) + 'px';
+      if (node.style.height !== height) node.style.height = height;
+    }
+    fit(); addEventListener('resize', fit); new ResizeObserver(fit).observe(document.body);
+  }
   // 서버가 준 거절 이유. 검사 실패는 칸 이름과 이유를 줄마다 적는다. JSON 그대로 보이면 무엇이 틀렸는지 찾아 읽어야 한다.
   function reason(r) {
     var m = r.json && r.json.message;

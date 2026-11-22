@@ -2028,7 +2028,8 @@ export const bossProfitCalculatorRecordBosses = pgTable(
 
 /**
  * 한 넥슨 계정이 강화 내역을 넥슨에서 다 받은 날. 새 기기는 여기 있는 날을 다시 받지 않고 합계만 받는다. 과거 날짜의 내역은 바뀌지
- * 않기 때문이다. 강화하지 않은 날도 줄이 있어 받았는데 없었던 날과 아직 안 받은 날을 가른다. 지우는 일이 없어 삭제 표식이 없다.
+ * 않기 때문이다. 강화하지 않은 날도 줄이 있어 받았는데 없었던 날과 아직 안 받은 날을 가른다. 지우는 일은 데이터 삭제의 강화
+ * 묶음뿐이라 삭제 표식이 없고 줄을 지운다.
  */
 export const enhancementSettledDays = pgTable(
   'enhancement_settled_days',
@@ -2249,7 +2250,10 @@ export const cashbookEntries = pgTable(
       .references(() => mapleIds.id, { onDelete: 'cascade' }),
     /** 비어 있으면 메이플 ID 에 붙은 기록이다. */
     characterId: uuid('character_id'),
-    /** 캐릭터 기록을 적을 때의 월드. 메이플 ID 에 붙은 기록은 비어 있다. */
+    /**
+     * 캐릭터 기록을 적을 때의 월드. 메이플 ID 에 붙은 기록은 비어 있고, 인벤토리에서 기타 조각을 판 기록만 판 조각의 월드다. 남은
+     * 기타 조각 수를 메이플 ID · 월드마다 세기 때문이다.
+     */
     worldId: uuid('world_id').references(() => worlds.id),
     categoryId: uuid('category_id')
       .notNull()

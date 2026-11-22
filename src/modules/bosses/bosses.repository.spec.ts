@@ -9,7 +9,6 @@ import { BossesRepository, BossExists, LastDifficulty } from './bosses.repositor
 /** 이 스펙의 그림 칸이 가리키는 그림. 그림 칸이 FK 라 줄을 넣기 전에 그림부터 둔다. */
 const SPEC_ASSETS = ['bosses/lotus.webp', 'bosses/maerin.webp']
 
-
 const noPeriod = { maxPartySize: null, validFrom: null, validUntil: null }
 
 /** 줄 id 는 넣을 때 정해져 값을 미리 알 수 없다. 모양을 견줄 때 이 글자로 갈아 끼운다. id 자체는 따로 본다. */

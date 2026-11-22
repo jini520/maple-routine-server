@@ -18,6 +18,7 @@ import {
   numeric,
   pgEnum,
   pgSequence,
+  type PgColumn,
   pgTable,
   smallint,
   text,
@@ -51,6 +52,15 @@ const syncColumns = () => ({
   createdAt: timestamptz('created_at').notNull().defaultNow(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 })
+
+/**
+ * 삭제 표식이 선 줄의 변경 번호 색인. 받기마다 남은 표식 가운데 가장 작은 번호를 읽는다. 표식이 선 줄만 담아 작고, 없으면 큰
+ * 기록 표를 받기마다 다 훑는다.
+ */
+const deletedChangeSeqIndex = (table: string, t: { changeSeq: PgColumn; deletedAt: PgColumn }) =>
+  index(`${table}_deleted_change_seq_idx`)
+    .on(t.changeSeq)
+    .where(sql`${t.deletedAt} IS NOT NULL`)
 
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
 export const platformEnum = pgEnum('platform', ['ios', 'android'])
@@ -1393,6 +1403,8 @@ export const enhancementTotals = pgTable(
       t.category,
       t.itemName,
     ),
+    index('enhancement_totals_character_id_change_seq_idx').on(t.characterId, t.changeSeq),
+    deletedChangeSeqIndex('enhancement_totals', t),
   ],
 )
 
@@ -1649,19 +1661,26 @@ export const characterWorldLeaps = pgTable(
     previousOcid: text('previous_ocid').notNull().unique(),
     ...syncColumns(),
   },
-  (t) => [index('character_world_leaps_character_id_idx').on(t.characterId)],
+  (t) => [
+    index('character_world_leaps_character_id_idx').on(t.characterId),
+    deletedChangeSeqIndex('character_world_leaps', t),
+  ],
 )
 
 /** 사용자가 메이플 ID 에 붙인 이름. 바꾸지 않은 메이플 ID 는 줄이 없고 기기가 기본 이름을 만든다. */
-export const mapleIdNames = pgTable('maple_id_names', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  mapleId: uuid('maple_id')
-    .notNull()
-    .unique()
-    .references(() => mapleIds.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  ...syncColumns(),
-})
+export const mapleIdNames = pgTable(
+  'maple_id_names',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    mapleId: uuid('maple_id')
+      .notNull()
+      .unique()
+      .references(() => mapleIds.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [deletedChangeSeqIndex('maple_id_names', t)],
+)
 
 /** 사용자가 적은 MVP 등급 이력. 등급은 달성한 날부터 바뀌어 시작 날짜는 아무 요일이나 된다. */
 export const mvpGradeHistory = pgTable(
@@ -1677,7 +1696,10 @@ export const mvpGradeHistory = pgTable(
     gradeId: uuid('grade_id').references(() => mvpGrades.id),
     ...syncColumns(),
   },
-  (t) => [unique('mvp_grade_history_maple_id_from_date_unique').on(t.mapleId, t.fromDate)],
+  (t) => [
+    unique('mvp_grade_history_maple_id_from_date_unique').on(t.mapleId, t.fromDate),
+    deletedChangeSeqIndex('mvp_grade_history', t),
+  ],
 )
 
 /**
@@ -1702,6 +1724,7 @@ export const manualTrackedItems = pgTable(
       t.type,
       t.targetId,
     ),
+    deletedChangeSeqIndex('manual_tracked_items', t),
   ],
 )
 
@@ -1724,24 +1747,29 @@ export const rememberedLevels = pgTable(
   },
   (t) => [
     unique('remembered_levels_character_type_target_unique').on(t.characterId, t.type, t.targetId),
+    deletedChangeSeqIndex('remembered_levels', t),
   ],
 )
 
 /** 대표 캐릭터가 할 행동과 표정. 고른 차례에 뜻이 있고 개수가 적어 줄로 풀지 않고 글자 배열로 둔다. */
-export const representativeCharacterMotions = pgTable('representative_character_motions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  characterId: uuid('character_id')
-    .notNull()
-    .unique()
-    .references(() => characters.id, { onDelete: 'cascade' }),
-  /** 3개까지 */
-  actions: text('actions').array().notNull(),
-  /** 5개까지 */
-  emotions: text('emotions').array().notNull(),
-  durationMs: integer('duration_ms').notNull(),
-  restsBetweenActions: boolean('rests_between_actions').notNull(),
-  ...syncColumns(),
-})
+export const representativeCharacterMotions = pgTable(
+  'representative_character_motions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    characterId: uuid('character_id')
+      .notNull()
+      .unique()
+      .references(() => characters.id, { onDelete: 'cascade' }),
+    /** 3개까지 */
+    actions: text('actions').array().notNull(),
+    /** 5개까지 */
+    emotions: text('emotions').array().notNull(),
+    durationMs: integer('duration_ms').notNull(),
+    restsBetweenActions: boolean('rests_between_actions').notNull(),
+    ...syncColumns(),
+  },
+  (t) => [deletedChangeSeqIndex('representative_character_motions', t)],
+)
 
 /**
  * 월드나 계정이 함께 쓰는 컨텐츠의 진행. 넥슨은 접속한 캐릭터의 값만 줘서 그 캐릭터를 추적하지 않는 기기는 다시 받을 수 없다.
@@ -1773,6 +1801,7 @@ export const sharedContentProgress = pgTable(
     unique('shared_content_progress_maple_id_world_content_unique')
       .on(t.mapleId, t.worldId, t.contentId)
       .nullsNotDistinct(),
+    deletedChangeSeqIndex('shared_content_progress', t),
   ],
 )
 
@@ -1856,6 +1885,7 @@ export const trackedCharacters = pgTable(
   },
   (t) => [
     unique('tracked_characters_account_character_unique').on(t.nexonAccountId, t.characterId),
+    deletedChangeSeqIndex('tracked_characters', t),
   ],
 )
 
@@ -1896,6 +1926,7 @@ export const partyAppointments = pgTable(
           OR (${t.scheduleType} = 'weekly' AND ${t.date} IS NULL AND ${t.weekday} IS NOT NULL
              AND ${t.fromWeekCode} IS NOT NULL)`,
     ),
+    deletedChangeSeqIndex('party_appointments', t),
   ],
 )
 
@@ -1965,7 +1996,10 @@ export const bossProfitCalculatorRecords = pgTable(
     savedAt: timestamptz('saved_at').notNull(),
     ...syncColumns(),
   },
-  (t) => [index('boss_profit_calculator_records_nexon_account_id_idx').on(t.nexonAccountId)],
+  (t) => [
+    index('boss_profit_calculator_records_nexon_account_id_idx').on(t.nexonAccountId),
+    deletedChangeSeqIndex('boss_profit_calculator_records', t),
+  ],
 )
 
 /** 계산기 기록 안의 캐릭터 한 명. 기록 목록이 첫 캐릭터의 이름을 보여 차례 칸을 둔다. */
@@ -2131,6 +2165,8 @@ export const bossProfitEntries = pgTable(
                THEN ${t.splitType} IS DISTINCT FROM 'ratio' OR ${t.splitFeePercent} IS NOT NULL
                ELSE (${t.splitFeeFollowsMvpGrade} = (${t.splitFeePercent} IS NULL)) END`,
     ),
+    index('boss_profit_entries_character_id_change_seq_idx').on(t.characterId, t.changeSeq),
+    deletedChangeSeqIndex('boss_profit_entries', t),
   ],
 )
 
@@ -2182,6 +2218,8 @@ export const bossDrops = pgTable(
       'boss_drops_split_check',
       sql`${t.splitType} IS DISTINCT FROM 'excluded' AND ${t.splitShareMillipercent} BETWEEN 0 AND 100000`,
     ),
+    index('boss_drops_profit_entry_id_change_seq_idx').on(t.profitEntryId, t.changeSeq),
+    deletedChangeSeqIndex('boss_drops', t),
   ],
 )
 
@@ -2220,6 +2258,7 @@ export const bossSplitSettings = pgTable(
       'boss_split_settings_fee_check',
       sql`${t.splitFeeFollowsMvpGrade} = (${t.splitFeePercent} IS NULL)`,
     ),
+    deletedChangeSeqIndex('boss_split_settings', t),
   ],
 )
 
@@ -2271,7 +2310,8 @@ export const cashbookEntries = pgTable(
       columns: [t.characterId, t.mapleId],
       foreignColumns: [characters.id, characters.mapleId],
     }).onDelete('cascade'),
-    index('cashbook_entries_maple_id_idx').on(t.mapleId),
+    index('cashbook_entries_maple_id_change_seq_idx').on(t.mapleId, t.changeSeq),
+    deletedChangeSeqIndex('cashbook_entries', t),
   ],
 )
 
@@ -2300,7 +2340,10 @@ export const inventoryItems = pgTable(
     addedQuantity: integer('added_quantity').notNull(),
     ...syncColumns(),
   },
-  (t) => [index('inventory_items_maple_world_item_idx').on(t.mapleId, t.worldId, t.itemId)],
+  (t) => [
+    index('inventory_items_maple_world_item_idx').on(t.mapleId, t.worldId, t.itemId),
+    deletedChangeSeqIndex('inventory_items', t),
+  ],
 )
 
 /**

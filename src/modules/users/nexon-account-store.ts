@@ -14,6 +14,7 @@ import {
   trackedCharacters,
   users,
 } from '../../database/schema'
+import { lockOwners, type RecordOwner } from './owner-locks'
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
 
@@ -82,6 +83,20 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     .from(nexonAccounts)
     .where(eq(nexonAccounts.id, into))
   if (source === undefined || target === undefined) throw new Error('합칠 넥슨 계정 줄이 없다')
+  // 옮기는 기록 줄은 변경 번호가 새로 붙는다. 그 주인을 받는 중인 기기가 이 번호를 건너뛰지 않게 쓰기처럼 잠근다.
+  const held = await tx
+    .select({ hash: mapleIds.hash })
+    .from(mapleIds)
+    .where(inArray(mapleIds.nexonAccountId, [from, into]))
+  await lockOwners(
+    tx,
+    [
+      { type: 'nexon_account', id: from },
+      { type: 'nexon_account', id: into },
+      ...held.map((row): RecordOwner => ({ type: 'maple_id', hash: row.hash })),
+    ],
+    'write',
+  )
 
   await tx.update(mapleIds).set({ nexonAccountId: into }).where(eq(mapleIds.nexonAccountId, from))
 

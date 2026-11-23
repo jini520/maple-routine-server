@@ -13,7 +13,8 @@ import { TABLE_WRITERS } from './tables'
 /**
  * 올린 기록 한 건의 결과. 차례는 올린 기록의 차례와 같다. id 는 서버에 남은 줄의 id 다. 유일 기준이 같은 줄로 합쳐졌거나 기기에
  * id 가 없는 표면 기기가 보낸 id 와 다르고, 기기는 다음 받기에서 자기 줄을 그 id 로 바꾼다. 지울 줄이 없던 지우기는 null 이다.
- * 거절은 정해진 코드가 있으면 code 를 싣고, 나중에 맞을 수 있는 거절은 code 가 null 이다.
+ * 거절은 정해진 코드가 있으면 code 를 싣는다. 나중에 맞을 수 있는 거절과 기록의 모양이 틀린 거절은 code 가 null 이고, 앱은
+ * 다섯 번까지 다시 보낸다.
  */
 export type PushResult =
   | { recordId: string | null; ok: true; id: string | null }
@@ -36,13 +37,16 @@ function rejectionOf(error: unknown): { code: ErrorCode | null; reason: string }
       reason: `이 신원의 메이플 ID 가 아니다: ${error.message}`,
     }
   }
-  if (error instanceof DuplicateRecord || isUniqueViolation(error)) {
+  if (error instanceof DuplicateRecord) {
     return { code: ERROR_CODES.duplicateRecord, reason: '함께 있을 수 없는 기록이 이미 있다' }
   }
   if (error instanceof RecordDeleted) {
     return { code: ERROR_CODES.recordDeleted, reason: '다른 기기에서 지운 기록이다' }
   }
   if (error instanceof RecordRejected) return { code: null, reason: error.message }
+  // 다른 기록과 겹치는 것은 표마다 적기 전에 찾아 DuplicateRecord 로 던진다. 여기 닿는 위반은 한 기록 안의 딸린 줄끼리 겹친
+  // 것이다. duplicate_record 로 답하면 앱이 자기 기록을 지운다.
+  if (isUniqueViolation(error)) return { code: null, reason: '한 기록 안의 줄끼리 겹친다' }
   if (isForeignKeyViolation(error)) return { code: null, reason: '가리키는 줄이 표에 없다' }
   if (isCheckViolation(error)) return { code: null, reason: '칸끼리 맞지 않는다' }
   return null

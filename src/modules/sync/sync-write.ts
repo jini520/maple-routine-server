@@ -13,7 +13,10 @@ export class DuplicateRecord extends Error {}
 /** 삭제 표식이 선 기록을 고치려 했다. 다른 기기가 지운 기록이다. */
 export class RecordDeleted extends Error {}
 
-/** 코드 없이 거절하는 기록. message 가 이유다. 앱은 다섯 번까지 다시 보낸다. 나중에 맞을 수 있는 경우(부모 줄이 아직 없다)다. */
+/**
+ * 코드 없이 거절하는 기록. message 가 이유다. 앱은 다섯 번까지 다시 보낸다. 나중에 맞을 수 있는 경우(부모 줄이 아직 없다)와
+ * 기록의 모양이 틀린 경우(기간 값이 난이도의 주기와 다르다)다.
+ */
 export class RecordRejected extends Error {}
 
 /** 칸 값 둘이 같은지. 시각은 순간으로, 배열은 차례까지 견준다. 빈 칸은 null 과 undefined 를 같게 본다. */

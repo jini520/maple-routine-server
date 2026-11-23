@@ -8,6 +8,7 @@ import { sha256Hex } from '../../common/hash'
 import {
   accountSettings,
   bossDrops,
+  bossProfitCalculatorRecords,
   bossProfitEntries,
   cashbookEntries,
   cashbookEntryFragmentUses,
@@ -487,6 +488,59 @@ describeDb('SyncPushRepository', () => {
     expect(await db.select({ id: cashbookEntries.id }).from(cashbookEntries)).toEqual([
       { id: empty.id },
     ])
+  })
+
+  // 유일 기준이 같은 다른 기록은 적기 전에 찾아 duplicate_record 로 답한다. 한 기록 안에서 딸린 줄끼리 겹친 것은 기록의 모양이
+  // 틀린 것이다. duplicate_record 로 답하면 앱이 결정대로 자기 기록을 지워 사용자가 적은 기록이 사라진다.
+  it('한 기록 안의 딸린 줄끼리 겹치면 코드 없이 거절하고 그 기록은 적지 않는다', async () => {
+    const record = (over: Record<string, unknown>) => ({
+      id: randomUUID(),
+      mapleId: M_ME,
+      ocid: O_ME,
+      categoryId: ref.categoryId,
+      date: '2026-11-20',
+      recordedAt: '2026-11-20T03:00:00Z',
+      items: [{ itemName: '품목', amountMeso: -1 }],
+      ...over,
+    })
+    const boss = {
+      bossDifficultyId: ref.hard,
+      splitType: 'even',
+      partySize: 2,
+      splitFeeFollowsMvpGrade: false,
+    }
+
+    const results = await push(
+      me,
+      upsert(
+        'cashbookEntries',
+        record({
+          items: [
+            { itemName: '리워드 종류가 없는 품목 가', amountMeso: -1 },
+            { itemName: '리워드 종류가 없는 품목 나', amountMeso: -2 },
+          ],
+        }),
+      ),
+      upsert(
+        'cashbookEntries',
+        record({
+          fragmentUses: [
+            { fragmentSource: 'hunt', ocid: O_ALT, fragmentQuantity: 1 },
+            { fragmentSource: 'hunt', ocid: O_ALT, fragmentQuantity: 2 },
+          ],
+        }),
+      ),
+      upsert('bossProfitCalculatorRecords', {
+        id: randomUUID(),
+        savedAt: '2026-11-20T03:00:00Z',
+        characters: [{ sortOrder: 0, mapleId: M_ME, ocid: O_ME, bosses: [boss, boss] }],
+      }),
+    )
+
+    expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual([null, null, null])
+    expect(results.every((r) => !r.ok && r.reason !== '')).toBe(true)
+    expect(await db.select().from(cashbookEntries)).toEqual([])
+    expect(await db.select().from(bossProfitCalculatorRecords)).toEqual([])
   })
 
   // 장비가 아닌 아이템은 메이플 ID · 월드 · 아이템마다 한 줄이다. 장비는 같은 아이템도 하나씩 따로라 기록 id 로 가린다.

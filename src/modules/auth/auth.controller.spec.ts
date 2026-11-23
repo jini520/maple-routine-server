@@ -13,7 +13,7 @@ describe('AuthController', () => {
     redeem: jest.fn(),
     logout: jest.fn().mockResolvedValue(undefined),
   }
-  const sessions = { findByHash: jest.fn() }
+  const sessions = { findByHash: jest.fn(), touch: jest.fn() }
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({

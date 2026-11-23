@@ -32,7 +32,7 @@ function lines(payload: Buffer): Record<string, unknown>[] {
 describe('FriendsController', () => {
   let app: NestFastifyApplication
   let slots: RunSlots
-  const sessions = { findByHash: jest.fn() }
+  const sessions = { findByHash: jest.fn(), touch: jest.fn() }
   const tokens = { tokenFor: jest.fn() }
   const nexon = { page: jest.fn() }
   const bearer = { authorization: 'Bearer SESSION' }
@@ -60,6 +60,7 @@ describe('FriendsController', () => {
   beforeEach(() => {
     sessions.findByHash.mockReset()
     sessions.findByHash.mockResolvedValue({ id: 'sid', userId: 'uid', platform: 'ios' })
+    sessions.touch.mockReset()
     tokens.tokenFor.mockReset()
     tokens.tokenFor.mockResolvedValue('AT')
     nexon.page.mockReset()
@@ -98,6 +99,22 @@ describe('FriendsController', () => {
     expect(res.headers['retry-after']).toBe('30')
     expect(res.body).toBe('')
     expect(tokens.tokenFor).not.toHaveBeenCalled()
+  })
+
+  // 이 경로는 신원 가드를 거치지 않는다. 여기서 시각을 안 고치면 프렌즈 스트림만 부르는 세션이 쓰지 않는 세션으로 보인다.
+  it('세션으로 온 스트림 요청은 슬롯이 없어 503 이어도 그 세션을 마지막으로 쓴 시각을 고친다', async () => {
+    const release = slots.tryAcquire()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/friends/stream',
+      headers: bearer,
+      payload: body,
+    })
+
+    release?.()
+    expect(res.statusCode).toBe(503)
+    expect(sessions.touch).toHaveBeenCalledWith('sid')
   })
 
   it('토큰 갱신이 거절되면 401 이고 슬롯을 돌려준다', async () => {

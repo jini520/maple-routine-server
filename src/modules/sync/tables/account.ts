@@ -1,4 +1,4 @@
-import { and, asc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns, inArray, isNull, ne, sql } from 'drizzle-orm'
 
 import {
   accountSettings,
@@ -103,6 +103,20 @@ export const trackedCharactersTable = defineTable<TrackedCharacterRow, DeleteByC
         set: { ...values, ...revived },
       })
       .returning({ id: trackedCharacters.id })
+    // 넥슨 계정마다 대표는 하나다. 앞 대표가 키가 없는 부계정의 캐릭터면 대표를 바꾼 기기는 그 줄을 몰라 내리지 못한다.
+    if (values.isRepresentative) {
+      await ctx.tx
+        .update(trackedCharacters)
+        .set({ isRepresentative: false, updatedAt: sql`now()` })
+        .where(
+          and(
+            eq(trackedCharacters.nexonAccountId, ctx.identity.nexonAccountId),
+            eq(trackedCharacters.isRepresentative, true),
+            ne(trackedCharacters.id, written.id),
+            isNull(trackedCharacters.deletedAt),
+          ),
+        )
+    }
     return written.id
   },
   deleteOwners: async (ctx) => [nexonAccountOwner(ctx)],

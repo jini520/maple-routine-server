@@ -263,24 +263,29 @@ export const readCashbookEntries: MapleIdReader = async (tx, owner, after, limit
   if (entries.length === 0) return []
   const ids = entries.map((entry) => entry.row.id)
   const receiver = alias(characters, 'receiver')
-  const [items, hunts, transfers, exchanges, uses] = await Promise.all([
-    tx.select().from(cashbookEntryItems).where(inArray(cashbookEntryItems.entryId, ids)),
-    tx.select().from(cashbookEntryHuntInputs).where(inArray(cashbookEntryHuntInputs.entryId, ids)),
-    tx
-      .select({ row: getTableColumns(cashbookEntryTransferInputs), receiverOcid: receiver.ocid })
-      .from(cashbookEntryTransferInputs)
-      .leftJoin(receiver, eq(receiver.id, cashbookEntryTransferInputs.receiverCharacterId))
-      .where(inArray(cashbookEntryTransferInputs.entryId, ids)),
-    tx
-      .select()
-      .from(cashbookEntryExchangeInputs)
-      .where(inArray(cashbookEntryExchangeInputs.entryId, ids)),
-    tx
-      .select({ row: getTableColumns(cashbookEntryFragmentUses), ocid: characters.ocid })
-      .from(cashbookEntryFragmentUses)
-      .leftJoin(characters, eq(characters.id, cashbookEntryFragmentUses.characterId))
-      .where(inArray(cashbookEntryFragmentUses.entryId, ids)),
-  ])
+  // 트랜잭션은 연결 하나라 질의를 한 번에 하나씩 보낸다. 겹쳐 보내면 pg 가 경고하고 pg 9 에서는 막는다.
+  const items = await tx
+    .select()
+    .from(cashbookEntryItems)
+    .where(inArray(cashbookEntryItems.entryId, ids))
+  const hunts = await tx
+    .select()
+    .from(cashbookEntryHuntInputs)
+    .where(inArray(cashbookEntryHuntInputs.entryId, ids))
+  const transfers = await tx
+    .select({ row: getTableColumns(cashbookEntryTransferInputs), receiverOcid: receiver.ocid })
+    .from(cashbookEntryTransferInputs)
+    .leftJoin(receiver, eq(receiver.id, cashbookEntryTransferInputs.receiverCharacterId))
+    .where(inArray(cashbookEntryTransferInputs.entryId, ids))
+  const exchanges = await tx
+    .select()
+    .from(cashbookEntryExchangeInputs)
+    .where(inArray(cashbookEntryExchangeInputs.entryId, ids))
+  const uses = await tx
+    .select({ row: getTableColumns(cashbookEntryFragmentUses), ocid: characters.ocid })
+    .from(cashbookEntryFragmentUses)
+    .leftJoin(characters, eq(characters.id, cashbookEntryFragmentUses.characterId))
+    .where(inArray(cashbookEntryFragmentUses.entryId, ids))
   return entries.map(({ row, ocid }) => {
     const child = <T extends { id: string; entryId: string }>(rows: T[]) =>
       rows.filter((r) => r.entryId === row.id).map((r) => omit(r, ['id', 'entryId']))

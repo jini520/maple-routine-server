@@ -311,8 +311,11 @@ async function characterByOcid(tx: Tx, mapleId: string, mapleIdHash: string, oci
 
 /**
  * 월드 리프 한 번. 캐릭터 줄의 ocid 를 새 값으로 고치고 옛 값을 이 표에 적는다. 서버의 기록은 캐릭터 줄을 가리키므로 고칠 것이
- * 없다. 같은 옛 ocid 는 한 번만 옮겨 가서 표의 UNIQUE 가 지운 줄도 쥔다. 새 ocid 의 캐릭터 줄이 따로 이미 있으면 두 줄의 기록을
- * 합쳐야 해 받지 않는다.
+ * 없다. 같은 옛 ocid 는 한 번만 옮겨 가서 표의 UNIQUE 가 지운 줄도 쥔다.
+ *
+ * 새 ocid 의 캐릭터 줄이 따로 이미 있으면 옛 줄은 두고 이 줄이 새 줄을 가리키게만 한다. 기기에서는 리프를 잇기 전에 새 ocid 의
+ * 기록이 먼저 생기는 일이 흔하다. 옛 ocid 의 기록은 기기가 리프를 이은 뒤 새 ocid 로 옮겨 다시 올리고, 올리기가 받은 ocid 로
+ * 캐릭터 줄을 다시 정하므로 그때 새 줄로 옮겨 간다. 겹친 기록은 기기가 옛 쪽을 지워 지우기로 온다.
  */
 export const characterWorldLeapsTable = defineTable<CharacterWorldLeapRow, DeleteById>({
   upsertRow: characterWorldLeapRow,
@@ -337,15 +340,16 @@ export const characterWorldLeapsTable = defineTable<CharacterWorldLeapRow, Delet
       .where(
         and(ne(characterWorldLeaps.id, id), eq(characterWorldLeaps.previousOcid, previousOcid)),
       )
-    /** 리프한 캐릭터 줄. 옛 ocid 의 줄이 있으면 그 줄의 ocid 를 고치고, 없으면 새 ocid 의 줄을 찾거나 만든다. */
+    /**
+     * 리프한 캐릭터 줄. 새 ocid 의 줄이 있으면 그 줄이고, 옛 ocid 의 줄만 있으면 그 줄의 ocid 를 고친다. 둘 다 없으면 새 ocid 의
+     * 줄을 만든다.
+     */
     const leapedCharacter = async (): Promise<string> => {
       const previous = await characterByOcid(tx, mapleId, mapleIdHash, previousOcid)
       const next = await characterByOcid(tx, mapleId, mapleIdHash, ocid)
+      if (next !== undefined) return next.id
       if (previous === undefined) {
-        return next?.id ?? characterIdFor(tx, identity.nexonAccountId, mapleIdHash, ocid)
-      }
-      if (next !== undefined) {
-        throw new RecordRejected('새 ocid 의 캐릭터 줄이 따로 있어 두 줄을 합쳐야 한다')
+        return characterIdFor(tx, identity.nexonAccountId, mapleIdHash, ocid)
       }
       await tx
         .update(characters)

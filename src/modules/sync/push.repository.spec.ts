@@ -493,6 +493,26 @@ describeDb('SyncPushRepository', () => {
     ).toEqual([[before?.id, O_ME]])
   })
 
+  // 기기에서는 리프를 잇기 전에 새 ocid 의 기록이 먼저 생기는 일이 흔하다. 그 리프를 버리면 다른 기기가 옛 기록을 옮기지 못한다.
+  it('새 ocid 의 캐릭터 줄이 따로 있으면 리프가 그 줄을 가리키고, 옛 기록을 새 ocid 로 다시 올리면 그 줄로 옮겨 간다', async () => {
+    const old = total()
+    await push(me, upsert('enhancementTotals', old))
+    await push(me, upsert('enhancementTotals', total({ ocid: O_NEW, historyDate: '2026-10-21' })))
+    const ocidOf = async (ocid: string) =>
+      (await db.select().from(characters).where(eq(characters.ocid, ocid)))[0]?.id
+    const [previous, next] = [await ocidOf(O_ME), await ocidOf(O_NEW)]
+    const leap = { id: randomUUID(), mapleId: M_ME, previousOcid: O_ME, ocid: O_NEW }
+
+    const [leaped] = await push(me, upsert('characterWorldLeaps', leap))
+    const [moved] = await push(me, upsert('enhancementTotals', { ...old, ocid: O_NEW }))
+
+    expect([leaped?.ok, moved?.ok]).toEqual([true, true])
+    expect((await db.select().from(characterWorldLeaps)).map((r) => r.characterId)).toEqual([next])
+    expect(await ocidOf(O_ME)).toBe(previous)
+    const [row] = await db.select().from(enhancementTotals).where(eq(enhancementTotals.id, old.id))
+    expect(row?.characterId).toBe(next)
+  })
+
   // 굳은 날은 넥슨 계정의 것이다. 기기는 서버의 넥슨 계정 줄 id 를 몰라 그 계정의 메이플 ID 로 가리킨다.
   it('굳은 날은 메이플 ID 가 달린 넥슨 계정에 한 번만 적고, 남의 메이플 ID 는 받지 않는다', async () => {
     const day = { mapleId: M_ME, apiType: 'cube', historyDate: '2026-10-20' }

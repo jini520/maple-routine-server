@@ -134,13 +134,22 @@ const huntInputRow = z.object({
   typedMeso: empty(meso),
 })
 
-/** 메소 이전의 입력. 받는 캐릭터는 ocid 해시로 싣고 서버가 캐릭터 줄로 바꾼다. 받는 캐릭터는 기록과 같은 메이플 ID 다. */
-const transferInputRow = z.object({
-  receiverOcid: empty(nexonIdHash),
-  transferMeso: meso,
-  feePercent: empty(percent),
-  feeFollowsMvpGrade: z.boolean(),
-})
+/**
+ * 메소 이전의 입력. 받는 캐릭터는 메이플 ID 해시와 ocid 해시로 싣고 서버가 캐릭터 줄로 바꾼다. 받는 캐릭터는 보통 다른 계정의
+ * 캐릭터라 기록과 다른 메이플 ID 일 수 있다. 두 칸은 함께 차거나 함께 빈다.
+ */
+const transferInputRow = z
+  .object({
+    receiverMapleId: empty(mapleId),
+    receiverOcid: empty(nexonIdHash),
+    transferMeso: meso,
+    feePercent: empty(percent),
+    feeFollowsMvpGrade: z.boolean(),
+  })
+  .refine((input) => (input.receiverMapleId === null) === (input.receiverOcid === null), {
+    message: '받는 캐릭터의 메이플 ID 와 ocid 는 함께 차거나 함께 빈다',
+    path: ['receiverMapleId'],
+  })
 
 /** 환전의 입력 */
 const exchangeInputRow = z.object({

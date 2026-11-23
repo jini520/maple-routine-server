@@ -60,7 +60,10 @@ async function markMapleRowDeleted(
   return gone?.id ?? null
 }
 
-/** 딸린 줄(품목 · 입력 · 조각 사용)을 받은 값으로 갈아 끼운다. 받는 캐릭터와 조각을 가져온 캐릭터는 기록과 같은 메이플 ID 다. */
+/**
+ * 딸린 줄(품목 · 입력 · 조각 사용)을 받은 값으로 갈아 끼운다. 조각을 가져온 캐릭터는 기록과 같은 메이플 ID 다. 받는 캐릭터는 다른
+ * 계정의 캐릭터일 수 있어 몸에 실은 메이플 ID 아래에서 찾는다.
+ */
 async function replaceEntryChildren(ctx: WriteContext, row: CashbookEntryRow): Promise<void> {
   const { tx, identity } = ctx
   const { id, mapleId, items, huntInput, transferInput, exchangeInput, fragmentUses } = row
@@ -72,11 +75,11 @@ async function replaceEntryChildren(ctx: WriteContext, row: CashbookEntryRow): P
     await tx.insert(cashbookEntryExchangeInputs).values({ ...exchangeInput, entryId: id })
   }
   if (transferInput !== null) {
-    const { receiverOcid, ...transfer } = transferInput
+    const { receiverMapleId, receiverOcid, ...transfer } = transferInput
     const receiverCharacterId =
-      receiverOcid === null
+      receiverMapleId === null || receiverOcid === null
         ? null
-        : await characterIdFor(tx, identity.nexonAccountId, mapleId, receiverOcid)
+        : await characterIdFor(tx, identity.nexonAccountId, receiverMapleId, receiverOcid)
     await tx
       .insert(cashbookEntryTransferInputs)
       .values({ ...transfer, receiverCharacterId, entryId: id })
@@ -211,7 +214,10 @@ export const inventoryItemsTable = defineTable<InventoryItemRow, DeleteById>({
   remove: (ctx, row) => markMapleRowDeleted(ctx, inventoryItems, row.id),
 })
 
-/** 가계부 기록을 딸린 줄과 함께 읽는다. 받는 캐릭터 · 조각을 가져온 캐릭터는 ocid 해시로 싣는다. 올리기의 몸과 같은 꼴이다. */
+/**
+ * 가계부 기록을 딸린 줄과 함께 읽는다. 받는 캐릭터 · 조각을 가져온 캐릭터는 ocid 해시로 싣는다. 받는 캐릭터의 메이플 ID 를 싣지
+ * 않는 것 말고는 올리기의 몸과 같은 꼴이다. 기기는 받는 캐릭터를 ocid 로만 둔다.
+ */
 export const readCashbookEntries: MapleIdReader = async (tx, owner, after, limit) => {
   const entries = await tx
     .select({ row: getTableColumns(cashbookEntries), ocid: characters.ocid })

@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common'
 
+import { ERROR_CODES } from '../../common/error-codes'
 import { ZodValidationPipe } from '../../common/zod-validation.pipe'
 import { NexonAccountsRepository } from '../users/nexon-accounts.repository'
 import { CurrentIdentity, type IdentityContext, IdentityGuard } from './identity.guard'
@@ -16,7 +17,7 @@ import { type SubAccountBody, subAccountBody } from './me.dto'
 
 /** 세션의 로그인 계정. 키 사용자에게는 부계정이 없고, 어느 로그인에 붙일지는 세션이 정한다. */
 function loginAccountOf(identity: IdentityContext): string {
-  if (identity.source !== 'login') throw new ForbiddenException({ code: 'login_required' })
+  if (identity.source !== 'login') throw new ForbiddenException({ code: ERROR_CODES.loginRequired })
   return identity.nexonAccountId
 }
 

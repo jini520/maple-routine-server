@@ -7,7 +7,10 @@ import { AppModule } from './app.module'
 import { registerImageBody } from './common/image-body'
 import type { Env } from './config/env.schema'
 
-/** 요청 본문 상한. 드롭 가격 묶음과 프렌즈 작업 목록이 가장 크고 그래도 수십 KB 다. */
+/**
+ * 요청 본문 상한. 동기화의 올리기 묶음이 가장 크다. 사냥 입력이 붙은 가계부 기록 100건이 130KB 안팎이고, 품목이 많은 기록을
+ * 묶을 때는 앱이 이 상한 안으로 나눠 보낸다. 넘으면 요청 전체가 413 이다.
+ */
 const BODY_LIMIT_BYTES = 256 * 1024
 
 async function bootstrap(): Promise<void> {

@@ -14,6 +14,7 @@ import {
   trackedCharacters,
   users,
 } from '../../database/schema'
+import { lockOwners, type RecordOwner } from './owner-locks'
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
 
@@ -82,6 +83,20 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
     .from(nexonAccounts)
     .where(eq(nexonAccounts.id, into))
   if (source === undefined || target === undefined) throw new Error('합칠 넥슨 계정 줄이 없다')
+  // 옮기는 기록 줄은 변경 번호가 새로 붙는다. 그 주인을 받는 중인 기기가 이 번호를 건너뛰지 않게 쓰기처럼 잠근다.
+  const held = await tx
+    .select({ hash: mapleIds.hash })
+    .from(mapleIds)
+    .where(inArray(mapleIds.nexonAccountId, [from, into]))
+  await lockOwners(
+    tx,
+    [
+      { type: 'nexon_account', id: from },
+      { type: 'nexon_account', id: into },
+      ...held.map((row): RecordOwner => ({ type: 'maple_id', hash: row.hash })),
+    ],
+    'write',
+  )
 
   await tx.update(mapleIds).set({ nexonAccountId: into }).where(eq(mapleIds.nexonAccountId, from))
 
@@ -131,7 +146,8 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
 /**
  * 넥슨 계정에 붙는 기록을 옮긴다. 한 계정에 하나인 줄(설정 · 하위 페이지 차례 · 추적 캐릭터)이 양쪽에 있으면 늦게 고친 줄을
  * 남기고, 시각이 같으면 from 쪽을 버린다. 대표 캐릭터는 into 에 있으면 into 의 것을 남긴다. 대표는 계정에 하나다. 굳은 날은 같은
- * 날이 양쪽에 있어도 같은 사실이라 from 쪽을 버린다. 손으로 적은 약속과 계산기 기록은 둘 다 남긴다.
+ * 날이 양쪽에 있어도 같은 사실이라 한 줄만 남긴다. 데이터 삭제로 지운 줄보다 살아 있는 줄을 남긴다. 손으로 적은 약속과 계산기
+ * 기록은 둘 다 남긴다.
  */
 async function moveAccountRecords(tx: Tx, from: string, into: string): Promise<void> {
   for (const [table, key] of [
@@ -150,9 +166,15 @@ async function moveAccountRecords(tx: Tx, from: string, into: string): Promise<v
      WHERE nexon_account_id = ${from} AND is_representative
        AND EXISTS (SELECT 1 FROM ${trackedCharacters} t
                     WHERE t.nexon_account_id = ${into} AND t.is_representative AND t.deleted_at IS NULL)`)
+  // 같은 날이 양쪽에 있으면 살아 있는 줄을 남긴다. 둘 다 살아 있거나 둘 다 지웠으면 into 쪽을 남긴다.
   await tx.execute(sql`
     DELETE FROM ${enhancementSettledDays} d USING ${enhancementSettledDays} o
      WHERE d.nexon_account_id = ${from} AND o.nexon_account_id = ${into}
+       AND d.api_type = o.api_type AND d.history_date = o.history_date
+       AND (o.deleted_at IS NULL OR d.deleted_at IS NOT NULL)`)
+  await tx.execute(sql`
+    DELETE FROM ${enhancementSettledDays} d USING ${enhancementSettledDays} o
+     WHERE d.nexon_account_id = ${into} AND o.nexon_account_id = ${from}
        AND d.api_type = o.api_type AND d.history_date = o.history_date`)
   for (const table of [
     accountSettings,

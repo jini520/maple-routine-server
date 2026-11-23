@@ -202,3 +202,124 @@ export async function openTestDb(): Promise<{
     close: () => pool.end(),
   }
 }
+
+/** 기록 표가 가리키는 게임 데이터 줄. 동기화 스펙이 함께 쓴다. */
+export interface RecordReferences {
+  bossId: string
+  /** 루시드의 주간 하드 · 주간 노말 · 월간 익스트림 */
+  hard: string
+  normal: string
+  monthly: string
+  worldId: string
+  itemId: string
+  otherItemId: string
+  categoryId: string
+  equipmentTypeId: string
+  consumableTypeId: string
+  contentId: string
+}
+
+/** 기록 표가 가리키는 보스 · 난이도 · 월드 · 아이템 · 가계부 분류 · 아이템 종류 · 컨텐츠를 하나씩 넣는다. */
+export async function insertRecordReferences(db: TestDb): Promise<RecordReferences> {
+  const iconAssetId = await insertAsset(db, 'items/etc.webp')
+  const [boss] = await db
+    .insert(schema.bosses)
+    .values({
+      key: 'lucid',
+      name: '루시드',
+      shortName: '루시드',
+      isSeasonBoss: false,
+      portraitAssetId: await insertAsset(db, 'bosses/lucid.webp'),
+      sortOrder: 0,
+    })
+    .returning({ id: schema.bosses.id })
+  if (boss === undefined) throw new Error('보스를 못 넣었다')
+  const difficulties = await db
+    .insert(schema.bossDifficulties)
+    .values([
+      { bossId: boss.id, difficulty: 'hard', cycle: 'weekly', requiredLevel: 220 },
+      { bossId: boss.id, difficulty: 'normal', cycle: 'weekly', requiredLevel: 220 },
+      { bossId: boss.id, difficulty: 'extreme', cycle: 'monthly', requiredLevel: 220 },
+    ])
+    .returning({ id: schema.bossDifficulties.id })
+  const [world] = await db
+    .insert(schema.worlds)
+    .values({ key: 'scania', name: '스카니아', sortOrder: 0 })
+    .returning({ id: schema.worlds.id })
+  const madeItems = await db
+    .insert(schema.items)
+    .values([
+      { key: 'drop-a', name: '드롭 가' },
+      { key: 'drop-b', name: '드롭 나' },
+    ])
+    .returning({ id: schema.items.id })
+  const [category] = await db
+    .insert(schema.cashbookCategories)
+    .values({
+      entryType: 'spend',
+      key: 'etc',
+      name: '기타',
+      cardTitle: '기타',
+      iconAssetId,
+      description: '기타',
+      sortOrder: 0,
+    })
+    .returning({ id: schema.cashbookCategories.id })
+  const types = await db
+    .insert(schema.cashbookItemTypes)
+    .values([
+      { key: 'equipment', name: '장비', hasTariff: false, sortOrder: 0 },
+      { key: 'consumable', name: '소비', unit: '개', hasTariff: true, sortOrder: 1 },
+    ])
+    .returning({ id: schema.cashbookItemTypes.id })
+  const [contentCategory] = await db
+    .insert(schema.contentCategories)
+    .values({ key: 'weekly_quest', name: '주간 퀘스트', sortOrder: 0 })
+    .returning({ id: schema.contentCategories.id })
+  if (contentCategory === undefined) throw new Error('컨텐츠 분류를 못 넣었다')
+  const [content] = await db
+    .insert(schema.contents)
+    .values({
+      key: 'erda-spectrum',
+      cycle: 'weekly',
+      apiName: '에르다 스펙트럼',
+      categoryId: contentCategory.id,
+      name: '에르다 스펙트럼',
+      shortName: '스펙트럼',
+      type: 'quest',
+      checkType: 'state_only',
+      shareScope: 'world',
+      sortOrder: 0,
+    })
+    .returning({ id: schema.contents.id })
+  const [hard, normal, monthly] = difficulties
+  const [itemA, itemB] = madeItems
+  const [equipment, consumable] = types
+  if (
+    hard === undefined ||
+    normal === undefined ||
+    monthly === undefined ||
+    world === undefined ||
+    itemA === undefined ||
+    itemB === undefined ||
+    category === undefined ||
+    equipment === undefined ||
+    consumable === undefined ||
+    content === undefined
+  ) {
+    throw new Error('게임 데이터 줄을 못 넣었다')
+  }
+  return {
+    bossId: boss.id,
+    hard: hard.id,
+    normal: normal.id,
+    monthly: monthly.id,
+    worldId: world.id,
+    itemId: itemA.id,
+    otherItemId: itemB.id,
+    categoryId: category.id,
+    equipmentTypeId: equipment.id,
+    consumableTypeId: consumable.id,
+    contentId: content.id,
+  }
+}

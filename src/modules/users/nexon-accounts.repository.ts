@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, eq, inArray } from 'drizzle-orm'
 
+import { ERROR_CODES, type SubAccountRejection } from '../../common/error-codes'
 import { DB, type Db } from '../../database/database.module'
 import { mapleIds, subAccountRegistrations } from '../../database/schema'
 import {
@@ -10,16 +11,11 @@ import {
   mapleIdsOf,
 } from './nexon-account-store'
 
-export type SubAccountRegistration =
-  | 'registered'
-  | 'same_account'
-  | 'registered_elsewhere'
-  | 'has_sub_accounts'
-  | 'login_is_sub_account'
+export type SubAccountRegistration = 'registered' | SubAccountRejection
 
 /** 거절할 때 트랜잭션을 되돌리려고 던진다. 처음 보는 메이플 ID 로 만든 사람 · 계정 줄이 남지 않게 한다. */
 class Rejected extends Error {
-  constructor(readonly result: Exclude<SubAccountRegistration, 'registered'>) {
+  constructor(readonly result: SubAccountRejection) {
     super(result)
   }
 }
@@ -64,28 +60,28 @@ export class NexonAccountsRepository {
             and(eq(mapleIds.nexonAccountId, loginNexonAccountId), inArray(mapleIds.hash, unique)),
           )
           .limit(1)
-        if (overlap !== undefined) throw new Rejected('same_account')
+        if (overlap !== undefined) throw new Rejected(ERROR_CODES.sameAccount)
         const holder = await findOrCreateMapleIdAccount(tx, first)
         const sub = await addMapleIds(tx, holder.nexonAccountId, unique)
-        if (sub === loginNexonAccountId) throw new Rejected('same_account')
+        if (sub === loginNexonAccountId) throw new Rejected(ERROR_CODES.sameAccount)
 
         const [registered] = await tx
           .select({ login: subAccountRegistrations.loginNexonAccountId })
           .from(subAccountRegistrations)
           .where(eq(subAccountRegistrations.subNexonAccountId, sub))
         if (registered?.login === loginNexonAccountId) return
-        if (registered !== undefined) throw new Rejected('registered_elsewhere')
+        if (registered !== undefined) throw new Rejected(ERROR_CODES.registeredElsewhere)
         const [owned] = await tx
           .select({ id: subAccountRegistrations.id })
           .from(subAccountRegistrations)
           .where(eq(subAccountRegistrations.loginNexonAccountId, sub))
           .limit(1)
-        if (owned !== undefined) throw new Rejected('has_sub_accounts')
+        if (owned !== undefined) throw new Rejected(ERROR_CODES.hasSubAccounts)
         const [owner] = await tx
           .select({ id: subAccountRegistrations.id })
           .from(subAccountRegistrations)
           .where(eq(subAccountRegistrations.subNexonAccountId, loginNexonAccountId))
-        if (owner !== undefined) throw new Rejected('login_is_sub_account')
+        if (owner !== undefined) throw new Rejected(ERROR_CODES.loginIsSubAccount)
 
         await tx
           .insert(subAccountRegistrations)

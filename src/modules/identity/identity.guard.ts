@@ -10,6 +10,7 @@ import {
 import { Reflector } from '@nestjs/core'
 import type { FastifyRequest } from 'fastify'
 
+import { ERROR_CODES } from '../../common/error-codes'
 import { sha256 } from '../../common/hash'
 import { bearerOf } from '../auth/session.guard'
 import { SessionsRepository } from '../auth/sessions.repository'
@@ -65,7 +66,7 @@ export class IdentityGuard implements CanActivate {
       allowed !== true &&
       (await this.users.deletionRequestedAt(request.identity!.userId)) != null
     ) {
-      throw new ForbiddenException({ code: 'account_deletion_pending' })
+      throw new ForbiddenException({ code: ERROR_CODES.accountDeletionPending })
     }
     return true
   }

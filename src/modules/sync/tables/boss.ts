@@ -106,7 +106,8 @@ async function dropOwners(ctx: WriteContext, dropId: string): Promise<RecordOwne
 
 /**
  * 드롭의 판매가 줄을 드롭에 맞춘다. 가격을 적은 드롭이면 드롭 id 로 한 줄을 적고, 아니면 지운다. 같은 id 의 줄이 다른 사람의
- * 것이면 건드리지 않는다. 사람이 빈 줄은 계정을 삭제해 비운 줄이라 요청한 사람을 채운다.
+ * 것이면 건드리지 않는다. 사람이 빈 줄은 계정을 삭제해 비운 줄이라 요청한 사람을 채운다. 거래 시각이 미래면 지금으로 자른다.
+ * 기기 시계가 앞서면 판매가가 아직 오지 않은 날의 시세에 잡힌다.
  */
 async function syncSalePrice(
   tx: Tx,
@@ -126,7 +127,7 @@ async function syncSalePrice(
       itemId: drop.itemId,
       worldId,
       salePriceMeso: drop.salePriceMeso,
-      pricedAt: drop.pricedAt,
+      pricedAt: sql`LEAST(${drop.pricedAt.toISOString()}::timestamptz, now())`,
     }
     await tx
       .insert(dropSalePrices)

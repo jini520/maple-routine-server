@@ -289,6 +289,19 @@ describeDb('SyncPushRepository', () => {
     expect(await db.select().from(dropSalePrices)).toEqual([])
   })
 
+  // 기기 시계가 앞서면 판매가가 아직 오지 않은 날의 시세에 잡힌다. 드롭 기록은 기기가 적은 값 그대로 둔다.
+  it('판매가 줄의 거래 시각이 미래면 지금으로 자르고, 드롭의 거래 시각은 그대로 둔다', async () => {
+    const first = entry()
+    const priced = { ...drop(first.id), pricedAt: '2099-01-01T00:00:00Z' }
+    await push(me, upsert('bossProfitEntries', first), upsert('bossDrops', priced))
+
+    // 지금은 DB 의 시계다. 테스트를 돌리는 쪽의 시계와 조금 어긋나도 되게 1분 안인지만 본다.
+    const [sale] = await db.select().from(dropSalePrices)
+    expect(Math.abs(sale.pricedAt.getTime() - Date.now())).toBeLessThan(60_000)
+    const [kept] = await db.select().from(bossDrops)
+    expect(kept?.pricedAt?.toISOString()).toBe('2099-01-01T00:00:00.000Z')
+  })
+
   // 옛 DB 에서 옮겨 온 같은 id 의 판매가 줄은 요청한 사람의 것이거나 사람이 빈 줄일 때만 덮는다.
   it('같은 id 의 남의 판매가 줄은 덮지 않고, 가격을 지우면 내 판매가 줄만 지운다', async () => {
     const first = entry()

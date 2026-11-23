@@ -136,8 +136,8 @@ describe('MeController', () => {
       expect(accounts.reportMapleIds).toHaveBeenCalledWith('a1', [M1, M2])
     })
 
-    // 부계정의 메이플 ID 는 그 키의 신원으로 알린다. 계정마다 자기 줄에 적어야 같은 넥슨 ID 를 알아본다.
-    it('키 해시로 오면 그 키의 넥슨 계정에 적는다', async () => {
+    // 로그인 없이 쓰는 사람은 메인 키의 메이플 ID 해시로 밝힌다. 그 해시로 찾은 넥슨 계정 줄에 적어야 같은 넥슨 ID 를 알아본다.
+    it('메이플 ID 해시로 오면 그 해시로 찾은 넥슨 계정에 적는다', async () => {
       users.upsertByMapleId.mockResolvedValue({
         id: 'u2',
         nexonAccountId: 'a2',

@@ -279,6 +279,87 @@ describeDb('SyncPullRepository', () => {
     expect(response.records.mvpGradeHistory?.map((row) => row.fromDate)).toEqual(['2026-11-20'])
   })
 
+  // 기록은 메이플 ID 줄을 줄 id 로 가리켜 캐릭터와 같은 방식으로 맞춘다. 기기는 그 줄 id 를 몰라 해시로 올리고 해시로 받는다.
+  it('메이플 ID 를 바로 가리키는 기록 표는 올린 해시로 찾은 메이플 ID 줄 id 로 적고, 받기의 응답에는 그 해시를 싣는다', async () => {
+    await push(
+      me,
+      upsert('cashbookEntries', {
+        id: randomUUID(),
+        mapleId: M_ME,
+        categoryId: ref.categoryId,
+        date: '2026-11-20',
+        recordedAt: '2026-11-20T03:00:00Z',
+        items: [{ itemName: '품목', amountMeso: -1 }],
+      }),
+      upsert('inventoryItems', {
+        id: randomUUID(),
+        mapleId: M_ME,
+        worldId: ref.worldId,
+        itemId: ref.itemId,
+        cashbookItemTypeId: ref.consumableTypeId,
+        addedQuantity: 1,
+      }),
+      upsert('mvpGradeHistory', { id: randomUUID(), mapleId: M_ME, fromDate: '2026-11-20' }),
+      upsert('mapleIdNames', { mapleId: M_ME, name: '본계정' }),
+      upsert('sharedContentProgress', {
+        mapleId: M_ME,
+        contentId: ref.contentId,
+        isRegistered: true,
+        periodCode: 'W202647',
+      }),
+    )
+    const [row] = await db.select({ id: mapleIds.id }).from(mapleIds).where(eq(mapleIds.hash, M_ME))
+
+    const stored = [
+      await db.select({ mapleId: schema.cashbookEntries.mapleId }).from(schema.cashbookEntries),
+      await db.select({ mapleId: schema.inventoryItems.mapleId }).from(schema.inventoryItems),
+      await db.select({ mapleId: mvpGradeHistory.mapleId }).from(mvpGradeHistory),
+      await db.select({ mapleId: schema.mapleIdNames.mapleId }).from(schema.mapleIdNames),
+      await db
+        .select({ mapleId: schema.sharedContentProgress.mapleId })
+        .from(schema.sharedContentProgress),
+    ]
+    const response = await pull(me)
+
+    const tables = [
+      'cashbookEntries',
+      'inventoryItems',
+      'mvpGradeHistory',
+      'mapleIdNames',
+      'sharedContentProgress',
+    ] as const
+    expect(stored.map((rows) => rows.map((r) => r.mapleId))).toEqual(tables.map(() => [row.id]))
+    expect(tables.map((table) => response.records[table]?.map((r) => r.mapleId))).toEqual(
+      tables.map(() => [M_ME]),
+    )
+  })
+
+  // 같은 날의 기록은 기기가 저장한 시각 차례로 선다. 메모와 그 시각이 비면 다른 기기에서 같은 기록이 다르게 보인다.
+  it('가계부 기록의 메모와 기기가 저장한 시각은 올린 값 그대로 받기의 응답에 실린다', async () => {
+    const id = randomUUID()
+    await push(
+      me,
+      upsert('cashbookEntries', {
+        id,
+        mapleId: M_ME,
+        categoryId: ref.categoryId,
+        date: '2026-11-20',
+        memo: '파티원에게 나눔',
+        recordedAt: '2026-11-20T03:04:05.678Z',
+        items: [{ itemName: '품목', amountMeso: -1 }],
+      }),
+    )
+
+    const response = await pull(me)
+
+    const [entry] = response.records.cashbookEntries ?? []
+    expect([
+      entry?.id,
+      entry?.memo,
+      (entry?.recordedAt as Date | undefined)?.toISOString(),
+    ]).toEqual([id, '파티원에게 나눔', '2026-11-20T03:04:05.678Z'])
+  })
+
   // 사람의 기록이 가리키는 캐릭터는 여러 메이플 ID 의 것이라 메이플 ID 해시와 ocid 해시를 함께 싣는다.
   it('사람의 기록은 넥슨 계정 줄에서 읽고, 딸린 줄과 캐릭터를 해시로 싣는다', async () => {
     const appointmentId = randomUUID()

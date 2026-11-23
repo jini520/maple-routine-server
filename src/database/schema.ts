@@ -564,7 +564,7 @@ export const ringLevelItems = pgTable(
 
 /**
  * 줄은 다르지만 같은 물건인 아이템. 따로 둔 줄 하나에 줄이 하나다. 원래 줄은 다른 줄의 따로 둔 줄이 될 수 없다. 두 번
- * 이어지면 원래 아이템을 찾을 때마다 끝까지 따라가야 해서다.
+ * 이어지면 원래 아이템을 찾을 때마다 끝까지 따라가야 해서다. 다른 줄과 견줘야 해서 마이그레이션의 트리거가 막는다.
  */
 export const sameItemLinks = pgTable(
   'same_item_links',

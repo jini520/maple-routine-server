@@ -477,6 +477,13 @@
       "when": 1795458200050,
       "tag": "0067_maple_point_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795458247748,
+      "tag": "0068_same_item_links_one_hop",
+      "breakpoints": true
     }
   ]
 }

@@ -29,6 +29,7 @@ import {
 import * as schema from '../../database/schema'
 import {
   describeDb,
+  insertAsset,
   insertNexonAccount,
   insertRecordReferences,
   openTestDb,
@@ -350,6 +351,76 @@ describeDb('SyncPushRepository', () => {
     expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual([null, 'record_deleted'])
   })
 
+  // 드롭은 아이템 줄 id 하나만 들어 참조로는 그 보스의 것인지 못 막는다. 처치 전 수익 건에는 다른 난이도에서 고른 드롭도 적힌다.
+  it('드롭은 그 보스에서 얻을 수 있는 아이템만 받는다. 다른 난이도의 드롭 · 상자 내용물 · 레벨 범위 안의 반지 레벨 줄은 받고, 다른 보스의 아이템 · 드롭 표에 없는 아이템 · 범위 밖의 레벨 줄은 코드 없이 거절한다', async () => {
+    const madeItems = await db
+      .insert(schema.items)
+      .values(
+        ['normal-only', 'ring-box', 'box-content', 'ring', 'ring_lv4', 'ring_lv1', 'will-only'].map(
+          (key) => ({ key, name: key }),
+        ),
+      )
+      .returning({ id: schema.items.id, key: schema.items.key })
+    const item = Object.fromEntries(madeItems.map((r) => [r.key, r.id]))
+    const [box] = await db
+      .insert(schema.dropBoxes)
+      .values({ itemId: item['ring-box'], ringLevelMin: 3, ringLevelMax: 4 })
+      .returning({ id: schema.dropBoxes.id })
+    await db.insert(schema.dropBoxContents).values([
+      { boxId: box.id, itemId: item['box-content'], sortOrder: 0 },
+      { boxId: box.id, itemId: item.ring, sortOrder: 1 },
+    ])
+    await db.insert(schema.ringLevelItems).values([
+      { itemId: item.ring_lv4, ringItemId: item.ring, ringLevel: 4 },
+      { itemId: item.ring_lv1, ringItemId: item.ring, ringLevel: 1 },
+    ])
+    const [will] = await db
+      .insert(schema.bosses)
+      .values({
+        key: 'will',
+        name: '윌',
+        shortName: '윌',
+        isSeasonBoss: false,
+        portraitAssetId: await insertAsset(db, 'bosses/will.webp'),
+        sortOrder: 1,
+      })
+      .returning({ id: schema.bosses.id })
+    const [willHard] = await db
+      .insert(schema.bossDifficulties)
+      .values({ bossId: will.id, difficulty: 'hard', cycle: 'weekly', requiredLevel: 235 })
+      .returning({ id: schema.bossDifficulties.id })
+    const reward = (bossDifficultyId: string, itemId: string) => ({
+      bossDifficultyId,
+      category: 'equipment' as const,
+      itemId,
+      sortOrder: 0,
+    })
+    await db
+      .insert(schema.bossDifficultyRewards)
+      .values([
+        reward(ref.normal, item['normal-only']),
+        reward(ref.normal, item['ring-box']),
+        reward(willHard.id, item['will-only']),
+      ])
+    const hard = entry()
+    await push(me, upsert('bossProfitEntries', hard))
+
+    const results = await push(
+      me,
+      ...[
+        item['normal-only'],
+        item['box-content'],
+        item.ring_lv4,
+        item['will-only'],
+        ref.otherItemId,
+        item.ring_lv1,
+      ].map((itemId) => upsert('bossDrops', drop(hard.id, { itemId }))),
+    )
+
+    expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual(['ok', 'ok', 'ok', null, null, null])
+    expect(await db.select().from(bossDrops)).toHaveLength(3)
+  })
+
   // 합계 표의 유일 기준은 지운 줄도 쥔다. 데이터 삭제 뒤 넥슨에서 다시 받은 합계가 새 id 로 와도 받아야 한다.
   it('같은 합계의 지운 줄이 있으면 받은 값으로 되살리고 그 줄의 id 를 돌려준다', async () => {
     const first = total()
@@ -557,6 +628,109 @@ describeDb('SyncPushRepository', () => {
     expect(await db.select().from(bossProfitCalculatorRecords)).toEqual([])
   })
 
+  // 품목의 대상 칸 하나가 여섯 표를 가리켜 DB 참조를 걸 수 없다. 종류와 다른 표의 id 를 받으면 기기마다 다른 대상으로 읽힌다.
+  it('가계부 품목의 대상 id 가 종류가 말하는 표에 없으면 코드 없이 거절하고 그 기록은 적지 않는다', async () => {
+    const [stat] = await db
+      .insert(schema.hexaStats)
+      .values({ key: 'boss_damage', name: '보스 데미지 증가', sortOrder: 0 })
+      .returning({ id: schema.hexaStats.id })
+    const record = (targetType: string, targetId: string) => ({
+      id: randomUUID(),
+      mapleId: M_ME,
+      categoryId: ref.categoryId,
+      date: '2026-11-20',
+      recordedAt: '2026-11-20T03:00:00Z',
+      items: [{ targetType, targetId, amountMeso: -1 }],
+    })
+    const kept = [record('item', ref.itemId), record('hexa_stat', stat.id)]
+
+    const results = await push(
+      me,
+      ...kept.map((r) => upsert('cashbookEntries', r)),
+      upsert('cashbookEntries', record('hexa_core', stat.id)),
+      upsert('cashbookEntries', record('spend_item', ref.itemId)),
+    )
+
+    expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual(['ok', 'ok', null, null])
+    expect(
+      (await db.select({ id: cashbookEntries.id }).from(cashbookEntries)).map((r) => r.id).sort(),
+    ).toEqual(kept.map((r) => r.id).sort())
+  })
+
+  // 기록의 메이플 ID 는 캐릭터 줄에도 있다. 둘이 어긋난 기록을 받으면 메이플 ID 로 받는 기기와 캐릭터로 읽는 기기가 다른 기록을 본다.
+  it('가계부 기록의 캐릭터가 몸의 메이플 ID 가 아닌 메이플 ID 아래에 있으면 maple_id_not_registered 다', async () => {
+    const sub = await insertNexonAccount(db, [M_SUB])
+    await db.insert(schema.subAccountRegistrations).values({
+      loginNexonAccountId: me.nexonAccountId,
+      subNexonAccountId: sub.nexonAccountId,
+    })
+    await push(me, upsert('enhancementTotals', total({ mapleId: M_SUB, ocid: O_ALT })))
+    const record = (mapleId: string) => ({
+      id: randomUUID(),
+      mapleId,
+      ocid: O_ALT,
+      categoryId: ref.categoryId,
+      date: '2026-11-20',
+      recordedAt: '2026-11-20T03:00:00Z',
+      items: [{ itemName: '품목', amountMeso: -1 }],
+    })
+    const matched = record(M_SUB)
+
+    const results = await push(
+      me,
+      upsert('cashbookEntries', record(M_ME)),
+      upsert('cashbookEntries', matched),
+    )
+
+    expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual(['maple_id_not_registered', 'ok'])
+    expect(await db.select({ id: cashbookEntries.id }).from(cashbookEntries)).toEqual([
+      { id: matched.id },
+    ])
+  })
+
+  // 대상 칸 하나가 심볼과 헥사 코어 두 표를 가리킨다. 종류와 다른 표의 id 를 받으면 폼이 엉뚱한 레벨을 채운다.
+  it('기억한 레벨의 대상 id 가 종류가 말하는 표에 없으면 코드 없이 거절한다', async () => {
+    const [group] = await db
+      .insert(schema.symbolGroups)
+      .values({
+        key: 'arcane',
+        name: '아케인',
+        maxLevel: 20,
+        defaultFromLevel: 1,
+        defaultToLevel: 20,
+        sortOrder: 0,
+      })
+      .returning({ id: schema.symbolGroups.id })
+    const [symbol] = await db
+      .insert(schema.symbols)
+      .values({
+        key: 'vanishing_journey',
+        groupId: group.id,
+        name: '소멸의 여로',
+        requiredLevel: 200,
+        iconAssetId: await insertAsset(db, 'items/vanishing_journey.png'),
+        sortOrder: 0,
+      })
+      .returning({ id: schema.symbols.id })
+    const level = (type: string, targetId: string) => ({
+      id: randomUUID(),
+      mapleId: M_ME,
+      ocid: O_ME,
+      type,
+      targetId,
+      level: 5,
+    })
+
+    const results = await push(
+      me,
+      upsert('rememberedLevels', level('symbol', symbol.id)),
+      upsert('rememberedLevels', level('hexa', symbol.id)),
+      upsert('rememberedLevels', level('symbol', ref.contentId)),
+    )
+
+    expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual(['ok', null, null])
+  })
+
   // 장비가 아닌 아이템은 메이플 ID · 월드 · 아이템마다 한 줄이다. 장비는 같은 아이템도 하나씩 따로라 기록 id 로 가린다.
   it('장비가 아닌 인벤토리 줄은 같은 아이템이면 duplicate_record 이고, 장비 줄은 따로 받는다', async () => {
     const item = (typeId: string, quantity: number) => ({
@@ -630,10 +804,7 @@ describeDb('SyncPushRepository', () => {
       isRepresentative,
     })
     await push(me, upsert('trackedCharacters', tracked(O_ME, true)))
-    await push(
-      other,
-      upsert('trackedCharacters', { ...tracked(O_NEW, true), mapleId: M_OTHER }),
-    )
+    await push(other, upsert('trackedCharacters', { ...tracked(O_NEW, true), mapleId: M_OTHER }))
     const representatives = async () =>
       db
         .select({

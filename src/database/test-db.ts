@@ -211,6 +211,7 @@ export interface RecordReferences {
   normal: string
   monthly: string
   worldId: string
+  /** 루시드 하드의 드롭 표에 든 아이템. 드롭은 그 보스에서 얻을 수 있는 아이템만 받는다. */
   itemId: string
   otherItemId: string
   categoryId: string
@@ -309,6 +310,9 @@ export async function insertRecordReferences(db: TestDb): Promise<RecordReferenc
   ) {
     throw new Error('게임 데이터 줄을 못 넣었다')
   }
+  await db
+    .insert(schema.bossDifficultyRewards)
+    .values({ bossDifficultyId: hard.id, category: 'equipment', itemId: itemA.id, sortOrder: 0 })
   return {
     bossId: boss.id,
     hard: hard.id,

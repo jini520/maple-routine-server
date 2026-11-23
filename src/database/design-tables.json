@@ -6255,7 +6255,7 @@
   },
   "spend_currency": {
    "values": [
-    "point",
+    "maple_point",
     "meso"
    ],
    "was": null,

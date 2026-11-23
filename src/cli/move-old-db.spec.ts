@@ -828,7 +828,7 @@ describeDb('moveOldDb', () => {
     expect(moved.find((c) => c.key === 'mu_lung_dojo')?.shortName).toBe('mu_lung_dojo 짧은')
   })
 
-  it('가계부 기준 표: 줄 id 를 두고 칸을 새 이름으로 옮기며, 타일의 그림 두 칸을 한 칸으로 합치고 항목의 줄인 이름은 버린다', async () => {
+  it('가계부 기준 표: 줄 id 를 두고 칸을 새 이름으로 옮기며, 타일의 그림 두 칸을 한 칸으로 합치고 항목의 줄인 이름은 버린다. 재화 `point` 는 `maple_point` 가 된다', async () => {
     const icon = await insertOldAsset('items/spec_icon.webp')
     const mapIcon = await insertOldAsset('maps/icons/specMap.png')
     const [category] = await oldDb
@@ -936,6 +936,7 @@ describeDb('moveOldDb', () => {
       {
         id: item?.id,
         name: '시험 항목',
+        currency: 'maple_point',
         rewardCoinQuantity: 4,
         validFrom: '2026-09-17',
         validUntil: null,

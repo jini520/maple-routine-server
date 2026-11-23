@@ -64,7 +64,7 @@ describeDb('SpendCatalogRepository', () => {
     tile: 'high_mountain',
     name: '하이마운틴 1단계',
     tier: '1단계',
-    currency: 'point',
+    currency: 'maple_point',
     unitPrice: 7500,
     unit: '회',
     maxQuantity: 1,

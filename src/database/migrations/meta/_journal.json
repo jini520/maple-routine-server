@@ -470,6 +470,13 @@
       "when": 1795428125878,
       "tag": "0066_settled_days_deleted_at",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795458200050,
+      "tag": "0067_maple_point_currency",
+      "breakpoints": true
     }
   ]
 }

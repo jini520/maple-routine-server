@@ -783,7 +783,7 @@ export const huntLootItems = pgTable(
   ],
 )
 
-export const spendCurrencyEnum = pgEnum('spend_currency', ['point', 'meso'])
+export const spendCurrencyEnum = pgEnum('spend_currency', ['maple_point', 'meso'])
 /** 에픽던전 추가 리워드를 받는 종류. 앱 코드가 이 값으로 갈려 ENUM 이다. 이름은 spend_reward_types 가 든다. */
 export const spendRewardTypeEnum = pgEnum('spend_reward_type', ['exp', 'sol_erda'])
 

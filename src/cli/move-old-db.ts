@@ -1002,7 +1002,7 @@ async function symbolRows(oldDb: OldDb) {
 
 /**
  * 가계부 기준 표 · 지출 목록 아홉의 새 줄. 줄 id 는 그대로다. 지출 타일의 그림은 두 칸 가운데 찬 칸을 적는다. 둘이 함께 찬
- * 줄은 옛 표의 CHECK 가 막았다. 항목의 줄인 이름은 앱이 읽지 않아 옮기지 않는다.
+ * 줄은 옛 표의 CHECK 가 막았다. 항목의 줄인 이름은 앱이 읽지 않아 옮기지 않는다. 재화 `point` 는 `maple_point` 로 적는다.
  */
 async function cashbookReferenceRows(oldDb: OldDb) {
   const [categories, itemKinds, loot, forms, groups, tiles, items, options, itemForms] =
@@ -1074,7 +1074,7 @@ async function cashbookReferenceRows(oldDb: OldDb) {
       tileId: i.tileId,
       name: i.name,
       tier: i.tier,
-      currency: i.currency,
+      currency: i.currency === 'point' ? ('maple_point' as const) : i.currency,
       unitPrice: i.unitPrice,
       unit: i.unit,
       maxQuantity: i.maxQuantity,

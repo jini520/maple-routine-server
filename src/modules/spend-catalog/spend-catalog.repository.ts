@@ -16,7 +16,7 @@ import {
 import { AssetNotFound } from '../assets/asset-refs'
 import { type DbOrTx, sectionUpdatedAt, touchSection } from '../game-data/sections'
 
-export const SPEND_CURRENCIES = ['point', 'meso'] as const
+export const SPEND_CURRENCIES = ['maple_point', 'meso'] as const
 export type SpendCurrency = (typeof SPEND_CURRENCIES)[number]
 /** 앱 코드가 이 값으로 갈린다. 이름은 spend_reward_types 표가 든다. */
 export const SPEND_REWARD_TYPES = ['exp', 'sol_erda'] as const

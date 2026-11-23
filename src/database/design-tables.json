@@ -2292,7 +2292,15 @@
      "key": "sync"
     },
     {
-     "name": "created_at",
+     "name": "deleted_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    },
+    {
+     "name": "created_at · updated_at",
      "type": "timestamptz",
      "references": null,
      "nullable": null,

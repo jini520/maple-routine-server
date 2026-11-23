@@ -31,8 +31,7 @@ const GROUP_ORDER: readonly ClearGroup[] = ['cashbook', 'enhancement', 'boss', '
 
 /**
  * 데이터 삭제 화면에서 지운 기록 묶음을 서버에서도 지운다. 기기에서만 지우면 다음 받기가 서버의 기록을 다시 넣는다. 이 신원이
- * 쓸 수 있는 메이플 ID 의 기록이 대상이고, 줄마다 삭제 표식을 적어 다른 기기도 지운다. 굳은 날은 표식이 없어 줄을 지운다.
- * 기기의 묶음과 같은 줄을 지운다. 화면에 적지 않은 것을 함께 지우면 사용자가 모르는 것을 잃는다.
+ * 쓸 수 있는 메이플 ID 의 기록이 대상이고, 줄마다 삭제 표식을 적어 다른 기기도 지운다. 기기의 묶음과 같은 줄을 지운다. 화면에 적지 않은 것을 함께 지우면 사용자가 모르는 것을 잃는다.
  */
 @Injectable()
 export class SyncClearRepository {
@@ -121,16 +120,22 @@ class ClearScope {
               isNull(enhancementTotals.deletedAt),
             ),
           )
-        // 굳은 날만 남으면 새 기기가 그 날을 넥슨에서 다시 받지 않아 합계가 빈 채로 굳는다. 표식이 없는 표라 줄을 지운다.
-        await tx.delete(enhancementSettledDays).where(
-          inArray(
-            enhancementSettledDays.nexonAccountId,
-            tx
-              .select({ id: mapleIds.nexonAccountId })
-              .from(mapleIds)
-              .where(inArray(mapleIds.id, [...this.mapleIdRows])),
-          ),
-        )
+        // 굳은 날만 남으면 다른 기기와 새 기기가 그 날을 넥슨에서 다시 받지 않아 합계가 빈 채로 굳는다.
+        await tx
+          .update(enhancementSettledDays)
+          .set(deleted)
+          .where(
+            and(
+              inArray(
+                enhancementSettledDays.nexonAccountId,
+                tx
+                  .select({ id: mapleIds.nexonAccountId })
+                  .from(mapleIds)
+                  .where(inArray(mapleIds.id, [...this.mapleIdRows])),
+              ),
+              isNull(enhancementSettledDays.deletedAt),
+            ),
+          )
         return
       case 'boss': {
         // 처치와 드롭은 한 묶음이다. 드롭만 남으면 같은 처치를 다시 적을 때 지웠다고 생각한 옛 드롭이 붙는다.

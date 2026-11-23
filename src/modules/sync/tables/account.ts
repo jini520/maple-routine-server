@@ -283,8 +283,9 @@ async function accountMapleIdHashes(tx: Tx, mapleIdHash: string): Promise<string
 }
 
 /**
- * 강화 내역을 넥슨 계정이 다 받은 날. 넥슨 계정은 그 계정의 메이플 ID 하나로 찾는다. 같은 날은 같은 사실이라 이미 있으면 그
- * 줄을 둔다. 받기는 그 계정의 메이플 ID 마다 이 줄을 싣는다. 지우기가 없다.
+ * 강화 내역을 넥슨 계정이 다 받은 날. 넥슨 계정은 그 계정의 메이플 ID 하나로 찾는다. 같은 날은 같은 사실이라 살아 있는 줄이
+ * 있으면 그 줄을 두고, 데이터 삭제로 지운 줄이면 되살린다. 받기는 그 계정의 메이플 ID 마다 이 줄을 싣는다. 기기는 다 받은 날을
+ * 하루씩 지우지 않아 지우기는 받지 않는다.
  */
 export const enhancementSettledDaysTable = defineTable<EnhancementSettledDayRow, never>({
   upsertRow: enhancementSettledDayRow,
@@ -303,7 +304,19 @@ export const enhancementSettledDaysTable = defineTable<EnhancementSettledDayRow,
       apiType: row.apiType,
       historyDate: row.historyDate,
     }
-    await tx.insert(enhancementSettledDays).values(key).onConflictDoNothing()
+    await tx
+      .insert(enhancementSettledDays)
+      .values(key)
+      .onConflictDoUpdate({
+        target: [
+          enhancementSettledDays.nexonAccountId,
+          enhancementSettledDays.apiType,
+          enhancementSettledDays.historyDate,
+        ],
+        set: revived,
+        // 살아 있는 줄은 고치지 않는다. 고치면 변경 번호가 올라 같은 날을 모든 기기가 다시 받는다.
+        setWhere: sql`${enhancementSettledDays.deletedAt} IS NOT NULL`,
+      })
     const [written] = await tx
       .select({ id: enhancementSettledDays.id })
       .from(enhancementSettledDays)
@@ -325,7 +338,10 @@ export const readEnhancementSettledDays: MapleIdReader = async (tx, owner, after
     .from(enhancementSettledDays)
     .innerJoin(mapleIds, eq(mapleIds.nexonAccountId, enhancementSettledDays.nexonAccountId))
     .where(
-      and(eq(mapleIds.id, owner.id), changedAfter(enhancementSettledDays.changeSeq, null, after)),
+      and(
+        eq(mapleIds.id, owner.id),
+        changedAfter(enhancementSettledDays.changeSeq, enhancementSettledDays.deletedAt, after),
+      ),
     )
     .orderBy(asc(enhancementSettledDays.changeSeq))
     .limit(limit)

@@ -213,7 +213,7 @@ describeDb('NexonAccountsRepository', () => {
     })
 
     // 지우는 줄을 가리키는 기록은 함께 지워진다. 옮기지 않으면 키로 쓰던 기기의 설정과 약속이 로그인하자마자 사라진다.
-    it('합칠 때 넥슨 계정에 붙는 기록을 남기는 줄로 옮기고, 계정에 하나인 줄은 늦게 고친 줄을 남긴다', async () => {
+    it('합칠 때 넥슨 계정에 붙는 기록을 남기는 줄로 옮기고, 계정에 하나인 줄은 늦게 고친 줄을, 같은 굳은 날은 살아 있는 줄을 남긴다', async () => {
       const old = await users$.upsertByMapleId('m1')
       await backdate(old.nexonAccountId, '2026-10-01T00:00:00Z')
       const fresh = await users$.upsertByMapleId('m2')
@@ -248,17 +248,25 @@ describeDb('NexonAccountsRepository', () => {
           tracked(fresh.nexonAccountId, mine?.id ?? '', false, '01'),
           tracked(fresh.nexonAccountId, other?.id ?? '', true, '03'),
         ])
-      const settled = (nexonAccountId: string, historyDate: string) => ({
+      const settled = (
+        nexonAccountId: string,
+        historyDate: string,
+        deletedAt: Date | null = null,
+      ) => ({
         nexonAccountId,
         apiType: 'cube' as const,
         historyDate,
+        deletedAt,
       })
+      // 데이터 삭제로 지운 날을 다른 기기가 다시 받았으면 그 날은 받은 날이다.
       await db
         .insert(enhancementSettledDays)
         .values([
           settled(old.nexonAccountId, '2026-11-01'),
           settled(fresh.nexonAccountId, '2026-11-01'),
           settled(fresh.nexonAccountId, '2026-11-02'),
+          settled(old.nexonAccountId, '2026-11-03', at('04')),
+          settled(fresh.nexonAccountId, '2026-11-03'),
         ])
       const appointment = crypto.randomUUID()
       await db.insert(partyAppointments).values({
@@ -287,11 +295,12 @@ describeDb('NexonAccountsRepository', () => {
       )
       expect(
         (await db.select().from(enhancementSettledDays))
-          .map((r) => [r.nexonAccountId, r.historyDate])
+          .map((r) => [r.nexonAccountId, r.historyDate, r.deletedAt])
           .sort(),
       ).toEqual([
-        [old.nexonAccountId, '2026-11-01'],
-        [old.nexonAccountId, '2026-11-02'],
+        [old.nexonAccountId, '2026-11-01', null],
+        [old.nexonAccountId, '2026-11-02', null],
+        [old.nexonAccountId, '2026-11-03', null],
       ])
       expect((await db.select().from(partyAppointments)).map((r) => r.nexonAccountId)).toEqual([
         old.nexonAccountId,

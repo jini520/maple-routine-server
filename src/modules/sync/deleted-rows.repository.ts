@@ -9,6 +9,7 @@ import {
   bossSplitSettings,
   cashbookEntries,
   characterWorldLeaps,
+  enhancementSettledDays,
   enhancementTotals,
   inventoryItems,
   manualTrackedItems,
@@ -22,7 +23,7 @@ import {
 } from '../../database/schema'
 import type { Tx } from '../users/nexon-account-store'
 
-/** 삭제 표식(`deleted_at`)이 있는 기록 표. 설정 · 하위 페이지 차례 · 굳은 날은 지우는 일이 없어 표식이 없다. */
+/** 삭제 표식(`deleted_at`)이 있는 기록 표. 설정 · 하위 페이지 차례는 지우는 일이 없어 표식이 없다. */
 const TABLES_WITH_DELETED_AT = [
   characterWorldLeaps,
   inventoryItems,
@@ -31,6 +32,7 @@ const TABLES_WITH_DELETED_AT = [
   bossDrops,
   bossSplitSettings,
   enhancementTotals,
+  enhancementSettledDays,
   rememberedLevels,
   mvpGradeHistory,
   manualTrackedItems,

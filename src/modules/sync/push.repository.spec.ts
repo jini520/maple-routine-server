@@ -514,6 +514,23 @@ describeDb('SyncPushRepository', () => {
     ])
   })
 
+  // 데이터 삭제로 지운 날을 다른 기기가 다시 받아 올리면 받은 날이다. 살아 있는 날을 다시 올릴 때 번호가 오르면 모든 기기가 다시 받는다.
+  it('지운 굳은 날이 다시 오면 같은 줄을 되살리고, 살아 있는 줄은 고치지 않는다', async () => {
+    const day = { mapleId: M_ME, apiType: 'cube', historyDate: '2026-10-20' }
+    await push(me, upsert('enhancementSettledDays', day))
+    const [first] = await db.select().from(enhancementSettledDays)
+    await push(me, upsert('enhancementSettledDays', day))
+    const [unchanged] = await db.select().from(enhancementSettledDays)
+    await db.update(enhancementSettledDays).set({ deletedAt: new Date() })
+
+    const [result] = await push(me, upsert('enhancementSettledDays', day))
+
+    const [revived] = await db.select().from(enhancementSettledDays)
+    expect(unchanged?.changeSeq).toBe(first?.changeSeq)
+    expect(result).toEqual(expect.objectContaining({ ok: true, id: first?.id }))
+    expect([revived?.id, revived?.deletedAt]).toEqual([first?.id, null])
+  })
+
   // 약속을 고쳐 올리면 지운 보스와 예외가 다른 기기에 남지 않게 통째로 갈아 끼운다.
   it('약속은 보스와 예외를 받을 때마다 갈아 끼운다', async () => {
     const appointment = {

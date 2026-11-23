@@ -2062,8 +2062,8 @@ export const bossProfitCalculatorRecordBosses = pgTable(
 
 /**
  * 한 넥슨 계정이 강화 내역을 넥슨에서 다 받은 날. 새 기기는 여기 있는 날을 다시 받지 않고 합계만 받는다. 과거 날짜의 내역은 바뀌지
- * 않기 때문이다. 강화하지 않은 날도 줄이 있어 받았는데 없었던 날과 아직 안 받은 날을 가른다. 지우는 일은 데이터 삭제의 강화
- * 묶음뿐이라 삭제 표식이 없고 줄을 지운다.
+ * 않기 때문이다. 강화하지 않은 날도 줄이 있어 받았는데 없었던 날과 아직 안 받은 날을 가른다. 데이터 삭제의 강화 묶음이 지우면
+ * 다른 기록 표처럼 삭제 표식을 적는다. 그래야 다른 기기도 자기 기기의 다 받은 날 표시를 지우고 그 날을 넥슨에서 다시 받는다.
  */
 export const enhancementSettledDays = pgTable(
   'enhancement_settled_days',
@@ -2075,10 +2075,7 @@ export const enhancementSettledDays = pgTable(
     apiType: enhancementApiTypeEnum('api_type').notNull(),
     /** 다 받은 날 `YYYY-MM-DD` */
     historyDate: text('history_date').notNull(),
-    changeSeq: bigint('change_seq', { mode: 'number' })
-      .notNull()
-      .default(sql`nextval('record_change_seq')`),
-    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    ...syncColumns(),
   },
   (t) => [
     unique('enhancement_settled_days_account_api_date_unique').on(
@@ -2086,6 +2083,7 @@ export const enhancementSettledDays = pgTable(
       t.apiType,
       t.historyDate,
     ),
+    deletedChangeSeqIndex('enhancement_settled_days', t),
   ],
 )
 

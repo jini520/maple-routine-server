@@ -150,8 +150,8 @@ describeDb('SyncClearRepository', () => {
     expect(live(await db.select().from(bossDrops))).toHaveLength(1)
   })
 
-  // 굳은 날만 남으면 새 기기가 그 날을 넥슨에서 다시 받지 않아 합계가 빈 채로 굳는다. 굳은 날 표에는 표식이 없다.
-  it('강화 묶음은 합계에 표식을 적고 그 넥슨 계정의 굳은 날을 지우며, 가계부 묶음과 사람의 기록은 남긴다', async () => {
+  // 굳은 날만 남으면 다른 기기와 새 기기가 그 날을 넥슨에서 다시 받지 않아 합계가 빈 채로 굳는다.
+  it('강화 묶음은 합계와 그 넥슨 계정의 굳은 날에 표식을 적고, 남의 굳은 날 · 가계부 묶음 · 사람의 기록은 남긴다', async () => {
     await push(
       me,
       upsert('enhancementTotals', {
@@ -199,9 +199,13 @@ describeDb('SyncClearRepository', () => {
     await clears.clear(me, ['enhancement'])
 
     expect(live(await db.select().from(enhancementTotals))).toEqual([])
-    expect((await db.select().from(enhancementSettledDays)).map((r) => r.nexonAccountId)).toEqual([
-      other.nexonAccountId,
-    ])
+    const days = await db.select().from(enhancementSettledDays)
+    expect(days.map((r) => [r.nexonAccountId, r.deletedAt === null]).sort()).toEqual(
+      [
+        [me.nexonAccountId, false],
+        [other.nexonAccountId, true],
+      ].sort(),
+    )
     expect(live(await db.select().from(cashbookEntries))).toHaveLength(1)
     expect(live(await db.select().from(partyAppointments))).toHaveLength(1)
   })

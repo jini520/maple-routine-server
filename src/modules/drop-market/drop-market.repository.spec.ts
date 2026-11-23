@@ -6,6 +6,7 @@ import {
   mapleIds,
   nexonAccounts,
   ringLevelItems,
+  sameItemLinks,
   subAccountRegistrations,
   tradeGroups,
   users,
@@ -19,7 +20,7 @@ import {
   type TestDb,
 } from '../../database/test-db'
 import { DropMarketRepository } from './drop-market.repository'
-import { MarketDailyRepository } from './market-daily.repository'
+import { MarketDailyRepository, marketKey } from './market-daily.repository'
 
 describeDb('DropMarketRepository', () => {
   let db: TestDb
@@ -193,5 +194,43 @@ describeDb('DropMarketRepository', () => {
     expect(level4.map((r) => [r.itemKey, r.itemName, r.ringLevel, r.priceMeso])).toEqual([
       ['ring', '반지', 4, 100],
     ])
+  })
+
+  // 상자에서 나온 연마석은 드롭 기록을 가르려고 줄을 따로 뒀을 뿐 같은 물건이다. 따로 세면 연마석 시세가 둘로 갈린다.
+  it('같은 물건으로 이은 따로 둔 줄의 판매가는 화면과 하루 작업 모두 원래 아이템의 시세로 센다', async () => {
+    const [boxed] = await db
+      .insert(items)
+      .values({
+        key: 'whetstone_from_box',
+        name: '연마석',
+        groupId: await itemGroupId(db, 'boss_loot'),
+        isDrop: true,
+      })
+      .returning({ id: items.id })
+    await db.insert(sameItemLinks).values({ itemId: boxed.id, originalItemId: item.whetstone })
+    await trade(9, { itemKey: 'whetstone', ringLevel: null })
+    await db.insert(dropSalePrices).values({
+      id: randomUUID(),
+      userId: me,
+      itemId: boxed.id,
+      salePriceMeso: 11,
+      worldId: world.scania,
+      pricedAt: new Date('2026-10-17T04:00:00Z'),
+    })
+
+    const shown = await repo.rows({ kind: 'consumable', key: 'scania' }, since, {
+      itemKey: 'whetstone',
+      ringLevel: null,
+    })
+    const daily = await new MarketDailyRepository(db).rowsBetween('2026-10-17', '2026-10-17')
+
+    expect(shown.map((r) => [r.itemId, r.marketItemId, r.itemKey, r.priceMeso])).toEqual([
+      [item.whetstone, item.whetstone, 'whetstone', 9],
+      [boxed.id, item.whetstone, 'whetstone', 11],
+    ])
+    expect(new Set(daily.map((r) => r.item))).toEqual(new Set([item.whetstone]))
+    expect(new Set(daily.map((r) => r.market))).toEqual(
+      new Set([marketKey(item.whetstone, 'scania')]),
+    )
   })
 })

@@ -23,6 +23,7 @@ import {
   partyAppointmentBosses,
   partyAppointmentExceptions,
   sharedContentProgress,
+  trackedCharacters,
   users,
 } from '../../database/schema'
 import * as schema from '../../database/schema'
@@ -618,6 +619,42 @@ describeDb('SyncPushRepository', () => {
     expect(rows.map((r) => [r.trackingType, r.isMvpWeeklyCheckOff, r.quickLinkRowCount])).toEqual([
       ['manual', true, 2],
     ])
+  })
+
+  // 넥슨 계정마다 대표는 하나다. 앞 대표가 키가 없는 부계정의 캐릭터면 대표를 바꾼 기기는 그 줄을 몰라 거짓으로 올리지 못한다.
+  it('대표로 올린 추적 캐릭터 말고 같은 넥슨 계정의 대표 표시는 내리고 그 줄의 변경 번호를 올리며, 다른 넥슨 계정의 대표는 두지 않는다', async () => {
+    const tracked = (ocid: string, isRepresentative: boolean) => ({
+      mapleId: M_ME,
+      ocid,
+      sortOrder: 0,
+      isRepresentative,
+    })
+    await push(me, upsert('trackedCharacters', tracked(O_ME, true)))
+    await push(
+      other,
+      upsert('trackedCharacters', { ...tracked(O_NEW, true), mapleId: M_OTHER }),
+    )
+    const representatives = async () =>
+      db
+        .select({
+          ocid: characters.ocid,
+          isRepresentative: trackedCharacters.isRepresentative,
+          changeSeq: trackedCharacters.changeSeq,
+        })
+        .from(trackedCharacters)
+        .innerJoin(characters, eq(characters.id, trackedCharacters.characterId))
+        .orderBy(trackedCharacters.changeSeq)
+    const [before] = await representatives()
+
+    await push(me, upsert('trackedCharacters', tracked(O_ALT, true)))
+
+    const after = await representatives()
+    expect(after.map((r) => [r.ocid, r.isRepresentative])).toEqual([
+      [O_NEW, true],
+      [O_ALT, true],
+      [O_ME, false],
+    ])
+    expect(Number(after[2]?.changeSeq)).toBeGreaterThan(Number(before?.changeSeq))
   })
 
   // 서버의 기록은 캐릭터 줄을 가리킨다. 리프 때 그 줄의 ocid 만 고치면 기록을 하나씩 옮기지 않아도 된다.

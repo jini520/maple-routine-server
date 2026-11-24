@@ -156,18 +156,6 @@ export class BossDropsRepository {
     })
   }
 
-  async remove(id: string): Promise<boolean> {
-    return this.db.transaction(async (tx) => {
-      const rows = await tx
-        .delete(bossDifficultyRewards)
-        .where(eq(bossDifficultyRewards.id, id))
-        .returning({ id: bossDifficultyRewards.id })
-      if (rows.length === 0) return false
-      await touchSection(tx, 'bossDrops')
-      return true
-    })
-  }
-
   /** 같은 조합 · 분류 안에서 한 칸 옮긴다. 끝이면 그대로 true 다. 없으면 false 다. */
   async move(id: string, direction: 'up' | 'down'): Promise<boolean> {
     return this.db.transaction(async (tx) => {

@@ -127,7 +127,6 @@ describe('AdminController', () => {
     rows: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
-    remove: jest.fn(),
     move: jest.fn(),
   }
   const crystals = {
@@ -1057,7 +1056,9 @@ describe('AdminController', () => {
       })
     })
 
-    it('드롭 표 줄은 더하고 고치고 옮기고 지운다. 기간 글자가 틀리면 400 이다', async () => {
+    // 드롭 기록은 그 보스에서 얻을 수 있는 아이템만 받아, 줄을 지우면 그 아이템의 지난 드롭이 동기화에서 거절된다. 보스가 주는
+    // 것이 바뀌면 줄을 지우지 않고 기간으로 끝낸다.
+    it('드롭 표 줄은 더하고 고치고 옮기며 지우는 경로는 없다. 기간 글자가 틀리면 400 이다', async () => {
       drops.create.mockResolvedValue({ id: ROW })
       const body = {
         boss: 'lotus',
@@ -1104,7 +1105,6 @@ describe('AdminController', () => {
           })
         ).statusCode,
       ).toBe(204)
-      drops.remove.mockResolvedValue(false)
       expect(
         (await app.inject({ method: 'DELETE', url: `/admin/boss-drops/${ROW}` })).statusCode,
       ).toBe(404)

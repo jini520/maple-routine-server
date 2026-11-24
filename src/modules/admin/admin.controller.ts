@@ -1738,12 +1738,6 @@ export class AdminController {
     }
   }
 
-  @Delete('boss-drops/:id')
-  @HttpCode(204)
-  async deleteBossDrop(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
-    if (!(await this.drops.remove(id))) throw new NotFoundException()
-  }
-
   @Post('boss-drops/:id/move')
   @HttpCode(204)
   async moveBossDrop(

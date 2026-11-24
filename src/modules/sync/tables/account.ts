@@ -43,7 +43,7 @@ import {
   type NexonAccountReader,
   nexonAccountOwner,
 } from '../sync-table'
-import { type WriteContext, writeDeviceRow } from '../sync-write'
+import { replaceChildRows, type WriteContext, writeDeviceRow } from '../sync-write'
 
 const deleted = { deletedAt: sql`now()`, updatedAt: sql`now()` }
 const revived = { deletedAt: null, updatedAt: sql`now()` }
@@ -178,6 +178,25 @@ async function insertAppointmentBosses(
   }
 }
 
+/** 약속의 예외와 보스. 예외의 줄 id 는 갈아 끼울 때마다 새로 붙어, 보스가 가리키는 예외를 그 주로 적는다. */
+const appointmentChildren = (id: string) => sql`jsonb_build_array(
+  (SELECT coalesce(jsonb_agg(to_jsonb(e) - 'id' ORDER BY e.week_code), '[]'::jsonb)
+     FROM ${partyAppointmentExceptions} e WHERE e.appointment_id = ${id}),
+  (SELECT coalesce(jsonb_agg((to_jsonb(b) - 'id' - 'exception_id') || jsonb_build_object('week_code', e.week_code)
+                             ORDER BY e.week_code NULLS FIRST, b.sort_order), '[]'::jsonb)
+     FROM ${partyAppointmentBosses} b LEFT JOIN ${partyAppointmentExceptions} e ON e.id = b.exception_id
+    WHERE b.appointment_id = ${id}))`
+
+/** 계산기 기록의 캐릭터와 보스. 캐릭터의 줄 id 는 갈아 끼울 때마다 새로 붙어, 보스가 가리키는 캐릭터를 그 차례로 적는다. */
+const calculatorChildren = (id: string) => sql`jsonb_build_array(
+  (SELECT coalesce(jsonb_agg(to_jsonb(c) - 'id' ORDER BY c.sort_order), '[]'::jsonb)
+     FROM ${bossProfitCalculatorRecordCharacters} c WHERE c.record_id = ${id}),
+  (SELECT coalesce(jsonb_agg((to_jsonb(b) - 'id' - 'record_character_id') || jsonb_build_object('sort_order', c.sort_order)
+                             ORDER BY c.sort_order, b.boss_difficulty_id), '[]'::jsonb)
+     FROM ${bossProfitCalculatorRecordBosses} b
+     JOIN ${bossProfitCalculatorRecordCharacters} c ON c.id = b.record_character_id
+    WHERE c.record_id = ${id}))`
+
 /** 파티 약속. 손으로 적는 기록이라 기록 id 로만 가리고, 보스와 주별 예외는 받을 때마다 갈아 끼운다. */
 export const partyAppointmentsTable = defineTable<PartyAppointmentRow, DeleteById>({
   upsertRow: partyAppointmentRow,
@@ -211,19 +230,26 @@ export const partyAppointmentsTable = defineTable<PartyAppointmentRow, DeleteByI
       revive: () => Promise.reject(new Error('약속은 내용으로 가리지 않는다')),
       discard: () => Promise.reject(new Error('약속은 내용으로 가리지 않는다')),
     })
-    // 예외를 지우면 그 예외의 보스도 함께 지워진다.
-    await tx.delete(partyAppointmentBosses).where(eq(partyAppointmentBosses.appointmentId, id))
-    await tx
-      .delete(partyAppointmentExceptions)
-      .where(eq(partyAppointmentExceptions.appointmentId, id))
-    await insertAppointmentBosses(ctx, id, null, bosses)
-    for (const { bosses: exceptionBosses, ...exception } of exceptions) {
-      const [written] = await tx
-        .insert(partyAppointmentExceptions)
-        .values({ ...exception, appointmentId: id })
-        .returning({ id: partyAppointmentExceptions.id })
-      await insertAppointmentBosses(ctx, id, written.id, exceptionBosses)
-    }
+    await replaceChildRows(
+      tx,
+      { table: partyAppointments, id },
+      appointmentChildren(id),
+      async () => {
+        // 예외를 지우면 그 예외의 보스도 함께 지워진다.
+        await tx.delete(partyAppointmentBosses).where(eq(partyAppointmentBosses.appointmentId, id))
+        await tx
+          .delete(partyAppointmentExceptions)
+          .where(eq(partyAppointmentExceptions.appointmentId, id))
+        await insertAppointmentBosses(ctx, id, null, bosses)
+        for (const { bosses: exceptionBosses, ...exception } of exceptions) {
+          const [written] = await tx
+            .insert(partyAppointmentExceptions)
+            .values({ ...exception, appointmentId: id })
+            .returning({ id: partyAppointmentExceptions.id })
+          await insertAppointmentBosses(ctx, id, written.id, exceptionBosses)
+        }
+      },
+    )
     return kept
   },
   deleteOwners: async (ctx) => [nexonAccountOwner(ctx)],
@@ -266,22 +292,29 @@ export const bossProfitCalculatorRecordsTable = defineTable<
       revive: () => Promise.reject(new Error('계산기 기록은 내용으로 가리지 않는다')),
       discard: () => Promise.reject(new Error('계산기 기록은 내용으로 가리지 않는다')),
     })
-    // 캐릭터 줄을 지우면 그 캐릭터의 보스도 함께 지워진다.
-    await tx
-      .delete(bossProfitCalculatorRecordCharacters)
-      .where(eq(bossProfitCalculatorRecordCharacters.recordId, id))
-    for (const { mapleId, ocid, bosses, sortOrder } of recordCharacters) {
-      const characterId = await characterIdFor(tx, identity.nexonAccountId, mapleId, ocid)
-      const [written] = await tx
-        .insert(bossProfitCalculatorRecordCharacters)
-        .values({ recordId: id, sortOrder, characterId })
-        .returning({ id: bossProfitCalculatorRecordCharacters.id })
-      if (bosses.length > 0) {
+    await replaceChildRows(
+      tx,
+      { table: bossProfitCalculatorRecords, id },
+      calculatorChildren(id),
+      async () => {
+        // 캐릭터 줄을 지우면 그 캐릭터의 보스도 함께 지워진다.
         await tx
-          .insert(bossProfitCalculatorRecordBosses)
-          .values(bosses.map((boss) => ({ ...boss, recordCharacterId: written.id })))
-      }
-    }
+          .delete(bossProfitCalculatorRecordCharacters)
+          .where(eq(bossProfitCalculatorRecordCharacters.recordId, id))
+        for (const { mapleId, ocid, bosses, sortOrder } of recordCharacters) {
+          const characterId = await characterIdFor(tx, identity.nexonAccountId, mapleId, ocid)
+          const [written] = await tx
+            .insert(bossProfitCalculatorRecordCharacters)
+            .values({ recordId: id, sortOrder, characterId })
+            .returning({ id: bossProfitCalculatorRecordCharacters.id })
+          if (bosses.length > 0) {
+            await tx
+              .insert(bossProfitCalculatorRecordBosses)
+              .values(bosses.map((boss) => ({ ...boss, recordCharacterId: written.id })))
+          }
+        }
+      },
+    )
     return kept
   },
   deleteOwners: async (ctx) => [nexonAccountOwner(ctx)],

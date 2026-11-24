@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 
@@ -128,6 +128,15 @@ describeDb('SyncPushRepository', () => {
   const upsert = (table: string, row: object) => ({ table, action: 'upsert', row })
   const remove = (table: string, row: object) => ({ table, action: 'delete', row })
   const push = (identity: IdentityContext, ...records: object[]) => repo.push(identity, records)
+  /** 표의 줄마다 줄 id · 변경 번호 · 고친 시각. 줄 id 차례다. */
+  const stamps = async (table: string) =>
+    (
+      await db.execute<{ id: string; change_seq: string; updated_at: Date }>(
+        sql.raw(`SELECT id, change_seq, updated_at FROM ${table} ORDER BY id`),
+      )
+    ).rows
+  const maxSeq = (rows: { change_seq: string }[]) =>
+    Math.max(...rows.map((row) => Number(row.change_seq)))
 
   beforeAll(async () => {
     ;({ db, close, truncate } = await openTestDb())
@@ -1244,6 +1253,352 @@ describeDb('SyncPushRepository', () => {
         .from(bossProfitEntries)
         .where(eq(bossProfitEntries.id, kalosNormal.id))
       expect(normal?.deletedAt).toEqual(expect.any(Date))
+    })
+  })
+
+  // 서버의 줄과 같은 값을 다시 올리는 일은 흔하다. 다른 기기가 올린 값을 받은 기기가 같은 값을 다시 적고, 처음 동기화는 받은 기록을
+  // 다시 올린다. 그때 변경 번호가 오르면 같은 줄이 모든 기기의 받기로 되돌아간다.
+  describe('값이 같은 올리기', () => {
+    interface Case {
+      /** 올리기의 표 이름 */
+      table: string
+      /** 변경 번호를 견줄 서버 표 */
+      dbTable: string
+      /** 먼저 올려 둘 기록 */
+      before?: object[]
+      row: object
+      /** 칸 하나만 바꾼 몸 */
+      changed: object
+    }
+    const appointment = (time: string) => ({
+      id: '6f1f6b8e-6a3c-4a8e-9f5d-2f4f7b3a9c11',
+      time: '21:00',
+      durationMinutes: 60,
+      scheduleType: 'weekly',
+      weekday: 4,
+      fromWeekCode: 'W202647',
+      bosses: [{ sortOrder: 0, bossDifficultyId: ref.hard, mapleId: M_ME, ocid: O_ME }],
+      exceptions: [
+        {
+          weekCode: 'W202648',
+          date: '2026-11-27',
+          time,
+          durationMinutes: 30,
+          bosses: [{ sortOrder: 0, bossDifficultyId: ref.normal, mapleId: M_ME, ocid: O_ME }],
+        },
+      ],
+    })
+    const calculator = (partySize: number) => ({
+      id: '0b7d3f0e-3a51-4f5e-8f61-6c8e8f5f2d22',
+      savedAt: '2026-11-20T03:00:00Z',
+      characters: [
+        {
+          sortOrder: 0,
+          mapleId: M_ME,
+          ocid: O_ME,
+          bosses: [
+            {
+              bossDifficultyId: ref.hard,
+              splitType: 'even',
+              partySize,
+              splitFeeFollowsMvpGrade: false,
+            },
+          ],
+        },
+      ],
+    })
+    const cashbook = (amountMeso: number) => ({
+      id: '4d0c6f8a-1b2e-4c3d-9e8f-7a6b5c4d3e33',
+      mapleId: M_ME,
+      ocid: O_ME,
+      categoryId: ref.categoryId,
+      date: '2026-11-20',
+      memo: '메모',
+      recordedAt: '2026-11-20T03:00:00Z',
+      items: [{ itemName: '직접 친 품목', amountMeso }],
+      fragmentUses: [{ fragmentSource: 'hunt', ocid: O_ALT, fragmentQuantity: 3 }],
+    })
+    const progress = (nowCount: number) => ({
+      mapleId: M_ME,
+      worldId: ref.worldId,
+      contentId: ref.contentId,
+      isRegistered: true,
+      nowCount,
+      maxCount: 3,
+      questState: null,
+      periodCode: 'W202647',
+    })
+    const motion = {
+      mapleId: M_ME,
+      ocid: O_ME,
+      actions: ['A00'],
+      emotions: ['E00'],
+      durationMs: 1_000,
+      restsBetweenActions: true,
+    }
+    const cases: Record<string, () => Case> = {
+      공유진행: () => ({
+        table: 'sharedContentProgress',
+        dbTable: 'shared_content_progress',
+        row: progress(1),
+        changed: progress(2),
+      }),
+      메이플ID이름: () => ({
+        table: 'mapleIdNames',
+        dbTable: 'maple_id_names',
+        row: { mapleId: M_ME, name: '본캐' },
+        changed: { mapleId: M_ME, name: '부캐' },
+      }),
+      대표캐릭터동작: () => ({
+        table: 'representativeCharacterMotions',
+        dbTable: 'representative_character_motions',
+        row: motion,
+        changed: { ...motion, emotions: ['E00', 'E01'] },
+      }),
+      추적캐릭터: () => ({
+        table: 'trackedCharacters',
+        dbTable: 'tracked_characters',
+        row: { mapleId: M_ME, ocid: O_ME, sortOrder: 0, isRepresentative: true },
+        changed: { mapleId: M_ME, ocid: O_ME, sortOrder: 1, isRepresentative: true },
+      }),
+      수동추적: () => ({
+        table: 'manualTrackedItems',
+        dbTable: 'manual_tracked_items',
+        row: { mapleId: M_ME, ocid: O_ME, type: 'weekly', targetId: ref.contentId },
+        changed: { mapleId: M_ME, ocid: O_ME, type: 'boss', targetId: ref.hard },
+      }),
+      설정: () => ({
+        table: 'accountSettings',
+        dbTable: 'account_settings',
+        row: { trackingType: 'manual', quickLinkKeys: ['A', 'B'] },
+        changed: { quickLinkKeys: ['B', 'A'] },
+      }),
+      하위페이지차례: () => ({
+        table: 'bottomBarSubPageOrders',
+        dbTable: 'bottom_bar_sub_page_orders',
+        row: { groupKey: 'schedule', subPageKeys: ['Boss', 'Content'] },
+        changed: { groupKey: 'schedule', subPageKeys: ['Content', 'Boss'] },
+      }),
+      수익건: () => {
+        const row = entry()
+        return {
+          table: 'bossProfitEntries',
+          dbTable: 'boss_profit_entries',
+          row,
+          changed: { ...row, crystalReceivedMeso: 100 },
+        }
+      },
+      드롭: () => {
+        const profit = entry()
+        const row = drop(profit.id)
+        return {
+          table: 'bossDrops',
+          dbTable: 'boss_drops',
+          before: [upsert('bossProfitEntries', profit)],
+          row,
+          changed: { ...row, salePriceMeso: 2_000 },
+        }
+      },
+      분배설정: () => {
+        const row = {
+          id: randomUUID(),
+          mapleId: M_ME,
+          ocid: O_ME,
+          bossDifficultyId: ref.hard,
+          splitType: 'even',
+          partySize: 2,
+          splitFeeFollowsMvpGrade: true,
+        }
+        return {
+          table: 'bossSplitSettings',
+          dbTable: 'boss_split_settings',
+          row,
+          changed: { ...row, partySize: 3 },
+        }
+      },
+      강화합계: () => {
+        const row = total()
+        return {
+          table: 'enhancementTotals',
+          dbTable: 'enhancement_totals',
+          row,
+          changed: { ...row, attemptCount: 3 },
+        }
+      },
+      MVP등급: () => {
+        const row = { id: randomUUID(), mapleId: M_ME, fromDate: '2026-11-20', gradeId: null }
+        return {
+          table: 'mvpGradeHistory',
+          dbTable: 'mvp_grade_history',
+          row,
+          changed: { ...row, fromDate: '2026-11-21' },
+        }
+      },
+      인벤토리: () => {
+        const row = {
+          id: randomUUID(),
+          mapleId: M_ME,
+          worldId: ref.worldId,
+          itemId: ref.itemId,
+          cashbookItemTypeId: ref.consumableTypeId,
+          addedQuantity: 3,
+        }
+        return {
+          table: 'inventoryItems',
+          dbTable: 'inventory_items',
+          row,
+          changed: { ...row, addedQuantity: 4 },
+        }
+      },
+      // 딸린 줄만 바뀌어도 주인 줄의 번호가 올라야 다른 기기가 받는다.
+      가계부딸린줄: () => ({
+        table: 'cashbookEntries',
+        dbTable: 'cashbook_entries',
+        row: cashbook(-1_000),
+        changed: cashbook(-2_000),
+      }),
+      가계부: () => ({
+        table: 'cashbookEntries',
+        dbTable: 'cashbook_entries',
+        row: cashbook(-1_000),
+        changed: { ...cashbook(-1_000), memo: '고친 메모' },
+      }),
+      약속예외: () => ({
+        table: 'partyAppointments',
+        dbTable: 'party_appointments',
+        row: appointment('22:00'),
+        changed: appointment('23:00'),
+      }),
+      계산기보스: () => ({
+        table: 'bossProfitCalculatorRecords',
+        dbTable: 'boss_profit_calculator_records',
+        row: calculator(2),
+        changed: calculator(3),
+      }),
+    }
+
+    it.each(Object.keys(cases))(
+      '%s: 같은 값을 다시 올리면 같은 결과를 돌려주고 줄의 변경 번호와 고친 시각을 두며, 바꾼 값을 올리면 번호를 올린다',
+      async (name) => {
+        const { table, dbTable, before = [], row, changed } = cases[name]()
+        if (before.length > 0) await push(me, ...before)
+        const [first] = await push(me, upsert(table, row))
+        const written = await stamps(dbTable)
+
+        const [again] = await push(me, upsert(table, row))
+
+        expect(first?.ok).toBe(true)
+        expect(again).toEqual(first)
+        expect(await stamps(dbTable)).toEqual(written)
+        const [result] = await push(me, upsert(table, changed))
+        expect(result?.ok).toBe(true)
+        expect(maxSeq(await stamps(dbTable))).toBeGreaterThan(maxSeq(written))
+      },
+    )
+
+    it('지운 줄을 다시 올리면 되살리고 번호를 올린다', async () => {
+      const tracked = { mapleId: M_ME, ocid: O_ME, type: 'weekly', targetId: ref.contentId }
+      await push(me, upsert('manualTrackedItems', tracked), remove('manualTrackedItems', tracked))
+      const [gone] = await stamps('manual_tracked_items')
+
+      await push(me, upsert('manualTrackedItems', tracked))
+
+      const [revived] = await db.select().from(manualTrackedItems)
+      expect(revived?.deletedAt).toBeNull()
+      expect(Number(revived?.changeSeq)).toBeGreaterThan(Number(gone?.change_seq))
+    })
+  })
+
+  // 수동 모드는 캐릭터 · 보스마다 난이도 하나다. 두 기기가 같은 보스를 다른 난이도로 고르면 둘 다 남아 보스 수익에 같은 보스가 두 줄
+  // 선다.
+  describe('수동 추적 보스', () => {
+    const tracked = (targetId: string, ocid = O_ME) => ({
+      mapleId: M_ME,
+      ocid,
+      type: 'boss',
+      targetId,
+    })
+    /** 살아 있는 수동 추적 항목의 캐릭터 ocid · 대상. 캐릭터 · 대상 차례다. */
+    const alive = async () =>
+      (
+        await db
+          .select({ ocid: characters.ocid, targetId: manualTrackedItems.targetId })
+          .from(manualTrackedItems)
+          .innerJoin(characters, eq(characters.id, manualTrackedItems.characterId))
+          .where(sql`${manualTrackedItems.deletedAt} IS NULL`)
+      ).sort((a, b) => `${a.ocid}${a.targetId}`.localeCompare(`${b.ocid}${b.targetId}`))
+    const sorted = (rows: { ocid: string; targetId: string }[]) =>
+      [...rows].sort((a, b) => `${a.ocid}${a.targetId}`.localeCompare(`${b.ocid}${b.targetId}`))
+
+    it('같은 캐릭터 · 같은 보스의 다른 난이도를 받으면 앞 난이도에 삭제 표식을 적고 번호를 올린다. 다른 캐릭터 · 다른 보스 · 컨텐츠는 둔다', async () => {
+      const [will] = await db
+        .insert(schema.bosses)
+        .values({
+          key: 'will',
+          name: '윌',
+          shortName: '윌',
+          isSeasonBoss: false,
+          portraitAssetId: await insertAsset(db, 'bosses/will.webp'),
+          sortOrder: 1,
+        })
+        .returning({ id: schema.bosses.id })
+      const [willHard] = await db
+        .insert(schema.bossDifficulties)
+        .values({ bossId: will.id, difficulty: 'hard', cycle: 'weekly', requiredLevel: 235 })
+        .returning({ id: schema.bossDifficulties.id })
+      await push(
+        me,
+        upsert('manualTrackedItems', tracked(ref.hard)),
+        upsert('manualTrackedItems', tracked(ref.hard, O_ALT)),
+        upsert('manualTrackedItems', tracked(willHard.id)),
+        upsert('manualTrackedItems', { ...tracked(ref.contentId), type: 'weekly' }),
+      )
+      const [hard] = await db
+        .select()
+        .from(manualTrackedItems)
+        .where(eq(manualTrackedItems.targetId, ref.hard))
+        .orderBy(manualTrackedItems.changeSeq)
+
+      const [result] = await push(me, upsert('manualTrackedItems', tracked(ref.normal)))
+
+      expect(result?.ok).toBe(true)
+      expect(await alive()).toEqual(
+        sorted([
+          { ocid: O_ME, targetId: ref.normal },
+          { ocid: O_ALT, targetId: ref.hard },
+          { ocid: O_ME, targetId: willHard.id },
+          { ocid: O_ME, targetId: ref.contentId },
+        ]),
+      )
+      const [gone] = await db
+        .select()
+        .from(manualTrackedItems)
+        .where(eq(manualTrackedItems.id, hard.id))
+      expect(gone?.deletedAt).toEqual(expect.any(Date))
+      expect(Number(gone?.changeSeq)).toBeGreaterThan(Number(hard?.changeSeq))
+    })
+
+    it('한 요청의 새 난이도 올리기와 앞 난이도 지우기를 어느 차례로 받아도 새 난이도 하나만 남고, 같은 값을 다시 올리면 아무 줄도 고치지 않는다', async () => {
+      await push(me, upsert('manualTrackedItems', tracked(ref.hard)))
+      const upsertFirst = await push(
+        me,
+        upsert('manualTrackedItems', tracked(ref.normal)),
+        remove('manualTrackedItems', tracked(ref.hard)),
+      )
+      expect(upsertFirst.map((r) => r.ok)).toEqual([true, true])
+      expect(await alive()).toEqual([{ ocid: O_ME, targetId: ref.normal }])
+
+      const removeFirst = await push(
+        me,
+        remove('manualTrackedItems', tracked(ref.normal)),
+        upsert('manualTrackedItems', tracked(ref.hard)),
+      )
+      expect(removeFirst.map((r) => r.ok)).toEqual([true, true])
+      expect(await alive()).toEqual([{ ocid: O_ME, targetId: ref.hard }])
+
+      const written = await stamps('manual_tracked_items')
+      await push(me, upsert('manualTrackedItems', tracked(ref.hard)))
+      expect(await stamps('manual_tracked_items')).toEqual(written)
     })
   })
 

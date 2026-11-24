@@ -40,6 +40,8 @@ const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode
  * 기록 표의 변경 번호 순번. 서버 전체에서 하나다. 기기는 주인마다 마지막으로 받은 번호를 기억하고 그보다 큰 줄만 받는다.
  * 마이그레이션이 `change_seq` 칸을 가진 표마다 트리거 `bump_change_seq` 를 걸어, 줄을 넣거나 고칠 때마다 다음 값을 적는다.
  * 쓰는 코드가 번호를 잊으면 그 줄을 다른 기기가 받지 못하기 때문이다. 새 기록 표를 만드는 마이그레이션도 트리거를 건다.
+ * 고친 시각 말고 바뀐 칸이 없는 고치기는 번호와 고친 시각을 둔다. 같은 값을 다시 올린 줄이 모든 기기의 받기로 되돌아가지 않게
+ * 하려는 것이다(마이그레이션 0070). 딸린 줄만 바뀐 기록은 `sync-write.ts` 의 `bumpChangeSeq` 로 번호를 올린다.
  */
 export const recordChangeSeq = pgSequence('record_change_seq')
 

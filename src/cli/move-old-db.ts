@@ -102,6 +102,9 @@ export class SwappedDatabases extends Error {}
 /** 운영에 줄이 없어 옮기지 않는 옛 기록 표에 줄이 있다. 그대로 옮기면 그 줄을 잃는다. message 가 표와 줄 수다. */
 export class UnmovedRecords extends Error {}
 
+/** 옮긴 뒤 새 DB 의 줄 수가 옛 DB 에서 센 수와 다르다. message 가 그 표들과 두 수다. */
+export class MovedCountMismatch extends Error {}
+
 /** 2026-11-17 운영에 줄이 없어 옮기지 않는 옛 기록 표. 1.0.14 까지의 앱이 올리지 않는 표다. */
 const EMPTY_OLD_RECORD_TABLES = [
   oldSchema.enhancementTotals,
@@ -401,6 +404,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
   const salePrices = await dropSalePriceRows(oldDb, ringLevelItems)
   // 앱 그림은 칸이 그대로라 줄 id 와 함께 옮긴다. 그림 표의 줄 id 가 그대로라 가리키는 그림도 같다.
   const appImages = await oldDb.select().from(oldSchema.appImages)
+  const expected = await expectedCounts(oldDb)
 
   await newDb.transaction(async (tx) => {
     for (const table of [...MOVED_TABLES].reverse()) await tx.delete(table)
@@ -468,6 +472,7 @@ export async function moveOldDb(oldDb: OldDb, newDb: NewDb): Promise<MoveResult>
     await insertAll(tx, schema.enhancementAnomalies, logs.enhancementAnomalies)
     await insertAll(tx, schema.appImages, appImages)
     await insertAll(tx, schema.dropSalePrices, salePrices)
+    await checkMovedCounts(tx, expected)
   })
   return {
     assets: assets.length,
@@ -1330,6 +1335,165 @@ async function hexaRows(oldDb: OldDb) {
       sortOrder: st.sortOrder,
     })),
   }
+}
+
+/**
+ * 옮긴 뒤 표마다 있어야 할 줄 수. 결정들이 적은 규칙대로 옛 DB 에서 SQL 로 센다.
+ *
+ * 옮기는 코드가 만든 줄을 다시 세지 않는다. 같은 코드로 세면 그 코드가 줄을 잃어도 맞다고 보기 때문이다.
+ */
+async function expectedCounts(oldDb: OldDb): Promise<Map<PgTable, number>> {
+  const countOf = async (table: PgTable): Promise<number> => {
+    const [row] = await oldDb.select({ n: sql<number>`count(*)::int` }).from(table)
+    return row?.n ?? 0
+  }
+  const scalar = async (query: ReturnType<typeof sql>): Promise<number> => {
+    const result = await oldDb.execute<{ n: number }>(query)
+    return Number(result.rows[0]?.n ?? 0)
+  }
+  const o = oldSchema
+  // 레벨 범위가 있는 상자에 든 장신구 하나가 그 상자들의 가장 낮은 레벨부터 가장 높은 레벨까지 레벨마다 한 줄이다.
+  const ringLevels = await scalar(sql`
+    select coalesce(sum(span), 0)::int as n from (
+      select max(${o.dropBoxes.levelMax}) - min(${o.dropBoxes.levelMin}) + 1 as span
+      from ${o.dropBoxContents}
+      join ${o.dropBoxes} on ${o.dropBoxes.id} = ${o.dropBoxContents.boxId}
+      join ${o.items} on ${o.items.id} = ${o.dropBoxContents.itemId}
+      join ${o.itemGroups} on ${o.itemGroups.key} = ${o.items.category}
+      where ${o.dropBoxes.levelMin} is not null and ${o.dropBoxes.levelMax} is not null
+        and ${o.itemGroups.kind} = 'accessory'
+      group by ${o.dropBoxContents.itemId}
+    ) s`)
+  const boxedCopies = await scalar(sql`
+    select count(*)::int as n from ${o.items}
+    where ${o.items.key} in (${sql.join(
+      BOXED_COPIES.map((c) => sql`${c.originalKey}`),
+      sql`, `,
+    )})`)
+  const jobCount = await scalar(
+    sql`select count(distinct ${o.hexaJobCores.job})::int as n from ${o.hexaJobCores}`,
+  )
+  // 모든 직업에 있는 이름의 코어는 한 줄만 남는다. 직업이 하나뿐이면 합치지 않는다.
+  const mergedCores =
+    jobCount > 1
+      ? await scalar(sql`
+          select coalesce(sum(rows - 1), 0)::int as n from (
+            select count(*) as rows from ${o.hexaJobCores}
+            group by ${o.hexaJobCores.name}
+            having count(distinct ${o.hexaJobCores.job}) = ${jobCount}
+          ) s`)
+      : 0
+  // 판정은 날과 사람 줄마다 한 줄로 모인다. 사람 줄로 풀리지 않는 글자는 버린다.
+  const judgements = await scalar(sql`
+    select count(*)::int as n from (
+      select distinct j.day, coalesce(
+        case when left(j.person, 2) = 'u:' then (select u.id from users u where u.id::text = substring(j.person from 3)) end,
+        case when left(j.person, 2) = 'a:' then (select a.user_id from nexon_accounts a where a.id::text = substring(j.person from 3)) end,
+        case when left(j.person, 2) = 'm:' then (
+          select a.user_id from nexon_account_maple_ids m join nexon_accounts a on a.id = m.nexon_account_id
+          where m.maple_id = substring(j.person from 3)) end
+      ) as user_id
+      from market_judgements j
+    ) s where user_id is not null`)
+  const salePrices = await scalar(sql`
+    select count(distinct ${o.dropPrices.dropRecordId})::int as n from ${o.dropPrices}
+    where ${o.dropPrices.recordStatus} = 'completed' and ${o.dropPrices.priceMeso} is not null`)
+  const tradeGroups = await scalar(
+    sql`select count(distinct ${o.worlds.priceGroup})::int as n from ${o.worlds}`,
+  )
+  const sectionKeys: readonly string[] = SECTION_KEYS
+  const sections = (
+    await oldDb.select({ key: o.gameDataSections.key }).from(o.gameDataSections)
+  ).filter((r) => sectionKeys.includes(r.key)).length
+  const crops = await scalar(sql`
+    select count(*)::int as n from ${o.imageCrops} where ${o.imageCrops.kind} <> 'boss_portrait_modal'`)
+
+  /** 옛 표 하나가 새 표 하나로 줄마다 옮겨지는 표. */
+  const sameRows: [PgTable, PgTable][] = [
+    [schema.assets, o.assets],
+    [schema.bosses, o.bosses],
+    [schema.bossDifficulties, o.bossDifficulties],
+    [schema.worlds, o.worlds],
+    [schema.worldOpenPeriods, o.worldPeriods],
+    [schema.itemGroups, o.itemGroups],
+    [schema.hexaCoreTypes, o.hexaCoreKinds],
+    [schema.hexaCoreLevelCosts, o.hexaCoreLevelCosts],
+    [schema.hexaStats, o.hexaStats],
+    [schema.bossDifficultyRewards, o.bossDropRewards],
+    [schema.dropBoxes, o.dropBoxes],
+    [schema.dropBoxContents, o.dropBoxContents],
+    [schema.bossCrystalPrices, o.bossCrystalPrices],
+    [schema.bossManualCompletionPeriods, o.manualCompletionBosses],
+    [schema.contentCategories, o.contentCategories],
+    [schema.contents, o.contents],
+    [schema.cashbookCategories, o.cashbookCategories],
+    [schema.cashbookItemTypes, o.cashbookItemKinds],
+    [schema.huntLootItems, o.huntLootItems],
+    [schema.spendRewardTypes, o.spendForms],
+    [schema.spendGroups, o.spendGroups],
+    [schema.spendTiles, o.spendTiles],
+    [schema.spendItems, o.spendItems],
+    [schema.spendItemOptions, o.spendItemOptions],
+    [schema.spendItemRewardTypes, o.spendItemForms],
+    [schema.symbolGroups, o.symbolGroups],
+    [schema.symbols, o.symbols],
+    [schema.symbolLevelCosts, o.symbolLevelCosts],
+    [schema.huntingRegions, o.huntingRegions],
+    [schema.huntingGrounds, o.huntingGrounds],
+    [schema.huntingGroundLevels, o.huntingGroundLevels],
+    [schema.potentialResetCosts, o.potentialResetCosts],
+    [schema.soulPotentialResetCosts, o.soulPotentialResetCosts],
+    [schema.starforceCostSteps, o.starforceSteps],
+    [schema.superiorSeries, o.superiorSeries],
+    [schema.superiorItems, o.superiorItems],
+    [schema.mvpGrades, o.mvpGrades],
+    [schema.notices, o.notices],
+    [schema.faqSheets, o.faqSheets],
+    [schema.faqItems, o.faqItems],
+    [schema.users, o.users],
+    [schema.nexonAccounts, o.nexonAccounts],
+    [schema.mapleIds, o.nexonAccountMapleIds],
+    [schema.subAccountRegistrations, o.subAccounts],
+    [schema.referrals, o.referrals],
+    [schema.nexonSessions, o.nexonSessions],
+    [schema.marketReferencePrices, o.marketDays],
+    [schema.marketPublishedDays, o.marketRuns],
+    [schema.maspiBasketItems, o.maspiBasket],
+    [schema.maspiDailyCloses, o.maspiDays],
+    [schema.usageEvents, o.usageEvents],
+    [schema.enhancementAnomalies, o.enhancementAnomalies],
+    [schema.appImages, o.appImages],
+  ]
+  const expected = new Map<PgTable, number>()
+  for (const [next, old] of sameRows) expected.set(next, await countOf(old))
+  expected.set(schema.tradeGroups, tradeGroups)
+  expected.set(schema.items, (await countOf(o.items)) + ringLevels + boxedCopies)
+  expected.set(schema.ringLevelItems, ringLevels)
+  expected.set(schema.sameItemLinks, boxedCopies)
+  expected.set(schema.jobs, jobCount + 1)
+  expected.set(schema.hexaCores, (await countOf(o.hexaJobCores)) - mergedCores)
+  expected.set(schema.gameRules, 1)
+  expected.set(schema.gameDataSectionUpdates, sections)
+  expected.set(schema.imageCrops, crops)
+  expected.set(schema.marketJudgements, judgements)
+  expected.set(schema.dropSalePrices, salePrices)
+  // 로그인 시도는 10분짜리 줄이고, 응답 저장 줄은 옮긴 뒤 `market-responses` 명령이 다시 만든다.
+  expected.set(schema.nexonLoginAttempts, 0)
+  expected.set(schema.marketResponses, 0)
+  return expected
+}
+
+/** 새 DB 의 옮긴 표마다 줄 수를 세어 기대한 수와 견준다. 다르거나 기대한 수를 세지 않은 표가 있으면 멈춘다. */
+async function checkMovedCounts(tx: Tx, expected: ReadonlyMap<PgTable, number>): Promise<void> {
+  const wrong: string[] = []
+  for (const table of MOVED_TABLES) {
+    const [row] = await tx.select({ n: sql<number>`count(*)::int` }).from(table)
+    const actual = row?.n ?? 0
+    const want = expected.get(table)
+    if (want === undefined) wrong.push(`${getTableName(table)} ${actual}줄(셀 규칙이 없다)`)
+    else if (actual !== want) wrong.push(`${getTableName(table)} ${actual}줄(${want}줄이어야 한다)`)
+  }
+  if (wrong.length > 0) throw new MovedCountMismatch(wrong.join(' · '))
 }
 
 /** 옛 묶음의 종류 글자. enum 밖의 글자면 옮기지 않고 멈춘다. */

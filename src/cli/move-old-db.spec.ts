@@ -16,6 +16,7 @@ import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
 import {
   MissingGameRule,
   moveOldDb,
+  MovedCountMismatch,
   UnknownCropValue,
   SharedCoreMismatch,
   SwappedDatabases,
@@ -1749,5 +1750,21 @@ describeDb('moveOldDb', () => {
       new UnmovedRecords('enhancement_totals 1줄'),
     )
     expect(await newDb.select().from(schema.users)).toEqual([])
+  })
+
+  // 줄 수는 옮기는 코드와 따로 옛 DB 에서 센다. 옮기다 줄을 잃어도 트랜잭션이 끝나기 전에 멈춰야 운영 DB 로 옮길 때 빈 표를 띄우지 않는다.
+  it('옮긴 뒤 표의 줄 수가 옛 DB 에서 센 수와 다르면 그 표와 두 수를 알리고 아무것도 옮기지 않는다', async () => {
+    await insertOldAsset('bosses/bellona.webp')
+    await insertOldAsset('bosses/maerin.webp', 'skip')
+    await newPool.query(
+      `CREATE RULE skip_asset AS ON INSERT TO assets WHERE NEW.name = 'skip' DO INSTEAD NOTHING`,
+    )
+    const seeded = await newDb.select({ id: schema.itemGroups.id }).from(schema.itemGroups)
+
+    await expect(moveOldDb(oldDb, newDb)).rejects.toThrow(
+      new MovedCountMismatch('assets 1줄(2줄이어야 한다)'),
+    )
+    expect(await newDb.select().from(schema.assets)).toEqual([])
+    expect(await newDb.select({ id: schema.itemGroups.id }).from(schema.itemGroups)).toEqual(seeded)
   })
 })

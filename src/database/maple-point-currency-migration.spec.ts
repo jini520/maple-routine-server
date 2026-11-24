@@ -6,7 +6,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 
-import { migrationFoldersUpTo } from './migration-folders'
+import { MIGRATION_HOOK_TIMEOUT_MS, migrationFoldersUpTo } from './migration-folders'
 import { describeDb, TEST_DATABASE_URL } from './test-db'
 
 const BEFORE = '0066_settled_days_deleted_at'
@@ -33,11 +33,11 @@ describeDb('0067 지출 재화 point 를 maple_point 로', () => {
     pool.on('error', () => undefined)
     db = drizzle(pool)
     await migrate(db, { migrationsFolder: folders[BEFORE] })
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterEach(async () => {
     await pool.end()
     await admin.query(`DROP DATABASE ${name} WITH (FORCE)`)
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterAll(async () => {
     cleanup()
     await admin.end()

@@ -8,6 +8,12 @@ import { join } from 'node:path'
 
 const MIGRATIONS = join(__dirname, 'migrations')
 
+/**
+ * 이관 스펙에서 DB 를 만들고 마이그레이션을 올리거나 DB 를 지우는 훅의 시간 상한. 혼자 돌면 1~2초지만 다른 jest 가 함께 돌면 jest
+ * 기본 5초를 넘어, 그때 도는 스펙이 훅에서 실패한다(2026-11-24 세 스펙에서 확인).
+ */
+export const MIGRATION_HOOK_TIMEOUT_MS = 60_000
+
 interface Journal {
   entries: { tag: string }[]
 }

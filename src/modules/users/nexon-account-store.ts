@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm'
 
 import type { Db } from '../../database/database.module'
 import {
@@ -144,12 +144,22 @@ export async function mergeNexonAccounts(tx: Tx, from: string, into: string): Pr
 }
 
 /**
- * 넥슨 계정에 붙는 기록을 옮긴다. 한 계정에 하나인 줄(설정 · 하위 페이지 차례 · 추적 캐릭터)이 양쪽에 있으면 늦게 고친 줄을
- * 남기고, 시각이 같으면 from 쪽을 버린다. 대표 캐릭터는 into 에 있으면 into 의 것을 남긴다. 대표는 계정에 하나다. 굳은 날은 같은
- * 날이 양쪽에 있어도 같은 사실이라 한 줄만 남긴다. 데이터 삭제로 지운 줄보다 살아 있는 줄을 남긴다. 손으로 적은 약속과 계산기
- * 기록은 둘 다 남긴다.
+ * 넥슨 계정에 붙는 기록을 옮긴다. from 의 삭제 표식이 선 줄은 옮기지 않고 지운다. 한 계정에 하나인 줄(설정 · 하위 페이지 차례 ·
+ * 추적 캐릭터)이 양쪽에 있으면 늦게 고친 줄을 남기고, 시각이 같으면 from 쪽을 버린다. 대표 캐릭터는 into 에 있으면 into 의 것을
+ * 남긴다. 대표는 계정에 하나다. 굳은 날은 같은 날이 양쪽에 있어도 같은 사실이라 한 줄만 남긴다. into 에서 지운 날보다 from 의 살아
+ * 있는 날을 남긴다. 손으로 적은 약속과 계산기 기록은 둘 다 남긴다.
  */
 async function moveAccountRecords(tx: Tx, from: string, into: string): Promise<void> {
+  // 옮기면 변경 번호가 새로 붙어, 180일 뒤 지우기가 그 줄을 지울 때 받기의 지운 번호가 그 번호까지 올라 모든 기기가 한 번 비우고
+  // 다시 받는다. from 을 보던 기기는 0 부터 받아 표식이 필요 없고, into 를 보던 기기에는 가진 적 없는 줄의 지우기다.
+  for (const table of [
+    trackedCharacters,
+    partyAppointments,
+    bossProfitCalculatorRecords,
+    enhancementSettledDays,
+  ]) {
+    await tx.delete(table).where(and(eq(table.nexonAccountId, from), isNotNull(table.deletedAt)))
+  }
   for (const [table, key] of [
     ['account_settings', ''],
     ['bottom_bar_sub_page_orders', 'AND d.group_key = o.group_key'],
@@ -166,12 +176,12 @@ async function moveAccountRecords(tx: Tx, from: string, into: string): Promise<v
      WHERE nexon_account_id = ${from} AND is_representative
        AND EXISTS (SELECT 1 FROM ${trackedCharacters} t
                     WHERE t.nexon_account_id = ${into} AND t.is_representative AND t.deleted_at IS NULL)`)
-  // 같은 날이 양쪽에 있으면 살아 있는 줄을 남긴다. 둘 다 살아 있거나 둘 다 지웠으면 into 쪽을 남긴다.
+  // 같은 날이 양쪽에 있으면 살아 있는 줄을 남긴다. from 의 줄은 이제 모두 살아 있어, 둘 다 살아 있으면 into 쪽을 남긴다.
   await tx.execute(sql`
     DELETE FROM ${enhancementSettledDays} d USING ${enhancementSettledDays} o
      WHERE d.nexon_account_id = ${from} AND o.nexon_account_id = ${into}
        AND d.api_type = o.api_type AND d.history_date = o.history_date
-       AND (o.deleted_at IS NULL OR d.deleted_at IS NOT NULL)`)
+       AND o.deleted_at IS NULL`)
   await tx.execute(sql`
     DELETE FROM ${enhancementSettledDays} d USING ${enhancementSettledDays} o
      WHERE d.nexon_account_id = ${into} AND o.nexon_account_id = ${from}

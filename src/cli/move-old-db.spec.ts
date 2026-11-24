@@ -9,7 +9,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { join } from 'node:path'
 import { Pool } from 'pg'
 
-import { migrationFoldersUpTo } from '../database/migration-folders'
+import { MIGRATION_HOOK_TIMEOUT_MS, migrationFoldersUpTo } from '../database/migration-folders'
 import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
@@ -80,13 +80,13 @@ describeDb('moveOldDb', () => {
     await migrate(oldDb, { migrationsFolder: folders[OLD_LAST] })
     await migrate(newDb, { migrationsFolder: join(__dirname, '..', 'database', 'migrations') })
     await oldDb.insert(oldSchema.gameRules).values(OLD_RULES)
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterEach(async () => {
     await oldPool.end()
     await newPool.end()
     await admin.query(`DROP DATABASE ${names.old} WITH (FORCE)`)
     await admin.query(`DROP DATABASE ${names.next} WITH (FORCE)`)
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterAll(async () => {
     cleanup()
     await admin.end()

@@ -7,7 +7,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 
 import { sha256Hex } from '../common/hash'
-import { migrationFoldersUpTo } from './migration-folders'
+import { MIGRATION_HOOK_TIMEOUT_MS, migrationFoldersUpTo } from './migration-folders'
 import { describeDb, TEST_DATABASE_URL } from './test-db'
 
 const BEFORE = '0036_record_natural_keys'
@@ -34,11 +34,11 @@ describeDb('0037 넥슨 식별자를 해시로, 넥슨 공지에 받은 시각�
     pool.on('error', () => undefined)
     db = drizzle(pool)
     await migrate(db, { migrationsFolder: folders[BEFORE] })
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterEach(async () => {
     await pool.end()
     await admin.query(`DROP DATABASE ${name} WITH (FORCE)`)
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterAll(async () => {
     cleanup()
     await admin.end()

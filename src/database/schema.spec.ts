@@ -110,6 +110,7 @@ const CONVERTED = [
   'cashbook_entry_exchange_inputs',
   'cashbook_entry_fragment_uses',
   'inventory_items',
+  'deleted_row_purges',
 ]
 
 interface DesignColumn {

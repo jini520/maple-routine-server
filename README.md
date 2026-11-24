@@ -167,7 +167,8 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   311MB · 372MB 가 됐고, 다시 켜니 87MB · 0MB 였다. 서버(node)는 91MB 다. `/etc/docker/daemon.json` 에 `{"live-restore": true}` 를 두면
   `sudo systemctl restart docker` 를 해도 컨테이너가 멈추지 않고 포트 전달만 2초쯤 끊긴다(2026-11-20 탐침 120번 중 502 4번). 그래서 위 배포
   명령 끝에 넣었다. 끝나면 `curl -s http://127.0.0.1:4000/healthz` 로 확인한다. 응답이 없으면 `docker compose up -d --no-build --force-recreate` 다.
-  데몬 메모리가 다시 불어나면 Docker 를 빼고 서버를 systemd 로 직접 돌린다. 그 전환은 1.0.15 서버 전환 · 도메인 분리(앱 저장소 #1090)와 함께 한다.
+  배포 사이에는 불지 않았다(2026-11-24, 다시 켠 뒤 4일 동안 RSS 87MB 에서 46MB). Docker 는 1.0.15 서버 전환 때 새 서버를 systemd 로
+  돌리면서 뺀다(2026-11-24 사용자 선택, 앱 저장소 `ADR-016` 결정 3 · #1109).
 - **점검 잠금은 맥에서 `npm run maintenance` 로 켜고 끈다**(앱 저장소 `ADR-261`). 앱 전체를 점검 화면으로 막는다. 서버의 표를 옮길
   때처럼 앱이 서버에 쓰면 안 되는 작업에만 쓴다. 재시작만 하는 배포에는 켜지 않는다.
 

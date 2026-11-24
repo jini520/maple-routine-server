@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing'
 
 import { AssetNotFound } from '../assets/asset-refs'
 import { BossDropsRepository } from '../boss-drops/boss-drops.repository'
+import { AmbiguousDropBox } from '../boss-drops/drop-box-rules'
 import { BossesRepository, BossExists, LastDifficulty } from '../bosses/bosses.repository'
 import { GameRulesRepository, NoGameRules } from '../game-rules/game-rules.repository'
 import {
@@ -1054,6 +1055,33 @@ describe('AdminController', () => {
         ringLevelMin: null,
         ringLevelMax: null,
       })
+    })
+
+    // 드롭 기록은 상자를 적지 않아, 한 난이도에서 상자가 하나로 정해지지 않는 저장은 관리 화면에 이유를 보여 주고 막는다.
+    it('상자가 하나로 정해지지 않는 드롭 표 줄 · 상자 내용물은 409 이고 이유를 싣는다', async () => {
+      const ambiguous = new AmbiguousDropBox(
+        '한 난이도의 두 상자에 같은 아이템을 넣을 수 없다: lotus/hard restraint_ring',
+      )
+      drops.create.mockRejectedValueOnce(ambiguous)
+      boxes.addContent.mockRejectedValueOnce(ambiguous)
+
+      const created = await app.inject({
+        method: 'POST',
+        url: '/admin/boss-drops',
+        payload: { boss: 'lotus', difficulty: 'hard', category: 'consumable', item: 'black_box' },
+      })
+      const added = await app.inject({
+        method: 'POST',
+        url: '/admin/drop-boxes/black_box/contents',
+        payload: { item: 'restraint_ring' },
+      })
+
+      for (const response of [created, added]) {
+        expect([response.statusCode, response.json<{ message: string }>().message]).toEqual([
+          409,
+          ambiguous.message,
+        ])
+      }
     })
 
     // 드롭 기록은 그 보스에서 얻을 수 있는 아이템만 받아, 줄을 지우면 그 아이템의 지난 드롭이 동기화에서 거절된다. 보스가 주는

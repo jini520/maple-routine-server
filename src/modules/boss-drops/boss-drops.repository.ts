@@ -5,6 +5,7 @@ import { isForeignKeyViolation, isUniqueViolation } from '../../common/pg-errors
 import { DB, type Db } from '../../database/database.module'
 import { bossDifficulties, bossDifficultyRewards, bosses, items } from '../../database/schema'
 import type { DifficultyInput } from '../bosses/bosses.dto'
+import { assertSingleDropBox } from './drop-box-rules'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export type DropCategory = 'fixed' | 'equipment' | 'consumable'
@@ -93,7 +94,7 @@ export class BossDropsRepository {
     }))
   }
 
-  /** 그 조합 · 분류의 맨 뒤에 더한다. */
+  /** 그 조합 · 분류의 맨 뒤에 더한다. 그 난이도의 상자가 하나로 정해지지 않으면 AmbiguousDropBox 이고 적지 않는다. */
   async create(input: BossDropInput): Promise<{ id: string }> {
     const pair = await this.pairId(input.boss, input.difficulty)
     if (pair === null) throw new NoBossDifficulty(`${input.boss}/${input.difficulty}`)
@@ -128,6 +129,7 @@ export class BossDropsRepository {
         throw error
       }
       if (row === undefined) throw new Error('insert 가 행을 안 돌려줬다')
+      await assertSingleDropBox(tx, [pair])
       await touchSection(tx, 'bossDrops')
       return row
     })

@@ -3,7 +3,8 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 
 import { isUniqueViolation } from '../../common/pg-errors'
 import { DB, type Db } from '../../database/database.module'
-import { dropBoxContents, dropBoxes, items } from '../../database/schema'
+import { bossDifficultyRewards, dropBoxContents, dropBoxes, items } from '../../database/schema'
+import { assertSingleDropBox } from '../boss-drops/drop-box-rules'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
 
 export interface DropBoxView {
@@ -145,7 +146,10 @@ export class DropBoxesRepository {
     return true
   }
 
-  /** 내용물을 맨 뒤에 더한다. 모르는 상자면 false, 모르는 아이템은 NoDropItem, 이미 있으면 ContentExists 다. */
+  /**
+   * 내용물을 맨 뒤에 더한다. 모르는 상자면 false, 모르는 아이템은 NoDropItem, 이미 있으면 ContentExists 다. 그 상자를 주는 난이도의
+   * 상자가 하나로 정해지지 않으면 AmbiguousDropBox 이고 적지 않는다.
+   */
   async addContent(boxItem: string, item: string): Promise<boolean> {
     const box = await this.boxId(boxItem)
     if (box === null) return false
@@ -164,6 +168,15 @@ export class DropBoxesRepository {
         if (isUniqueViolation(error)) throw new ContentExists(item)
         throw error
       }
+      const givers = await tx
+        .select({ id: bossDifficultyRewards.bossDifficultyId })
+        .from(bossDifficultyRewards)
+        .innerJoin(dropBoxes, eq(dropBoxes.itemId, bossDifficultyRewards.itemId))
+        .where(eq(dropBoxes.id, box))
+      await assertSingleDropBox(
+        tx,
+        givers.map((row) => row.id),
+      )
       await touchSection(tx, 'dropBoxes')
     })
     return true

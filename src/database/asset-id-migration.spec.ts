@@ -7,7 +7,7 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 
-import { migrationFoldersUpTo } from './migration-folders'
+import { MIGRATION_HOOK_TIMEOUT_MS, migrationFoldersUpTo } from './migration-folders'
 import { describeDb, TEST_DATABASE_URL } from './test-db'
 
 const BEFORE = '0028_referral_code'
@@ -36,11 +36,11 @@ describeDb('0029 그림 id 이관', () => {
     await migrate(db, { migrationsFolder: folders[BEFORE] })
     // 0014 가 넣은 가계부 분류 줄은 이 스펙이 넣는 그림을 안 가리켜 0029 를 멈추게 한다. 스펙마다 볼 표만 남긴다.
     await pool.query('DELETE FROM cashbook_categories')
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterEach(async () => {
     await pool.end()
     await admin.query(`DROP DATABASE ${name} WITH (FORCE)`)
-  })
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterAll(async () => {
     cleanup()
     await admin.end()

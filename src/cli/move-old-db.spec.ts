@@ -9,7 +9,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { join } from 'node:path'
 import { Pool } from 'pg'
 
-import { migrationFoldersUpTo } from '../database/migration-folders'
+import { MIGRATION_HOOK_TIMEOUT_MS, migrationFoldersUpTo } from '../database/migration-folders'
 import * as oldSchema from '../database/old-schema'
 import * as schema from '../database/schema'
 import { describeDb, TEST_DATABASE_URL } from '../database/test-db'
@@ -30,12 +30,6 @@ import {
 
 /** 옛 DB 의 마지막 마이그레이션. 1.0.14 운영 DB 가 여기까지 올라 있다. */
 const OLD_LAST = '0045_market_range_nullable'
-
-/**
- * DB 둘을 만들고 마이그레이션 116개를 올리는 훅의 시간 상한. 혼자 돌면 1.5초쯤이지만 다른 jest 가 함께 돌면 jest 기본 5초를 넘어
- * 시험이 훅에서 실패한다(2026-11-24 확인).
- */
-const DB_HOOK_TIMEOUT_MS = 60_000
 
 /** 옛 DB 의 게임 규칙 줄 아홉. 옮기기는 하나라도 빠지면 멈추므로 모든 시험이 넣고 시작한다. */
 const OLD_RULES = [
@@ -86,13 +80,13 @@ describeDb('moveOldDb', () => {
     await migrate(oldDb, { migrationsFolder: folders[OLD_LAST] })
     await migrate(newDb, { migrationsFolder: join(__dirname, '..', 'database', 'migrations') })
     await oldDb.insert(oldSchema.gameRules).values(OLD_RULES)
-  }, DB_HOOK_TIMEOUT_MS)
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterEach(async () => {
     await oldPool.end()
     await newPool.end()
     await admin.query(`DROP DATABASE ${names.old} WITH (FORCE)`)
     await admin.query(`DROP DATABASE ${names.next} WITH (FORCE)`)
-  }, DB_HOOK_TIMEOUT_MS)
+  }, MIGRATION_HOOK_TIMEOUT_MS)
   afterAll(async () => {
     cleanup()
     await admin.end()

@@ -28,8 +28,10 @@ import {
 } from '../../database/schema'
 import * as schema from '../../database/schema'
 import {
+  type ClearedDropTables,
   describeDb,
   insertAsset,
+  insertClearedDropTables,
   insertNexonAccount,
   insertRecordReferences,
   openTestDb,
@@ -402,7 +404,14 @@ describeDb('SyncPushRepository', () => {
         reward(ref.normal, item['ring-box']),
         reward(willHard.id, item['will-only']),
       ])
-    const hard = entry()
+    // 처치한 수익 건이면 받은 뒤 처치 난이도로 가려 지워진다. 받는지만 보려고 처치 전 수익 건에 올린다.
+    const hard = entry({
+      crystalPriceMeso: null,
+      crystalReceivedMeso: null,
+      clearedDate: null,
+      clearRecordedBy: null,
+      splitFeeFollowsMvpGrade: true,
+    })
     await push(me, upsert('bossProfitEntries', hard))
 
     const results = await push(
@@ -418,7 +427,7 @@ describeDb('SyncPushRepository', () => {
     )
 
     expect(results.map((r) => (r.ok ? 'ok' : r.code))).toEqual(['ok', 'ok', 'ok', null, null, null])
-    expect(await db.select().from(bossDrops)).toHaveLength(3)
+    expect((await db.select().from(bossDrops)).filter((r) => r.deletedAt === null)).toHaveLength(3)
   })
 
   // 합계 표의 유일 기준은 지운 줄도 쥔다. 데이터 삭제 뒤 넥슨에서 다시 받은 합계가 새 id 로 와도 받아야 한다.
@@ -972,6 +981,223 @@ describeDb('SyncPushRepository', () => {
     const rows = await db.select().from(enhancementTotals)
     const seq = (id: string) => rows.find((r) => r.id === id)?.changeSeq ?? 0
     expect(seq(second.id)).toBeGreaterThan(seq(first.id))
+  })
+
+  describe('처치 난이도', () => {
+    let t: ClearedDropTables
+    /** 처치 전 수익 건. 분배도 비어 드롭이 빠지면 기기가 지우는 줄이다. */
+    const notCleared = {
+      crystalPriceMeso: null,
+      crystalReceivedMeso: null,
+      clearedDate: null,
+      clearRecordedBy: null,
+      splitType: null,
+      partySize: null,
+      splitFeeFollowsMvpGrade: true,
+    }
+    const pending = {
+      priceStatus: 'pending',
+      salePriceMeso: null,
+      saleReceivedMeso: null,
+      pricedAt: null,
+    }
+    const itemDrop = (profitEntryId: string, key: string, over: Record<string, unknown> = {}) =>
+      drop(profitEntryId, { itemId: t.item[key], category: 'consumable', ...pending, ...over })
+    /** 드롭마다 [id, 수익 건, 아이템 key, 살아 있는지]. id 차례다. */
+    const dropRows = async () => {
+      const keyOf = Object.fromEntries(Object.entries(t.item).map(([key, id]) => [id, key]))
+      const rows = await db.select().from(bossDrops)
+      return rows
+        .map((r) => [r.id, r.profitEntryId, keyOf[r.itemId], r.deletedAt === null])
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+    }
+    const byId = <T extends unknown[]>(rows: T[]) =>
+      rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+
+    beforeEach(async () => {
+      t = await insertClearedDropTables(db)
+    })
+
+    // 앱 lib/__tests__/drop-item-ids.spec.ts 의 처치한 수익 건으로 모으기와 같은 세 예다. 기기와 서버의 규칙이 다르면 받기가 기기가
+    // 먼저 고친 값을 되돌린다.
+    it('처치한 수익 건을 받으면 다른 난이도의 드롭을 옮기고, 얻는 반지는 남기고 못 얻는 반지는 지우며, 다른 경로로만 얻는 연마석은 상자용 줄로 바꾼다', async () => {
+      const kalosNormal = entry({ bossDifficultyId: t.kalos.normal, ...notCleared })
+      const bellonaNormal = entry({ bossDifficultyId: t.bellona.normal, ...notCleared })
+      const restraint = itemDrop(kalosNormal.id, 'restraint_ring_lv4')
+      const ultimatum = itemDrop(kalosNormal.id, 'ultimatum_ring_lv4', {
+        priceStatus: 'entered',
+        salePriceMeso: 1_000,
+        saleReceivedMeso: 500,
+        pricedAt: '2026-11-20T03:00:00Z',
+      })
+      const whetstone = itemDrop(bellonaNormal.id, 'life_whetstone', {
+        priceStatus: 'entered',
+        salePriceMeso: 2_000,
+        saleReceivedMeso: 1_000,
+        pricedAt: '2026-11-20T03:00:00Z',
+      })
+      await push(
+        me,
+        upsert('bossProfitEntries', kalosNormal),
+        upsert('bossProfitEntries', bellonaNormal),
+        upsert('bossDrops', restraint),
+        upsert('bossDrops', ultimatum),
+        upsert('bossDrops', whetstone),
+      )
+      const kalosChaos = entry({ bossDifficultyId: t.kalos.chaos })
+      const bellonaHard = entry({ bossDifficultyId: t.bellona.hard })
+
+      const results = await push(
+        me,
+        upsert('bossProfitEntries', kalosChaos),
+        upsert('bossProfitEntries', bellonaHard),
+      )
+
+      expect(results.every((r) => r.ok)).toBe(true)
+      expect(await dropRows()).toEqual(
+        byId([
+          [restraint.id, kalosChaos.id, 'restraint_ring_lv4', true],
+          [ultimatum.id, kalosNormal.id, 'ultimatum_ring_lv4', false],
+          [whetstone.id, bellonaHard.id, 'life_whetstone_from_box', true],
+        ]),
+      )
+      // 드롭이 빠져 처치도 분배도 드롭도 없는 수익 건은 기기도 지운다.
+      const gone = (await db.select().from(bossProfitEntries)).filter((r) => r.deletedAt !== null)
+      expect(gone.map((r) => r.id).sort()).toEqual([kalosNormal.id, bellonaNormal.id].sort())
+      // 바꾼 드롭은 판매가 줄도 그 아이템으로 세고, 지운 드롭의 판매가는 시세에 남지 않는다.
+      const sales = await db.select().from(dropSalePrices)
+      expect(sales.map((r) => [r.id, r.itemId])).toEqual([
+        [whetstone.id, t.item.life_whetstone_from_box],
+      ])
+    })
+
+    // 드롭 시트는 상자 하나에 결과를 하나만 둔다. 같은 상자의 결과가 둘이면 하나는 먹은 것이 아니고 금액만 두 번 센다.
+    it('처치한 수익 건에 있던 드롭이 먼저 남고, 같은 아이템이나 같은 상자로 옮겨 오는 드롭은 지운다', async () => {
+      const kalosChaos = entry({ bossDifficultyId: t.kalos.chaos })
+      const kalosNormal = entry({ bossDifficultyId: t.kalos.normal, ...notCleared })
+      const keptRing = itemDrop(kalosChaos.id, 'continuous_ring_lv3')
+      const keptWhetstone = itemDrop(kalosChaos.id, 'life_whetstone')
+      const movedRing = itemDrop(kalosNormal.id, 'restraint_ring_lv4')
+      const movedWhetstone = itemDrop(kalosNormal.id, 'life_whetstone')
+      await push(
+        me,
+        upsert('bossProfitEntries', { ...kalosChaos, ...notCleared }),
+        upsert('bossProfitEntries', kalosNormal),
+        upsert('bossDrops', keptRing),
+        upsert('bossDrops', keptWhetstone),
+        upsert('bossDrops', movedRing),
+        upsert('bossDrops', movedWhetstone),
+      )
+
+      await push(me, upsert('bossProfitEntries', kalosChaos))
+
+      expect(await dropRows()).toEqual(
+        byId([
+          [keptRing.id, kalosChaos.id, 'continuous_ring_lv3', true],
+          [keptWhetstone.id, kalosChaos.id, 'life_whetstone', true],
+          [movedRing.id, kalosNormal.id, 'restraint_ring_lv4', false],
+          [movedWhetstone.id, kalosNormal.id, 'life_whetstone', false],
+        ]),
+      )
+    })
+
+    // 서버와 기기가 같은 드롭을 남기려면 둘 다 가진 값으로 차례를 정해야 한다. 드롭 시트의 차례는 기기에만 있다.
+    it('옮겨 오는 드롭끼리 겹치면 난이도 차례로, 같은 수익 건 안에서는 드롭 id 차례로 앞선 것이 남는다', async () => {
+      const kalosEasy = entry({ bossDifficultyId: t.kalos.easy, ...notCleared })
+      const kalosNormal = entry({ bossDifficultyId: t.kalos.normal, ...notCleared })
+      const [first, second] = [randomUUID(), randomUUID()].sort()
+      const a = itemDrop(kalosEasy.id, 'restraint_ring_lv3', { id: first })
+      const c = itemDrop(kalosEasy.id, 'continuous_ring_lv4', { id: second })
+      const b = itemDrop(kalosNormal.id, 'restraint_ring_lv4')
+      await push(
+        me,
+        upsert('bossProfitEntries', kalosEasy),
+        upsert('bossProfitEntries', kalosNormal),
+        upsert('bossDrops', b),
+        upsert('bossDrops', c),
+        upsert('bossDrops', a),
+      )
+      const kalosChaos = entry({ bossDifficultyId: t.kalos.chaos })
+
+      await push(me, upsert('bossProfitEntries', kalosChaos))
+
+      const live = (await dropRows()).filter((row) => row[3])
+      expect(live).toEqual([[a.id, kalosChaos.id, 'restraint_ring_lv3', true]])
+    })
+
+    // 2026-09-17 패치는 오전 10시이고 그 주(W202638)는 00:00 에 열린다. 그 열 시간에 먹은 교환권을 지우면 안 된다.
+    it('드롭 표 줄의 기간은 그 기간 어느 때라도 유효했으면 든 것으로 보고, 고정 보상 기록은 처치한 난이도가 주지 않아도 둔다', async () => {
+      const normalOf = (periodCode: string) =>
+        entry({ bossDifficultyId: t.kalos.normal, periodCode, ...notCleared })
+      const patchWeek = normalOf('W202638')
+      const nextWeek = normalOf('W202639')
+      const keptVoucher = itemDrop(patchWeek.id, 'magical_weapon_scroll_voucher')
+      const fixed = itemDrop(patchWeek.id, 'lingering_kalos_will_fragment', { category: 'fixed' })
+      const goneVoucher = itemDrop(nextWeek.id, 'magical_weapon_scroll_voucher')
+      await push(
+        me,
+        upsert('bossProfitEntries', patchWeek),
+        upsert('bossProfitEntries', nextWeek),
+        upsert('bossDrops', keptVoucher),
+        upsert('bossDrops', fixed),
+        upsert('bossDrops', goneVoucher),
+      )
+      const chaosOf = (periodCode: string) => entry({ bossDifficultyId: t.kalos.chaos, periodCode })
+      const patchChaos = chaosOf('W202638')
+      const nextChaos = chaosOf('W202639')
+
+      await push(
+        me,
+        upsert('bossProfitEntries', patchChaos),
+        upsert('bossProfitEntries', nextChaos),
+      )
+
+      expect(await dropRows()).toEqual(
+        byId([
+          [keptVoucher.id, patchChaos.id, 'magical_weapon_scroll_voucher', true],
+          [fixed.id, patchChaos.id, 'lingering_kalos_will_fragment', true],
+          [goneVoucher.id, nextWeek.id, 'magical_weapon_scroll_voucher', false],
+        ]),
+      )
+    })
+
+    // 처치를 아직 받지 못한 기기가 나중에 올린 드롭이 다른 난이도 수익 건에 남으면 기기마다 다르게 보인다. 앱은 드롭을 한 건씩 올려
+    // 첫 드롭을 옮기며 비운 수익 건을 뒤 드롭이 가리킨다. 그 드롭을 지운 기록의 수정으로 거절하면 앱이 드롭을 지운다.
+    it('처치한 수익 건이 있는 묶음의 드롭을 받으면 그 드롭도 옮기고 가리며, 그러다 비운 수익 건을 가리키는 뒤 드롭도 받는다', async () => {
+      const kalosChaos = entry({ bossDifficultyId: t.kalos.chaos })
+      await push(me, upsert('bossProfitEntries', kalosChaos))
+      const kalosNormal = entry({ bossDifficultyId: t.kalos.normal, ...notCleared })
+      const late = itemDrop(kalosNormal.id, 'restraint_ring_lv4')
+      const later = itemDrop(kalosNormal.id, 'life_whetstone')
+      const wrong = itemDrop(kalosNormal.id, 'ultimatum_ring_lv4')
+
+      const results = await push(
+        me,
+        upsert('bossProfitEntries', kalosNormal),
+        upsert('bossDrops', late),
+        upsert('bossDrops', later),
+        upsert('bossDrops', wrong),
+      )
+
+      expect(results.map((r) => (r.ok ? r.id : r.code))).toEqual([
+        kalosNormal.id,
+        late.id,
+        later.id,
+        wrong.id,
+      ])
+      expect(await dropRows()).toEqual(
+        byId([
+          [late.id, kalosChaos.id, 'restraint_ring_lv4', true],
+          [later.id, kalosChaos.id, 'life_whetstone', true],
+          [wrong.id, kalosChaos.id, 'ultimatum_ring_lv4', false],
+        ]),
+      )
+      const [normal] = await db
+        .select()
+        .from(bossProfitEntries)
+        .where(eq(bossProfitEntries.id, kalosNormal.id))
+      expect(normal?.deletedAt).toEqual(expect.any(Date))
+    })
   })
 
   // 계정을 삭제하면 기록이 메이플 ID 를 따라 지워진다. 판매가는 사람만 비우고 남는다.

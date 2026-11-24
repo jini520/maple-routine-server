@@ -327,3 +327,124 @@ export async function insertRecordReferences(db: TestDb): Promise<RecordReferenc
     contentId: content.id,
   }
 }
+
+/** 처치 난이도로 드롭을 모으는 스펙이 쓰는 드롭 표. 아이템은 key 로, 난이도는 보스마다 난이도 이름으로 찾는다. */
+export interface ClearedDropTables {
+  item: Record<string, string>
+  kalos: { easy: string; normal: string; chaos: string }
+  bellona: { normal: string; hard: string }
+}
+
+/**
+ * 앱 저장소 `src/__fixtures__/game-data` 의 감시자 칼로스 · 벨로나 줄 가운데 처치 난이도 묶음을 맞추는 데 드는 것만 옮긴 드롭 표.
+ * 앱의 같은 예를 서버도 같은 결과로 맞추는지 보려고 key 와 난이도를 앱과 같게 둔다.
+ */
+export async function insertClearedDropTables(db: TestDb): Promise<ClearedDropTables> {
+  const keys = [
+    'restraint_ring',
+    'restraint_ring_lv3',
+    'restraint_ring_lv4',
+    'continuous_ring',
+    'continuous_ring_lv3',
+    'continuous_ring_lv4',
+    'ultimatum_ring',
+    'ultimatum_ring_lv4',
+    'white_boss_ring_box',
+    'life_boss_ring_box',
+    'life_whetstone',
+    'life_whetstone_from_box',
+    'magical_weapon_scroll_voucher',
+    'lingering_kalos_will_fragment',
+  ]
+  const made = await db
+    .insert(schema.items)
+    .values(keys.map((key) => ({ key, name: key })))
+    .returning({ id: schema.items.id, key: schema.items.key })
+  const item = Object.fromEntries(made.map((row) => [row.key, row.id])) as Record<string, string>
+  await db.insert(schema.ringLevelItems).values([
+    { itemId: item.restraint_ring_lv3, ringItemId: item.restraint_ring, ringLevel: 3 },
+    { itemId: item.restraint_ring_lv4, ringItemId: item.restraint_ring, ringLevel: 4 },
+    { itemId: item.continuous_ring_lv3, ringItemId: item.continuous_ring, ringLevel: 3 },
+    { itemId: item.continuous_ring_lv4, ringItemId: item.continuous_ring, ringLevel: 4 },
+    { itemId: item.ultimatum_ring_lv4, ringItemId: item.ultimatum_ring, ringLevel: 4 },
+  ])
+  await db
+    .insert(schema.sameItemLinks)
+    .values({ itemId: item.life_whetstone_from_box, originalItemId: item.life_whetstone })
+  const [white, life] = await db
+    .insert(schema.dropBoxes)
+    .values([
+      { itemId: item.white_boss_ring_box, ringLevelMin: 3, ringLevelMax: 4 },
+      { itemId: item.life_boss_ring_box, ringLevelMin: 3, ringLevelMax: 4 },
+    ])
+    .returning({ id: schema.dropBoxes.id })
+  if (white === undefined || life === undefined) throw new Error('상자를 못 넣었다')
+  const contents = (boxId: string, contentKeys: string[]) =>
+    contentKeys.map((key, sortOrder) => ({ boxId, itemId: item[key], sortOrder }))
+  await db
+    .insert(schema.dropBoxContents)
+    .values([
+      ...contents(white.id, ['restraint_ring', 'continuous_ring', 'ultimatum_ring']),
+      ...contents(life.id, ['restraint_ring', 'continuous_ring', 'life_whetstone_from_box']),
+    ])
+  const boss = async (key: string, difficulties: ('easy' | 'normal' | 'hard' | 'chaos')[]) => {
+    const [row] = await db
+      .insert(schema.bosses)
+      .values({
+        key,
+        name: key,
+        shortName: key,
+        isSeasonBoss: false,
+        portraitAssetId: await insertAsset(db, `bosses/${key}.webp`),
+        sortOrder: 0,
+      })
+      .returning({ id: schema.bosses.id })
+    if (row === undefined) throw new Error('보스를 못 넣었다')
+    const rows = await db
+      .insert(schema.bossDifficulties)
+      .values(
+        difficulties.map((difficulty) => ({
+          bossId: row.id,
+          difficulty,
+          cycle: 'weekly' as const,
+          requiredLevel: 260,
+        })),
+      )
+      .returning({ id: schema.bossDifficulties.id, difficulty: schema.bossDifficulties.difficulty })
+    return Object.fromEntries(rows.map((r) => [r.difficulty, r.id])) as Record<string, string>
+  }
+  const kalos = await boss('guardian_kalos', ['easy', 'normal', 'chaos'])
+  const bellona = await boss('bellona', ['normal', 'hard'])
+  const voucherUntil = '2026-09-17T10:00'
+  const reward = (
+    bossDifficultyId: string,
+    key: string,
+    over: Partial<typeof schema.bossDifficultyRewards.$inferInsert> = {},
+  ) => ({
+    bossDifficultyId,
+    category: 'consumable' as const,
+    itemId: item[key],
+    sortOrder: 0,
+    ...over,
+  })
+  await db
+    .insert(schema.bossDifficultyRewards)
+    .values([
+      reward(kalos.easy, 'white_boss_ring_box'),
+      reward(kalos.normal, 'lingering_kalos_will_fragment', { category: 'fixed', quantity: 1 }),
+      reward(kalos.normal, 'white_boss_ring_box'),
+      reward(kalos.normal, 'life_whetstone'),
+      reward(kalos.normal, 'magical_weapon_scroll_voucher', { validUntil: voucherUntil }),
+      reward(kalos.chaos, 'life_boss_ring_box'),
+      reward(kalos.chaos, 'life_whetstone'),
+      reward(kalos.chaos, 'magical_weapon_scroll_voucher', { validUntil: voucherUntil }),
+      reward(bellona.normal, 'white_boss_ring_box'),
+      reward(bellona.normal, 'life_whetstone'),
+      reward(bellona.hard, 'life_boss_ring_box'),
+    ])
+  return {
+    item,
+    kalos: { easy: kalos.easy, normal: kalos.normal, chaos: kalos.chaos },
+    bellona: { normal: bellona.normal, hard: bellona.hard },
+  }
+}

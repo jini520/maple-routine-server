@@ -1,16 +1,4 @@
-import {
-  and,
-  asc,
-  between,
-  eq,
-  getTableColumns,
-  inArray,
-  isNull,
-  ne,
-  or,
-  type SQL,
-  sql,
-} from 'drizzle-orm'
+import { and, asc, between, eq, getTableColumns, isNull, ne, or, type SQL, sql } from 'drizzle-orm'
 
 import {
   bossDifficulties,
@@ -40,6 +28,7 @@ import {
   type DeleteById,
   deleteById,
 } from '../sync.dto'
+import { clearedEntryOf, markDropsDeleted, settleClearedDrops } from './cleared-drops'
 import {
   changedAfter,
   defineTable,
@@ -97,7 +86,9 @@ async function entryOf(ctx: WriteContext, entryId: string) {
     .select({
       characterId: bossProfitEntries.characterId,
       bossId: bossProfitEntries.bossId,
+      periodCode: bossProfitEntries.periodCode,
       worldId: bossProfitEntries.worldId,
+      clearRecordedBy: bossProfitEntries.clearRecordedBy,
       deletedAt: bossProfitEntries.deletedAt,
       mapleIdHash: mapleIds.hash,
       owned: sql<boolean>`${bossProfitEntries.characterId} IN ${ownedCharacterIds(ctx.identity.nexonAccountId)}`,
@@ -199,25 +190,6 @@ async function syncSalePrice(
     )
 }
 
-/** 드롭들에 삭제 표식을 적고 그 판매가 줄을 지운다. */
-async function markDropsDeleted(tx: Tx, userId: string, where: SQL): Promise<void> {
-  const gone = await tx
-    .update(bossDrops)
-    .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
-    .where(and(where, isNull(bossDrops.deletedAt)))
-    .returning({ id: bossDrops.id })
-  if (gone.length === 0) return
-  await tx.delete(dropSalePrices).where(
-    and(
-      inArray(
-        dropSalePrices.id,
-        gone.map((row) => row.id),
-      ),
-      or(isNull(dropSalePrices.userId), eq(dropSalePrices.userId, userId)),
-    ),
-  )
-}
-
 /**
  * 수익 건에 삭제 표식을 적는다. 기기에서는 수익 건을 지우면 드롭이 함께 지워지므로 서버도 그 드롭에 표식을 적고 판매가 줄을
  * 지운다. 남기면 지운 처치의 판매가가 시세에 남는다.
@@ -260,7 +232,10 @@ async function moveDrops(ctx: WriteContext, from: string, into: string): Promise
     .where(and(eq(bossDrops.profitEntryId, from), isNull(bossDrops.deletedAt)))
 }
 
-/** 보스 수익 건. 보스 줄은 난이도 줄에서 채우고, 기간 값의 첫 글자가 난이도의 주기와 다르면 받지 않는다. */
+/**
+ * 보스 수익 건. 보스 줄은 난이도 줄에서 채우고, 기간 값의 첫 글자가 난이도의 주기와 다르면 받지 않는다. 처치한 수익 건이면 적은 뒤
+ * 그 묶음의 드롭을 그 수익 건으로 모은다.
+ */
 export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById>({
   upsertRow: bossProfitEntryRow,
   deleteRow: deleteById,
@@ -310,7 +285,7 @@ export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById
       )
       .orderBy(sql`${sameDifficulty} DESC`)
       .limit(1)
-    return writeDeviceRow({
+    const kept = await writeDeviceRow({
       id,
       existing,
       sameKey,
@@ -335,6 +310,14 @@ export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById
         await markEntryDeleted(ctx, gone)
       },
     })
+    if (values.clearRecordedBy !== null) {
+      await settleClearedDrops(ctx, {
+        characterId,
+        bossId: difficulty.bossId,
+        periodCode: values.periodCode,
+      })
+    }
+    return kept
   },
   deleteOwners: (ctx, row) => characterRowOwners(ctx.tx, bossProfitEntries, row.id),
   remove: (ctx, row) => markEntryDeleted(ctx, row.id),
@@ -342,8 +325,9 @@ export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById
 
 /**
  * 수익 건에서 나온 드롭. 주인은 수익 건을 따른다. 수익 건이 아직 없으면 나중에 맞을 수 있어 코드 없이 거절하고, 지운 수익 건이면
- * 지운 기록의 수정으로 본다. 그 보스에서 얻을 수 없는 아이템도 코드 없이 거절한다. 드롭 표를 고치면 맞을 수 있다. 가격을 적은
- * 드롭은 같은 트랜잭션에서 판매가 줄을 적는다.
+ * 지운 기록의 수정으로 본다. 처치한 수익 건이 있는 묶음에서 지운 처치 전 수익 건이면 처치한 수익 건으로 받는다. 그 보스에서 얻을
+ * 수 없는 아이템도 코드 없이 거절한다. 드롭 표를 고치면 맞을 수 있다. 가격을 적은 드롭은 같은 트랜잭션에서 판매가 줄을 적고,
+ * 적은 뒤 그 묶음을 처치한 수익 건으로 모은다.
  */
 export const bossDropsTable = defineTable<BossDropRow, DeleteById>({
   upsertRow: bossDropRow,
@@ -357,9 +341,20 @@ export const bossDropsTable = defineTable<BossDropRow, DeleteById>({
     const entry = await entryOf(ctx, row.profitEntryId)
     if (entry === undefined) throw new RecordRejected(`수익 건이 없다: ${row.profitEntryId}`)
     if (!entry.owned) throw new MapleIdNotOwned(entry.mapleIdHash)
-    if (entry.deletedAt !== null) throw new RecordDeleted()
+    const group = {
+      characterId: entry.characterId,
+      bossId: entry.bossId,
+      periodCode: entry.periodCode,
+    }
+    // 서버가 드롭을 처치한 수익 건으로 옮기며 비운 수익 건이면, 같은 요청의 뒤 드롭도 그 수익 건으로 받는다. 거절하면 기기가 드롭을 지운다.
+    const cleared =
+      entry.deletedAt !== null && entry.clearRecordedBy === null
+        ? await clearedEntryOf(tx, group)
+        : undefined
+    if (entry.deletedAt !== null && cleared === undefined) throw new RecordDeleted()
     await assertObtainable(tx, entry.bossId, row.itemId)
-    const { id, ...incoming } = row
+    const { id, ...rest } = row
+    const incoming = { ...rest, profitEntryId: cleared?.id ?? row.profitEntryId }
     const [existing] = await tx
       .select({
         row: getTableColumns(bossDrops),
@@ -374,7 +369,7 @@ export const bossDropsTable = defineTable<BossDropRow, DeleteById>({
         and(
           ne(bossDrops.id, id),
           isNull(bossDrops.deletedAt),
-          eq(bossDrops.profitEntryId, row.profitEntryId),
+          eq(bossDrops.profitEntryId, incoming.profitEntryId),
           eq(bossDrops.itemId, row.itemId),
         ),
       )
@@ -405,7 +400,14 @@ export const bossDropsTable = defineTable<BossDropRow, DeleteById>({
       discard,
     })
     // 합쳐져 버려진 드롭 id 의 판매가 줄은 지운다. 남기면 같은 드롭이 시세에 두 번 세인다.
-    await syncSalePrice(tx, identity.userId, id, kept === id ? incoming : null, entry.worldId)
+    await syncSalePrice(
+      tx,
+      identity.userId,
+      id,
+      kept === id ? incoming : null,
+      cleared === undefined ? entry.worldId : cleared.worldId,
+    )
+    await settleClearedDrops(ctx, group)
     return kept
   },
   deleteOwners: (ctx, row) => dropOwners(ctx, row.id),

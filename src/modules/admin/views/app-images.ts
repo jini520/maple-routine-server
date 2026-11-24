@@ -7,7 +7,7 @@ import { layout } from './layout'
  * 막대로 한 번에 보낸다. 드롭 연출 프레임은 앱이 번호 차례로 재생하므로 같은 차례로 보인다.
  */
 export const APP_IMAGES_HTML = layout(
-  '/admin/app-images',
+  '/app-images',
   '앱 그림',
   `<div class="top"><h1>앱 그림</h1><span class="grow"></span><span class="updated" id="updated"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -70,7 +70,7 @@ ${ASSET_PICKER}
       var asset = assets[image.assetId];
       var category = asset ? asset.category : 'item';
       var cellRef = { c: null };
-      var send = function () { return call('PUT', '/admin/app-images/' + image.key, { assetId: cellRef.c.value() }); };
+      var send = function () { return call('PUT', '/app-images/' + image.key, { assetId: cellRef.c.value() }); };
       cellRef.c = assetCell(batch, image.key, image.assetId, send, { categories: [category], uploadCategory: category, lookup: lookup });
       var tile = el('div', undefined, 'app-tile');
       tile.appendChild(cellRef.c.input); tile.appendChild(el('div', image.key, 'key'));
@@ -81,8 +81,8 @@ ${ASSET_PICKER}
   }
 
   async function load() {
-    var r = await call('GET', '/admin/app-images/rows');
-    var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/app-images/rows');
+    var a = await call('GET', '/images/list');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     D = r.json; assets = {}; a.json.rows.forEach(function (x) { assets[x.id] = x; });
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';

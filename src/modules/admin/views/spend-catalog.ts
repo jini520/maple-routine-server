@@ -3,8 +3,8 @@ import { subNav } from './edit-kit'
 import { layout } from './layout'
 
 const NAV = [
-  ['/admin/spend-catalog', '묶음 · 항목'],
-  ['/admin/spend-catalog/tiles', '타일'],
+  ['/spend-catalog', '묶음 · 항목'],
+  ['/spend-catalog/tiles', '타일'],
 ] as const
 
 /** 두 화면이 함께 쓰는 읽기. 지출 분류는 가계부 분류 화면이 들고, 이 화면은 그 지출 분류를 읽어 고르개에 세운다. */
@@ -13,7 +13,7 @@ const COMMON_JS = `
   var batch = editing(function () { load(); });
   function lookup(id) { return assets[id]; }
   async function load() {
-    var r = await call('GET', '/admin/spend-catalog/rows'); var c = await call('GET', '/admin/cashbook-categories/rows'); var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/spend-catalog/rows'); var c = await call('GET', '/cashbook-categories/rows'); var a = await call('GET', '/images/list');
     if (!r.ok || !c.ok || !a.ok) { show('못 읽었다 ' + [r, c, a].filter(function (x) { return !x.ok; })[0].status, true); return; }
     D = r.json; assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
     CATEGORIES = c.json.cashbookCategories.filter(function (x) { return x.entryType === 'spend'; }).map(function (x) { return [x.key, x.name]; });
@@ -25,7 +25,7 @@ const COMMON_JS = `
 
 function page(current: string, top: string, body: string, script: string): string {
   return layout(
-    '/admin/spend-catalog',
+    '/spend-catalog',
     '지출 카탈로그',
     `<div class="top"><h1>지출 카탈로그</h1>${subNav(NAV, current)}<span class="grow"></span><span class="updated" id="updated"></span>${top}</div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -47,7 +47,7 @@ ${script}
  * 정한다. 날짜로 판정하지 않는다.
  */
 export const SPEND_CATALOG_HTML = page(
-  '/admin/spend-catalog',
+  '/spend-catalog',
   '<button id="add-group" class="btn sm" type="button">묶음 추가</button>',
   `<section class="panel"><div class="panel-head" id="rules"></div></section>
 <div class="split"><nav class="picklist" id="list" aria-label="묶음"></nav><section class="panel" id="detail"></section></div>`,
@@ -71,7 +71,7 @@ export const SPEND_CATALOG_HTML = page(
 
   function ruleCell(label, unit, field) {
     var w = el('span', undefined, 'rule'); w.appendChild(document.createTextNode(label));
-    ruleCells[field] = numCell(batch, '지출 규칙', R[field], function () { var body = {}; Object.keys(ruleCells).forEach(function (k) { body[k] = ruleCells[k].value(); }); return call('PUT', '/admin/game-rules', body); }, field === 'rewardCoinPriceMeso' ? '' : 'short');
+    ruleCells[field] = numCell(batch, '지출 규칙', R[field], function () { var body = {}; Object.keys(ruleCells).forEach(function (k) { body[k] = ruleCells[k].value(); }); return call('PUT', '/game-rules', body); }, field === 'rewardCoinPriceMeso' ? '' : 'short');
     w.appendChild(ruleCells[field].input); if (unit) w.appendChild(document.createTextNode(unit)); return w;
   }
   var R = {};
@@ -82,7 +82,7 @@ export const SPEND_CATALOG_HTML = page(
     box.appendChild(ruleCell('메소마켓 수수료율', '%', 'mesoMarketFeePercent'));
     box.appendChild(ruleCell('세라자르 주화 판매가', '메소', 'rewardCoinPriceMeso'));
     D.rewardTypes.forEach(function (f) {
-      var c = textCell(batch, '추가 리워드 ' + f.key, f.name, function () { return call('PUT', '/admin/spend-catalog/reward-types/' + f.key, { name: c.value() }); }, 'w-name');
+      var c = textCell(batch, '추가 리워드 ' + f.key, f.name, function () { return call('PUT', '/spend-catalog/reward-types/' + f.key, { name: c.value() }); }, 'w-name');
       var w = el('span', '추가 리워드 ', 'rule'); w.appendChild(span(f.key, 'mono dim')); w.appendChild(c.input); box.appendChild(w);
     });
   }
@@ -128,19 +128,19 @@ export const SPEND_CATALOG_HTML = page(
         options: parseOptions(options.value), rewardTypes: typeChecks.filter(function (c) { return c.checked; }).map(function (c) { return c.value; }),
       };
       if (!it) { body.key = key.value.trim(); body.group = g.key; }
-      var r = it ? await call('PUT', '/admin/spend-catalog/items/' + it.key, body) : await call('POST', '/admin/spend-catalog/items', body);
+      var r = it ? await call('PUT', '/spend-catalog/items/' + it.key, body) : await call('POST', '/spend-catalog/items', body);
       show(r.ok ? (it ? it.key : body.key) + ' 를 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   }
 
-  async function moveItem(it, direction) { var r = await call('POST', '/admin/spend-catalog/items/' + it.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
-  async function moveGroup(direction) { var r = await call('POST', '/admin/spend-catalog/groups/' + current + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function moveItem(it, direction) { var r = await call('POST', '/spend-catalog/items/' + it.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function moveGroup(direction) { var r = await call('POST', '/spend-catalog/groups/' + current + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
 
   function renderDetail(g) {
     var box = document.getElementById('detail'); box.innerHTML = '';
     if (!g) { box.appendChild(el('p', '묶음이 없다', 'dim')); return; }
     var name, category, title, active;
-    var send = function () { return call('PUT', '/admin/spend-catalog/groups/' + g.key, { name: name.value(), category: category.value(), cardTitle: title.value(), isActive: active.value() }); };
+    var send = function () { return call('PUT', '/spend-catalog/groups/' + g.key, { name: name.value(), category: category.value(), cardTitle: title.value(), isActive: active.value() }); };
     // 묶음 이름은 칸에서 바로 고치므로 제목을 따로 세우지 않는다. 항목이 많은 묶음도 한 화면에 들어오게 하려는 것이다.
     var fields = el('div', undefined, 'panel-head');
     name = textCell(batch, g.key, g.name, send, 'w-name'); category = selectCell(batch, g.key, g.category, send, CATEGORIES); title = textCell(batch, g.key, g.cardTitle, send, 'w-name');
@@ -179,13 +179,13 @@ export const SPEND_CATALOG_HTML = page(
     var go = button('묶음 추가', 'btn'); form.appendChild(go); var d = openForm('묶음 추가', form);
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), name: name.value.trim(), category: category.value, cardTitle: title.value.trim(), isActive: true };
-      var r = await call('POST', '/admin/spend-catalog/groups', body);
+      var r = await call('POST', '/spend-catalog/groups', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); current = body.key; setHashKey(current); load(); }
     });
   }
 
   async function render() {
-    var g = await call('GET', '/admin/game-rules'); R = g.ok && g.json.gameRules ? g.json.gameRules : {};
+    var g = await call('GET', '/game-rules'); R = g.ok && g.json.gameRules ? g.json.gameRules : {};
     batch.clear(); renderRules();
     if (current === null) current = hashKey();
     if (!D.groups.some(function (x) { return x.key === current; })) current = D.groups.length ? D.groups[0].key : null;
@@ -198,7 +198,7 @@ export const SPEND_CATALOG_HTML = page(
 
 /** 지출 목록의 타일. 같은 타일의 항목이 앱 목록에서 한 칸으로 접힌다. 그림은 아이템 그림이거나 지역 아이콘이다. */
 export const SPEND_TILES_HTML = page(
-  '/admin/spend-catalog/tiles',
+  '/spend-catalog/tiles',
   '<input id="filter" class="w-md on-bg" placeholder="key 나 이름으로 거른다"><button id="add-tile" class="btn sm" type="button">타일 추가</button>',
   `<section class="panel"><div class="tiles" id="tiles"></div></section>
 <style>
@@ -218,7 +218,7 @@ export const SPEND_TILES_HTML = page(
     var box = document.getElementById('tiles'); box.innerHTML = '';
     D.tiles.filter(function (t) { return !q || t.key.indexOf(q) >= 0 || t.name.toLowerCase().indexOf(q) >= 0; }).forEach(function (t) {
       var used = D.items.filter(function (it) { return it.tile === t.key; }).length; var name, icon;
-      var send = function () { return call('PUT', '/admin/spend-catalog/tiles/' + t.key, { name: name.value(), iconAssetId: icon.value() }); };
+      var send = function () { return call('PUT', '/spend-catalog/tiles/' + t.key, { name: name.value(), iconAssetId: icon.value() }); };
       icon = assetCell(batch, t.key, t.iconAssetId, send, { categories: TILE_ICONS, uploadCategory: 'item', lookup: lookup, nullable: true });
       name = textCell(batch, t.key, t.name, send);
       var card = el('div', undefined, 'tile'); card.appendChild(icon.input); card.appendChild(name.input); card.appendChild(el('small', t.key + ' · ' + used + '항목'));
@@ -234,7 +234,7 @@ export const SPEND_TILES_HTML = page(
     var go = button('타일 추가', 'btn'); form.appendChild(go); var d = openForm('타일 추가', form);
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), name: name.value.trim(), iconAssetId: icon.id };
-      var r = await call('POST', '/admin/spend-catalog/tiles', body);
+      var r = await call('POST', '/spend-catalog/tiles', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   });

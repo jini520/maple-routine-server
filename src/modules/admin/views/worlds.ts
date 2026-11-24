@@ -10,7 +10,7 @@ import { layout } from './layout'
  * 열린 기간은 월드마다 여러 줄이다. 이벤트 · 챌린저스 월드가 시즌마다 같은 이름으로 다시 열리기 때문이다.
  */
 export const WORLDS_HTML = layout(
-  '/admin/worlds',
+  '/worlds',
   '월드',
   `<div class="top"><h1>월드</h1><span class="grow"></span><span class="updated" id="updated"></span><button id="add" class="btn sm" type="button">월드 추가</button></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -24,7 +24,7 @@ ${ASSET_PICKER}
   var batch = editing(function () { load(); });
   function lookup(id) { return assets[id]; }
   function tradeChoices() { return [['', '시세 제외']].concat(D.tradeGroups.map(function (g) { return [g.key, g.name]; })); }
-  async function move(w, direction) { var r = await call('POST', '/admin/worlds/' + w.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function move(w, direction) { var r = await call('POST', '/worlds/' + w.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
 
   // 열린 기간은 줄마다 바로 저장한다. 기간끼리 겹치면 서버가 거절해서, 여러 줄을 한 번에 보내면 어느 줄이 문제인지 가리기 어렵다.
   function periods(w) {
@@ -32,12 +32,12 @@ ${ASSET_PICKER}
     w.openPeriods.forEach(function (p) {
       var tr = el('tr'); var from = input('text', 'mono'); from.value = p.validFrom; var until = input('text', 'mono'); until.value = p.validUntil;
       var save = button('저장', 'btn ghost sm'), rm = button('지우기', 'btn danger sm');
-      save.addEventListener('click', async function () { var r = await call('PUT', '/admin/worlds/periods/' + p.id, { validFrom: from.value.trim(), validUntil: until.value.trim() }); show(r.ok ? '기간을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) { d.close(); load(); } });
-      rm.addEventListener('click', async function () { if (!window.confirm(p.validFrom + ' ~ ' + p.validUntil + ' 기간을 지운다.')) return; var r = await call('DELETE', '/admin/worlds/periods/' + p.id); show(r.ok ? '기간을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) { d.close(); load(); } });
+      save.addEventListener('click', async function () { var r = await call('PUT', '/worlds/periods/' + p.id, { validFrom: from.value.trim(), validUntil: until.value.trim() }); show(r.ok ? '기간을 적었다' : fail('못 적었다', r), !r.ok); if (r.ok) { d.close(); load(); } });
+      rm.addEventListener('click', async function () { if (!window.confirm(p.validFrom + ' ~ ' + p.validUntil + ' 기간을 지운다.')) return; var r = await call('DELETE', '/worlds/periods/' + p.id); show(r.ok ? '기간을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) { d.close(); load(); } });
       cell(tr, from); cell(tr, until); cell(tr, inline(save, rm), 'act'); tb.appendChild(tr);
     });
     var tr = el('tr'); var nf = input('text', 'mono'); nf.placeholder = '2025-11-20'; var nu = input('text', 'mono'); nu.placeholder = '2025-12-19'; var add = button('기간 추가', 'btn sm');
-    add.addEventListener('click', async function () { var r = await call('POST', '/admin/worlds/' + w.key + '/periods', { validFrom: nf.value.trim(), validUntil: nu.value.trim() }); show(r.ok ? '기간을 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); } });
+    add.addEventListener('click', async function () { var r = await call('POST', '/worlds/' + w.key + '/periods', { validFrom: nf.value.trim(), validUntil: nu.value.trim() }); show(r.ok ? '기간을 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); } });
     cell(tr, nf); cell(tr, nu); cell(tr, add, 'act'); tb.appendChild(tr);
     form.appendChild(mini(['시작 (연 날)', '끝 (닫힌 다음 날)', ''], tb));
     form.appendChild(el('p', 'KST 날짜다. 끝은 닫힌 다음 날이라 그 날은 안 든다. 새벽 3시에 닫혔으면 다음 날을 적는다. 같은 월드의 기간끼리는 겹칠 수 없다. 앱은 이벤트 월드에서 지운 캐릭터의 강화를 이 기간으로 가린다.', 'hint'));
@@ -49,7 +49,7 @@ ${ASSET_PICKER}
     var tb = document.getElementById('rows'); tb.innerHTML = '';
     D.worlds.forEach(function (w, i) {
       var tr = el('tr'); cell(tr, i + 1, 'n'); cell(tr, w.key, 'label'); var emblem, name, ch, ev, trade;
-      var send = function () { return call('PUT', '/admin/worlds/' + w.key, { name: name.value(), emblemAssetId: emblem.value(), isChallengers: ch.value(), isEvent: ev.value(), tradeGroupKey: orNull(trade.value()) }); };
+      var send = function () { return call('PUT', '/worlds/' + w.key, { name: name.value(), emblemAssetId: emblem.value(), isChallengers: ch.value(), isEvent: ev.value(), tradeGroupKey: orNull(trade.value()) }); };
       emblem = assetCell(batch, w.key, w.emblemAssetId, send, { categories: ['world'], uploadCategory: 'world', lookup: lookup, nullable: true, compact: true });
       name = textCell(batch, w.key, w.name, send, 'w-name'); ch = checkCell(batch, w.key, w.isChallengers, send, '챌린저스'); ev = checkCell(batch, w.key, w.isEvent, send, '이벤트');
       trade = selectCell(batch, w.key, w.tradeGroupKey === null ? '' : w.tradeGroupKey, send, tradeChoices());
@@ -74,13 +74,13 @@ ${ASSET_PICKER}
     var go = button('월드 추가', 'btn'); form.appendChild(go); var d = openForm('월드 추가', form);
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), name: name.value.trim(), emblemAssetId: emblem.id, isChallengers: ch.checked, isEvent: ev.checked, tradeGroupKey: orNull(trade.value) };
-      var r = await call('POST', '/admin/worlds', body);
+      var r = await call('POST', '/worlds', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   });
 
   async function load() {
-    var r = await call('GET', '/admin/worlds/rows'); var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/worlds/rows'); var a = await call('GET', '/images/list');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     D = r.json; assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';

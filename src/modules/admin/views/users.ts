@@ -8,7 +8,7 @@ import { layout } from './layout'
  * 넘는다. 고른 것은 주소의 `#` 에 남는다.
  */
 export const USERS_HTML = layout(
-  '/admin/users',
+  '/users',
   '사용자',
   `<div class="top"><h1>사용자</h1><span id="views"></span><span class="grow"></span><div class="btns" role="group" aria-label="기간" id="presets"></div><select id="platform" class="on-bg" aria-label="플랫폼"><option value="">모든 플랫폼</option><option value="ios">iOS</option><option value="android">Android</option></select><span class="mono dim" id="range"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -87,7 +87,7 @@ ${DASHBOARD_SCRIPT}
     presetButtons(document.getElementById('presets'), state.days, function (days) { state.days = days; load(); });
     var dash = document.getElementById('dash');
     dash.classList.add('loading');
-    var url = '/admin/users/stats?days=' + state.days + (state.platform ? '&platform=' + state.platform : '');
+    var url = '/users/stats?days=' + state.days + (state.platform ? '&platform=' + state.platform : '');
     var r = await call('GET', url);
     dash.classList.remove('loading');
     if (!r.ok) { show(fail('못 읽었다', r), true); return; }

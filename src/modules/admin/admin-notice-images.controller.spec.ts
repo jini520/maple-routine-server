@@ -32,12 +32,12 @@ describe('AdminNoticeImagesController', () => {
   afterAll(() => app.close())
   beforeEach(() => store.write.mockReset())
 
-  it('PUT /admin/notices/images 는 내용 해시 이름으로 쓰고 그 파일의 공개 주소를 돌려준다', async () => {
+  it('PUT /notices/images 는 내용 해시 이름으로 쓰고 그 파일의 공개 주소를 돌려준다', async () => {
     const sha = createHash('sha256').update(WEBP).digest('hex')
 
     const res = await app.inject({
       method: 'PUT',
-      url: '/admin/notices/images',
+      url: '/notices/images',
       headers: { 'content-type': 'image/webp' },
       payload: WEBP,
     })
@@ -50,7 +50,7 @@ describe('AdminNoticeImagesController', () => {
   it('그림이 아닌 본문은 400 이고 쓰지 않는다', async () => {
     const res = await app.inject({
       method: 'PUT',
-      url: '/admin/notices/images',
+      url: '/notices/images',
       headers: { 'content-type': 'image/png' },
       payload: Buffer.from('not an image'),
     })

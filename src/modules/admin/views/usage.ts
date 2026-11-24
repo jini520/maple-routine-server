@@ -7,7 +7,7 @@ import { layout } from './layout'
  * 동작 칸은 그 기간에 나온 동작 이름으로 만든다. 앱이 동작을 더해도 서버를 고치지 않고 칸이 생긴다.
  */
 export const USAGE_HTML = layout(
-  '/admin/usage',
+  '/usage',
   '사용 로그',
   `<div class="top"><h1>사용 로그</h1><span id="views"></span><span class="grow"></span><div class="btns" role="group" aria-label="기간" id="presets"></div><span class="mono dim" id="range"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -162,7 +162,7 @@ ${DASHBOARD_SCRIPT}
     detail.appendChild(facts);
     var well = el('div', undefined, 'well');
     detail.appendChild(well);
-    var r = await call('GET', '/admin/usage/screen?days=' + state.days + '&name=' + encodeURIComponent(name));
+    var r = await call('GET', '/usage/screen?days=' + state.days + '&name=' + encodeURIComponent(name));
     if (state.screen !== name) return;
     if (!r.ok) { well.appendChild(el('span', fail('못 읽었다', r), 'dim')); return; }
     well.appendChild(dailyChart({
@@ -192,7 +192,7 @@ ${DASHBOARD_SCRIPT}
     presetButtons(document.getElementById('presets'), state.days, function (days) { state.days = days; load(); });
     var dash = document.getElementById('dash');
     dash.classList.add('loading');
-    var r = await call('GET', '/admin/usage/stats?days=' + state.days);
+    var r = await call('GET', '/usage/stats?days=' + state.days);
     dash.classList.remove('loading');
     if (!r.ok) { show(fail('못 읽었다', r), true); return; }
     show('', false);

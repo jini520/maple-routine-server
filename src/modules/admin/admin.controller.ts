@@ -336,16 +336,16 @@ function dropPriceFilter(query: DropPriceQuery): DropPriceFilter {
   }
 }
 
-/**
- * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 게임 데이터 표(드롭 묶음 넷 · 월드 · 가계부 분류 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 장비 ·
- * 강화 비용 · MVP 등급 · 사냥터 · FAQ)도 여기다.
- *
- * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
- */
 /** 첫 요청에 읽어 둔다. 바뀌는 것은 배포뿐이다. */
 let chartScript: string | undefined
 
-@Controller('admin')
+/**
+ * 운영자 화면. 인증은 앞단 nginx 의 auth_basic 이다. 아이템 · 그림 · 앱 그림 · 공지 그림 올리기는 따로 컨트롤러가 있고, 나머지
+ * 화면과 그 JSON 끝점이 여기다.
+ *
+ * 화면은 JSON 끝점을 fetch 로 부르는 작은 HTML 이다. 폼 본문 파서를 안 들이고 inject 로 그대로 검사한다.
+ */
+@Controller()
 export class AdminController {
   constructor(
     private readonly bosses: BossesRepository,
@@ -839,7 +839,7 @@ export class AdminController {
   }
 
   /** 시세 차트 라이브러리. CDN 에 기대지 않으려고 의존성으로 들여 직접 내보낸다. 패키지 exports 가 dist 를 막아 package.json 옆에서 찾는다. */
-  @Get('assets/lightweight-charts.js')
+  @Get('drop-market/lightweight-charts.js')
   @Header('content-type', 'text/javascript; charset=utf-8')
   @Header('cache-control', 'public, max-age=86400')
   lightweightCharts(): string {

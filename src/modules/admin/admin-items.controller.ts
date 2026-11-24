@@ -52,7 +52,7 @@ const groupCreateBody = groupBody.extend({ key: snakeKey.max(80) })
 const ROLE_NAMES: Record<string, string> = { isDrop: '드롭 아이템', isEquipment: '강화 장비' }
 
 /** 아이템 화면. 분류 트리 · 그림 격자 · 편집 서랍으로 아이템 표 하나를 고치고, 트리에서 묶음을 고친다(앱 저장소 ADR-187 결정 2 · 6). */
-@Controller('admin')
+@Controller()
 export class AdminItemsController {
   constructor(
     private readonly items: ItemsRepository,

@@ -9,7 +9,7 @@ import { layout } from './layout'
  * 읽어 안 건드린다. 새 심볼은 레벨 전부를 한 번에 넣는다. 빈 레벨이 있으면 앱의 구간 합이 틀려서다.
  */
 export const SYMBOL_COSTS_HTML = layout(
-  '/admin/symbol-costs',
+  '/symbol-costs',
   '심볼 비용',
   `<div class="top"><h1>심볼 비용</h1><span id="groups"></span><span class="grow"></span><span class="updated" id="updated"></span><button id="add-symbol" class="btn sm" type="button">심볼 추가</button><button id="add-group" class="btn ghost sm" type="button">묶음 추가</button></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -36,7 +36,7 @@ ${ASSET_PICKER}
 
   function symbolHead(s) {
     var box = el('div', undefined, 'sym'); var name, level, icon;
-    var send = function () { return call('PUT', '/admin/symbol-costs/symbols/' + s.key, { name: name.value(), requiredLevel: level.value(), iconAssetId: icon.value() }); };
+    var send = function () { return call('PUT', '/symbol-costs/symbols/' + s.key, { name: name.value(), requiredLevel: level.value(), iconAssetId: icon.value() }); };
     icon = assetCell(batch, s.name, s.iconAssetId, send, { categories: ['item', 'item_ring'], uploadCategory: 'item', lookup: lookup, compact: true });
     name = textCell(batch, s.name, s.name, send); level = numCell(batch, s.name, s.requiredLevel, send, 'short');
     var rows = button('줄', 'btn ghost sm'); rows.addEventListener('click', function () { history(s); });
@@ -51,7 +51,7 @@ ${ASSET_PICKER}
         var tr = el('tr'); cell(tr, i === 0 ? 'Lv.' + l.fromLevel + ' → ' + (l.fromLevel + 1) : '', 'mono'); cell(tr, c.validFrom || '처음부터', 'mono'); cell(tr, c.validUntil || '지금', 'mono'); cell(tr, meso(c.costMeso), 'num');
         if (c.validUntil === null && l.costs.length > 1) {
           var rm = button('거두기', 'btn danger sm');
-          rm.addEventListener('click', async function () { if (!window.confirm('Lv.' + l.fromLevel + ' 의 지금 비용 줄을 거둔다. 바로 앞 줄이 다시 열린다.')) return; var x = await call('DELETE', '/admin/symbol-costs/rows/' + c.id); show(x.ok ? '거뒀다' : fail('못 거뒀다', x), !x.ok); if (x.ok) { d.close(); load(); } });
+          rm.addEventListener('click', async function () { if (!window.confirm('Lv.' + l.fromLevel + ' 의 지금 비용 줄을 거둔다. 바로 앞 줄이 다시 열린다.')) return; var x = await call('DELETE', '/symbol-costs/rows/' + c.id); show(x.ok ? '거뒀다' : fail('못 거뒀다', x), !x.ok); if (x.ok) { d.close(); load(); } });
           cell(tr, rm, 'act');
         } else cell(tr, '');
         tb.appendChild(tr);
@@ -59,7 +59,7 @@ ${ASSET_PICKER}
     });
     form.appendChild(mini(['레벨', '시작', '끝', '비용', ''], tb));
     var left = button('← 앞으로', 'btn ghost sm'), right = button('뒤로 →', 'btn ghost sm');
-    var move = async function (direction) { var x = await call('POST', '/admin/symbol-costs/symbols/' + s.key + '/move', { direction: direction }); if (!x.ok) show(fail('못 옮겼다', x), true); d.close(); load(); };
+    var move = async function (direction) { var x = await call('POST', '/symbol-costs/symbols/' + s.key + '/move', { direction: direction }); if (!x.ok) show(fail('못 옮겼다', x), true); d.close(); load(); };
     left.addEventListener('click', function () { move('up'); }); right.addEventListener('click', function () { move('down'); });
     form.appendChild(inline(span('표의 자리', 'dim'), left, right));
     var d = openForm(s.name + ' 비용 줄', form); d.classList.add('mid');
@@ -73,7 +73,7 @@ ${ASSET_PICKER}
     var g = groupOf(current); if (!g) return;
     var gf = document.getElementById('group-fields'); gf.innerHTML = '';
     var name, max, from, to;
-    var sendGroup = function () { return call('PUT', '/admin/symbol-costs/groups/' + g.key, { name: name.value(), maxLevel: max.value(), defaultFromLevel: from.value(), defaultToLevel: to.value() }); };
+    var sendGroup = function () { return call('PUT', '/symbol-costs/groups/' + g.key, { name: name.value(), maxLevel: max.value(), defaultFromLevel: from.value(), defaultToLevel: to.value() }); };
     name = textCell(batch, g.name + ' 묶음', g.name, sendGroup, 'w-name'); max = numCell(batch, g.name + ' 묶음', g.maxLevel, sendGroup, 'short');
     from = numCell(batch, g.name + ' 묶음', g.defaultFromLevel, sendGroup, 'short'); to = numCell(batch, g.name + ' 묶음', g.defaultToLevel, sendGroup, 'short');
     var w1 = el('span', '이름 ', 'rule'); w1.appendChild(name.input); var w2 = el('span', '만렙 ', 'rule'); w2.appendChild(max.input);
@@ -89,7 +89,7 @@ ${ASSET_PICKER}
       cells[s.key] = [];
       var send = function () {
         var costs = cells[s.key].filter(function (x) { return x.cell.changed(); }).map(function (x) { return { fromLevel: x.fromLevel, costMeso: x.cell.value() }; });
-        return call('POST', '/admin/symbol-costs/symbols/' + s.key + '/costs', { validFrom: orNull(startInput.value), costs: costs });
+        return call('POST', '/symbol-costs/symbols/' + s.key + '/costs', { validFrom: orNull(startInput.value), costs: costs });
       };
       s.levels.forEach(function (l) { var c = now(l); var nc = numCell(batch, s.name + ' 비용', c ? c.costMeso : null, send); nc.input.placeholder = '없음'; cells[s.key].push({ fromLevel: l.fromLevel, cell: nc }); });
     });
@@ -113,7 +113,7 @@ ${ASSET_PICKER}
     var go = button(g.name + ' 에 더하기', 'btn'); form.appendChild(go); var d = openForm('심볼 추가', form);
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), group: g.key, name: name.value.trim(), requiredLevel: Number(level.value), iconAssetId: icon.id };
-      var r = await call('POST', '/admin/symbol-costs/symbols', body);
+      var r = await call('POST', '/symbol-costs/symbols', body);
       show(r.ok ? body.key + ' 를 더했다. 칸에 비용을 적는다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   });
@@ -125,13 +125,13 @@ ${ASSET_PICKER}
     var go = button('묶음 추가', 'btn'); form.appendChild(go); var d = openForm('묶음 추가', form);
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), name: name.value.trim(), maxLevel: Number(max.value), defaultFromLevel: Number(from.value), defaultToLevel: Number(to.value) };
-      var r = await call('POST', '/admin/symbol-costs/groups', body);
+      var r = await call('POST', '/symbol-costs/groups', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); current = body.key; setHashKey(current); load(); }
     });
   });
 
   async function load() {
-    var r = await call('GET', '/admin/symbol-costs/rows'); var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/symbol-costs/rows'); var a = await call('GET', '/images/list');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     D = r.json; assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
     if (current === null) current = hashKey();

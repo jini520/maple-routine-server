@@ -49,7 +49,7 @@ const nameBody = z.object({
 })
 
 /** 그림 · 크롭 화면. 앱이 받는 그림을 올리고 바꾸며, 보스 초상과 지역 지도의 크롭을 숫자로 고친다. */
-@Controller('admin')
+@Controller()
 export class AdminAssetsController {
   constructor(
     private readonly assets: AssetsRepository,
@@ -58,14 +58,14 @@ export class AdminAssetsController {
     private readonly groups: ItemGroupsRepository,
   ) {}
 
-  @Get('assets')
+  @Get('images')
   @Header('content-type', 'text/html; charset=utf-8')
   @Header('cache-control', 'no-store')
   page(): string {
     return ASSETS_HTML
   }
 
-  @Get('assets/crops')
+  @Get('images/crops')
   @Header('content-type', 'text/html; charset=utf-8')
   @Header('cache-control', 'no-store')
   cropsPage(): string {
@@ -73,7 +73,7 @@ export class AdminAssetsController {
   }
 
   /** 그림 화면 목록. 그림마다 보이는 이름 · 쓰는 곳을 들고, 트리를 그릴 아이템 분류와 크롭을 함께 낸다. */
-  @Get('assets/list')
+  @Get('images/list')
   @Header('cache-control', 'no-store')
   async list() {
     const [section, rows, crops, categories] = await Promise.all([
@@ -85,7 +85,7 @@ export class AdminAssetsController {
     return { updatedAt: section.updatedAt, categories, rows, crops: crops.imageCrops }
   }
 
-  @Put('assets/:id/name')
+  @Put('images/:id/name')
   @HttpCode(204)
   async rename(
     @Param('id', new ZodValidationPipe(assetIdParam)) id: string,
@@ -96,7 +96,7 @@ export class AdminAssetsController {
   }
 
   /** 쓰는 곳이 없는 그림만 지운다. 크롭도 함께 지운다. 쓰는 곳이 있으면 409 로 그 목록을 알린다. */
-  @Delete('assets/:id')
+  @Delete('images/:id')
   @HttpCode(204)
   async remove(@Param('id', new ZodValidationPipe(assetIdParam)) id: string): Promise<void> {
     let found: boolean
@@ -116,7 +116,7 @@ export class AdminAssetsController {
    * 분류 · 파일 이름 · 확장자 하나에 그림을 올린다. 본문은 파일 그대로다. 파일을 먼저 쓰고 그다음 표에 적는다.
    * 순서가 반대면 앱이 표의 해시를 받고 아직 없는 파일을 부를 수 있다.
    */
-  @Put('assets/file')
+  @Put('images/file')
   async putFile(
     @Query('category') category: string | undefined,
     @Query('fileName') fileName: string | undefined,

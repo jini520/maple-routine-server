@@ -20,7 +20,7 @@ import { APP_IMAGES_HTML } from './views/app-images'
 const assetBody = z.object({ assetId: z.string().uuid() })
 
 /** 앱 그림 화면. 앱이 key 로 찾는 그림을 바꾼다. key 는 앱 코드가 들어 더하거나 지우지 않는다(앱 저장소 ADR-187 결정 6). */
-@Controller('admin')
+@Controller()
 export class AdminAppImagesController {
   constructor(private readonly images: AppImagesRepository) {}
 

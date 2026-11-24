@@ -8,7 +8,7 @@ import { layout } from './layout'
  * 마지막 난이도는 못 지운다. 난이도 없는 보스가 생기면 앱이 표 전체를 거절한다. 시즌 보스는 시즌이 끝나는 날을 끝에 적는다.
  */
 export const BOSSES_HTML = layout(
-  '/admin/bosses',
+  '/bosses',
   '보스 목록',
   `<div class="top"><h1>보스 목록</h1><span class="top-rules" id="rules"></span><span class="grow"></span><span class="updated" id="updated"></span><button id="b-new" class="btn sm" type="button">새 보스</button></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -28,7 +28,7 @@ ${ASSET_PICKER}
     var w = el('span', undefined, 'rule'); w.appendChild(document.createTextNode(label));
     ruleCells[field] = numCell(batch, '보스 규칙', R ? R[field] : null, function () {
       var body = {}; Object.keys(ruleCells).forEach(function (k) { body[k] = ruleCells[k].value(); });
-      return call('PUT', '/admin/game-rules', body);
+      return call('PUT', '/game-rules', body);
     }, 'short');
     w.appendChild(ruleCells[field].input); return w;
   }
@@ -44,10 +44,10 @@ ${ASSET_PICKER}
     box.appendChild(head);
 
     var fields = el('div', undefined, 'fields');
-    var short = textCell(batch, b.key + ' 줄인 이름', b.shortName, function () { return call('PUT', '/admin/bosses/' + b.key + '/short-name', { shortName: short.value() }); });
+    var short = textCell(batch, b.key + ' 줄인 이름', b.shortName, function () { return call('PUT', '/bosses/' + b.key + '/short-name', { shortName: short.value() }); });
     var s1 = el('span', '줄인 이름 ', 'rule'); s1.appendChild(short.input); fields.appendChild(s1);
     var from, until;
-    var sendPeriod = function () { return call('PUT', '/admin/bosses/' + b.key + '/period', periodBody(from, until)); };
+    var sendPeriod = function () { return call('PUT', '/bosses/' + b.key + '/period', periodBody(from, until)); };
     from = periodCell(b.key + ' 기간', b.validFrom, sendPeriod, '처음부터'); until = periodCell(b.key + ' 기간', b.validUntil, sendPeriod, '끝없이');
     var s2 = el('span', '기간 ', 'rule'); s2.appendChild(from.input); s2.appendChild(document.createTextNode('~')); s2.appendChild(until.input); fields.appendChild(s2);
     box.appendChild(fields);
@@ -57,13 +57,13 @@ ${ASSET_PICKER}
     thead.appendChild(hr); t.appendChild(thead); var tb = el('tbody');
     b.difficulties.forEach(function (d) {
       var tr = el('tr'); cell(tr, d.difficulty, 'label'); cell(tr, d.cycle === 'monthly' ? '월간' : '주간', 'label');
-      var lv = numCell(batch, b.key + ' ' + d.difficulty + ' 레벨', d.requiredLevel, function () { return call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty, { cycle: d.cycle, requiredLevel: lv.value() }); }, 'short');
+      var lv = numCell(batch, b.key + ' ' + d.difficulty + ' 레벨', d.requiredLevel, function () { return call('PUT', '/bosses/' + b.key + '/difficulties/' + d.difficulty, { cycle: d.cycle, requiredLevel: lv.value() }); }, 'short');
       cell(tr, lv.input, 'num');
-      var df, du; var sendD = function () { return call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty + '/period', periodBody(df, du)); };
+      var df, du; var sendD = function () { return call('PUT', '/bosses/' + b.key + '/difficulties/' + d.difficulty + '/period', periodBody(df, du)); };
       df = periodCell(b.key + ' ' + d.difficulty + ' 기간', d.validFrom, sendD, '보스 기간'); du = periodCell(b.key + ' ' + d.difficulty + ' 기간', d.validUntil, sendD, '보스 기간');
       cell(tr, df.input); cell(tr, du.input);
       var rm = button('지우기', 'btn danger sm row-act'); if (b.difficulties.length === 1) rm.hidden = true;
-      rm.addEventListener('click', async function () { if (!window.confirm(b.name + ' ' + d.difficulty + ' 줄을 지운다.')) return; var r = await call('DELETE', '/admin/bosses/' + b.key + '/difficulties/' + d.difficulty); show(r.ok ? '지웠다' : fail('못 지웠다', r), !r.ok); load(); });
+      rm.addEventListener('click', async function () { if (!window.confirm(b.name + ' ' + d.difficulty + ' 줄을 지운다.')) return; var r = await call('DELETE', '/bosses/' + b.key + '/difficulties/' + d.difficulty); show(r.ok ? '지웠다' : fail('못 지웠다', r), !r.ok); load(); });
       cell(tr, rm, 'act'); tb.appendChild(tr);
     });
     t.appendChild(tb); box.appendChild(t);
@@ -84,7 +84,7 @@ ${ASSET_PICKER}
     var go = button('난이도 추가', 'btn'); form.appendChild(go);
     var d = openForm(b.name + ' 난이도 추가', form);
     go.addEventListener('click', async function () {
-      var r = await call('PUT', '/admin/bosses/' + b.key + '/difficulties/' + diff.value, { cycle: cyc.value, requiredLevel: Number(lv.value), validFrom: orNull(from.value), validUntil: orNull(until.value) });
+      var r = await call('PUT', '/bosses/' + b.key + '/difficulties/' + diff.value, { cycle: cyc.value, requiredLevel: Number(lv.value), validFrom: orNull(from.value), validUntil: orNull(until.value) });
       show(r.ok ? diff.value + ' 을 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   }
@@ -112,7 +112,7 @@ ${ASSET_PICKER}
       if (portrait.id === null) { show('초상화를 고른다', true); return; }
       var difficulties = []; tb.querySelectorAll('tr').forEach(function (tr) { difficulties.push({ difficulty: tr.querySelector('select.diff').value, cycle: tr.querySelector('select.cycle').value, requiredLevel: Number(tr.querySelector('input').value) }); });
       var body = { key: key.value.trim(), name: name.value.trim(), shortName: short.value.trim() || name.value.trim(), isSeasonBoss: season.checked, portraitAssetId: portrait.id, difficulties: difficulties };
-      var r = await call('POST', '/admin/bosses', body);
+      var r = await call('POST', '/bosses', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { dlg.close(); current = body.key; setHashKey(current); load(); }
     });
   }
@@ -132,7 +132,7 @@ ${ASSET_PICKER}
 
   document.getElementById('b-new').addEventListener('click', newBoss);
   async function load() {
-    var r = await call('GET', '/admin/bosses/rows'); var a = await call('GET', '/admin/assets/list'); var g = await call('GET', '/admin/game-rules');
+    var r = await call('GET', '/bosses/rows'); var a = await call('GET', '/images/list'); var g = await call('GET', '/game-rules');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     D = r.json; R = g.ok ? g.json.gameRules : null;
     assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });

@@ -6,42 +6,42 @@ type MenuItem =
 
 /** 왼쪽 메뉴의 차례. 경로와 이름, 또는 접고 펴는 묶음 */
 const MENU: readonly MenuItem[] = [
-  ['/admin', '홈'],
-  ['/admin/notices', '공지'],
-  ['/admin/faqs', 'FAQ'],
+  ['/', '홈'],
+  ['/notices', '공지'],
+  ['/faqs', 'FAQ'],
   {
     label: '게임데이터',
     items: [
-      ['/admin/items', '아이템'],
-      ['/admin/assets', '그림'],
-      ['/admin/app-images', '앱 그림'],
+      ['/items', '아이템'],
+      ['/images', '그림'],
+      ['/app-images', '앱 그림'],
       {
         label: '보스',
         items: [
-          ['/admin/bosses', '보스 목록'],
-          ['/admin/drop-boxes', '상자'],
-          ['/admin/boss-drops', '드롭 표'],
-          ['/admin/crystal-prices', '결정석 가격'],
+          ['/bosses', '보스 목록'],
+          ['/drop-boxes', '상자'],
+          ['/boss-drops', '드롭 표'],
+          ['/crystal-prices', '결정석 가격'],
         ],
       },
       {
         label: '가계부',
         items: [
-          ['/admin/cashbook-categories', '가계부 분류'],
-          ['/admin/hunt-loot', '사냥 전리품'],
-          ['/admin/spend-catalog', '지출 카탈로그'],
-          ['/admin/symbol-costs', '심볼 비용'],
-          ['/admin/hexa-matrix', '헥사 매트릭스'],
-          ['/admin/contents', '컨텐츠'],
-          ['/admin/enhancement-costs', '강화 비용'],
-          ['/admin/mvp-grades', 'MVP 등급'],
+          ['/cashbook-categories', '가계부 분류'],
+          ['/hunt-loot', '사냥 전리품'],
+          ['/spend-catalog', '지출 카탈로그'],
+          ['/symbol-costs', '심볼 비용'],
+          ['/hexa-matrix', '헥사 매트릭스'],
+          ['/contents', '컨텐츠'],
+          ['/enhancement-costs', '강화 비용'],
+          ['/mvp-grades', 'MVP 등급'],
         ],
       },
       {
         label: '기타',
         items: [
-          ['/admin/worlds', '월드'],
-          ['/admin/hunting-grounds', '사냥터'],
+          ['/worlds', '월드'],
+          ['/hunting-grounds', '사냥터'],
         ],
       },
     ],
@@ -49,13 +49,13 @@ const MENU: readonly MenuItem[] = [
   {
     label: '로그',
     items: [
-      ['/admin/drop-prices', '드롭 가격'],
-      ['/admin/drop-market', '드롭 시세'],
-      ['/admin/users', '사용자'],
-      ['/admin/usage', '사용 로그'],
+      ['/drop-prices', '드롭 가격'],
+      ['/drop-market', '드롭 시세'],
+      ['/users', '사용자'],
+      ['/usage', '사용 로그'],
     ],
   },
-  { label: '임시 기능', items: [['/admin/manual-completion', '보스 직접 완료']] },
+  { label: '임시 기능', items: [['/manual-completion', '보스 직접 완료']] },
 ]
 
 function contains(item: MenuItem, path: string): boolean {
@@ -420,7 +420,7 @@ export function layout(path: string, title: string, body: string): string {
 <body>
 <div class="shell">
   <nav class="nav" aria-label="관리 메뉴">
-    <a class="brand" href="/admin"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.6 2.4 1.8 4.2 3.6 5.4l-1.2 1.8 3.6-.6c.3 2 1.3 3.5 3 4.5l-2.4 1.2 2.4 2.1-3.9.3-.9 3.3-3-2.4-.6 4.4h-1.2l-.6-4.4-3 2.4-.9-3.3-3.9-.3 2.4-2.1L3 13.1c1.7-1 2.7-2.5 3-4.5l3.6.6-1.2-1.8C10.2 6.2 11.4 4.4 12 2z"/></svg></span>메이플 루틴 <small>관리</small></a>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.6 2.4 1.8 4.2 3.6 5.4l-1.2 1.8 3.6-.6c.3 2 1.3 3.5 3 4.5l-2.4 1.2 2.4 2.1-3.9.3-.9 3.3-3-2.4-.6 4.4h-1.2l-.6-4.4-3 2.4-.9-3.3-3.9-.3 2.4-2.1L3 13.1c1.7-1 2.7-2.5 3-4.5l3.6.6-1.2-1.8C10.2 6.2 11.4 4.4 12 2z"/></svg></span>메이플 루틴 <small>관리</small></a>
     ${menu}
   </nav>
   <main class="main">

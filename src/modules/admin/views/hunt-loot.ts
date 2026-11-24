@@ -7,7 +7,7 @@ import { layout } from './layout'
  * key 와 종류는 기록이 들어 못 바꾸고 줄은 지우지 않는다. 이벤트가 끝나면 끝 날짜로 닫는다.
  */
 export const HUNT_LOOT_HTML = layout(
-  '/admin/hunt-loot',
+  '/hunt-loot',
   '사냥 전리품',
   `<div class="top"><h1>사냥 전리품</h1><span class="grow"></span><span class="updated" id="updated"></span><button id="add" class="btn sm" type="button">전리품 추가</button></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -22,12 +22,12 @@ ${ASSET_PICKER}
   var D = null, assets = {};
   var batch = editing(function () { load(); });
   function lookup(id) { return assets[id]; }
-  async function move(item, direction) { var r = await call('POST', '/admin/hunt-loot/' + item.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function move(item, direction) { var r = await call('POST', '/hunt-loot/' + item.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
 
   function itemRow(item, i, count) {
     var tr = el('tr'); cell(tr, i + 1, 'n'); cell(tr, TYPE_NAME[item.type] || item.type, 'label');
     var name, icon, price, from, until, k = item.key;
-    var send = function () { return call('PUT', '/admin/hunt-loot/' + item.key, { name: name.value(), iconAssetId: icon.value(), npcPriceMeso: price ? price.value() : null, validFrom: orNull(from.value()), validUntil: orNull(until.value()) }); };
+    var send = function () { return call('PUT', '/hunt-loot/' + item.key, { name: name.value(), iconAssetId: icon.value(), npcPriceMeso: price ? price.value() : null, validFrom: orNull(from.value()), validUntil: orNull(until.value()) }); };
     name = textCell(batch, k, item.name, send, 'w-name');
     icon = assetCell(batch, k, item.iconAssetId, send, { categories: ['item'], uploadCategory: 'item', lookup: lookup, compact: true });
     var stack = el('div', undefined, 'stack'); stack.appendChild(name.input); stack.appendChild(el('small', item.key)); cell(tr, stack); cell(tr, icon.input);
@@ -56,7 +56,7 @@ ${ASSET_PICKER}
     var d = openForm('전리품 추가', form); d.classList.add('mid');
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), type: type.value, name: name.value.trim(), iconAssetId: icon.id, npcPriceMeso: type.value === 'consumable' && price.value.trim() !== '' ? Number(price.value) : null, validFrom: orNull(from.value), validUntil: orNull(until.value) };
-      var r = await call('POST', '/admin/hunt-loot', body);
+      var r = await call('POST', '/hunt-loot', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   }
@@ -70,7 +70,7 @@ ${ASSET_PICKER}
 
   document.getElementById('add').addEventListener('click', addItem);
   async function load() {
-    var r = await call('GET', '/admin/hunt-loot/rows'); var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/hunt-loot/rows'); var a = await call('GET', '/images/list');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     D = r.json; assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';

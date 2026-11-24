@@ -10,7 +10,7 @@ import { layout } from './layout'
  * 상한 1MB 를 넘는다.
  */
 export const NOTICES_HTML = layout(
-  '/admin/notices',
+  '/notices',
   '공지',
   `<div class="top"><h1>공지</h1><span class="grow"></span><button id="create" class="btn" type="button">새 공지</button></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -63,7 +63,7 @@ export const NOTICES_HTML = layout(
     async function render() {
       var mine = ++seq;
       if (area.value.trim() === '') { preview.replaceChildren(el('p', '내용을 쓰면 앱에 보일 모양이 여기 나온다', 'text')); return; }
-      var r = await call('POST', '/admin/notices/preview', { markdown: area.value });
+      var r = await call('POST', '/notices/preview', { markdown: area.value });
       if (mine !== seq) return;
       if (!r.ok) { preview.replaceChildren(el('p', '저장할 수 없다 ' + r.status + '\\n' + ((r.json && r.json.message) || r.text), 'text')); return; }
       preview.replaceChildren.apply(preview, r.json.blocks.map(blockEl));
@@ -79,7 +79,7 @@ export const NOTICES_HTML = layout(
       upload.disabled = true;
       try {
         var blob = await shrink(picked);
-        var res = await fetch('/admin/notices/images', { method: 'PUT', headers: { 'content-type': blob.type }, body: blob });
+        var res = await fetch('/notices/images', { method: 'PUT', headers: { 'content-type': blob.type }, body: blob });
         if (!res.ok) { show('그림을 못 올렸다 ' + res.status + '\\n' + (await res.text()), true); return; }
         insertLine(area, '![](' + (await res.json()).url + ')');
         render();
@@ -138,7 +138,7 @@ export const NOTICES_HTML = layout(
       var payload = { title: t.value, markdown: b.value, link: orNull(l.value), publishAt: publishAt, push: p.checked ? { title: orNull(pt.value), body: orNull(pb.value) } : null };
       // 저장 중에 한 번 더 누르면 같은 공지가 둘 생긴다.
       go.disabled = true;
-      var r = row ? await call('PATCH', '/admin/notices/' + row.id, payload) : await call('POST', '/admin/notices', payload);
+      var r = row ? await call('PATCH', '/notices/' + row.id, payload) : await call('POST', '/notices', payload);
       go.disabled = false;
       if (!r.ok) { show('저장하지 못했다 ' + r.status + '\\n' + r.text, true); return; }
       show((row ? '고쳤다' : '저장했다') + (publishAt ? ' · ' + when(publishAt) + ' 에 올라간다' : '') + (r.json && r.json.messageId ? ' · 알림 보냄' : ''), false);
@@ -159,14 +159,14 @@ export const NOTICES_HTML = layout(
       edit.addEventListener('click', function () { openEditor(row); });
       del.addEventListener('click', async function () {
         if (!window.confirm('‘' + row.title + '’ 을 지운다. 되돌릴 수 없다.')) return;
-        var r = await call('DELETE', '/admin/notices/' + row.id); show(r.ok ? '지웠다' : '못 지웠다 ' + r.status, !r.ok); load();
+        var r = await call('DELETE', '/notices/' + row.id); show(r.ok ? '지웠다' : '못 지웠다 ' + r.status, !r.ok); load();
       });
       var acts = [edit];
       if (future) {
         var now = button('지금 올리기', 'btn sm');
         now.addEventListener('click', async function () {
           if (!window.confirm('‘' + row.title + '’ 을 지금 올린다.' + (row.scheduledAt ? ' 알림도 지금 간다.' : ''))) return;
-          var r = await call('POST', '/admin/notices/' + row.id + '/publish'); show(r.ok ? '지금 올렸다' : fail('못 올렸다', r), !r.ok); load();
+          var r = await call('POST', '/notices/' + row.id + '/publish'); show(r.ok ? '지금 올렸다' : fail('못 올렸다', r), !r.ok); load();
         });
         acts.push(now);
       }
@@ -174,7 +174,7 @@ export const NOTICES_HTML = layout(
       cell(tr, inline.apply(null, acts), 'act'); tb.appendChild(tr);
     });
   }
-  async function load() { var r = await call('GET', '/admin/notices/rows'); render(r.json ? r.json.rows : []); }
+  async function load() { var r = await call('GET', '/notices/rows'); render(r.json ? r.json.rows : []); }
   load();
 </script>`,
 )

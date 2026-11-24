@@ -3,8 +3,8 @@ import { subNav } from './edit-kit'
 import { layout } from './layout'
 
 const NAV = [
-  ['/admin/items', '아이템'],
-  ['/admin/items/groups', '묶음'],
+  ['/items', '아이템'],
+  ['/items/groups', '묶음'],
 ] as const
 
 /** 두 화면이 함께 쓰는 읽기. */
@@ -13,7 +13,7 @@ const COMMON_JS = `
   var batch = editing(function () { load(); });
   function groupChoices() { var l = [['', '분류 없음']]; D.categories.forEach(function (k) { k.groups.forEach(function (g) { l.push([g.key, k.name + ' › ' + g.name]); }); }); return l; }
   async function load() {
-    var r = await call('GET', '/admin/items/rows');
+    var r = await call('GET', '/items/rows');
     if (!r.ok) { show(fail('아이템을 못 읽었다', r), true); return; }
     D = r.json; render();
   }
@@ -21,7 +21,7 @@ const COMMON_JS = `
 
 function page(current: string, top: string, body: string, script: string): string {
   return layout(
-    '/admin/items',
+    '/items',
     '아이템',
     `<div class="top"><h1>아이템</h1>${subNav(NAV, current)}${top}</div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -43,7 +43,7 @@ ${script}
  * 반지 레벨 줄과 같은 물건의 따로 둔 줄은 원래 아이템을 고치면 따라 바뀌어 여기서 못 고친다.
  */
 export const ITEMS_HTML = page(
-  '/admin/items',
+  '/items',
   `<select id="group" class="on-bg w-md" aria-label="묶음"></select><span id="roles"></span><input id="q" class="on-bg" placeholder="이름 · key 로 찾는다" aria-label="찾기"><span class="grow"></span><button id="add" class="btn sm" type="button">아이템 더하기</button>`,
   `<section class="panel">
   <table class="sheet tight"><thead><tr><th>그림</th><th>이름 · key</th><th>묶음</th><th class="num">착용</th><th>고가</th><th>역할</th></tr></thead><tbody id="rows"></tbody></table>
@@ -78,7 +78,7 @@ export const ITEMS_HTML = page(
   function itemRow(it) {
     var tr = el('tr', undefined, it.followsKey ? 'follows' : ''); var icon, name, grp, level, valuable, drop, eq;
     if (it.icon) known[it.icon.id] = it.icon;
-    var send = function () { return call('PUT', '/admin/items/' + it.key, { name: name.value(), groupKey: orNull(grp.value()), iconAssetId: icon.value(), isValuable: valuable.value(), requiredLevel: level.value(), isDrop: drop.value(), isEquipment: eq.value() }); };
+    var send = function () { return call('PUT', '/items/' + it.key, { name: name.value(), groupKey: orNull(grp.value()), iconAssetId: icon.value(), isValuable: valuable.value(), requiredLevel: level.value(), isDrop: drop.value(), isEquipment: eq.value() }); };
     icon = assetCell(batch, it.name, it.icon ? it.icon.id : null, send, { categories: ['item', 'item_ring'], uploadCategory: 'item', lookup: lookup, nullable: true, compact: true });
     name = textCell(batch, it.name, it.name, send, 'w-mid'); grp = selectCell(batch, it.name, it.groupKey === null ? '' : it.groupKey, send, groupChoices());
     level = numCell(batch, it.name, it.requiredLevel, send, 'short'); valuable = checkCell(batch, it.name, it.isValuable, send, '고가');
@@ -121,7 +121,7 @@ export const ITEMS_HTML = page(
     var d = openForm('아이템 더하기', form); d.classList.add('mid');
     go.addEventListener('click', async function () {
       var body = { key: key.value.trim(), name: name.value.trim(), groupKey: orNull(grp.value), iconAssetId: icon.id, isValuable: valuable.checked, requiredLevel: level.value.trim() === '' ? null : Number(level.value), isDrop: drop.checked, isEquipment: eq.checked };
-      var r = await call('POST', '/admin/items', body);
+      var r = await call('POST', '/items', body);
       show(r.ok ? body.key + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); document.getElementById('q').value = body.key; load(); }
     });
   }
@@ -136,7 +136,7 @@ export const ITEMS_HTML = page(
  * 아이템 묶음. 종류마다 한 단이고 묶음의 이름 · 종류를 칸에서 고친다. 묶음은 더하고 차례를 옮기고, 아이템이 없는 묶음만 지운다.
  */
 export const ITEM_GROUPS_HTML = page(
-  '/admin/items/groups',
+  '/items/groups',
   '<span class="grow"></span>',
   `<section class="panel"><div class="kinds" id="kinds"></div></section>
 <style>
@@ -153,7 +153,7 @@ export const ITEM_GROUPS_HTML = page(
 </style>`,
   `
   function count(key) { return D.items.filter(function (it) { return it.groupKey === key; }).length; }
-  async function move(g, direction) { var r = await call('POST', '/admin/item-groups/' + g.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function move(g, direction) { var r = await call('POST', '/item-groups/' + g.key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
   function render() {
     batch.clear();
     var box = document.getElementById('kinds'); box.innerHTML = '';
@@ -163,12 +163,12 @@ export const ITEM_GROUPS_HTML = page(
       var add = button('묶음 추가', 'btn ghost sm'); add.addEventListener('click', function () { addGroup(k); }); h.appendChild(add); col.appendChild(h);
       k.groups.forEach(function (g, i) {
         var row = el('div', undefined, 'kind-row'); var name, type; var n = count(g.key);
-        var send = function () { return call('PUT', '/admin/item-groups/' + g.key, { type: type.value(), name: name.value() }); };
+        var send = function () { return call('PUT', '/item-groups/' + g.key, { type: type.value(), name: name.value() }); };
         name = textCell(batch, g.key, g.name, send); type = selectCell(batch, g.key, k.key, send, kinds); name.input.title = g.key;
         var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), rm = button('지우기', 'btn danger sm');
         up.disabled = i === 0; down.disabled = i === k.groups.length - 1; rm.disabled = n > 0; if (n > 0) rm.title = '아이템이 든 묶음은 못 지운다';
         up.addEventListener('click', function () { move(g, 'up'); }); down.addEventListener('click', function () { move(g, 'down'); });
-        rm.addEventListener('click', async function () { if (!window.confirm('‘' + g.name + '’ 묶음을 지운다.')) return; var r = await call('DELETE', '/admin/item-groups/' + g.key); show(r.ok ? g.name + ' 묶음을 지웠다' : fail('못 지웠다', r), !r.ok); load(); });
+        rm.addEventListener('click', async function () { if (!window.confirm('‘' + g.name + '’ 묶음을 지운다.')) return; var r = await call('DELETE', '/item-groups/' + g.key); show(r.ok ? g.name + ' 묶음을 지웠다' : fail('못 지웠다', r), !r.ok); load(); });
         var act = inline(up, down, type.input, rm); act.className = 'inline row-act';
         row.appendChild(name.input); row.appendChild(span(String(n), 'n')); row.appendChild(act); col.appendChild(row);
       });
@@ -180,7 +180,7 @@ export const ITEM_GROUPS_HTML = page(
     form.appendChild(field('key', '못 바꾼다', key)); form.appendChild(field('이름', undefined, name));
     var go = button('묶음 추가', 'btn'); form.appendChild(go); var d = openForm(k.name + ' 묶음 추가', form);
     go.addEventListener('click', async function () {
-      var r = await call('POST', '/admin/item-groups', { key: key.value.trim(), type: k.key, name: name.value.trim() });
+      var r = await call('POST', '/item-groups', { key: key.value.trim(), type: k.key, name: name.value.trim() });
       show(r.ok ? name.value.trim() + ' 묶음을 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   }

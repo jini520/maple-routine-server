@@ -32,7 +32,7 @@ import { AdminNoticeImagesController } from './admin-notice-images.controller'
 import { AdminController } from './admin.controller'
 import { UsageDashboardService } from './usage-dashboard.service'
 
-/** 운영자 화면 스물넷. 공지 · FAQ 둘 · 보스 · 직접 완료 · 드롭 가격 보기 · 드롭 시세 둘 · 사용자 · 사용 로그 · 아이템 · 상자 · 드롭 표 · 결정석 가격 · 월드 · 사냥 전리품 · 지출 카탈로그 · 심볼 비용 · 헥사 매트릭스 · 컨텐츠 · 강화 비용 · MVP 등급 · 사냥터 · 그림. nginx basic auth 뒤. */
+/** 운영자 화면. 메뉴는 `views/layout.ts` 의 MENU 다. admin 주소의 nginx basic auth 뒤. */
 @Module({
   imports: [
     BossesModule,

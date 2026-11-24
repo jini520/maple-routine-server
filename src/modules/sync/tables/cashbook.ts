@@ -8,9 +8,16 @@ import {
   cashbookEntryHuntInputs,
   cashbookEntryItems,
   cashbookEntryTransferInputs,
+  cashbookItemTargetTypeEnum,
   cashbookItemTypes,
   characters,
+  hexaCores,
+  hexaStats,
+  huntingGrounds,
   inventoryItems,
+  items as itemRows,
+  spendItems,
+  symbols,
 } from '../../../database/schema'
 import { characterIdFor, mapleIdRowFor, ownedMapleIdRows } from '../../users/characters'
 import type { Tx } from '../../users/nexon-account-store'
@@ -24,13 +31,30 @@ import {
   inventoryItemRow,
 } from '../sync.dto'
 import { changedAfter, defineTable, type MapleIdReader, mapleIdOwner } from '../sync-table'
-import { RecordRejected, sameContent, type WriteContext, writeDeviceRow } from '../sync-write'
+import {
+  assertTarget,
+  RecordRejected,
+  sameContent,
+  type TargetTable,
+  type WriteContext,
+  writeDeviceRow,
+} from '../sync-write'
 
 /** 인벤토리 줄이 같은 기록인지 견주는 칸. 장비가 아닌 줄만 메이플 ID · 월드 · 아이템으로 가린다. */
 const INVENTORY_CONTENT = ['cashbookItemTypeId', 'addedQuantity'] as const
 
 /** 장비 종류의 key. 장비는 같은 아이템도 하나씩 따로라 유일 기준이 기록 id 다. */
 const EQUIPMENT_TYPE_KEY = 'equipment'
+
+/** 품목의 대상 종류가 가리키는 표 */
+const ITEM_TARGET_TABLES = {
+  hunting_ground: huntingGrounds,
+  item: itemRows,
+  spend_item: spendItems,
+  symbol: symbols,
+  hexa_core: hexaCores,
+  hexa_stat: hexaStats,
+} satisfies Record<(typeof cashbookItemTargetTypeEnum.enumValues)[number], TargetTable>
 
 const CHILD_TABLES = [
   cashbookEntryItems,
@@ -94,7 +118,8 @@ async function replaceEntryChildren(ctx: WriteContext, row: CashbookEntryRow): P
 
 /**
  * 가계부 기록과 딸린 줄. 손으로 적는 기록이라 내용으로 가리지 않고 기록 id 로만 가린다. 같은 날 같은 물건을 두 번 산 기록도 맞는
- * 기록이다. 캐릭터 기록이면 메이플 ID 를 캐릭터 줄에서 확인하고, 딸린 줄은 받을 때마다 갈아 끼운다.
+ * 기록이다. 캐릭터 기록이면 메이플 ID 를 캐릭터 줄에서 확인하고, 딸린 줄은 받을 때마다 갈아 끼운다. 품목의 대상 id 는 종류가 말하는
+ * 표에 있어야 받는다. 대상 칸 하나가 여섯 표를 가리켜 DB 참조를 걸 수 없다.
  */
 export const cashbookEntriesTable = defineTable<CashbookEntryRow, DeleteById>({
   upsertRow: cashbookEntryRow,
@@ -103,6 +128,10 @@ export const cashbookEntriesTable = defineTable<CashbookEntryRow, DeleteById>({
   async upsert(ctx, row) {
     const { tx, identity } = ctx
     const { id, mapleId: mapleIdHash, ocid, ...rest } = row
+    for (const item of row.items) {
+      if (item.targetType === null || item.targetId === null) continue
+      await assertTarget(tx, ITEM_TARGET_TABLES[item.targetType], item.targetId)
+    }
     const values = omit(rest, [
       'items',
       'huntInput',
@@ -234,24 +263,29 @@ export const readCashbookEntries: MapleIdReader = async (tx, owner, after, limit
   if (entries.length === 0) return []
   const ids = entries.map((entry) => entry.row.id)
   const receiver = alias(characters, 'receiver')
-  const [items, hunts, transfers, exchanges, uses] = await Promise.all([
-    tx.select().from(cashbookEntryItems).where(inArray(cashbookEntryItems.entryId, ids)),
-    tx.select().from(cashbookEntryHuntInputs).where(inArray(cashbookEntryHuntInputs.entryId, ids)),
-    tx
-      .select({ row: getTableColumns(cashbookEntryTransferInputs), receiverOcid: receiver.ocid })
-      .from(cashbookEntryTransferInputs)
-      .leftJoin(receiver, eq(receiver.id, cashbookEntryTransferInputs.receiverCharacterId))
-      .where(inArray(cashbookEntryTransferInputs.entryId, ids)),
-    tx
-      .select()
-      .from(cashbookEntryExchangeInputs)
-      .where(inArray(cashbookEntryExchangeInputs.entryId, ids)),
-    tx
-      .select({ row: getTableColumns(cashbookEntryFragmentUses), ocid: characters.ocid })
-      .from(cashbookEntryFragmentUses)
-      .leftJoin(characters, eq(characters.id, cashbookEntryFragmentUses.characterId))
-      .where(inArray(cashbookEntryFragmentUses.entryId, ids)),
-  ])
+  // 트랜잭션은 연결 하나라 질의를 한 번에 하나씩 보낸다. 겹쳐 보내면 pg 가 경고하고 pg 9 에서는 막는다.
+  const items = await tx
+    .select()
+    .from(cashbookEntryItems)
+    .where(inArray(cashbookEntryItems.entryId, ids))
+  const hunts = await tx
+    .select()
+    .from(cashbookEntryHuntInputs)
+    .where(inArray(cashbookEntryHuntInputs.entryId, ids))
+  const transfers = await tx
+    .select({ row: getTableColumns(cashbookEntryTransferInputs), receiverOcid: receiver.ocid })
+    .from(cashbookEntryTransferInputs)
+    .leftJoin(receiver, eq(receiver.id, cashbookEntryTransferInputs.receiverCharacterId))
+    .where(inArray(cashbookEntryTransferInputs.entryId, ids))
+  const exchanges = await tx
+    .select()
+    .from(cashbookEntryExchangeInputs)
+    .where(inArray(cashbookEntryExchangeInputs.entryId, ids))
+  const uses = await tx
+    .select({ row: getTableColumns(cashbookEntryFragmentUses), ocid: characters.ocid })
+    .from(cashbookEntryFragmentUses)
+    .leftJoin(characters, eq(characters.id, cashbookEntryFragmentUses.characterId))
+    .where(inArray(cashbookEntryFragmentUses.entryId, ids))
   return entries.map(({ row, ocid }) => {
     const child = <T extends { id: string; entryId: string }>(rows: T[]) =>
       rows.filter((r) => r.entryId === row.id).map((r) => omit(r, ['id', 'entryId']))

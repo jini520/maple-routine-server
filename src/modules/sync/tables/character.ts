@@ -58,7 +58,7 @@ import {
   sharedContentProgressRow,
 } from '../sync.dto'
 import { changedAfter, defineTable, type MapleIdReader, mapleIdOwner } from '../sync-table'
-import { RecordRejected, sameContent, writeDeviceRow } from '../sync-write'
+import { assertTarget, RecordRejected, sameContent, writeDeviceRow } from '../sync-write'
 
 /** 강화 합계가 같은 기록인지 견주는 칸. 금액은 올린 기기가 그때의 비용표로 매긴 값이다. */
 const ENHANCEMENT_CONTENT = [
@@ -74,16 +74,6 @@ const ENHANCEMENT_CONTENT = [
 
 const deleted = { deletedAt: sql`now()`, updatedAt: sql`now()` }
 const revived = { deletedAt: null, updatedAt: sql`now()` }
-
-/** 대상 줄 id 가 종류가 말하는 표에 있는지. 대상 칸 하나가 두 표를 가리켜 DB 참조를 걸 수 없어 쓰는 코드가 본다. */
-async function assertTarget(
-  tx: Tx,
-  table: typeof contents | typeof bossDifficulties | typeof symbols | typeof hexaCores,
-  id: string,
-): Promise<void> {
-  const [row] = await tx.select({ id: table.id }).from(table).where(eq(table.id, id))
-  if (row === undefined) throw new RecordRejected(`종류가 말하는 표에 없는 대상이다: ${id}`)
-}
 
 /**
  * 강화 합계. 같은 합계(캐릭터 · 날짜 · 분류 · 장비 이름)는 한 줄이고 표의 UNIQUE 가 지운 줄도 쥔다. 그래서 같은 합계의 지운 줄이

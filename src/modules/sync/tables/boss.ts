@@ -1,13 +1,29 @@
-import { and, asc, eq, getTableColumns, inArray, isNull, ne, or, type SQL, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  between,
+  eq,
+  getTableColumns,
+  inArray,
+  isNull,
+  ne,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm'
 
 import {
   bossDifficulties,
+  bossDifficultyRewards,
   bossDrops,
   bossProfitEntries,
   bossSplitSettings,
   characters,
+  dropBoxContents,
+  dropBoxes,
   dropSalePrices,
   mapleIds,
+  ringLevelItems,
 } from '../../../database/schema'
 import { MapleIdNotOwned } from '../../users/maple-id-ownership'
 import { characterIdFor, ownedCharacterIds } from '../../users/characters'
@@ -80,6 +96,7 @@ async function entryOf(ctx: WriteContext, entryId: string) {
   const [entry] = await ctx.tx
     .select({
       characterId: bossProfitEntries.characterId,
+      bossId: bossProfitEntries.bossId,
       worldId: bossProfitEntries.worldId,
       deletedAt: bossProfitEntries.deletedAt,
       mapleIdHash: mapleIds.hash,
@@ -90,6 +107,39 @@ async function entryOf(ctx: WriteContext, entryId: string) {
     .innerJoin(mapleIds, eq(mapleIds.id, characters.mapleId))
     .where(eq(bossProfitEntries.id, entryId))
   return entry
+}
+
+/**
+ * 드롭의 아이템을 그 보스에서 얻을 수 있는지. 아이템 줄 id 하나만으로는 참조가 막지 못해 쓰는 코드가 본다. 보스의 드롭 표에
+ * 있거나, 드롭 표의 상자 내용물에 있거나, 반지 레벨 줄이면 원래 반지가 레벨 범위가 맞는 상자에 들어 있으면 얻을 수 있다.
+ *
+ * 난이도는 가리지 않는다. 처치 전 수익 건에는 다른 난이도에서 고른 드롭이 적힐 수 있다. 드롭 표 줄의 기간도 가리지 않는다. 처음
+ * 동기화가 지난 드롭을 올리고, 보스가 주는 것이 바뀌면 드롭 표 줄은 지우지 않고 기간으로 끝낸다.
+ */
+async function assertObtainable(tx: Tx, bossId: string, itemId: string): Promise<void> {
+  const [found] = await tx
+    .select({ id: bossDifficultyRewards.id })
+    .from(bossDifficultyRewards)
+    .innerJoin(bossDifficulties, eq(bossDifficulties.id, bossDifficultyRewards.bossDifficultyId))
+    .leftJoin(dropBoxes, eq(dropBoxes.itemId, bossDifficultyRewards.itemId))
+    .leftJoin(dropBoxContents, eq(dropBoxContents.boxId, dropBoxes.id))
+    .leftJoin(ringLevelItems, eq(ringLevelItems.itemId, itemId))
+    .where(
+      and(
+        eq(bossDifficulties.bossId, bossId),
+        or(
+          eq(bossDifficultyRewards.itemId, itemId),
+          eq(dropBoxContents.itemId, itemId),
+          and(
+            eq(dropBoxContents.itemId, ringLevelItems.ringItemId),
+            between(ringLevelItems.ringLevel, dropBoxes.ringLevelMin, dropBoxes.ringLevelMax),
+          ),
+        ),
+      ),
+    )
+    .limit(1)
+  if (found === undefined)
+    throw new RecordRejected(`그 보스에서 얻을 수 없는 아이템이다: ${itemId}`)
 }
 
 /** 드롭 줄의 주인 메이플 ID 해시. 줄이 없으면 잠글 것이 없다. */
@@ -292,7 +342,8 @@ export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById
 
 /**
  * 수익 건에서 나온 드롭. 주인은 수익 건을 따른다. 수익 건이 아직 없으면 나중에 맞을 수 있어 코드 없이 거절하고, 지운 수익 건이면
- * 지운 기록의 수정으로 본다. 가격을 적은 드롭은 같은 트랜잭션에서 판매가 줄을 적는다.
+ * 지운 기록의 수정으로 본다. 그 보스에서 얻을 수 없는 아이템도 코드 없이 거절한다. 드롭 표를 고치면 맞을 수 있다. 가격을 적은
+ * 드롭은 같은 트랜잭션에서 판매가 줄을 적는다.
  */
 export const bossDropsTable = defineTable<BossDropRow, DeleteById>({
   upsertRow: bossDropRow,
@@ -307,6 +358,7 @@ export const bossDropsTable = defineTable<BossDropRow, DeleteById>({
     if (entry === undefined) throw new RecordRejected(`수익 건이 없다: ${row.profitEntryId}`)
     if (!entry.owned) throw new MapleIdNotOwned(entry.mapleIdHash)
     if (entry.deletedAt !== null) throw new RecordDeleted()
+    await assertObtainable(tx, entry.bossId, row.itemId)
     const { id, ...incoming } = row
     const [existing] = await tx
       .select({

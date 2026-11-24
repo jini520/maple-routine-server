@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm'
+import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core'
+
 import type { IdentityContext } from '../identity/identity.guard'
 import type { Tx } from '../users/nexon-account-store'
 
@@ -18,6 +21,15 @@ export class RecordDeleted extends Error {}
  * 기록의 모양이 틀린 경우(기간 값이 난이도의 주기와 다르다)다.
  */
 export class RecordRejected extends Error {}
+
+/** 대상 칸이 가리키는 표. 줄 id 칸으로 찾는다. */
+export type TargetTable = PgTable & { id: AnyPgColumn }
+
+/** 대상 줄 id 가 종류가 말하는 표에 있는지. 대상 칸 하나가 여러 표를 가리켜 DB 참조를 걸 수 없어 쓰는 코드가 본다. */
+export async function assertTarget(tx: Tx, table: TargetTable, id: string): Promise<void> {
+  const [row] = await tx.select({ id: table.id }).from(table).where(eq(table.id, id))
+  if (row === undefined) throw new RecordRejected(`종류가 말하는 표에 없는 대상이다: ${id}`)
+}
 
 /** 칸 값 둘이 같은지. 시각은 순간으로, 배열은 차례까지 견준다. 빈 칸은 null 과 undefined 를 같게 본다. */
 function sameValue(a: unknown, b: unknown): boolean {

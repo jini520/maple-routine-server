@@ -7,7 +7,7 @@ import { layout } from './layout'
  * 주는 것이 바뀌면 끝을 적는다.
  */
 export const BOSS_DROPS_HTML = layout(
-  '/admin/boss-drops',
+  '/boss-drops',
   '드롭 표',
   `<div class="top"><h1>드롭 표</h1><span class="grow"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -19,12 +19,12 @@ export const BOSS_DROPS_HTML = layout(
   var catalog = null, boss = null, difficulty = null, rows = [];
   var batch = editing(function () { loadRows(); });
   function bossOf(key) { return catalog.bosses.filter(function (b) { return b.key === key; })[0]; }
-  async function move(r, direction) { var x = await call('POST', '/admin/boss-drops/' + r.id + '/move', { direction: direction }); if (!x.ok) show(fail('못 옮겼다', x), true); loadRows(); }
+  async function move(r, direction) { var x = await call('POST', '/boss-drops/' + r.id + '/move', { direction: direction }); if (!x.ok) show(fail('못 옮겼다', x), true); loadRows(); }
 
   function rewardRow(r, i) {
     var tr = el('tr'); cell(tr, i + 1, 'n'); var nm = span(r.itemName + ' '); nm.appendChild(span(r.item, 'mono dim')); cell(tr, nm, 'wrap');
     var q, from, until, name = r.itemName + (r.validFrom ? ' (' + r.validFrom + ')' : '');
-    var send = function () { return call('PUT', '/admin/boss-drops/' + r.id, { quantity: q ? q.value() : null, validFrom: orNull(from.value()), validUntil: orNull(until.value()) }); };
+    var send = function () { return call('PUT', '/boss-drops/' + r.id, { quantity: q ? q.value() : null, validFrom: orNull(from.value()), validUntil: orNull(until.value()) }); };
     if (r.category === 'fixed') { q = numCell(batch, name, r.quantity, send, 'short'); cell(tr, q.input, 'num'); } else cell(tr, '', 'num');
     from = textCell(batch, name, r.validFrom, send, 'period'); from.input.placeholder = '처음부터';
     until = textCell(batch, name, r.validUntil, send, 'period'); until.input.placeholder = '끝없이';
@@ -45,7 +45,7 @@ export const BOSS_DROPS_HTML = layout(
     var d = openForm(bossOf(boss).name + ' ' + difficulty + ' · ' + label + ' 줄 추가', form);
     go.addEventListener('click', async function () {
       var body = { boss: boss, difficulty: difficulty, category: category, item: key.value.trim(), quantity: category === 'fixed' && q.value.trim() !== '' ? Number(q.value) : null, validFrom: orNull(from.value), validUntil: orNull(until.value) };
-      var x = await call('POST', '/admin/boss-drops', body);
+      var x = await call('POST', '/boss-drops', body);
       show(x.ok ? body.item + ' 줄을 더했다' : fail('더하지 못했다', x), !x.ok); if (x.ok) { d.close(); loadRows(); }
     });
   }
@@ -76,7 +76,7 @@ export const BOSS_DROPS_HTML = layout(
     var b = bossOf(boss);
     if (!b) { renderDetail(); return; }
     if (!b.difficulties.some(function (d) { return d.difficulty === difficulty; })) difficulty = b.difficulties[0].difficulty;
-    var r = await call('GET', '/admin/boss-drops/rows?boss=' + boss + '&difficulty=' + difficulty);
+    var r = await call('GET', '/boss-drops/rows?boss=' + boss + '&difficulty=' + difficulty);
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
     rows = r.json.rows; renderDetail();
   }
@@ -88,10 +88,10 @@ export const BOSS_DROPS_HTML = layout(
   }
 
   (async function boot() {
-    var c = await call('GET', '/admin/bosses/rows'); if (!c.ok) { show('보스 표를 못 읽었다 ' + c.status, true); return; }
+    var c = await call('GET', '/bosses/rows'); if (!c.ok) { show('보스 표를 못 읽었다 ' + c.status, true); return; }
     catalog = c.json;
     var h = (hashKey() || '').split('/'); boss = bossOf(h[0]) ? h[0] : (catalog.bosses[0] ? catalog.bosses[0].key : null); difficulty = h[1] || null;
-    var items = await call('GET', '/admin/drop-items/rows');
+    var items = await call('GET', '/drop-items/rows');
     if (items.ok) { var dl = document.getElementById('item-keys'); items.json.items.forEach(function (i) { var o = document.createElement('option'); o.value = i.key; o.label = i.name; dl.appendChild(o); }); }
     renderList(); loadRows();
   })();

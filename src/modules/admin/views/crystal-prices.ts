@@ -8,7 +8,7 @@ import { layout } from './layout'
  * 주간 · 시즌은 목요일, 월간은 1일이다. 패치가 기간 첫날 안에서 적용되면 T10:00 처럼 시각까지 적는다.
  */
 export const CRYSTAL_PRICES_HTML = layout(
-  '/admin/crystal-prices',
+  '/crystal-prices',
   '결정석 가격',
   `<div class="top"><h1>결정석 가격</h1><span class="dim" id="summary"></span><span class="grow"></span><span class="updated" id="updated"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -33,7 +33,7 @@ export const CRYSTAL_PRICES_HTML = layout(
       var tr = el('tr'); cell(tr, r.validFrom || '처음부터', 'mono'); cell(tr, r.validUntil || '지금', 'mono'); cell(tr, meso(r.priceMeso), 'num');
       if (r.validUntil === null) {
         var rm = button('거두기', 'btn danger sm');
-        rm.addEventListener('click', async function () { if (!window.confirm('지금 가격 줄을 거둔다. 바로 앞 줄이 다시 열린다.')) return; var x = await call('DELETE', '/admin/crystal-prices/rows/' + r.id); show(x.ok ? '거뒀다' : fail('못 거뒀다', x), !x.ok); if (x.ok) { d.close(); load(); } });
+        rm.addEventListener('click', async function () { if (!window.confirm('지금 가격 줄을 거둔다. 바로 앞 줄이 다시 열린다.')) return; var x = await call('DELETE', '/crystal-prices/rows/' + r.id); show(x.ok ? '거뒀다' : fail('못 거뒀다', x), !x.ok); if (x.ok) { d.close(); load(); } });
         cell(tr, rm, 'act');
       } else cell(tr, '');
       tb.appendChild(tr);
@@ -49,11 +49,11 @@ export const CRYSTAL_PRICES_HTML = layout(
     form.appendChild(field('파티 인원 상한', '비우면 기본값 ' + D.defaultMaxPartySize + '인', inline(cap, saveCap)));
     var d = openForm(p.bossName + ' ' + p.difficulty, form); d.classList.add('mid');
     add.addEventListener('click', async function () {
-      var x = await call('POST', '/admin/crystal-prices/' + p.boss + '/' + p.difficulty, { priceMeso: Number(price.value), validFrom: orNull(from.value) });
+      var x = await call('POST', '/crystal-prices/' + p.boss + '/' + p.difficulty, { priceMeso: Number(price.value), validFrom: orNull(from.value) });
       show(x.ok ? '새 가격을 열었다' : fail('못 열었다', x), !x.ok); if (x.ok) { d.close(); load(); }
     });
     saveCap.addEventListener('click', async function () {
-      var v = cap.value.trim(); var x = await call('PUT', '/admin/crystal-prices/' + p.boss + '/' + p.difficulty + '/max-party-size', { maxPartySize: v === '' ? null : Number(v) });
+      var v = cap.value.trim(); var x = await call('PUT', '/crystal-prices/' + p.boss + '/' + p.difficulty + '/max-party-size', { maxPartySize: v === '' ? null : Number(v) });
       show(x.ok ? '상한을 적었다' : fail('못 적었다', x), !x.ok); if (x.ok) { d.close(); load(); }
     });
   }
@@ -85,7 +85,7 @@ export const CRYSTAL_PRICES_HTML = layout(
   }
 
   async function load() {
-    var r = await call('GET', '/admin/crystal-prices/rows');
+    var r = await call('GET', '/crystal-prices/rows');
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
     D = r.json;
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';

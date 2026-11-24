@@ -91,13 +91,13 @@ describe('관리 화면 칸 편집 묶음', () => {
   it('전환 막대는 지금 화면에만 aria-current 를 단다', () => {
     const html = subNav(
       [
-        ['/admin/x', '가'],
-        ['/admin/x/b', '나'],
+        ['/x', '가'],
+        ['/x/b', '나'],
       ],
-      '/admin/x/b',
+      '/x/b',
     )
     expect(html).toBe(
-      '<nav class="seg"><a href="/admin/x">가</a><a href="/admin/x/b" aria-current="page">나</a></nav>',
+      '<nav class="seg"><a href="/x">가</a><a href="/x/b" aria-current="page">나</a></nav>',
     )
   })
 })

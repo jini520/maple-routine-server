@@ -12,7 +12,7 @@ import { AssetStore } from '../assets/asset-store'
  *
  * 그림 표에 넣으면 공지 본문이 가리키는 그림이 쓰는 곳으로 잡히지 않아 그림 화면에서 지울 수 있게 된다.
  */
-@Controller('admin')
+@Controller()
 export class AdminNoticeImagesController {
   constructor(
     private readonly store: AssetStore,

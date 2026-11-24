@@ -3,9 +3,9 @@ import { subNav } from './edit-kit'
 import { layout } from './layout'
 
 const NAV = [
-  ['/admin/hexa-matrix', '직업별 코어'],
-  ['/admin/hexa-matrix/types', '코어 종류 · 스탯'],
-  ['/admin/hexa-matrix/costs', '레벨 비용'],
+  ['/hexa-matrix', '직업별 코어'],
+  ['/hexa-matrix/types', '코어 종류 · 스탯'],
+  ['/hexa-matrix/costs', '레벨 비용'],
 ] as const
 
 /** 세 화면이 함께 쓰는 읽기. */
@@ -15,7 +15,7 @@ const COMMON_JS = `
   function lookup(id) { return assets[id]; }
   function typeById(id) { return D.hexaCoreTypes.filter(function (t) { return t.id === id; })[0]; }
   async function load() {
-    var r = await call('GET', '/admin/hexa-matrix/rows'); var a = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/hexa-matrix/rows'); var a = await call('GET', '/images/list');
     if (!r.ok || !a.ok) { show('못 읽었다 ' + (r.ok ? a.status : r.status), true); return; }
     D = r.json; assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; });
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
@@ -25,7 +25,7 @@ const COMMON_JS = `
 
 function page(current: string, top: string, body: string, script: string): string {
   return layout(
-    '/admin/hexa-matrix',
+    '/hexa-matrix',
     '헥사 매트릭스',
     `<div class="top"><h1>헥사 매트릭스</h1>${subNav(NAV, current)}<span class="grow"></span><span class="updated" id="updated"></span>${top}</div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -46,7 +46,7 @@ ${script}
  * 모든 직업이 쓰는 코어는 전직업에 둔다.
  */
 export const HEXA_MATRIX_HTML = page(
-  '/admin/hexa-matrix',
+  '/hexa-matrix',
   '<button id="add-job" class="btn ghost sm" type="button">직업 추가</button>',
   `<div class="split"><div class="picklist-wrap"><input id="filter" class="on-bg" placeholder="직업 찾기"><nav class="picklist" id="list" aria-label="직업"></nav></div><section class="panel" id="detail"></section></div>
 <style>
@@ -55,14 +55,14 @@ export const HEXA_MATRIX_HTML = page(
 </style>`,
   `
   var current = null;
-  async function move(c, direction) { var r = await call('POST', '/admin/hexa-matrix/cores/' + c.id + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function move(c, direction) { var r = await call('POST', '/hexa-matrix/cores/' + c.id + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
   function typeChoices() { return D.hexaCoreTypes.map(function (t) { return [t.key, t.name]; }); }
 
   function renderDetail(j) {
     var box = document.getElementById('detail'); box.innerHTML = '';
     if (!j) { box.appendChild(el('p', '직업이 없다', 'dim')); return; }
     var head = el('div', undefined, 'panel-head');
-    var name = textCell(batch, '직업 이름', j.name, function () { return call('PUT', '/admin/hexa-matrix/jobs/' + j.id, { name: name.value() }); });
+    var name = textCell(batch, '직업 이름', j.name, function () { return call('PUT', '/hexa-matrix/jobs/' + j.id, { name: name.value() }); });
     var w = el('span', '직업 이름 ', 'rule'); w.appendChild(name.input); head.appendChild(w);
     head.appendChild(el('p', j.isAllJobs ? '모든 직업이 함께 쓰는 코어' : '넥슨 character_class 이름'));
     head.appendChild(span('', 'grow'));
@@ -76,13 +76,13 @@ export const HEXA_MATRIX_HTML = page(
       var g = el('tr', undefined, 'group'); var gd = document.createElement('td'); gd.colSpan = 5; gd.textContent = t.name + ' ' + mine.length; g.appendChild(gd); tb.appendChild(g);
       mine.forEach(function (c, i) {
         var tr = el('tr'); cell(tr, i + 1, 'n'); var nm, type, icon;
-        var send = function () { return call('PUT', '/admin/hexa-matrix/cores/' + c.id, { name: nm.value(), typeKey: type.value(), iconAssetId: icon.value() }); };
+        var send = function () { return call('PUT', '/hexa-matrix/cores/' + c.id, { name: nm.value(), typeKey: type.value(), iconAssetId: icon.value() }); };
         icon = assetCell(batch, c.name, c.iconAssetId, send, { categories: ['skill'], uploadCategory: 'skill', lookup: lookup, compact: true });
         nm = textCell(batch, c.name, c.name, send, 'w-long'); type = selectCell(batch, c.name, t.key, send, typeChoices());
         cell(tr, icon.input); cell(tr, nm.input); cell(tr, type.input);
         var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), rm = button('지우기', 'btn danger sm');
         up.addEventListener('click', function () { move(c, 'up'); }); down.addEventListener('click', function () { move(c, 'down'); });
-        rm.addEventListener('click', async function () { if (!window.confirm(c.name + ' 코어를 지운다.')) return; var r = await call('DELETE', '/admin/hexa-matrix/cores/' + c.id); show(r.ok ? '지웠다' : fail('못 지웠다', r), !r.ok); load(); });
+        rm.addEventListener('click', async function () { if (!window.confirm(c.name + ' 코어를 지운다.')) return; var r = await call('DELETE', '/hexa-matrix/cores/' + c.id); show(r.ok ? '지웠다' : fail('못 지웠다', r), !r.ok); load(); });
         var act = inline(up, down, rm); act.className = 'inline row-act'; cell(tr, act, 'act');
         tb.appendChild(tr);
       });
@@ -100,7 +100,7 @@ export const HEXA_MATRIX_HTML = page(
     form.appendChild(field('코어 이름', '넥슨 응답의 이름 그대로', name)); form.appendChild(field('종류', undefined, type)); form.appendChild(field('그림', '스킬 분류의 그림', inline(iconText, pick)));
     var go = button('코어 추가', 'btn'); form.appendChild(go); var d = openForm(j.name + ' 코어 추가', form);
     go.addEventListener('click', async function () {
-      var r = await call('POST', '/admin/hexa-matrix/cores', { jobId: j.id, name: name.value.trim(), typeKey: type.value, iconAssetId: icon.id });
+      var r = await call('POST', '/hexa-matrix/cores', { jobId: j.id, name: name.value.trim(), typeKey: type.value, iconAssetId: icon.id });
       show(r.ok ? name.value.trim() + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   }
@@ -122,7 +122,7 @@ export const HEXA_MATRIX_HTML = page(
     var form = el('div', undefined, 'form-body'); var name = input('text'); name.placeholder = '아크메이지(불,독)';
     form.appendChild(field('직업 이름', '넥슨 character_class 그대로', name)); var go = button('직업 추가', 'btn'); form.appendChild(go); var d = openForm('직업 추가', form);
     go.addEventListener('click', async function () {
-      var r = await call('POST', '/admin/hexa-matrix/jobs', { name: name.value.trim() });
+      var r = await call('POST', '/hexa-matrix/jobs', { name: name.value.trim() });
       show(r.ok ? name.value.trim() + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); if (r.json && r.json.id) { current = r.json.id; setHashKey(current); } load(); }
     });
   });
@@ -131,7 +131,7 @@ export const HEXA_MATRIX_HTML = page(
 
 /** 코어 종류와 헥사 스탯. 종류는 넥슨 타입마다 기본이 하나이고, 표에 없는 코어를 넥슨 타입으로 맞출 때 쓴다. */
 export const HEXA_TYPES_HTML = page(
-  '/admin/hexa-matrix/types',
+  '/hexa-matrix/types',
   '<button id="add-type" class="btn ghost sm" type="button">종류 추가</button><button id="add-stat" class="btn ghost sm" type="button">스탯 추가</button>',
   `<section class="panel">
   <table class="sheet"><thead><tr><th>key</th><th>그림</th><th>이름</th><th>넥슨 타입</th><th>기본</th><th class="num">만렙</th></tr></thead><tbody id="types"></tbody></table>
@@ -147,7 +147,7 @@ export const HEXA_TYPES_HTML = page(
     var tb = document.getElementById('types'); tb.innerHTML = '';
     D.hexaCoreTypes.forEach(function (t) {
       var tr = el('tr'); cell(tr, t.key, 'label'); var icon, name, api, def, max;
-      var send = function () { return call('PUT', '/admin/hexa-matrix/types/' + t.key, { name: name.value(), apiType: api.value(), isDefault: def.value(), maxLevel: max.value(), iconAssetId: icon.value() }); };
+      var send = function () { return call('PUT', '/hexa-matrix/types/' + t.key, { name: name.value(), apiType: api.value(), isDefault: def.value(), maxLevel: max.value(), iconAssetId: icon.value() }); };
       icon = assetCell(batch, t.key, t.iconAssetId, send, { categories: ['item', 'item_ring'], uploadCategory: 'item', lookup: lookup, compact: true });
       name = textCell(batch, t.key, t.name, send, 'w-name'); api = textCell(batch, t.key, t.apiType, send, 'w-name'); def = checkCell(batch, t.key, t.isDefault, send, '기본'); max = numCell(batch, t.key, t.maxLevel, send, 'short');
       cell(tr, icon.input); cell(tr, name.input); cell(tr, api.input); cell(tr, def.input); cell(tr, max.input, 'num');
@@ -156,7 +156,7 @@ export const HEXA_TYPES_HTML = page(
     var sb = document.getElementById('stats'); sb.innerHTML = '';
     D.hexaStats.forEach(function (s) {
       var tr = el('tr'); cell(tr, s.key, 'label'); var name, act;
-      var send = function () { return call('PUT', '/admin/hexa-matrix/stats/' + s.key, { name: name.value(), activationFragmentQuantity: act.value() }); };
+      var send = function () { return call('PUT', '/hexa-matrix/stats/' + s.key, { name: name.value(), activationFragmentQuantity: act.value() }); };
       name = textCell(batch, s.key, s.name, send, 'w-name'); act = numCell(batch, s.key, s.activationFragmentQuantity, send, 'short'); act.input.placeholder = '모름';
       cell(tr, name.input); cell(tr, act.input, 'num'); sb.appendChild(tr);
     });
@@ -172,7 +172,7 @@ export const HEXA_TYPES_HTML = page(
     form.appendChild(grid); form.appendChild(el('p', '더한 뒤 레벨 비용 화면에서 레벨 전부의 비용을 적는다.', 'hint'));
     var go = button('종류 추가', 'btn'); form.appendChild(go); var d = openForm('종류 추가', form); d.classList.add('mid');
     go.addEventListener('click', async function () {
-      var r = await call('POST', '/admin/hexa-matrix/types', { key: key.value.trim(), name: name.value.trim(), apiType: api.value.trim(), isDefault: def.checked, maxLevel: Number(max.value), iconAssetId: icon.id });
+      var r = await call('POST', '/hexa-matrix/types', { key: key.value.trim(), name: name.value.trim(), apiType: api.value.trim(), isDefault: def.checked, maxLevel: Number(max.value), iconAssetId: icon.id });
       show(r.ok ? key.value.trim() + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   });
@@ -181,7 +181,7 @@ export const HEXA_TYPES_HTML = page(
     form.appendChild(field('key', undefined, key)); form.appendChild(field('이름', undefined, name)); form.appendChild(field('활성화 조각', '모르면 비운다', act));
     var go = button('스탯 추가', 'btn'); form.appendChild(go); var d = openForm('스탯 추가', form);
     go.addEventListener('click', async function () {
-      var r = await call('POST', '/admin/hexa-matrix/stats', { key: key.value.trim(), name: name.value.trim(), activationFragmentQuantity: act.value.trim() === '' ? null : Number(act.value) });
+      var r = await call('POST', '/hexa-matrix/stats', { key: key.value.trim(), name: name.value.trim(), activationFragmentQuantity: act.value.trim() === '' ? null : Number(act.value) });
       show(r.ok ? key.value.trim() + ' 를 더했다' : fail('더하지 못했다', r), !r.ok); if (r.ok) { d.close(); load(); }
     });
   });
@@ -193,7 +193,7 @@ export const HEXA_TYPES_HTML = page(
  * 비용은 기간 줄 없이 레벨 전부를 한 번에 갈아 끼운다. 빈 레벨이 있으면 앱의 구간 합이 틀려서다.
  */
 export const HEXA_COSTS_HTML = page(
-  '/admin/hexa-matrix/costs',
+  '/hexa-matrix/costs',
   '',
   `<section class="panel">
   <div class="panel-head" id="types"></div>
@@ -216,7 +216,7 @@ export const HEXA_COSTS_HTML = page(
     if (!t) return;
     head.appendChild(el('p', '만렙 ' + t.maxLevel));
     var cells = [];
-    var send = function () { return call('PUT', '/admin/hexa-matrix/types/' + t.key + '/costs', { costs: cells.map(function (x) { return { fromLevel: x.fromLevel, fragmentQuantity: x.fragment.value(), solErdaQuantity: x.erda.value() }; }) }); };
+    var send = function () { return call('PUT', '/hexa-matrix/types/' + t.key + '/costs', { costs: cells.map(function (x) { return { fromLevel: x.fromLevel, fragmentQuantity: x.fragment.value(), solErdaQuantity: x.erda.value() }; }) }); };
     for (var lv = 0; lv < t.maxLevel; lv++) {
       var c = D.hexaCoreLevelCosts.filter(function (x) { return x.typeId === t.id && x.fromLevel === lv; })[0];
       var f = numCell(batch, t.name + ' 비용', c ? c.fragmentQuantity : null, send); var e = numCell(batch, t.name + ' 비용', c ? c.solErdaQuantity : null, send);

@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     )
   const headers = { authorization: `Basic ${Buffer.from(auth).toString('base64')}` }
 
-  const listRes = await fetch(`${base}/admin/assets/list`, { headers })
+  const listRes = await fetch(`${base}/images/list`, { headers })
   if (!listRes.ok) throw new Error(`목록을 못 읽었다 ${listRes.status}`)
   const { rows } = (await listRes.json()) as { rows: AssetAdminRow[] }
 
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
 
   for (const { path, key } of plan) {
     const query = new URLSearchParams({ ...key }).toString()
-    const res = await fetch(`${base}/admin/assets/file?${query}`, {
+    const res = await fetch(`${base}/images/file?${query}`, {
       method: 'PUT',
       headers: { ...headers, 'content-type': CONTENT_TYPES[key.extension] },
       body: readFileSync(join(root, path)),

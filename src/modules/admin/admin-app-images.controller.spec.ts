@@ -22,23 +22,23 @@ describe('AdminAppImagesController', () => {
   afterAll(() => app.close())
   beforeEach(() => Object.values(images).forEach((m) => m.mockReset()))
 
-  it('GET /admin/app-images 는 화면, rows 는 key 와 그림 id 다', async () => {
-    const page = await app.inject({ method: 'GET', url: '/admin/app-images' })
+  it('GET /app-images 는 화면, rows 는 key 와 그림 id 다', async () => {
+    const page = await app.inject({ method: 'GET', url: '/app-images' })
     expect(page.statusCode).toBe(200)
     expect(page.body).toContain('openAssetPicker')
     images.section.mockResolvedValue({
       updatedAt: null,
       images: [{ key: 'meso_pouch', assetId: ID }],
     })
-    expect((await app.inject({ method: 'GET', url: '/admin/app-images/rows' })).json()).toEqual({
+    expect((await app.inject({ method: 'GET', url: '/app-images/rows' })).json()).toEqual({
       updatedAt: null,
       images: [{ key: 'meso_pouch', assetId: ID }],
     })
   })
 
-  it('PUT /admin/app-images/:key 는 그림을 바꾸고, 모르는 key 는 404 · 없는 그림은 400 이다', async () => {
+  it('PUT /app-images/:key 는 그림을 바꾸고, 모르는 key 는 404 · 없는 그림은 400 이다', async () => {
     const put = (key: string, assetId: string) =>
-      app.inject({ method: 'PUT', url: `/admin/app-images/${key}`, payload: { assetId } })
+      app.inject({ method: 'PUT', url: `/app-images/${key}`, payload: { assetId } })
     images.set.mockResolvedValue(true)
     expect((await put('meso_pouch', ID)).statusCode).toBe(204)
     expect(images.set).toHaveBeenCalledWith('meso_pouch', ID)

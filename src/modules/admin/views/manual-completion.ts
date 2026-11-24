@@ -2,7 +2,7 @@ import { layout } from './layout'
 
 /** 직접 완료 열고 닫기. 드롭다운은 bosses 표에서 오고, 닫는 것은 줄 id 로 한다. */
 export const MANUAL_COMPLETION_HTML = layout(
-  '/admin/manual-completion',
+  '/manual-completion',
   '직접 완료',
   `<div class="head"><div><h1>직접 완료</h1><p>연 보스는 그 보스의 모든 난이도에 열린다. 닫으면 앱의 단추가 그 순간 사라지고 줄은 이력으로 남는다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -29,7 +29,7 @@ export const MANUAL_COMPLETION_HTML = layout(
   function who(tr, row) { var td = document.createElement('td'); td.textContent = row.name + ' '; var k = document.createElement('span'); k.className = 'mono dim'; k.textContent = row.boss; td.appendChild(k); tr.appendChild(td); }
   function emptyRow(tbody, cols) { var tr = document.createElement('tr'); var td = cell(tr, '없다', 'empty'); td.colSpan = cols; tbody.appendChild(tr); }
   async function load() {
-    var r = await call('GET', '/admin/manual-completion/rows');
+    var r = await call('GET', '/manual-completion/rows');
     var data = r.json || { rows: [], bosses: [] };
     var select = document.getElementById('boss');
     select.innerHTML = '';
@@ -46,7 +46,7 @@ export const MANUAL_COMPLETION_HTML = layout(
         openCount += 1;
         var td = cell(tr, '', 'act'); var b = document.createElement('button'); b.type = 'button'; b.className = 'btn danger sm'; b.textContent = '닫기';
         b.addEventListener('click', async function () {
-          var res = await call('DELETE', '/admin/manual-completion/' + row.id);
+          var res = await call('DELETE', '/manual-completion/' + row.id);
           show(res.ok ? row.name + ' 을 닫았다' : '못 닫았다 ' + res.status, !res.ok);
           load();
         });
@@ -61,7 +61,7 @@ export const MANUAL_COMPLETION_HTML = layout(
   document.getElementById('open').addEventListener('click', async function () {
     var boss = document.getElementById('boss').value;
     var from = document.getElementById('from').value;
-    var r = await call('POST', '/admin/manual-completion', { boss: boss, fromDate: from });
+    var r = await call('POST', '/manual-completion', { boss: boss, fromDate: from });
     if (!r.ok) { show('못 열었다 ' + r.status + '\\n' + r.text, true); return; }
     show(boss + ' 을 ' + from + ' 부터 열었다', false);
     load();

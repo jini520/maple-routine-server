@@ -322,38 +322,38 @@ describe('AdminController', () => {
   })
 
   const PAGES = [
-    '/admin',
-    '/admin/bosses',
-    '/admin/manual-completion',
-    '/admin/notices',
-    '/admin/faqs',
-    '/admin/drop-prices',
-    '/admin/drop-market',
-    '/admin/users',
-    '/admin/usage',
-    '/admin/drop-boxes',
-    '/admin/boss-drops',
-    '/admin/crystal-prices',
-    '/admin/worlds',
-    '/admin/cashbook-categories',
-    '/admin/cashbook-categories/item-types',
-    '/admin/hunt-loot',
-    '/admin/spend-catalog',
-    '/admin/spend-catalog/tiles',
-    '/admin/symbol-costs',
-    '/admin/hexa-matrix',
-    '/admin/hexa-matrix/types',
-    '/admin/hexa-matrix/costs',
-    '/admin/contents',
-    '/admin/contents/categories',
-    '/admin/enhancement-costs',
-    '/admin/enhancement-costs/starforce',
-    '/admin/enhancement-costs/superior',
-    '/admin/mvp-grades',
-    '/admin/hunting-grounds',
+    '/',
+    '/bosses',
+    '/manual-completion',
+    '/notices',
+    '/faqs',
+    '/drop-prices',
+    '/drop-market',
+    '/users',
+    '/usage',
+    '/drop-boxes',
+    '/boss-drops',
+    '/crystal-prices',
+    '/worlds',
+    '/cashbook-categories',
+    '/cashbook-categories/item-types',
+    '/hunt-loot',
+    '/spend-catalog',
+    '/spend-catalog/tiles',
+    '/symbol-costs',
+    '/hexa-matrix',
+    '/hexa-matrix/types',
+    '/hexa-matrix/costs',
+    '/contents',
+    '/contents/categories',
+    '/enhancement-costs',
+    '/enhancement-costs/starforce',
+    '/enhancement-costs/superior',
+    '/mvp-grades',
+    '/hunting-grounds',
   ]
 
-  it('화면 셋은 HTML 이고 캐시하지 않는다', async () => {
+  it('화면은 HTML 이고 캐시하지 않는다', async () => {
     for (const url of PAGES) {
       const res = await app.inject({ method: 'GET', url })
       expect(res.statusCode).toBe(200)
@@ -368,19 +368,19 @@ describe('AdminController', () => {
   })
 
   it('보스 목록 화면은 왼쪽 보스 목록 · 오른쪽 편집 칸 · 새 보스 단추를 들고, 옛 표 이름을 읽지 않는다', async () => {
-    const res = await app.inject({ method: 'GET', url: '/admin/bosses' })
+    const res = await app.inject({ method: 'GET', url: '/bosses' })
     for (const id of ['id="list"', 'id="detail"', 'id="b-new"']) expect(res.body).toContain(id)
     expect(res.body).not.toContain('boss_difficulties')
   })
 
   const MENU_OF: Record<string, string> = {
-    '/admin/enhancement-costs/starforce': '/admin/enhancement-costs',
-    '/admin/enhancement-costs/superior': '/admin/enhancement-costs',
-    '/admin/cashbook-categories/item-types': '/admin/cashbook-categories',
-    '/admin/spend-catalog/tiles': '/admin/spend-catalog',
-    '/admin/hexa-matrix/types': '/admin/hexa-matrix',
-    '/admin/hexa-matrix/costs': '/admin/hexa-matrix',
-    '/admin/contents/categories': '/admin/contents',
+    '/enhancement-costs/starforce': '/enhancement-costs',
+    '/enhancement-costs/superior': '/enhancement-costs',
+    '/cashbook-categories/item-types': '/cashbook-categories',
+    '/spend-catalog/tiles': '/spend-catalog',
+    '/hexa-matrix/types': '/hexa-matrix',
+    '/hexa-matrix/costs': '/hexa-matrix',
+    '/contents/categories': '/contents',
   }
 
   // 한 메뉴를 나눈 화면(강화 비용의 스타포스 등)은 그 메뉴 항목이 지금 화면이다. 화면 안의 전환 막대는 따로 센다.
@@ -412,8 +412,7 @@ describe('AdminController', () => {
         else ancestors = [...stack]
       }
       expect(ancestors).not.toBeNull()
-      if (!['/admin', '/admin/notices', '/admin/faqs'].includes(url))
-        expect(ancestors!.length).toBeGreaterThan(0)
+      if (!['/', '/notices', '/faqs'].includes(url)) expect(ancestors!.length).toBeGreaterThan(0)
       expect(ancestors!.every(Boolean)).toBe(true)
       expect(opened).toBe(ancestors!.length)
     }
@@ -423,10 +422,9 @@ describe('AdminController', () => {
   it('게임 규칙은 GET 이 칸 그대로이고, PUT 은 받은 규칙만 넘겨 204 다. 비거나 모르는 칸 · 범위 밖은 400, 줄이 없으면 409 다', async () => {
     const section = { updatedAt: null, gameRules: null }
     rulesRepo.section.mockResolvedValue(section)
-    expect((await app.inject({ method: 'GET', url: '/admin/game-rules' })).json()).toEqual(section)
+    expect((await app.inject({ method: 'GET', url: '/game-rules' })).json()).toEqual(section)
 
-    const put = (payload: object) =>
-      app.inject({ method: 'PUT', url: '/admin/game-rules', payload })
+    const put = (payload: object) => app.inject({ method: 'PUT', url: '/game-rules', payload })
     rulesRepo.update.mockResolvedValue(undefined)
     expect((await put({ cubeAppraisalFreeMaxLevel: 121 })).statusCode).toBe(204)
     expect(rulesRepo.update).toHaveBeenCalledWith({ cubeAppraisalFreeMaxLevel: 121 })
@@ -444,43 +442,43 @@ describe('AdminController', () => {
     expect((await put({ spendTariffPercent: 9 })).statusCode).toBe(409)
   })
 
-  it('GET /admin/bosses/rows 는 게임 데이터의 bosses 칸 그대로다', async () => {
+  it('GET /bosses/rows 는 게임 데이터의 bosses 칸 그대로다', async () => {
     const catalog = { updatedAt: null, bosses: [] }
     bosses.catalog.mockResolvedValueOnce(catalog)
-    const res = await app.inject({ method: 'GET', url: '/admin/bosses/rows' })
+    const res = await app.inject({ method: 'GET', url: '/bosses/rows' })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual(catalog)
   })
 
-  it('POST /admin/bosses 는 새 보스를 더하고 201, 같은 key 는 409, 난이도가 없거나 그림 표에 없는 초상이면 400 이다', async () => {
+  it('POST /bosses 는 새 보스를 더하고 201, 같은 key 는 409, 난이도가 없거나 그림 표에 없는 초상이면 400 이다', async () => {
     bosses.createBoss.mockResolvedValueOnce({ id: 'b1' })
-    const ok = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
+    const ok = await app.inject({ method: 'POST', url: '/bosses', payload: newBoss })
     expect(ok.statusCode).toBe(201)
     expect(ok.json()).toEqual({ id: 'b1' })
     expect(bosses.createBoss).toHaveBeenCalledWith(newBoss)
 
     bosses.createBoss.mockRejectedValueOnce(new BossExists('kaling'))
-    const dup = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
+    const dup = await app.inject({ method: 'POST', url: '/bosses', payload: newBoss })
     expect(dup.statusCode).toBe(409)
 
     const bad = await app.inject({
       method: 'POST',
-      url: '/admin/bosses',
+      url: '/bosses',
       payload: { ...newBoss, difficulties: [] },
     })
     expect(bad.statusCode).toBe(400)
     expect(bosses.createBoss).toHaveBeenCalledTimes(2)
 
     bosses.createBoss.mockRejectedValueOnce(new AssetNotFound(ROW))
-    const noPortrait = await app.inject({ method: 'POST', url: '/admin/bosses', payload: newBoss })
+    const noPortrait = await app.inject({ method: 'POST', url: '/bosses', payload: newBoss })
     expect(noPortrait.statusCode).toBe(400)
   })
 
-  it('PUT /admin/bosses/:key/difficulties/:difficulty 는 줄을 적고 204, 모르는 보스는 404, 모르는 난이도는 400 이다', async () => {
+  it('PUT /bosses/:key/difficulties/:difficulty 는 줄을 적고 204, 모르는 보스는 404, 모르는 난이도는 400 이다', async () => {
     bosses.upsertDifficulty.mockResolvedValueOnce(true)
     const ok = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/kaling/difficulties/hard',
+      url: '/bosses/kaling/difficulties/hard',
       payload: { cycle: 'weekly', requiredLevel: 275 },
     })
     expect(ok.statusCode).toBe(204)
@@ -495,47 +493,44 @@ describe('AdminController', () => {
     bosses.upsertDifficulty.mockResolvedValueOnce(false)
     const gone = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/nobody/difficulties/hard',
+      url: '/bosses/nobody/difficulties/hard',
       payload: { cycle: 'weekly', requiredLevel: 275 },
     })
     expect(gone.statusCode).toBe(404)
 
     const bad = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/kaling/difficulties/hell',
+      url: '/bosses/kaling/difficulties/hell',
       payload: { cycle: 'weekly', requiredLevel: 275 },
     })
     expect(bad.statusCode).toBe(400)
   })
 
-  it('DELETE /admin/bosses/:key/difficulties/:difficulty 는 204, 없으면 404, 마지막 줄이면 409 다', async () => {
+  it('DELETE /bosses/:key/difficulties/:difficulty 는 204, 없으면 404, 마지막 줄이면 409 다', async () => {
     bosses.deleteDifficulty.mockResolvedValueOnce(true)
     expect(
-      (await app.inject({ method: 'DELETE', url: '/admin/bosses/kaling/difficulties/hard' }))
-        .statusCode,
+      (await app.inject({ method: 'DELETE', url: '/bosses/kaling/difficulties/hard' })).statusCode,
     ).toBe(204)
     expect(bosses.deleteDifficulty).toHaveBeenCalledWith('kaling', 'hard')
 
     bosses.deleteDifficulty.mockResolvedValueOnce(false)
     expect(
-      (await app.inject({ method: 'DELETE', url: '/admin/bosses/kaling/difficulties/hard' }))
-        .statusCode,
+      (await app.inject({ method: 'DELETE', url: '/bosses/kaling/difficulties/hard' })).statusCode,
     ).toBe(404)
 
     bosses.deleteDifficulty.mockRejectedValueOnce(new LastDifficulty('kaling'))
     expect(
-      (await app.inject({ method: 'DELETE', url: '/admin/bosses/kaling/difficulties/hard' }))
-        .statusCode,
+      (await app.inject({ method: 'DELETE', url: '/bosses/kaling/difficulties/hard' })).statusCode,
     ).toBe(409)
   })
 
-  it('GET /admin/manual-completion/rows 는 줄과 고를 보스를 함께 낸다', async () => {
+  it('GET /manual-completion/rows 는 줄과 고를 보스를 함께 낸다', async () => {
     manual.rows.mockResolvedValue([
       { id: ROW, boss: 'kaling', name: '카링', from: '2026-09-17', openedAt: 't', closedAt: null },
     ])
     bosses.options.mockResolvedValue([{ id: 'b1', key: 'kaling', name: '카링' }])
 
-    const res = await app.inject({ method: 'GET', url: '/admin/manual-completion/rows' })
+    const res = await app.inject({ method: 'GET', url: '/manual-completion/rows' })
 
     expect(res.json()).toEqual({
       rows: [
@@ -552,13 +547,13 @@ describe('AdminController', () => {
     })
   })
 
-  it('POST /admin/manual-completion 은 key 로 보스를 찾아 열고 201 이다', async () => {
+  it('POST /manual-completion 은 key 로 보스를 찾아 열고 201 이다', async () => {
     bosses.findByKey.mockResolvedValue({ id: 'b1' })
     manual.openBoss.mockResolvedValue({ id: ROW })
 
     const res = await app.inject({
       method: 'POST',
-      url: '/admin/manual-completion',
+      url: '/manual-completion',
       payload: { boss: 'kaling', fromDate: '2026-09-17' },
     })
 
@@ -571,7 +566,7 @@ describe('AdminController', () => {
     bosses.findByKey.mockResolvedValueOnce(null)
     const unknown = await app.inject({
       method: 'POST',
-      url: '/admin/manual-completion',
+      url: '/manual-completion',
       payload: { boss: 'nobody', fromDate: '2026-09-17' },
     })
     expect(unknown.statusCode).toBe(404)
@@ -580,38 +575,38 @@ describe('AdminController', () => {
     manual.openBoss.mockRejectedValueOnce(new AlreadyOpen())
     const dup = await app.inject({
       method: 'POST',
-      url: '/admin/manual-completion',
+      url: '/manual-completion',
       payload: { boss: 'kaling', fromDate: '2026-09-17' },
     })
     expect(dup.statusCode).toBe(409)
 
     const bad = await app.inject({
       method: 'POST',
-      url: '/admin/manual-completion',
+      url: '/manual-completion',
       payload: { boss: 'kaling', fromDate: '20260917' },
     })
     expect(bad.statusCode).toBe(400)
     expect(bosses.findByKey).toHaveBeenCalledTimes(2)
   })
 
-  it('DELETE /admin/manual-completion/:id 는 닫으면 204, 없으면 404 다', async () => {
+  it('DELETE /manual-completion/:id 는 닫으면 204, 없으면 404 다', async () => {
     manual.close.mockResolvedValueOnce(true)
-    const ok = await app.inject({ method: 'DELETE', url: `/admin/manual-completion/${ROW}` })
+    const ok = await app.inject({ method: 'DELETE', url: `/manual-completion/${ROW}` })
     expect(ok.statusCode).toBe(204)
     expect(manual.close).toHaveBeenCalledWith(ROW)
 
     manual.close.mockResolvedValueOnce(false)
-    const gone = await app.inject({ method: 'DELETE', url: `/admin/manual-completion/${ROW}` })
+    const gone = await app.inject({ method: 'DELETE', url: `/manual-completion/${ROW}` })
     expect(gone.statusCode).toBe(404)
 
-    const bad = await app.inject({ method: 'DELETE', url: '/admin/manual-completion/not-an-id' })
+    const bad = await app.inject({ method: 'DELETE', url: '/manual-completion/not-an-id' })
     expect(bad.statusCode).toBe(400)
   })
 
   describe('공지', () => {
     const body = { title: '점검', markdown: '밤 10시', link: null, push: null }
 
-    it('GET /admin/notices/rows 는 운영자 공지를 ISO 시각으로 내고 고칠 마크다운을 싣는다', async () => {
+    it('GET /notices/rows 는 운영자 공지를 ISO 시각으로 내고 고칠 마크다운을 싣는다', async () => {
       notices.list.mockResolvedValue([
         {
           id: ROW,
@@ -629,7 +624,7 @@ describe('AdminController', () => {
         },
       ])
 
-      const res = await app.inject({ method: 'GET', url: '/admin/notices/rows' })
+      const res = await app.inject({ method: 'GET', url: '/notices/rows' })
 
       expect(res.json()).toEqual({
         rows: [
@@ -650,12 +645,12 @@ describe('AdminController', () => {
       })
     })
 
-    it('POST /admin/notices 는 올릴 시각과 알림 문구를 서비스에 넘기고 201 이다', async () => {
+    it('POST /notices 는 올릴 시각과 알림 문구를 서비스에 넘기고 201 이다', async () => {
       notices.create.mockResolvedValue({ id: ROW, noticeKey: 'k', messageId: 'm' })
 
       const res = await app.inject({
         method: 'POST',
-        url: '/admin/notices',
+        url: '/notices',
         payload: { ...body, publishAt: '2026-12-01T10:00:00+09:00', push: { title: '제목' } },
       })
 
@@ -674,7 +669,7 @@ describe('AdminController', () => {
       notices.create.mockRejectedValueOnce(
         new MarkdownRejected('https 가 아닌 주소다: http://x.test'),
       )
-      const insecure = await app.inject({ method: 'POST', url: '/admin/notices', payload: body })
+      const insecure = await app.inject({ method: 'POST', url: '/notices', payload: body })
       expect(insecure.statusCode).toBe(400)
       expect(insecure.body).toContain('http://x.test')
 
@@ -683,7 +678,7 @@ describe('AdminController', () => {
       )
       const insecureEdit = await app.inject({
         method: 'PATCH',
-        url: `/admin/notices/${ROW}`,
+        url: `/notices/${ROW}`,
         payload: body,
       })
       expect(insecureEdit.statusCode).toBe(400)
@@ -694,44 +689,44 @@ describe('AdminController', () => {
       notices.create.mockRejectedValueOnce(new SchedulePassed())
       const passed = await app.inject({
         method: 'POST',
-        url: '/admin/notices',
+        url: '/notices',
         payload: { ...body, publishAt: '2020-01-01T00:00:00Z' },
       })
       expect(passed.statusCode).toBe(400)
       notices.update.mockRejectedValueOnce(new AlreadyPublished())
       const published = await app.inject({
         method: 'PATCH',
-        url: `/admin/notices/${ROW}`,
+        url: `/notices/${ROW}`,
         payload: { ...body, publishAt: '2030-01-01T00:00:00Z' },
       })
       expect(published.statusCode).toBe(409)
 
       const noTitle = await app.inject({
         method: 'POST',
-        url: '/admin/notices',
+        url: '/notices',
         payload: { ...body, title: '' },
       })
       expect(noTitle.statusCode).toBe(400)
       for (const markdown of ['', 'a'.repeat(10_001)]) {
         const res = await app.inject({
           method: 'POST',
-          url: '/admin/notices',
+          url: '/notices',
           payload: { ...body, markdown },
         })
         expect(res.statusCode).toBe(400)
       }
       const badLink = await app.inject({
         method: 'POST',
-        url: '/admin/notices',
+        url: '/notices',
         payload: { ...body, link: 'x' },
       })
       expect(badLink.statusCode).toBe(400)
       expect(notices.create).toHaveBeenCalledTimes(1)
     })
 
-    it('PATCH /admin/notices/:id 는 고치고 없으면 404 다', async () => {
+    it('PATCH /notices/:id 는 고치고 없으면 404 다', async () => {
       notices.update.mockResolvedValueOnce({ messageId: null })
-      const ok = await app.inject({ method: 'PATCH', url: `/admin/notices/${ROW}`, payload: body })
+      const ok = await app.inject({ method: 'PATCH', url: `/notices/${ROW}`, payload: body })
       expect(ok.statusCode).toBe(200)
       expect(ok.json()).toEqual({ messageId: null })
       expect(notices.update).toHaveBeenCalledWith(ROW, {
@@ -745,18 +740,18 @@ describe('AdminController', () => {
       notices.update.mockResolvedValueOnce(null)
       const gone = await app.inject({
         method: 'PATCH',
-        url: `/admin/notices/${ROW}`,
+        url: `/notices/${ROW}`,
         payload: body,
       })
       expect(gone.statusCode).toBe(404)
     })
 
-    it('POST /admin/notices/preview 는 저장과 같은 변환의 블록 · 평문을 내고, https 가 아닌 주소는 400 이다', async () => {
+    it('POST /notices/preview 는 저장과 같은 변환의 블록 · 평문을 내고, https 가 아닌 주소는 400 이다', async () => {
       const markdown =
         '## 새 기능\n\n![](https://mapleroutine.store/assets/a.webp)\n\n메모를 붙여요'
       const ok = await app.inject({
         method: 'POST',
-        url: '/admin/notices/preview',
+        url: '/notices/preview',
         payload: { markdown },
       })
       expect(ok.statusCode).toBe(200)
@@ -764,7 +759,7 @@ describe('AdminController', () => {
 
       const insecure = await app.inject({
         method: 'POST',
-        url: '/admin/notices/preview',
+        url: '/notices/preview',
         payload: { markdown: '[글](http://x.test/a)' },
       })
       expect(insecure.statusCode).toBe(400)
@@ -774,15 +769,11 @@ describe('AdminController', () => {
 
     it('지우기와 지금 올리기는 204 이고 없으면 404, 이미 올라간 공지를 지금 올리면 409 다', async () => {
       notices.remove.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}` })).statusCode,
-      ).toBe(204)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/notices/${ROW}` })).statusCode,
-      ).toBe(404)
+      expect((await app.inject({ method: 'DELETE', url: `/notices/${ROW}` })).statusCode).toBe(204)
+      expect((await app.inject({ method: 'DELETE', url: `/notices/${ROW}` })).statusCode).toBe(404)
 
       const publish = async () =>
-        (await app.inject({ method: 'POST', url: `/admin/notices/${ROW}/publish` })).statusCode
+        (await app.inject({ method: 'POST', url: `/notices/${ROW}/publish` })).statusCode
       notices.publishNow.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
       expect(await publish()).toBe(204)
       expect(await publish()).toBe(404)
@@ -793,10 +784,10 @@ describe('AdminController', () => {
   })
 
   describe('사용자 · 사용 로그 대시보드', () => {
-    it('GET /admin/users/stats 는 기간과 플랫폼을 넘기고, 기간이 없으면 7일이다', async () => {
+    it('GET /users/stats 는 기간과 플랫폼을 넘기고, 기간이 없으면 7일이다', async () => {
       dashboard.forUsers.mockResolvedValue({ tiles: {} })
 
-      const res = await app.inject({ method: 'GET', url: '/admin/users/stats?platform=ios' })
+      const res = await app.inject({ method: 'GET', url: '/users/stats?platform=ios' })
 
       expect(res.statusCode).toBe(200)
       expect(res.headers['cache-control']).toBe('no-store')
@@ -805,8 +796,8 @@ describe('AdminController', () => {
     })
 
     it('모르는 플랫폼이나 보관 기간을 넘는 기간은 400 이다', async () => {
-      const platform = await app.inject({ method: 'GET', url: '/admin/users/stats?platform=web' })
-      const usage = await app.inject({ method: 'GET', url: '/admin/usage/stats?days=181' })
+      const platform = await app.inject({ method: 'GET', url: '/users/stats?platform=web' })
+      const usage = await app.inject({ method: 'GET', url: '/usage/stats?days=181' })
 
       expect(platform.statusCode).toBe(400)
       expect(usage.statusCode).toBe(400)
@@ -818,8 +809,8 @@ describe('AdminController', () => {
       dashboard.forUsage.mockResolvedValue({ tiles: {} })
       dashboard.forScreen.mockResolvedValue({ daily: [] })
 
-      const stats = await app.inject({ method: 'GET', url: '/admin/usage/stats' })
-      const screen = await app.inject({ method: 'GET', url: '/admin/usage/screen?name=Boss' })
+      const stats = await app.inject({ method: 'GET', url: '/usage/stats' })
+      const screen = await app.inject({ method: 'GET', url: '/usage/screen?name=Boss' })
 
       expect(stats.statusCode).toBe(200)
       expect(screen.statusCode).toBe(200)
@@ -827,10 +818,10 @@ describe('AdminController', () => {
       expect(dashboard.forScreen).toHaveBeenCalledWith('Boss', 7)
     })
 
-    it('GET /admin/usage/screen 은 화면 이름과 기간을 넘긴다', async () => {
+    it('GET /usage/screen 은 화면 이름과 기간을 넘긴다', async () => {
       dashboard.forScreen.mockResolvedValue({ daily: [] })
 
-      const res = await app.inject({ method: 'GET', url: '/admin/usage/screen?name=Boss&days=7' })
+      const res = await app.inject({ method: 'GET', url: '/usage/screen?name=Boss&days=7' })
 
       expect(res.statusCode).toBe(200)
       expect(dashboard.forScreen).toHaveBeenCalledWith('Boss', 7)
@@ -842,12 +833,12 @@ describe('AdminController', () => {
     const QUERY = 'itemKey=ring&periodCode=W202641&source=ring_box'
 
     // 한 줄 더 읽어 다음 쪽이 있는지 안다. 줄 수를 따로 세지 않는다.
-    it('GET /admin/drop-prices/rows 는 필터와 쪽을 넘기고, 한 줄 더 읽어 더 있는지 알린다', async () => {
+    it('GET /drop-prices/rows 는 필터와 쪽을 넘기고, 한 줄 더 읽어 더 있는지 알린다', async () => {
       prices.recent.mockResolvedValue([1, 2, 3].map((n) => ({ id: `r${n}` })))
 
       const res = await app.inject({
         method: 'GET',
-        url: `/admin/drop-prices/rows?${QUERY}&limit=2&offset=4`,
+        url: `/drop-prices/rows?${QUERY}&limit=2&offset=4`,
       })
 
       expect(res.statusCode).toBe(200)
@@ -858,7 +849,7 @@ describe('AdminController', () => {
     it('필터가 없으면 null 둘 · 모든 획득처 · 50줄이고, 기간 모양 · 줄 수 · 획득처가 틀리면 400 이다', async () => {
       prices.recent.mockResolvedValue([])
 
-      const res = await app.inject({ method: 'GET', url: '/admin/drop-prices/rows' })
+      const res = await app.inject({ method: 'GET', url: '/drop-prices/rows' })
       expect(res.statusCode).toBe(200)
       expect(res.json()).toEqual({ rows: [], hasMore: false })
       expect(prices.recent).toHaveBeenCalledWith(
@@ -868,7 +859,7 @@ describe('AdminController', () => {
       )
 
       for (const bad of ['periodCode=2026-10-08', 'limit=5000', 'source=Ring-Box']) {
-        const r = await app.inject({ method: 'GET', url: `/admin/drop-prices/rows?${bad}` })
+        const r = await app.inject({ method: 'GET', url: `/drop-prices/rows?${bad}` })
         expect(r.statusCode).toBe(400)
       }
     })
@@ -878,9 +869,9 @@ describe('AdminController', () => {
       prices.points.mockResolvedValue([{ priceMeso: 1 }])
       prices.periods.mockResolvedValue(['W202641'])
 
-      const items = await app.inject({ method: 'GET', url: `/admin/drop-prices/items?${QUERY}` })
-      const points = await app.inject({ method: 'GET', url: `/admin/drop-prices/points?${QUERY}` })
-      const periods = await app.inject({ method: 'GET', url: '/admin/drop-prices/periods' })
+      const items = await app.inject({ method: 'GET', url: `/drop-prices/items?${QUERY}` })
+      const points = await app.inject({ method: 'GET', url: `/drop-prices/points?${QUERY}` })
+      const periods = await app.inject({ method: 'GET', url: '/drop-prices/periods' })
 
       expect([items.json(), points.json(), periods.json()]).toEqual([
         [{ itemKey: 'ring' }],
@@ -897,9 +888,7 @@ describe('AdminController', () => {
       market.overview.mockResolvedValue([])
       market.detail.mockResolvedValue({ itemName: null, candles: [], rows: [] })
 
-      expect((await app.inject({ method: 'GET', url: '/admin/drop-market/rows' })).statusCode).toBe(
-        200,
-      )
+      expect((await app.inject({ method: 'GET', url: '/drop-market/rows' })).statusCode).toBe(200)
       expect(market.overview).toHaveBeenCalledWith(
         { kind: 'equipment', key: 'general' },
         expect.any(Date),
@@ -907,38 +896,38 @@ describe('AdminController', () => {
 
       await app.inject({
         method: 'GET',
-        url: '/admin/drop-market/item/rows?kind=consumable&key=scania&item=life_whetstone',
+        url: '/drop-market/item/rows?kind=consumable&key=scania&item=life_whetstone',
       })
       expect(market.detail).toHaveBeenLastCalledWith(
         { kind: 'consumable', key: 'scania' },
         { itemKey: 'life_whetstone', ringLevel: null },
         expect.any(Date),
       )
-      await app.inject({ method: 'GET', url: '/admin/drop-market/item/rows?item=ring&ring=4' })
+      await app.inject({ method: 'GET', url: '/drop-market/item/rows?item=ring&ring=4' })
       expect(market.detail).toHaveBeenLastCalledWith(
         { kind: 'equipment', key: 'general' },
         { itemKey: 'ring', ringLevel: 4 },
         expect.any(Date),
       )
 
-      const noItem = await app.inject({ method: 'GET', url: '/admin/drop-market/item/rows' })
+      const noItem = await app.inject({ method: 'GET', url: '/drop-market/item/rows' })
       expect(noItem.statusCode).toBe(400)
-      const badKind = await app.inject({ method: 'GET', url: '/admin/drop-market/rows?kind=etc' })
+      const badKind = await app.inject({ method: 'GET', url: '/drop-market/rows?kind=etc' })
       expect(badKind.statusCode).toBe(400)
     })
 
     // 아이템 화면은 메뉴에 없다. 목록의 하위 화면이라 메뉴는 드롭 시세에 머문다.
     it('아이템 화면은 HTML 이고 메뉴는 드롭 시세를 가리킨다', async () => {
-      const res = await app.inject({ method: 'GET', url: '/admin/drop-market/item?item=ring' })
+      const res = await app.inject({ method: 'GET', url: '/drop-market/item?item=ring' })
 
       expect(res.headers['content-type']).toContain('text/html')
       expect(res.body.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
-        '<a href="/admin/drop-market" aria-current="page">',
+        '<a href="/drop-market" aria-current="page">',
       ])
     })
 
     it('차트 라이브러리를 서버가 직접 내보낸다', async () => {
-      const res = await app.inject({ method: 'GET', url: '/admin/assets/lightweight-charts.js' })
+      const res = await app.inject({ method: 'GET', url: '/drop-market/lightweight-charts.js' })
 
       expect(res.statusCode).toBe(200)
       expect(res.headers['content-type']).toContain('javascript')
@@ -977,11 +966,11 @@ describe('AdminController', () => {
       })
 
       expect(
-        (await app.inject({ method: 'GET', url: '/admin/drop-items/rows' })).json<{
+        (await app.inject({ method: 'GET', url: '/drop-items/rows' })).json<{
           items: unknown[]
         }>().items,
       ).toHaveLength(1)
-      const box = (await app.inject({ method: 'GET', url: '/admin/drop-boxes/rows' })).json<{
+      const box = (await app.inject({ method: 'GET', url: '/drop-boxes/rows' })).json<{
         boxes: unknown[]
         items: unknown[]
       }>()
@@ -992,23 +981,25 @@ describe('AdminController', () => {
       expect(box.items).toEqual([{ key: 'restraint_ring', name: '리스트레인트 링' }])
       const rows = await app.inject({
         method: 'GET',
-        url: '/admin/boss-drops/rows?boss=lotus&difficulty=hard',
+        url: '/boss-drops/rows?boss=lotus&difficulty=hard',
       })
       expect(rows.statusCode).toBe(200)
       expect(drops.rows).toHaveBeenCalledWith('lotus', 'hard')
       expect(
-        (await app.inject({ method: 'GET', url: '/admin/boss-drops/rows?boss=lotus' })).statusCode,
+        (await app.inject({ method: 'GET', url: '/boss-drops/rows?boss=lotus' })).statusCode,
       ).toBe(400)
-      expect(
-        (await app.inject({ method: 'GET', url: '/admin/crystal-prices/rows' })).json(),
-      ).toEqual({ updatedAt: null, defaultMaxPartySize: 6, pairs: [] })
+      expect((await app.inject({ method: 'GET', url: '/crystal-prices/rows' })).json()).toEqual({
+        updatedAt: null,
+        defaultMaxPartySize: 6,
+        pairs: [],
+      })
     })
 
     it('그림 칸이 그림 표에 없는 그림을 가리키면 400 이다', async () => {
       huntLootRepo.create.mockRejectedValue(new AssetNotFound(ROW))
       const res = await app.inject({
         method: 'POST',
-        url: '/admin/hunt-loot',
+        url: '/hunt-loot',
         payload: {
           key: 'reindeer_milk',
           type: 'consumable',
@@ -1027,7 +1018,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/drop-boxes',
+            url: '/drop-boxes',
             payload: { item: 'green_boss_ring_box', ringLevelMin: 1 },
           })
         ).statusCode,
@@ -1036,7 +1027,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/drop-boxes',
+            url: '/drop-boxes',
             payload: { item: 'green_boss_ring_box', ringLevelMin: 3, ringLevelMax: 1 },
           })
         ).statusCode,
@@ -1045,7 +1036,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/drop-boxes',
+            url: '/drop-boxes',
             payload: { item: 'chaos_pitch_black_accessory_box' },
           })
         ).statusCode,
@@ -1067,12 +1058,12 @@ describe('AdminController', () => {
 
       const created = await app.inject({
         method: 'POST',
-        url: '/admin/boss-drops',
+        url: '/boss-drops',
         payload: { boss: 'lotus', difficulty: 'hard', category: 'consumable', item: 'black_box' },
       })
       const added = await app.inject({
         method: 'POST',
-        url: '/admin/drop-boxes/black_box/contents',
+        url: '/drop-boxes/black_box/contents',
         payload: { item: 'restraint_ring' },
       })
 
@@ -1096,14 +1087,14 @@ describe('AdminController', () => {
         validFrom: '2026-09-17T10:00',
       }
       expect(
-        (await app.inject({ method: 'POST', url: '/admin/boss-drops', payload: body })).statusCode,
+        (await app.inject({ method: 'POST', url: '/boss-drops', payload: body })).statusCode,
       ).toBe(201)
       expect(drops.create).toHaveBeenCalledWith({ ...body, quantity: null, validUntil: null })
       expect(
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/boss-drops',
+            url: '/boss-drops',
             payload: { ...body, validFrom: '2026-9-17' },
           })
         ).statusCode,
@@ -1113,7 +1104,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: `/admin/boss-drops/${ROW}`,
+            url: `/boss-drops/${ROW}`,
             payload: { validUntil: '2026-09-17' },
           })
         ).statusCode,
@@ -1128,14 +1119,14 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: `/admin/boss-drops/${ROW}/move`,
+            url: `/boss-drops/${ROW}/move`,
             payload: { direction: 'up' },
           })
         ).statusCode,
       ).toBe(204)
-      expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/boss-drops/${ROW}` })).statusCode,
-      ).toBe(404)
+      expect((await app.inject({ method: 'DELETE', url: `/boss-drops/${ROW}` })).statusCode).toBe(
+        404,
+      )
     })
 
     it('결정석 가격은 새 줄을 열고(경계가 아니면 400), 지금 줄을 거두고, 상한을 적는다', async () => {
@@ -1144,7 +1135,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/crystal-prices/lotus/hard',
+            url: '/crystal-prices/lotus/hard',
             payload: { priceMeso: 100, validFrom: '2026-10-22' },
           })
         ).statusCode,
@@ -1158,7 +1149,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/crystal-prices/lotus/hard',
+            url: '/crystal-prices/lotus/hard',
             payload: { priceMeso: 100, validFrom: '2026-10-23' },
           })
         ).statusCode,
@@ -1167,22 +1158,21 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/crystal-prices/lotus/ultra',
+            url: '/crystal-prices/lotus/ultra',
             payload: { priceMeso: 100 },
           })
         ).statusCode,
       ).toBe(400)
       crystals.removeLatest.mockResolvedValue(true)
       expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/crystal-prices/rows/${ROW}` }))
-          .statusCode,
+        (await app.inject({ method: 'DELETE', url: `/crystal-prices/rows/${ROW}` })).statusCode,
       ).toBe(204)
       bosses.setMaxPartySize.mockResolvedValue(true)
       expect(
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/crystal-prices/lotus/hard/max-party-size',
+            url: '/crystal-prices/lotus/hard/max-party-size',
             payload: { maxPartySize: null },
           })
         ).statusCode,
@@ -1192,7 +1182,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/crystal-prices/lotus/hard/max-party-size',
+            url: '/crystal-prices/lotus/hard/max-party-size',
             payload: { maxPartySize: 7 },
           })
         ).statusCode,
@@ -1200,11 +1190,11 @@ describe('AdminController', () => {
     })
   })
 
-  it('PUT /admin/bosses/:key/period 는 기간 둘을 적고 204, 모르는 보스는 404, 끝이 앞이면 400 이다', async () => {
+  it('PUT /bosses/:key/period 는 기간 둘을 적고 204, 모르는 보스는 404, 끝이 앞이면 400 이다', async () => {
     bosses.setPeriod.mockResolvedValue(true)
     const ok = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/meirin/period',
+      url: '/bosses/meirin/period',
       payload: { validUntil: '2026-11-05' },
     })
     expect(ok.statusCode).toBe(204)
@@ -1212,25 +1202,24 @@ describe('AdminController', () => {
 
     bosses.setPeriod.mockResolvedValue(false)
     expect(
-      (await app.inject({ method: 'PUT', url: '/admin/bosses/nobody/period', payload: {} }))
-        .statusCode,
+      (await app.inject({ method: 'PUT', url: '/bosses/nobody/period', payload: {} })).statusCode,
     ).toBe(404)
     expect(
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/meirin/period',
+          url: '/bosses/meirin/period',
           payload: { validFrom: '2026-11-05', validUntil: '2026-07-03' },
         })
       ).statusCode,
     ).toBe(400)
   })
 
-  it('PUT /admin/bosses/:key/short-name 은 앞뒤 공백을 걷어 적고 204, 모르는 보스는 404, 빈 이름은 400 이다', async () => {
+  it('PUT /bosses/:key/short-name 은 앞뒤 공백을 걷어 적고 204, 모르는 보스는 404, 빈 이름은 400 이다', async () => {
     bosses.setShortName.mockResolvedValue(true)
     const ok = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/meirin/short-name',
+      url: '/bosses/meirin/short-name',
       payload: { shortName: ' 메이린 ' },
     })
     expect(ok.statusCode).toBe(204)
@@ -1241,7 +1230,7 @@ describe('AdminController', () => {
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/nobody/short-name',
+          url: '/bosses/nobody/short-name',
           payload: { shortName: '누구' },
         })
       ).statusCode,
@@ -1250,18 +1239,18 @@ describe('AdminController', () => {
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/meirin/short-name',
+          url: '/bosses/meirin/short-name',
           payload: { shortName: '  ' },
         })
       ).statusCode,
     ).toBe(400)
   })
 
-  it('PUT /admin/bosses/:key/difficulties/:difficulty/period 는 204, 모르는 조합은 404 다', async () => {
+  it('PUT /bosses/:key/difficulties/:difficulty/period 는 204, 모르는 조합은 404 다', async () => {
     bosses.setDifficultyPeriod.mockResolvedValue(true)
     const ok = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/lotus/difficulties/extreme/period',
+      url: '/bosses/lotus/difficulties/extreme/period',
       payload: { validFrom: '2026-11-05T10:00' },
     })
     expect(ok.statusCode).toBe(204)
@@ -1273,7 +1262,7 @@ describe('AdminController', () => {
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/lotus/difficulties/easy/period',
+          url: '/bosses/lotus/difficulties/easy/period',
           payload: {},
         })
       ).statusCode,
@@ -1282,18 +1271,18 @@ describe('AdminController', () => {
       (
         await app.inject({
           method: 'PUT',
-          url: '/admin/bosses/lotus/difficulties/ultra/period',
+          url: '/bosses/lotus/difficulties/ultra/period',
           payload: {},
         })
       ).statusCode,
     ).toBe(400)
   })
 
-  it('PUT /admin/bosses/:key/difficulties/:difficulty 는 새 줄의 주기 · 유효 기간도 함께 넘기고, 주기가 없으면 400 이다', async () => {
+  it('PUT /bosses/:key/difficulties/:difficulty 는 새 줄의 주기 · 유효 기간도 함께 넘기고, 주기가 없으면 400 이다', async () => {
     bosses.upsertDifficulty.mockResolvedValue(true)
     const res = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/bardrix/difficulties/extreme',
+      url: '/bosses/bardrix/difficulties/extreme',
       payload: { cycle: 'monthly', requiredLevel: 290, validFrom: '2026-10-22T10:00' },
     })
     expect(res.statusCode).toBe(204)
@@ -1306,7 +1295,7 @@ describe('AdminController', () => {
     })
     const noCycle = await app.inject({
       method: 'PUT',
-      url: '/admin/bosses/bardrix/difficulties/extreme',
+      url: '/bosses/bardrix/difficulties/extreme',
       payload: { requiredLevel: 290 },
     })
     expect(noCycle.statusCode).toBe(400)
@@ -1324,14 +1313,14 @@ describe('AdminController', () => {
         itemRewardTypes: [],
       }
       spendRepo.adminRows.mockResolvedValue(section)
-      expect(
-        (await app.inject({ method: 'GET', url: '/admin/spend-catalog/rows' })).json(),
-      ).toEqual(section)
+      expect((await app.inject({ method: 'GET', url: '/spend-catalog/rows' })).json()).toEqual(
+        section,
+      )
 
       spendRepo.createGroup.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
-        url: '/admin/spend-catalog/groups',
+        url: '/spend-catalog/groups',
         payload: { key: 'event', name: '이벤트', category: 'event_bm', cardTitle: '이벤트' },
       })
       expect(created.statusCode).toBe(201)
@@ -1347,7 +1336,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/spend-catalog/groups',
+            url: '/spend-catalog/groups',
             payload: { key: 'event', name: '이벤트', category: 'event_bm', cardTitle: '이벤트' },
           })
         ).statusCode,
@@ -1357,7 +1346,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/spend-catalog/groups',
+            url: '/spend-catalog/groups',
             payload: { key: 'hunt', name: '사냥', category: 'hunting', cardTitle: '사냥' },
           })
         ).statusCode,
@@ -1367,7 +1356,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/groups/nobody',
+            url: '/spend-catalog/groups/nobody',
             payload: { name: 'x', category: 'buff', cardTitle: 'x', isActive: false },
           })
         ).statusCode,
@@ -1378,7 +1367,7 @@ describe('AdminController', () => {
       spendRepo.createItem.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
-        url: '/admin/spend-catalog/items',
+        url: '/spend-catalog/items',
         payload: {
           key: 'boss_killer_potion',
           group: 'boss_buff',
@@ -1409,7 +1398,7 @@ describe('AdminController', () => {
       spendRepo.createItem.mockRejectedValue(new SpendItemShape('단계와 축 값을 함께 못 든다'))
       const shape = await app.inject({
         method: 'POST',
-        url: '/admin/spend-catalog/items',
+        url: '/spend-catalog/items',
         payload: {
           key: 'x',
           group: 'scroll',
@@ -1428,7 +1417,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/items/x',
+            url: '/spend-catalog/items/x',
             payload: { tile: 'nobody', name: 'x', currency: 'meso', unit: '개' },
           })
         ).statusCode,
@@ -1437,7 +1426,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/items/x',
+            url: '/spend-catalog/items/x',
             payload: {
               tile: 't',
               name: 'x',
@@ -1465,7 +1454,7 @@ describe('AdminController', () => {
       cashbookRepo.createCategory.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
-        url: '/admin/cashbook-categories',
+        url: '/cashbook-categories',
         payload: hexa,
       })
       expect(created.statusCode).toBe(201)
@@ -1476,19 +1465,19 @@ describe('AdminController', () => {
       })
       cashbookRepo.createCategory.mockRejectedValue(new CashbookCategoryExists('spend.hexa_skill'))
       expect(
-        (await app.inject({ method: 'POST', url: '/admin/cashbook-categories', payload: hexa }))
+        (await app.inject({ method: 'POST', url: '/cashbook-categories', payload: hexa }))
           .statusCode,
       ).toBe(409)
       cashbookRepo.createCategory.mockRejectedValue(new AssetNotFound(ROW))
       expect(
-        (await app.inject({ method: 'POST', url: '/admin/cashbook-categories', payload: hexa }))
+        (await app.inject({ method: 'POST', url: '/cashbook-categories', payload: hexa }))
           .statusCode,
       ).toBe(400)
       expect(
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/cashbook-categories',
+            url: '/cashbook-categories',
             payload: { ...hexa, entryType: 'transfer' },
           })
         ).statusCode,
@@ -1508,7 +1497,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/cashbook-categories/income/hunting',
+            url: '/cashbook-categories/income/hunting',
             payload: body,
           })
         ).statusCode,
@@ -1519,7 +1508,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/cashbook-categories/spend/nobody/move',
+            url: '/cashbook-categories/spend/nobody/move',
             payload: { direction: 'up' },
           })
         ).statusCode,
@@ -1532,7 +1521,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/cashbook-item-types/equipment',
+            url: '/cashbook-item-types/equipment',
             payload: { name: '장비', hasTariff: true },
           })
         ).statusCode,
@@ -1547,7 +1536,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/reward-types/exp',
+            url: '/spend-catalog/reward-types/exp',
             payload: { name: '경험치' },
           })
         ).statusCode,
@@ -1557,7 +1546,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/spend-catalog/reward-types/meso',
+            url: '/spend-catalog/reward-types/meso',
             payload: { name: '메소' },
           })
         ).statusCode,
@@ -1581,8 +1570,7 @@ describe('AdminController', () => {
       validFrom: '2026-10-22',
       validUntil: '2026-11-19',
     }
-    const post = (payload: object) =>
-      app.inject({ method: 'POST', url: '/admin/hunt-loot', payload })
+    const post = (payload: object) => app.inject({ method: 'POST', url: '/hunt-loot', payload })
 
     it('더하면 빈 가격 · 기간을 null 로 채워 넘기고, 같은 key 는 409 다', async () => {
       huntLootRepo.create.mockResolvedValue({ id: ROW })
@@ -1614,7 +1602,7 @@ describe('AdminController', () => {
     it('고치기 · 옮기기는 key 로 찾고 모르면 404, 가격이 종류와 안 맞으면 400 이다', async () => {
       const body = { name: '순록의 우유', iconAssetId: ROW, npcPriceMeso: 3000 }
       const put = () =>
-        app.inject({ method: 'PUT', url: '/admin/hunt-loot/reindeer_milk', payload: body })
+        app.inject({ method: 'PUT', url: '/hunt-loot/reindeer_milk', payload: body })
       huntLootRepo.update.mockResolvedValue(true)
       expect((await put()).statusCode).toBe(204)
       expect(huntLootRepo.update).toHaveBeenCalledWith('reindeer_milk', {
@@ -1631,7 +1619,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunt-loot/nobody/move',
+            url: '/hunt-loot/nobody/move',
             payload: { direction: 'up' },
           })
         ).statusCode,
@@ -1641,17 +1629,17 @@ describe('AdminController', () => {
 
   describe('FAQ', () => {
     const createSheet = (payload: object) =>
-      app.inject({ method: 'POST', url: '/admin/faqs/sheets', payload })
+      app.inject({ method: 'POST', url: '/faqs/sheets', payload })
     const createItem = (payload: object) =>
-      app.inject({ method: 'POST', url: '/admin/faqs/sheets/boss-manage/items', payload })
+      app.inject({ method: 'POST', url: '/faqs/sheets/boss-manage/items', payload })
 
     it('묶음 화면은 HTML 이고 메뉴는 FAQ 에 표시를 단다', async () => {
-      const res = await app.inject({ method: 'GET', url: '/admin/faqs/sheets/boss-manage' })
+      const res = await app.inject({ method: 'GET', url: '/faqs/sheets/boss-manage' })
       expect(res.statusCode).toBe(200)
       expect(res.headers['content-type']).toContain('text/html')
       expect(res.headers['cache-control']).toBe('no-store')
       expect(res.body.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
-        '<a href="/admin/faqs" aria-current="page">',
+        '<a href="/faqs" aria-current="page">',
       ])
     })
 
@@ -1696,7 +1684,7 @@ describe('AdminController', () => {
       faqRepo.updateItem.mockResolvedValue(true)
       const put = await app.inject({
         method: 'PUT',
-        url: '/admin/faqs/items/' + ROW,
+        url: '/faqs/items/' + ROW,
         payload: { question: '보스 추가', answer },
       })
       expect(put.statusCode).toBe(204)
@@ -1728,12 +1716,12 @@ describe('AdminController', () => {
       faqRepo.moveItem.mockResolvedValue(false)
       const move = { direction: 'up' }
       for (const [method, url, payload] of [
-        ['PUT', '/admin/faqs/sheets/nobody', { title: '누구' }],
-        ['DELETE', '/admin/faqs/sheets/nobody', undefined],
-        ['POST', '/admin/faqs/sheets/nobody/move', move],
-        ['PUT', '/admin/faqs/items/' + ROW, { question: '누구', answer: '누구' }],
-        ['DELETE', '/admin/faqs/items/' + ROW, undefined],
-        ['POST', '/admin/faqs/items/' + ROW + '/move', move],
+        ['PUT', '/faqs/sheets/nobody', { title: '누구' }],
+        ['DELETE', '/faqs/sheets/nobody', undefined],
+        ['POST', '/faqs/sheets/nobody/move', move],
+        ['PUT', '/faqs/items/' + ROW, { question: '누구', answer: '누구' }],
+        ['DELETE', '/faqs/items/' + ROW, undefined],
+        ['POST', '/faqs/items/' + ROW + '/move', move],
       ] as const) {
         expect((await app.inject({ method, url, payload })).statusCode).toBe(404)
       }
@@ -1743,15 +1731,16 @@ describe('AdminController', () => {
   describe('심볼 비용', () => {
     it('rows 는 관리 줄이고, 묶음 수정은 비용 줄 위로 내리면 409, 심볼은 모르는 묶음이면 404 · 그림 표에 없는 그림이면 400 이다', async () => {
       symbolRepo.adminRows.mockResolvedValue({ updatedAt: null, groups: [] })
-      expect((await app.inject({ method: 'GET', url: '/admin/symbol-costs/rows' })).json()).toEqual(
-        { updatedAt: null, groups: [] },
-      )
+      expect((await app.inject({ method: 'GET', url: '/symbol-costs/rows' })).json()).toEqual({
+        updatedAt: null,
+        groups: [],
+      })
       symbolRepo.createGroup.mockResolvedValue({ id: ROW })
       expect(
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/symbol-costs/groups',
+            url: '/symbol-costs/groups',
             payload: {
               key: 'arcane',
               name: '아케인',
@@ -1773,7 +1762,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/symbol-costs/groups',
+            url: '/symbol-costs/groups',
             payload: {
               key: 'arcane',
               name: '아케인',
@@ -1789,7 +1778,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/symbol-costs/groups/arcane',
+            url: '/symbol-costs/groups/arcane',
             payload: { name: '아케인', maxLevel: 10, defaultFromLevel: 1, defaultToLevel: 2 },
           })
         ).statusCode,
@@ -1802,7 +1791,7 @@ describe('AdminController', () => {
         iconAssetId: ROW,
       }
       const postSymbol = (payload: object) =>
-        app.inject({ method: 'POST', url: '/admin/symbol-costs/symbols', payload })
+        app.inject({ method: 'POST', url: '/symbol-costs/symbols', payload })
       symbolRepo.createSymbol.mockRejectedValue(new NoSymbolGroup('nobody'))
       expect((await postSymbol(tallahart)).statusCode).toBe(404)
       expect(symbolRepo.createSymbol).toHaveBeenCalledWith(tallahart)
@@ -1816,7 +1805,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/symbol-costs/symbols/tallahart',
+            url: '/symbol-costs/symbols/tallahart',
             payload: { name: '탈라하트', requiredLevel: 290, iconAssetId: ROW },
           })
         ).statusCode,
@@ -1827,7 +1816,7 @@ describe('AdminController', () => {
       symbolRepo.addCosts.mockResolvedValue({ inserted: 2 })
       const added = await app.inject({
         method: 'POST',
-        url: '/admin/symbol-costs/symbols/tallahart/costs',
+        url: '/symbol-costs/symbols/tallahart/costs',
         payload: {
           costs: [
             { fromLevel: 1, costMeso: 100 },
@@ -1846,7 +1835,7 @@ describe('AdminController', () => {
       symbolRepo.addCosts.mockRejectedValue(new LevelsIncomplete('3'))
       const incomplete = await app.inject({
         method: 'POST',
-        url: '/admin/symbol-costs/symbols/tallahart/costs',
+        url: '/symbol-costs/symbols/tallahart/costs',
         payload: { validFrom: '2026-10-22', costs: [{ fromLevel: 1, costMeso: 100 }] },
       })
       expect(incomplete.statusCode).toBe(400)
@@ -1854,11 +1843,11 @@ describe('AdminController', () => {
 
       symbolRepo.removeLatest.mockRejectedValue(new OnlyRow(ROW))
       expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/symbol-costs/rows/${ROW}` })).statusCode,
+        (await app.inject({ method: 'DELETE', url: `/symbol-costs/rows/${ROW}` })).statusCode,
       ).toBe(409)
       symbolRepo.removeLatest.mockResolvedValue(false)
       expect(
-        (await app.inject({ method: 'DELETE', url: `/admin/symbol-costs/rows/${ROW}` })).statusCode,
+        (await app.inject({ method: 'DELETE', url: `/symbol-costs/rows/${ROW}` })).statusCode,
       ).toBe(404)
     })
   })
@@ -1872,7 +1861,7 @@ describe('AdminController', () => {
     }
     const core = { jobId: ROW, name: '인페르날 웨이브', typeKey: 'skill', iconAssetId: ROW }
     const send = (method: 'POST' | 'PUT' | 'DELETE', url: string, payload?: object) =>
-      app.inject({ method, url: `/admin/hexa-matrix${url}`, payload })
+      app.inject({ method, url: `/hexa-matrix${url}`, payload })
 
     it('종류는 기본값을 채워 넘기고, 같은 넥슨 타입의 기본 종류가 겹치면 409 · 그림 표에 없는 그림은 400 이다', async () => {
       hexaRepo.createType.mockResolvedValue({ id: ROW })
@@ -1985,7 +1974,7 @@ describe('AdminController', () => {
   describe('월드', () => {
     it('rows 는 칸 그대로이고, POST 는 201 · 같은 key 409, PUT 은 204 · 모르면 404, move 는 204 다', async () => {
       worldsRepo.adminSection.mockResolvedValue({ updatedAt: null, worlds: [] })
-      expect((await app.inject({ method: 'GET', url: '/admin/worlds/rows' })).json()).toEqual({
+      expect((await app.inject({ method: 'GET', url: '/worlds/rows' })).json()).toEqual({
         updatedAt: null,
         worlds: [],
       })
@@ -1993,7 +1982,7 @@ describe('AdminController', () => {
       worldsRepo.create.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
-        url: '/admin/worlds',
+        url: '/worlds',
         payload: {
           key: 'challengers_5',
           name: '챌린저스5',
@@ -2015,7 +2004,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/worlds',
+            url: '/worlds',
             payload: { key: 'challengers_5', name: 'x' },
           })
         ).statusCode,
@@ -2026,7 +2015,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/worlds/special',
+            url: '/worlds/special',
             payload: { name: '스페셜', isEvent: true },
           })
         ).statusCode,
@@ -2039,7 +2028,7 @@ describe('AdminController', () => {
       })
       worldsRepo.update.mockResolvedValue(false)
       expect(
-        (await app.inject({ method: 'PUT', url: '/admin/worlds/nobody', payload: { name: 'x' } }))
+        (await app.inject({ method: 'PUT', url: '/worlds/nobody', payload: { name: 'x' } }))
           .statusCode,
       ).toBe(404)
 
@@ -2048,7 +2037,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/worlds/special/move',
+            url: '/worlds/special/move',
             payload: { direction: 'down' },
           })
         ).statusCode,
@@ -2061,16 +2050,16 @@ describe('AdminController', () => {
         app.inject({ method, url, ...(payload === undefined ? {} : { payload }) })
 
       worldsRepo.addPeriod.mockResolvedValue({ id: ROW })
-      const added = await send('POST', '/admin/worlds/special/periods', period)
+      const added = await send('POST', '/worlds/special/periods', period)
       expect(added.statusCode).toBe(201)
       expect(added.json()).toEqual({ id: ROW })
       expect(worldsRepo.addPeriod).toHaveBeenCalledWith('special', period)
       worldsRepo.addPeriod.mockRejectedValueOnce(new NoWorld('nobody'))
-      expect((await send('POST', '/admin/worlds/nobody/periods', period)).statusCode).toBe(404)
+      expect((await send('POST', '/worlds/nobody/periods', period)).statusCode).toBe(404)
       worldsRepo.addPeriod.mockRejectedValueOnce(new PeriodOverlap('special'))
-      expect((await send('POST', '/admin/worlds/special/periods', period)).statusCode).toBe(400)
+      expect((await send('POST', '/worlds/special/periods', period)).statusCode).toBe(400)
       worldsRepo.addPeriod.mockRejectedValueOnce(new PeriodNotAfter('2025-11-20'))
-      expect((await send('POST', '/admin/worlds/special/periods', period)).statusCode).toBe(400)
+      expect((await send('POST', '/worlds/special/periods', period)).statusCode).toBe(400)
 
       worldsRepo.addPeriod.mockClear()
       for (const bad of [
@@ -2079,23 +2068,23 @@ describe('AdminController', () => {
         { validFrom: '2025-12-19', validUntil: '2025-11-20' },
         { validFrom: '2025-11-20' },
       ]) {
-        expect((await send('POST', '/admin/worlds/special/periods', bad)).statusCode).toBe(400)
+        expect((await send('POST', '/worlds/special/periods', bad)).statusCode).toBe(400)
       }
       expect(worldsRepo.addPeriod).not.toHaveBeenCalled()
 
       worldsRepo.updatePeriod.mockResolvedValue(true)
-      expect((await send('PUT', `/admin/worlds/periods/${ROW}`, period)).statusCode).toBe(204)
+      expect((await send('PUT', `/worlds/periods/${ROW}`, period)).statusCode).toBe(204)
       expect(worldsRepo.updatePeriod).toHaveBeenCalledWith(ROW, period)
       worldsRepo.updatePeriod.mockResolvedValueOnce(false)
-      expect((await send('PUT', `/admin/worlds/periods/${ROW}`, period)).statusCode).toBe(404)
+      expect((await send('PUT', `/worlds/periods/${ROW}`, period)).statusCode).toBe(404)
       worldsRepo.updatePeriod.mockRejectedValueOnce(new PeriodOverlap('special'))
-      expect((await send('PUT', `/admin/worlds/periods/${ROW}`, period)).statusCode).toBe(400)
+      expect((await send('PUT', `/worlds/periods/${ROW}`, period)).statusCode).toBe(400)
 
       worldsRepo.removePeriod.mockResolvedValue(true)
-      expect((await send('DELETE', `/admin/worlds/periods/${ROW}`)).statusCode).toBe(204)
+      expect((await send('DELETE', `/worlds/periods/${ROW}`)).statusCode).toBe(204)
       expect(worldsRepo.removePeriod).toHaveBeenCalledWith(ROW)
       worldsRepo.removePeriod.mockResolvedValueOnce(false)
-      expect((await send('DELETE', `/admin/worlds/periods/${ROW}`)).statusCode).toBe(404)
+      expect((await send('DELETE', `/worlds/periods/${ROW}`)).statusCode).toBe(404)
     })
   })
 
@@ -2132,7 +2121,7 @@ describe('AdminController', () => {
 
     it('rows 는 관리 줄 그대로이고, 분류는 PUT 204 · 모르면 404, move 는 204 다', async () => {
       contentsRepo.adminRows.mockResolvedValue({ updatedAt: null, categories: [], contents: [] })
-      expect((await app.inject({ method: 'GET', url: '/admin/contents/rows' })).json()).toEqual({
+      expect((await app.inject({ method: 'GET', url: '/contents/rows' })).json()).toEqual({
         updatedAt: null,
         categories: [],
         contents: [],
@@ -2143,7 +2132,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/contents/categories/epic_dungeon',
+            url: '/contents/categories/epic_dungeon',
             payload: {
               name: '에픽 던전',
               countTag: 'ID당 1회',
@@ -2165,7 +2154,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/contents/categories/epic_dungeon',
+            url: '/contents/categories/epic_dungeon',
             payload: { name: '에픽 던전', countTag: 'ID당 1회', hidesCountTag: true },
           })
         ).statusCode,
@@ -2174,7 +2163,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/contents/categories/misc',
+            url: '/contents/categories/misc',
             payload: { name: 'x' },
           })
         ).statusCode,
@@ -2184,7 +2173,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/contents/categories/guild',
+            url: '/contents/categories/guild',
             payload: { name: '길드' },
           })
         ).statusCode,
@@ -2195,7 +2184,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/contents/categories/guild/move',
+            url: '/contents/categories/guild/move',
             payload: { direction: 'up' },
           })
         ).statusCode,
@@ -2207,7 +2196,7 @@ describe('AdminController', () => {
       contentsRepo.createContent.mockResolvedValue({ id: ROW })
       const created = await app.inject({
         method: 'POST',
-        url: '/admin/contents',
+        url: '/contents',
         payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...highMountain },
       })
       expect(created.statusCode).toBe(201)
@@ -2222,7 +2211,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/contents',
+            url: '/contents',
             payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...highMountain },
           })
         ).statusCode,
@@ -2230,7 +2219,7 @@ describe('AdminController', () => {
       contentsRepo.createContent.mockRejectedValue(new ApiNameTaken('epic_dungeon_high_mountain'))
       const taken = await app.inject({
         method: 'POST',
-        url: '/admin/contents',
+        url: '/contents',
         payload: { key: 'epic_dungeon_high_mountain_2', cycle: 'weekly', ...highMountain },
       })
       expect(taken.statusCode).toBe(409)
@@ -2240,7 +2229,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/contents',
+            url: '/contents',
             payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...highMountain },
           })
         ).statusCode,
@@ -2258,7 +2247,7 @@ describe('AdminController', () => {
           (
             await app.inject({
               method: 'POST',
-              url: '/admin/contents',
+              url: '/contents',
               payload: { key: 'epic_dungeon_high_mountain', cycle: 'weekly', ...bad },
             })
           ).statusCode,
@@ -2273,7 +2262,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/contents/epic_dungeon_high_mountain',
+            url: '/contents/epic_dungeon_high_mountain',
             payload: { ...highMountain, validUntil: '2027-01-01' },
           })
         ).statusCode,
@@ -2287,7 +2276,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/contents/nobody',
+            url: '/contents/nobody',
             payload: highMountain,
           })
         ).statusCode,
@@ -2298,7 +2287,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/contents/epic_dungeon_high_mountain/move',
+            url: '/contents/epic_dungeon_high_mountain/move',
             payload: { direction: 'down' },
           })
         ).statusCode,
@@ -2310,15 +2299,15 @@ describe('AdminController', () => {
     it('rows 는 관리 줄이고, 칸 PUT 204 · 모르면 404, 구간 POST 201 · 같은 구간 409, 구간 DELETE 204 · 1 구간 409 다', async () => {
       const rows = { updatedAt: null, superiorSeries: [], superiorItems: [] }
       enhancementRepo.adminRows.mockResolvedValue(rows)
-      expect(
-        (await app.inject({ method: 'GET', url: '/admin/enhancement-costs/rows' })).json(),
-      ).toEqual(rows)
+      expect((await app.inject({ method: 'GET', url: '/enhancement-costs/rows' })).json()).toEqual(
+        rows,
+      )
       enhancementRepo.setPotentialResetCost.mockResolvedValue(true)
       expect(
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/enhancement-costs/potential/additional/250/epic',
+            url: '/enhancement-costs/potential/additional/250/epic',
             payload: { costMeso: 34_300_000 },
           })
         ).statusCode,
@@ -2334,7 +2323,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/enhancement-costs/potential/potential/275/epic',
+            url: '/enhancement-costs/potential/potential/275/epic',
             payload: { costMeso: 1 },
           })
         ).statusCode,
@@ -2344,7 +2333,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/enhancement-costs/potential/potential/250/normal',
+            url: '/enhancement-costs/potential/potential/250/normal',
             payload: { costMeso: 1 },
           })
         ).statusCode,
@@ -2360,7 +2349,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/enhancement-costs/potential',
+            url: '/enhancement-costs/potential',
             payload: bandBody,
           })
         ).statusCode,
@@ -2376,7 +2365,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/enhancement-costs/potential',
+            url: '/enhancement-costs/potential',
             payload: bandBody,
           })
         ).statusCode,
@@ -2387,7 +2376,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'DELETE',
-            url: '/admin/enhancement-costs/potential/potential/275',
+            url: '/enhancement-costs/potential/potential/275',
           })
         ).statusCode,
       ).toBe(204)
@@ -2396,7 +2385,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'DELETE',
-            url: '/admin/enhancement-costs/potential/potential/1',
+            url: '/enhancement-costs/potential/potential/1',
           })
         ).statusCode,
       ).toBe(409)
@@ -2408,7 +2397,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/enhancement-costs/soul/unique',
+            url: '/enhancement-costs/soul/unique',
             payload: { costMeso: 65_000_000 },
           })
         ).statusCode,
@@ -2420,7 +2409,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/enhancement-costs/starforce/15',
+            url: '/enhancement-costs/starforce/15',
             payload: { exponent: 2.7, divisor: 200 },
           })
         ).statusCode,
@@ -2434,7 +2423,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/enhancement-costs/starforce/40',
+            url: '/enhancement-costs/starforce/40',
             payload: { exponent: 2.7, divisor: 200 },
           })
         ).statusCode,
@@ -2443,7 +2432,7 @@ describe('AdminController', () => {
       enhancementRepo.addStarforceStep.mockResolvedValue({ fromStar: 30 })
       const added = await app.inject({
         method: 'POST',
-        url: '/admin/enhancement-costs/starforce',
+        url: '/enhancement-costs/starforce',
         payload: { exponent: 2.7, divisor: 200 },
       })
       expect(added.statusCode).toBe(201)
@@ -2451,12 +2440,12 @@ describe('AdminController', () => {
 
       enhancementRepo.removeLastStarforceStep.mockResolvedValue(true)
       expect(
-        (await app.inject({ method: 'DELETE', url: '/admin/enhancement-costs/starforce/last' }))
+        (await app.inject({ method: 'DELETE', url: '/enhancement-costs/starforce/last' }))
           .statusCode,
       ).toBe(204)
       enhancementRepo.removeLastStarforceStep.mockResolvedValue(false)
       expect(
-        (await app.inject({ method: 'DELETE', url: '/admin/enhancement-costs/starforce/last' }))
+        (await app.inject({ method: 'DELETE', url: '/enhancement-costs/starforce/last' }))
           .statusCode,
       ).toBe(404)
     })
@@ -2467,12 +2456,12 @@ describe('AdminController', () => {
       const series = { key: 'tyrant', name: '타일런트', starforceCostMeso: 55_382_200 }
 
       enhancementRepo.addSuperiorSeries.mockResolvedValue(undefined)
-      expect(await inject('POST', '/admin/enhancement-costs/superior-series', series)).toBe(201)
+      expect(await inject('POST', '/enhancement-costs/superior-series', series)).toBe(201)
       expect(enhancementRepo.addSuperiorSeries).toHaveBeenCalledWith(series)
       enhancementRepo.addSuperiorSeries.mockRejectedValue(new SuperiorSeriesExists('tyrant'))
-      expect(await inject('POST', '/admin/enhancement-costs/superior-series', series)).toBe(409)
+      expect(await inject('POST', '/enhancement-costs/superior-series', series)).toBe(409)
       expect(
-        await inject('POST', '/admin/enhancement-costs/superior-series', {
+        await inject('POST', '/enhancement-costs/superior-series', {
           ...series,
           starforceCostMeso: 0,
         }),
@@ -2480,7 +2469,7 @@ describe('AdminController', () => {
 
       enhancementRepo.setSuperiorSeries.mockResolvedValue(true)
       expect(
-        await inject('PUT', '/admin/enhancement-costs/superior-series/tyrant', {
+        await inject('PUT', '/enhancement-costs/superior-series/tyrant', {
           name: '타일런트',
           starforceCostMeso: 55_000_000,
         }),
@@ -2491,7 +2480,7 @@ describe('AdminController', () => {
       })
       enhancementRepo.setSuperiorSeries.mockResolvedValue(false)
       expect(
-        await inject('PUT', '/admin/enhancement-costs/superior-series/nova', {
+        await inject('PUT', '/enhancement-costs/superior-series/nova', {
           name: '노바',
           starforceCostMeso: 1,
         }),
@@ -2499,28 +2488,28 @@ describe('AdminController', () => {
 
       const item = { name: '타일런트 리카온 벨트', seriesKey: 'tyrant' }
       enhancementRepo.addSuperiorItem.mockResolvedValue(undefined)
-      expect(await inject('POST', '/admin/enhancement-costs/superior-items', item)).toBe(201)
+      expect(await inject('POST', '/enhancement-costs/superior-items', item)).toBe(201)
       expect(enhancementRepo.addSuperiorItem).toHaveBeenCalledWith('타일런트 리카온 벨트', 'tyrant')
       enhancementRepo.addSuperiorItem.mockRejectedValue(new NoSuperiorSeries('nova'))
-      expect(await inject('POST', '/admin/enhancement-costs/superior-items', item)).toBe(404)
+      expect(await inject('POST', '/enhancement-costs/superior-items', item)).toBe(404)
       enhancementRepo.addSuperiorItem.mockRejectedValue(
         new SuperiorItemNameTaken('타일런트 리카온 벨트'),
       )
-      expect(await inject('POST', '/admin/enhancement-costs/superior-items', item)).toBe(409)
+      expect(await inject('POST', '/enhancement-costs/superior-items', item)).toBe(409)
       expect(
-        await inject('POST', '/admin/enhancement-costs/superior-items', { ...item, name: ' ' }),
+        await inject('POST', '/enhancement-costs/superior-items', { ...item, name: ' ' }),
       ).toBe(400)
 
       const encoded = encodeURIComponent('타일런트 리카온 벨트')
       enhancementRepo.removeSuperiorItem.mockResolvedValue(true)
-      expect(await inject('DELETE', `/admin/enhancement-costs/superior-items/${encoded}`)).toBe(204)
+      expect(await inject('DELETE', `/enhancement-costs/superior-items/${encoded}`)).toBe(204)
       expect(enhancementRepo.removeSuperiorItem).toHaveBeenCalledWith('타일런트 리카온 벨트')
       enhancementRepo.removeSuperiorItem.mockResolvedValue(false)
-      expect(await inject('DELETE', `/admin/enhancement-costs/superior-items/${encoded}`)).toBe(404)
+      expect(await inject('DELETE', `/enhancement-costs/superior-items/${encoded}`)).toBe(404)
     })
 
     it('슈페리얼 장비 그림 PUT 204 · 모르는 장비 404 · 그림 표에 없는 그림 400 · uuid 가 아니면 400 이다', async () => {
-      const url = `/admin/enhancement-costs/superior-items/${encodeURIComponent('타일런트 리카온 벨트')}/icon`
+      const url = `/enhancement-costs/superior-items/${encodeURIComponent('타일런트 리카온 벨트')}/icon`
       const iconAssetId = '49d165ed-66b2-40f0-9013-753e2d94d3bb'
       const put = async (payload: object) =>
         (await app.inject({ method: 'PUT', url, payload })).statusCode
@@ -2542,7 +2531,7 @@ describe('AdminController', () => {
   describe('MVP 등급', () => {
     it('rows 는 칸 그대로이고, PUT 은 204 · 모르면 404 · ENUM 밖 key 는 400, move 는 204 다', async () => {
       mvpRepo.section.mockResolvedValue({ updatedAt: null, mvpGrades: [] })
-      expect((await app.inject({ method: 'GET', url: '/admin/mvp-grades/rows' })).json()).toEqual({
+      expect((await app.inject({ method: 'GET', url: '/mvp-grades/rows' })).json()).toEqual({
         updatedAt: null,
         mvpGrades: [],
       })
@@ -2552,7 +2541,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/mvp-grades/gold',
+            url: '/mvp-grades/gold',
             payload: { name: '골드', auctionFeePercent: 3, starforceDiscountPercent: 5 },
           })
         ).statusCode,
@@ -2567,7 +2556,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/mvp-grades/black',
+            url: '/mvp-grades/black',
             payload: { name: '블랙', auctionFeePercent: 3, starforceDiscountPercent: 10 },
           })
         ).statusCode,
@@ -2576,7 +2565,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/mvp-grades/platinum',
+            url: '/mvp-grades/platinum',
             payload: { name: 'x', auctionFeePercent: 3, starforceDiscountPercent: 10 },
           })
         ).statusCode,
@@ -2587,7 +2576,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/mvp-grades/gold/move',
+            url: '/mvp-grades/gold/move',
             payload: { direction: 'down' },
           })
         ).statusCode,
@@ -2612,7 +2601,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/regions/cernium',
+            url: '/hunting-grounds/regions/cernium',
             payload: { name: '세르니움', forceType: 'authentic', iconAssetId: ROW },
           })
         ).statusCode,
@@ -2625,7 +2614,7 @@ describe('AdminController', () => {
       huntingRepo.updateRegion.mockRejectedValue(new AssetNotFound(ROW))
       const missing = await app.inject({
         method: 'PUT',
-        url: '/admin/hunting-grounds/regions/cernium',
+        url: '/hunting-grounds/regions/cernium',
         payload: { name: '세르니움', forceType: 'authentic', iconAssetId: ROW },
       })
       expect(missing.statusCode).toBe(400)
@@ -2636,7 +2625,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/regions',
+            url: '/hunting-grounds/regions',
             payload: { key: 'limen', name: '리멘', forceType: 'arcane', iconAssetId: ROW },
           })
         ).statusCode,
@@ -2646,7 +2635,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/regions',
+            url: '/hunting-grounds/regions',
             payload: { key: 'limen', name: '리멘', forceType: 'arcane', iconAssetId: 'limen' },
           })
         ).statusCode,
@@ -2661,16 +2650,19 @@ describe('AdminController', () => {
         grounds: [],
         groundLevels: [],
       })
-      expect(
-        (await app.inject({ method: 'GET', url: '/admin/hunting-grounds/rows' })).json(),
-      ).toEqual({ updatedAt: null, regions: [], grounds: [], groundLevels: [] })
+      expect((await app.inject({ method: 'GET', url: '/hunting-grounds/rows' })).json()).toEqual({
+        updatedAt: null,
+        regions: [],
+        grounds: [],
+        groundLevels: [],
+      })
 
       huntingRepo.createRegion.mockResolvedValue({ id: ROW })
       expect(
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/regions',
+            url: '/hunting-grounds/regions',
             payload: { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
           })
         ).statusCode,
@@ -2686,7 +2678,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/regions',
+            url: '/hunting-grounds/regions',
             payload: { key: 'road_of_vanishing', name: '소멸의 여로', forceType: 'arcane' },
           })
         ).statusCode,
@@ -2695,7 +2687,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/regions',
+            url: '/hunting-grounds/regions',
             payload: { key: 'limen', name: '리멘', forceType: 'sacred' },
           })
         ).statusCode,
@@ -2706,7 +2698,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/regions/cernium',
+            url: '/hunting-grounds/regions/cernium',
             payload: { name: '세르니움', forceType: 'authentic' },
           })
         ).statusCode,
@@ -2716,7 +2708,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/regions/nobody',
+            url: '/hunting-grounds/regions/nobody',
             payload: { name: 'x', forceType: 'arcane' },
           })
         ).statusCode,
@@ -2727,7 +2719,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/regions/cernium/move',
+            url: '/hunting-grounds/regions/cernium/move',
             payload: { direction: 'up' },
           })
         ).statusCode,
@@ -2737,7 +2729,7 @@ describe('AdminController', () => {
     it('사냥터 POST 201 · 모르는 지역 404 · 접두 어긋남 400 · 같은 이름 409 · 겹친 레벨 400, PUT 204 · 모르면 404, move 204 다', async () => {
       huntingRepo.createGround.mockResolvedValue({ id: ROW })
       expect(
-        (await app.inject({ method: 'POST', url: '/admin/hunting-grounds/grounds', payload: joy }))
+        (await app.inject({ method: 'POST', url: '/hunting-grounds/grounds', payload: joy }))
           .statusCode,
       ).toBe(201)
       expect(huntingRepo.createGround).toHaveBeenCalledWith(joy)
@@ -2746,7 +2738,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/grounds',
+            url: '/hunting-grounds/grounds',
             payload: { ...joy, region: 'limen' },
           })
         ).statusCode,
@@ -2756,7 +2748,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/grounds',
+            url: '/hunting-grounds/grounds',
             payload: { ...joy, key: 'weathered_land' },
           })
         ).statusCode,
@@ -2764,7 +2756,7 @@ describe('AdminController', () => {
       huntingRepo.createGround.mockRejectedValue(new GroundNameTaken(joy.key))
       const taken = await app.inject({
         method: 'POST',
-        url: '/admin/hunting-grounds/grounds',
+        url: '/hunting-grounds/grounds',
         payload: { ...joy, key: 'road_of_vanishing_other' },
       })
       expect(taken.statusCode).toBe(409)
@@ -2774,7 +2766,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/grounds',
+            url: '/hunting-grounds/grounds',
             payload: { ...joy, mobLevels: [200, 200] },
           })
         ).statusCode,
@@ -2786,7 +2778,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/grounds/' + joy.key,
+            url: '/hunting-grounds/grounds/' + joy.key,
             payload: {
               name: '풍화된 기쁨의 땅',
               requiredForce: 30,
@@ -2807,7 +2799,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/grounds/nobody',
+            url: '/hunting-grounds/grounds/nobody',
             payload: { name: 'x', requiredForce: 0, mobQuantity: 1, mobLevels: [1] },
           })
         ).statusCode,
@@ -2818,7 +2810,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'POST',
-            url: '/admin/hunting-grounds/grounds/' + joy.key + '/move',
+            url: '/hunting-grounds/grounds/' + joy.key + '/move',
             payload: { direction: 'down' },
           })
         ).statusCode,
@@ -2831,7 +2823,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
+            url: '/hunting-grounds/grounds/' + joy.key + '/popular',
             payload: { isPopular: true },
           })
         ).statusCode,
@@ -2841,7 +2833,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/grounds/' + joy.key + '/popular',
+            url: '/hunting-grounds/grounds/' + joy.key + '/popular',
             payload: { isPopular: 'true' },
           })
         ).statusCode,
@@ -2853,7 +2845,7 @@ describe('AdminController', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: '/admin/hunting-grounds/grounds/nobody/popular',
+            url: '/hunting-grounds/grounds/nobody/popular',
             payload: { isPopular: false },
           })
         ).statusCode,

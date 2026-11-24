@@ -60,15 +60,15 @@ describe('AdminAssetsController', () => {
       mock.mockReset()
   })
 
-  it('GET /admin/assets · /admin/assets/crops 는 화면이다', async () => {
-    for (const url of ['/admin/assets', '/admin/assets/crops']) {
+  it('GET /images · /images/crops 는 화면이다', async () => {
+    for (const url of ['/images', '/images/crops']) {
       const page = await app.inject({ method: 'GET', url })
       expect(page.statusCode).toBe(200)
       expect(page.headers['content-type']).toContain('text/html')
     }
   })
 
-  it('PUT /admin/assets/file 은 해시 이름으로 파일을 먼저 쓰고 그다음 표에 적는다', async () => {
+  it('PUT /images/file 은 해시 이름으로 파일을 먼저 쓰고 그다음 표에 적는다', async () => {
     const order: string[] = []
     store.write.mockImplementation(() => order.push('write'))
     assets.put.mockImplementation(() => {
@@ -79,7 +79,7 @@ describe('AdminAssetsController', () => {
 
     const res = await app.inject({
       method: 'PUT',
-      url: '/admin/assets/file?category=boss&fileName=bellona&extension=webp',
+      url: '/images/file?category=boss&fileName=bellona&extension=webp',
       headers: { 'content-type': 'image/webp' },
       payload: WEBP,
     })
@@ -100,7 +100,7 @@ describe('AdminAssetsController', () => {
     const put = (query: string, type: string, payload: Buffer) =>
       app.inject({
         method: 'PUT',
-        url: `/admin/assets/file?${query}`,
+        url: `/images/file?${query}`,
         headers: { 'content-type': type },
         payload,
       })
@@ -115,16 +115,16 @@ describe('AdminAssetsController', () => {
     expect(assets.put).not.toHaveBeenCalled()
   })
 
-  it('PUT /admin/image-crops 는 종류 · 그림 줄 id 와 숫자 셋을 받고, 그 밖은 400 이다. DELETE 는 없으면 404 다', async () => {
+  it('PUT /image-crops 는 종류 · 그림 줄 id 와 숫자 셋을 받고, 그 밖은 400 이다. DELETE 는 없으면 404 다', async () => {
     const crop = { widthPercent: 100, positionXPercent: 50, positionYPercent: -5 }
     const put = (url: string, body: object) => app.inject({ method: 'PUT', url, payload: body })
-    expect((await put(`/admin/image-crops/boss_portrait/${ASSET}`, crop)).statusCode).toBe(204)
+    expect((await put(`/image-crops/boss_portrait/${ASSET}`, crop)).statusCode).toBe(204)
     expect(crops.put).toHaveBeenCalledWith('boss_portrait', ASSET, crop)
     for (const [url, body] of [
-      [`/admin/image-crops/boss_portrait/${ASSET}`, { ...crop, widthPercent: 0 }],
-      [`/admin/image-crops/boss_portrait/${ASSET}`, { widthPercent: '100% auto' }],
-      [`/admin/image-crops/boss_portrait_modal/${ASSET}`, crop],
-      ['/admin/image-crops/boss_portrait/zakum', crop],
+      [`/image-crops/boss_portrait/${ASSET}`, { ...crop, widthPercent: 0 }],
+      [`/image-crops/boss_portrait/${ASSET}`, { widthPercent: '100% auto' }],
+      [`/image-crops/boss_portrait_modal/${ASSET}`, crop],
+      ['/image-crops/boss_portrait/zakum', crop],
     ] as const) {
       expect((await put(url, body)).statusCode).toBe(400)
     }
@@ -132,30 +132,30 @@ describe('AdminAssetsController', () => {
 
     crops.remove.mockResolvedValue(false)
     expect(
-      (await app.inject({ method: 'DELETE', url: `/admin/image-crops/boss_portrait/${ASSET}` }))
+      (await app.inject({ method: 'DELETE', url: `/image-crops/boss_portrait/${ASSET}` }))
         .statusCode,
     ).toBe(404)
   })
 
-  it('PUT /admin/image-crops 는 크롭이 가리킬 그림이 그림 표에 없으면 400 이다', async () => {
+  it('PUT /image-crops 는 크롭이 가리킬 그림이 그림 표에 없으면 400 이다', async () => {
     crops.put.mockRejectedValue(new AssetNotFound(ASSET))
     const res = await app.inject({
       method: 'PUT',
-      url: `/admin/image-crops/boss_portrait/${ASSET}`,
+      url: `/image-crops/boss_portrait/${ASSET}`,
       payload: { widthPercent: 100, positionXPercent: 50, positionYPercent: 45 },
     })
     expect(res.statusCode).toBe(400)
     expect(res.json()).toMatchObject({ message: `그림 표에 없는 그림이다: ${ASSET}` })
   })
 
-  it('GET /admin/assets/list 는 분류 트리 · 그림 줄 · 크롭이다', async () => {
+  it('GET /images/list 는 분류 트리 · 그림 줄 · 크롭이다', async () => {
     assets.section.mockResolvedValue({ updatedAt: '2026-11-09T00:00:00.000Z', files: [] })
     assets.adminRows.mockResolvedValue([{ id: 'a', label: '벨로나' }])
     crops.section.mockResolvedValue({ updatedAt: null, imageCrops: [] })
     groups.tree.mockResolvedValue([
       { key: 'cash', name: '캐시', groups: [{ key: 'cash', name: '캐시' }] },
     ])
-    const body = (await app.inject({ method: 'GET', url: '/admin/assets/list' })).json<{
+    const body = (await app.inject({ method: 'GET', url: '/images/list' })).json<{
       updatedAt: string
       rows: unknown[]
       crops: unknown[]
@@ -169,11 +169,11 @@ describe('AdminAssetsController', () => {
     ])
   })
 
-  it('PUT /admin/assets/:id/name 은 이름을 적거나 비우고, 모르는 그림은 404 다', async () => {
+  it('PUT /images/:id/name 은 이름을 적거나 비우고, 모르는 그림은 404 다', async () => {
     const id = '11111111-1111-4111-8111-111111111111'
     assets.rename.mockResolvedValue(true)
     const put = (name: string | null) =>
-      app.inject({ method: 'PUT', url: `/admin/assets/${id}/name`, payload: { name } })
+      app.inject({ method: 'PUT', url: `/images/${id}/name`, payload: { name } })
     expect((await put('  벨로나 초상 ')).statusCode).toBe(204)
     expect(assets.rename).toHaveBeenLastCalledWith(id, '벨로나 초상')
     expect((await put('')).statusCode).toBe(204)
@@ -182,24 +182,18 @@ describe('AdminAssetsController', () => {
     expect((await put('x')).statusCode).toBe(404)
   })
 
-  it('DELETE /admin/assets/:id 는 쓰는 곳이 있으면 409 로 그 목록을 알리고, 모르는 그림은 404 다', async () => {
+  it('DELETE /images/:id 는 쓰는 곳이 있으면 409 로 그 목록을 알리고, 모르는 그림은 404 다', async () => {
     const id = '11111111-1111-4111-8111-111111111111'
     assets.remove.mockResolvedValue(true)
-    expect((await app.inject({ method: 'DELETE', url: `/admin/assets/${id}` })).statusCode).toBe(
-      204,
-    )
+    expect((await app.inject({ method: 'DELETE', url: `/images/${id}` })).statusCode).toBe(204)
     assets.remove.mockRejectedValue(
       new AssetInUse([{ kind: '아이템', name: '그린 펜던트', itemCategory: 'pendant' }]),
     )
-    const used = await app.inject({ method: 'DELETE', url: `/admin/assets/${id}` })
+    const used = await app.inject({ method: 'DELETE', url: `/images/${id}` })
     expect(used.statusCode).toBe(409)
     expect(used.json<{ message: string }>().message).toContain('아이템 그린 펜던트')
     assets.remove.mockResolvedValue(false)
-    expect((await app.inject({ method: 'DELETE', url: `/admin/assets/${id}` })).statusCode).toBe(
-      404,
-    )
-    expect(
-      (await app.inject({ method: 'DELETE', url: '/admin/assets/not-a-uuid' })).statusCode,
-    ).toBe(400)
+    expect((await app.inject({ method: 'DELETE', url: `/images/${id}` })).statusCode).toBe(404)
+    expect((await app.inject({ method: 'DELETE', url: '/images/not-a-uuid' })).statusCode).toBe(400)
   })
 })

@@ -6,7 +6,7 @@ import { layout } from './layout'
  * key 는 ENUM 과 일대일이라 더하고 지우는 폼이 없다. 차례가 등급의 높낮이라 ↑↓ 로 옮긴다.
  */
 export const MVP_GRADES_HTML = layout(
-  '/admin/mvp-grades',
+  '/mvp-grades',
   'MVP 등급',
   `<div class="top"><h1>MVP 등급</h1><span class="grow"></span><span class="updated" id="updated"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -18,13 +18,13 @@ export const MVP_GRADES_HTML = layout(
 <script>
   var batch = editing(function () { load(); });
   var assets = {};
-  async function move(key, direction) { var r = await call('POST', '/admin/mvp-grades/' + key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
+  async function move(key, direction) { var r = await call('POST', '/mvp-grades/' + key + '/move', { direction: direction }); if (!r.ok) show(fail('못 옮겼다', r), true); load(); }
   function render(grades) {
     batch.clear();
     var rows = document.getElementById('rows'); rows.innerHTML = '';
     grades.forEach(function (g) {
       var tr = el('tr'); cell(tr, g.key, 'label');
-      var send = function () { return call('PUT', '/admin/mvp-grades/' + g.key, { name: name.value(), auctionFeePercent: fee.value(), starforceDiscountPercent: discount.value() }); };
+      var send = function () { return call('PUT', '/mvp-grades/' + g.key, { name: name.value(), auctionFeePercent: fee.value(), starforceDiscountPercent: discount.value() }); };
       var name = textCell(batch, g.name, g.name, send), fee = numCell(batch, g.name, g.auctionFeePercent, send, 'short'), discount = numCell(batch, g.name, g.starforceDiscountPercent, send, 'short');
       cell(tr, name.input); cell(tr, fee.input, 'num'); cell(tr, discount.input, 'num');
       var a = g.plateAssetId ? assets[g.plateAssetId] : null;
@@ -35,9 +35,9 @@ export const MVP_GRADES_HTML = layout(
     });
   }
   async function load() {
-    var a = await call('GET', '/admin/assets/list');
+    var a = await call('GET', '/images/list');
     if (a.ok) { assets = {}; a.json.rows.forEach(function (row) { assets[row.id] = row; }); }
-    var r = await call('GET', '/admin/mvp-grades/rows');
+    var r = await call('GET', '/mvp-grades/rows');
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
     document.getElementById('updated').textContent = r.json.updatedAt ? '마지막 갱신 ' + when(r.json.updatedAt) : '';
     render(r.json.mvpGrades);

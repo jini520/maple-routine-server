@@ -57,23 +57,23 @@ describe('AdminItemsController', () => {
     [...Object.values(items), ...Object.values(groups)].forEach((m) => m.mockReset()),
   )
 
-  it('GET /admin/items · /admin/items/groups 는 화면, /admin/items/rows 는 분류 트리와 아이템이다', async () => {
-    for (const url of ['/admin/items', '/admin/items/groups']) {
+  it('GET /items · /items/groups 는 화면, /items/rows 는 분류 트리와 아이템이다', async () => {
+    for (const url of ['/items', '/items/groups']) {
       const page = await app.inject({ method: 'GET', url })
       expect(page.statusCode).toBe(200)
       expect(page.headers['content-type']).toContain('text/html')
       // 메뉴의 게임데이터 묶음 맨 위에 아이템이 서고, 드롭 아이템 · 장비 메뉴는 없다. 화면 안의 전환 막대는 따로 센다.
       const nav = page.body.slice(page.body.indexOf('<nav'), page.body.indexOf('</nav>'))
       expect(nav.match(/<a [^>]*aria-current="page"[^>]*>/g)).toEqual([
-        '<a href="/admin/items" aria-current="page">',
+        '<a href="/items" aria-current="page">',
       ])
-      expect(page.body).not.toContain('href="/admin/drop-items"')
-      expect(page.body).not.toContain('href="/admin/equipment-items"')
+      expect(page.body).not.toContain('href="/drop-items"')
+      expect(page.body).not.toContain('href="/equipment-items"')
     }
 
     items.adminRows.mockResolvedValue([])
     groups.tree.mockResolvedValue(tree)
-    expect((await app.inject({ method: 'GET', url: '/admin/items/rows' })).json()).toEqual({
+    expect((await app.inject({ method: 'GET', url: '/items/rows' })).json()).toEqual({
       categories: tree,
       items: [],
     })
@@ -82,7 +82,7 @@ describe('AdminItemsController', () => {
   it('POST 는 더하고 201, PUT 은 고치고 204, 모르는 key 는 404 다', async () => {
     const created = await app.inject({
       method: 'POST',
-      url: '/admin/items',
+      url: '/items',
       payload: { key: 'giant_terror', ...body },
     })
     expect(created.statusCode).toBe(201)
@@ -90,12 +90,11 @@ describe('AdminItemsController', () => {
 
     items.update.mockResolvedValue(true)
     expect(
-      (await app.inject({ method: 'PUT', url: '/admin/items/giant_terror', payload: body }))
-        .statusCode,
+      (await app.inject({ method: 'PUT', url: '/items/giant_terror', payload: body })).statusCode,
     ).toBe(204)
     items.update.mockResolvedValue(false)
     expect(
-      (await app.inject({ method: 'PUT', url: '/admin/items/nobody', payload: body })).statusCode,
+      (await app.inject({ method: 'PUT', url: '/items/nobody', payload: body })).statusCode,
     ).toBe(404)
   })
 
@@ -106,9 +105,7 @@ describe('AdminItemsController', () => {
       { key: 'giant', ...body, iconAssetId: 'items/giant.png' },
       { key: 'giant', ...body, name: '  ' },
     ])
-      expect((await app.inject({ method: 'POST', url: '/admin/items', payload })).statusCode).toBe(
-        400,
-      )
+      expect((await app.inject({ method: 'POST', url: '/items', payload })).statusCode).toBe(400)
     expect(items.create).not.toHaveBeenCalled()
   })
 
@@ -133,7 +130,7 @@ describe('AdminItemsController', () => {
       items.update.mockRejectedValueOnce(error)
       const res = await app.inject({
         method: 'PUT',
-        url: '/admin/items/giant_terror',
+        url: '/items/giant_terror',
         payload: body,
       })
       expect([res.statusCode, res.json<{ message: string }>().message]).toEqual([status, message])
@@ -143,7 +140,7 @@ describe('AdminItemsController', () => {
   it('묶음은 POST 로 더하고 201, PUT 으로 이름 · 종류를 고치고, move 로 차례를 바꾸고, DELETE 로 지운다. 모르는 key 는 404 다', async () => {
     const created = await app.inject({
       method: 'POST',
-      url: '/admin/item-groups',
+      url: '/item-groups',
       payload: { key: 'boutique', type: 'consumable', name: ' 부티크 ' },
     })
     expect(created.statusCode).toBe(201)
@@ -156,7 +153,7 @@ describe('AdminItemsController', () => {
     const put = () =>
       app.inject({
         method: 'PUT',
-        url: '/admin/item-groups/boutique',
+        url: '/item-groups/boutique',
         payload: { type: 'cash', name: '부티크' },
       })
     groups.update.mockResolvedValue(true)
@@ -168,7 +165,7 @@ describe('AdminItemsController', () => {
     const move = () =>
       app.inject({
         method: 'POST',
-        url: '/admin/item-groups/boutique/move',
+        url: '/item-groups/boutique/move',
         payload: { direction: 'up' },
       })
     groups.move.mockResolvedValue(true)
@@ -177,7 +174,7 @@ describe('AdminItemsController', () => {
     groups.move.mockResolvedValue(false)
     expect((await move()).statusCode).toBe(404)
 
-    const remove = () => app.inject({ method: 'DELETE', url: '/admin/item-groups/boutique' })
+    const remove = () => app.inject({ method: 'DELETE', url: '/item-groups/boutique' })
     groups.remove.mockResolvedValue(true)
     expect((await remove()).statusCode).toBe(204)
     groups.remove.mockResolvedValue(false)
@@ -190,9 +187,9 @@ describe('AdminItemsController', () => {
       { key: 'boutique', type: 'weapon', name: '부티크' },
       { key: 'boutique', type: 'consumable', name: '  ' },
     ])
-      expect(
-        (await app.inject({ method: 'POST', url: '/admin/item-groups', payload })).statusCode,
-      ).toBe(400)
+      expect((await app.inject({ method: 'POST', url: '/item-groups', payload })).statusCode).toBe(
+        400,
+      )
     expect(groups.create).not.toHaveBeenCalled()
   })
 
@@ -200,7 +197,7 @@ describe('AdminItemsController', () => {
     groups.create.mockRejectedValueOnce(new ItemGroupExists('box'))
     const exists = await app.inject({
       method: 'POST',
-      url: '/admin/item-groups',
+      url: '/item-groups',
       payload: { key: 'box', type: 'consumable', name: '새 상자' },
     })
     expect([exists.statusCode, exists.json<{ message: string }>().message]).toEqual([
@@ -211,7 +208,7 @@ describe('AdminItemsController', () => {
     groups.update.mockRejectedValueOnce(new ItemGroupNameTaken('상자'))
     const taken = await app.inject({
       method: 'PUT',
-      url: '/admin/item-groups/boxes',
+      url: '/item-groups/boxes',
       payload: { type: 'consumable', name: '상자' },
     })
     expect([taken.statusCode, taken.json<{ message: string }>().message]).toEqual([
@@ -220,7 +217,7 @@ describe('AdminItemsController', () => {
     ])
 
     groups.remove.mockRejectedValueOnce(new ItemGroupInUse('cash'))
-    const inUse = await app.inject({ method: 'DELETE', url: '/admin/item-groups/cash' })
+    const inUse = await app.inject({ method: 'DELETE', url: '/item-groups/cash' })
     expect([inUse.statusCode, inUse.json<{ message: string }>().message]).toEqual([
       409,
       '아이템이 든 묶음은 못 지운다: cash',

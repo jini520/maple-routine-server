@@ -1,7 +1,7 @@
 /**
  * 그림 고르개. 그림 칸에서 글자 대신 그림을 눌러 고르고, 고른 그림을 돌려준다(앱 저장소 ADR-187 결정 6).
  *
- * 페이지 본문에 이 조각을 넣으면 `openAssetPicker(options)` 가 생긴다. 그림 목록은 `/admin/assets/list` 에서 읽어 보이는
+ * 페이지 본문에 이 조각을 넣으면 `openAssetPicker(options)` 가 생긴다. 그림 목록은 `/images/list` 에서 읽어 보이는
  * 이름으로 보이고, 새 그림은 그 칸이 받는 분류에 올린 뒤 바로 고른다. 미리보기는 nginx 가 내는 `/assets/<해시>.<확장자>` 다.
  * 관리 API 는 고른 그림의 줄 id 를 받는다. `그림 없음` 을 누르면 onPick 이 null 을 받는다.
  *
@@ -47,7 +47,7 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
   function assetFileText(f) { return f.fileName + '.' + f.extension; }
   function pickerFileUrl(f) { return '/assets/' + f.file; }
   async function pickerLoad() {
-    var r = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/images/list');
     if (!r.ok) { show(fail('그림 목록을 못 읽었다', r), true); return; }
     pickerState.files = r.json.rows;
   }
@@ -91,7 +91,7 @@ export const ASSET_PICKER = `<dialog id="asset-picker" class="picker" aria-label
     var ext = { 'image/png': 'png', 'image/webp': 'webp', 'image/jpeg': 'jpg' }[file ? file.type : ''];
     if (!file || !ext || name === '') { show('새 그림 이름과 png · webp · jpg 파일을 함께 고른다', true); return; }
     var key = { category: o.uploadCategory, fileName: name, extension: ext };
-    var res = await fetch('/admin/assets/file?' + new URLSearchParams(key), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
+    var res = await fetch('/images/file?' + new URLSearchParams(key), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
     if (!res.ok) { show('못 올렸다 ' + res.status + '\\n' + (await res.text()), true); return; }
     await pickerLoad();
     var uploaded = pickerState.files.find(function (f) { return f.category === key.category && f.fileName === key.fileName && f.extension === key.extension; });

@@ -2,8 +2,8 @@ import { subNav } from './edit-kit'
 import { layout } from './layout'
 
 const NAV = [
-  ['/admin/assets', '그림'],
-  ['/admin/assets/crops', '크롭'],
+  ['/images', '그림'],
+  ['/images/crops', '크롭'],
 ] as const
 
 /** 두 화면이 함께 쓰는 읽기. 그림은 nginx 가 `/assets/<해시>.<확장자>` 로 내므로 미리보기도 그 주소를 쓴다. */
@@ -20,7 +20,7 @@ const COMMON_JS = `
     return keyText(a) < keyText(b) ? -1 : 1;
   }
   async function load() {
-    var r = await call('GET', '/admin/assets/list');
+    var r = await call('GET', '/images/list');
     if (!r.ok) { show('못 읽었다 ' + r.status, true); return; }
     D = r.json;
     document.getElementById('updated').textContent = D.updatedAt ? '마지막 갱신 ' + when(D.updatedAt) : '';
@@ -30,7 +30,7 @@ const COMMON_JS = `
 
 function page(current: string, top: string, body: string, script: string): string {
   return layout(
-    '/admin/assets',
+    '/images',
     '그림',
     `<div class="top"><h1>그림</h1>${subNav(NAV, current)}${top}<span class="grow"></span><span class="updated" id="updated"></span></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -50,7 +50,7 @@ ${script}
  * 같은 경로에 올리면 그림이 바뀐다. 표가 쓰지 않는 그림만 지울 수 있다.
  */
 export const ASSETS_HTML = page(
-  '/admin/assets',
+  '/images',
   '<input id="q" type="search" class="on-bg" placeholder="이름 · 경로로 찾는다"><button type="button" class="btn danger sm" id="unused" hidden></button>',
   `<div class="split"><nav class="picklist tree" id="tree" aria-label="그림 분류"></nav><section class="panel">
   <div class="panel-head" id="head"></div>
@@ -108,7 +108,7 @@ export const ASSETS_HTML = page(
   async function upload(target, file) {
     if (!file) { show('파일을 고른다', true); return false; }
     var key = { category: target.category, fileName: target.fileName, extension: target.extension || EXT[file.type] || '' };
-    var res = await fetch('/admin/assets/file?' + new URLSearchParams(key), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
+    var res = await fetch('/images/file?' + new URLSearchParams(key), { method: 'PUT', headers: { 'content-type': file.type }, body: file });
     var text = await res.text();
     if (!res.ok) { show('못 올렸다 ' + res.status + '\\n' + text, true); return false; }
     var json = JSON.parse(text);
@@ -151,7 +151,7 @@ export const ASSETS_HTML = page(
     var tb = document.getElementById('rows'); tb.innerHTML = '';
     shown.slice(pageAt * PAGE, pageAt * PAGE + PAGE).forEach(function (r) {
       var tr = el('tr'); var img = el('img', undefined, 'thumb'); img.src = urlOf(r); img.alt = ''; img.loading = 'lazy'; cell(tr, img);
-      var name = textCell(batch, keyText(r), r.name || '', function () { return call('PUT', '/admin/assets/' + r.id + '/name', { name: name.value() }); }, 'w-mid');
+      var name = textCell(batch, keyText(r), r.name || '', function () { return call('PUT', '/images/' + r.id + '/name', { name: name.value() }); }, 'w-mid');
       name.input.placeholder = r.uses[0] ? r.uses[0].name : r.fileName;
       var box = el('div', undefined, 'pair'); box.appendChild(name.input); box.appendChild(el('small', keyText(r))); cell(tr, box);
       var uses = r.uses.length === 0 ? span('표가 안 씀', 'tag bad') : button(r.uses.length + '곳', 'tag accent');
@@ -161,7 +161,7 @@ export const ASSETS_HTML = page(
       var act = inline(replace, pick);
       if (r.uses.length === 0) {
         var del = button('지우기', 'btn danger sm');
-        del.addEventListener('click', async function () { if (!window.confirm(keyText(r) + ' 를 지운다. 이 그림의 크롭도 함께 지운다. 되돌릴 수 없다')) return; var res = await call('DELETE', '/admin/assets/' + r.id); show(res.ok ? keyText(r) + ' 를 지웠다' : fail('못 지웠다', res), !res.ok); if (res.ok) load(); });
+        del.addEventListener('click', async function () { if (!window.confirm(keyText(r) + ' 를 지운다. 이 그림의 크롭도 함께 지운다. 되돌릴 수 없다')) return; var res = await call('DELETE', '/images/' + r.id); show(res.ok ? keyText(r) + ' 를 지웠다' : fail('못 지웠다', res), !res.ok); if (res.ok) load(); });
         act.appendChild(del);
       }
       act.classList.add('row-act'); cell(tr, act, 'act'); tb.appendChild(tr);
@@ -184,7 +184,7 @@ export const ASSETS_HTML = page(
  * 미리보기 틀의 비율은 앱 자리와 비슷하게 맞춘 것이다. 줄이 없으면 앱은 cover · 가운데로 그린다.
  */
 export const ASSET_CROPS_HTML = page(
-  '/admin/assets/crops',
+  '/images/crops',
   '',
   `<section class="panel">
   <div class="panel-head"><span id="kinds"></span><span class="grow"></span><p>칸은 차례로 폭 · 가로 · 세로 % 다</p></div>
@@ -218,7 +218,7 @@ export const ASSET_CROPS_HTML = page(
       var saved = D.crops.filter(function (c) { return c.type === kind && c.assetId === f.id; })[0];
       var card = el('div', undefined, 'crop-card'); var prev = el('div', undefined, 'crop ' + kind); prev.style.backgroundImage = 'url(' + urlOf(f) + ')';
       var w, x, y;
-      var send = function () { return call('PUT', '/admin/image-crops/' + kind + '/' + f.id, { widthPercent: w.value(), positionXPercent: x.value() === null ? 50 : x.value(), positionYPercent: y.value() === null ? 50 : y.value() }); };
+      var send = function () { return call('PUT', '/image-crops/' + kind + '/' + f.id, { widthPercent: w.value(), positionXPercent: x.value() === null ? 50 : x.value(), positionYPercent: y.value() === null ? 50 : y.value() }); };
       w = numCell(batch, f.fileName + ' 크롭', saved ? saved.widthPercent : null, send); x = numCell(batch, f.fileName + ' 크롭', saved ? saved.positionXPercent : null, send); y = numCell(batch, f.fileName + ' 크롭', saved ? saved.positionYPercent : null, send);
       w.input.placeholder = 'cover'; x.input.placeholder = '50'; y.input.placeholder = '50';
       function preview() {
@@ -227,7 +227,7 @@ export const ASSET_CROPS_HTML = page(
       }
       [w, x, y].forEach(function (c) { c.input.addEventListener('input', preview); c.input.addEventListener('blur', preview); }); preview();
       var nm = el('div', undefined, 'nm'); nm.appendChild(span(f.fileName)); nm.appendChild(span('', 'grow'));
-      if (saved) { var rm = button('지우기', 'btn danger sm'); rm.addEventListener('click', async function () { var r = await call('DELETE', '/admin/image-crops/' + kind + '/' + f.id); show(r.ok ? f.fileName + ' 크롭을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) load(); }); nm.appendChild(rm); }
+      if (saved) { var rm = button('지우기', 'btn danger sm'); rm.addEventListener('click', async function () { var r = await call('DELETE', '/image-crops/' + kind + '/' + f.id); show(r.ok ? f.fileName + ' 크롭을 지웠다' : fail('못 지웠다', r), !r.ok); if (r.ok) load(); }); nm.appendChild(rm); }
       w.input.title = '폭 %'; x.input.title = '가로 위치 %'; y.input.title = '세로 위치 %';
       var nums = el('div', undefined, 'nums'); nums.appendChild(w.input); nums.appendChild(x.input); nums.appendChild(y.input);
       card.appendChild(prev); card.appendChild(nm); card.appendChild(nums); box.appendChild(card);

@@ -7,9 +7,9 @@ import { layout } from './layout'
  * 표는 화면 아래 끝까지 채우고 그 안에서 스크롤한다. 한 화면에 들어오게 하되 쪽으로 나누지 않는다.
  */
 export const DROP_MARKET_HTML = layout(
-  '/admin/drop-market',
+  '/drop-market',
   '드롭 시세',
-  `<div class="head"><div><h1>드롭 시세</h1><p>장비는 거래권마다, 소비 아이템은 월드마다 센 시세다. 잘못 적은 값은 IQR 울타리로 빼고 센다. 금일은 KST 0시부터, 금주는 목요일 0시부터다. 거래권은 <a href="/admin/worlds">월드</a>, 소비 여부는 <a href="/admin/items">아이템</a> 화면에서 그 아이템이 든 묶음의 종류로 정한다.</p></div></div>
+  `<div class="head"><div><h1>드롭 시세</h1><p>장비는 거래권마다, 소비 아이템은 월드마다 센 시세다. 잘못 적은 값은 IQR 울타리로 빼고 센다. 금일은 KST 0시부터, 금주는 목요일 0시부터다. 거래권은 <a href="/worlds">월드</a>, 소비 여부는 <a href="/items">아이템</a> 화면에서 그 아이템이 든 묶음의 종류로 정한다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="toolbar">
   <div id="kinds" class="seg" role="group" aria-label="종류"></div>
@@ -87,7 +87,7 @@ export const DROP_MARKET_HTML = layout(
       tr.addEventListener('click', function () {
         var q = new URLSearchParams({ kind: state.kind, key: state.key, item: m.itemKey });
         if (m.ringLevel !== null) q.set('ring', String(m.ringLevel));
-        location.href = '/admin/drop-market/item?' + q.toString();
+        location.href = '/drop-market/item?' + q.toString();
       });
       body.appendChild(tr);
     });
@@ -98,7 +98,7 @@ export const DROP_MARKET_HTML = layout(
   async function loadRows() {
     state.rows = [];
     if (!state.key) { renderRows(); return; }
-    var r = await call('GET', '/admin/drop-market/rows?' + new URLSearchParams({ kind: state.kind, key: state.key }).toString());
+    var r = await call('GET', '/drop-market/rows?' + new URLSearchParams({ kind: state.kind, key: state.key }).toString());
     if (!r.ok) { show(fail('못 읽었다', r), true); return; }
     show('', false);
     state.rows = r.json;
@@ -106,7 +106,7 @@ export const DROP_MARKET_HTML = layout(
   }
 
   async function load() {
-    var r = await call('GET', '/admin/drop-market/scopes');
+    var r = await call('GET', '/drop-market/scopes');
     if (!r.ok) { show(fail('못 읽었다', r), true); return; }
     state.scopes = r.json;
     document.getElementById('scope').addEventListener('change', function (e) { state.key = e.target.value; select(); });

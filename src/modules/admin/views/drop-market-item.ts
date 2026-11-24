@@ -9,10 +9,10 @@ import { layout } from './layout'
  * 차트는 서버가 내보내는 lightweight-charts 4 의 standalone 파일이 window.LightweightCharts 로 연다.
  */
 export const DROP_MARKET_ITEM_HTML = layout(
-  '/admin/drop-market',
+  '/drop-market',
   '드롭 시세',
-  `<script src="/admin/assets/lightweight-charts.js"></script>
-<div class="head"><div><h1 id="title">드롭 시세</h1><p id="subtitle"></p></div><div><a class="btn ghost sm" id="back" href="/admin/drop-market">목록으로</a></div></div>
+  `<script src="/drop-market/lightweight-charts.js"></script>
+<div class="head"><div><h1 id="title">드롭 시세</h1><p id="subtitle"></p></div><div><a class="btn ghost sm" id="back" href="/drop-market">목록으로</a></div></div>
 <div id="message" class="msg" role="status" hidden></div>
 <div class="toolbar"><span class="hint" id="scope-title">거래권</span><div id="groups" class="actions"></div><div id="periods" class="actions" style="margin-left:auto"></div></div>
 <div class="market-split" id="split">
@@ -125,7 +125,7 @@ export const DROP_MARKET_ITEM_HTML = layout(
   }
 
   async function loadGroups() {
-    var r = await call('GET', '/admin/drop-market/scopes');
+    var r = await call('GET', '/drop-market/scopes');
     if (!r.ok) { show(fail('못 읽었다', r), true); return; }
     document.getElementById('scope-title').textContent = state.kind === 'equipment' ? '거래권' : '월드';
     var box = document.getElementById('groups'); box.innerHTML = '';
@@ -138,13 +138,13 @@ export const DROP_MARKET_ITEM_HTML = layout(
   }
 
   async function loadDetail() {
-    var r = await call('GET', '/admin/drop-market/item/rows?' + query(state.key));
+    var r = await call('GET', '/drop-market/item/rows?' + query(state.key));
     if (!r.ok) { show(fail('못 읽었다', r), true); return; }
     var d = r.json;
     var name = (d.itemName || state.item) + (state.ring !== null ? ' ' + state.ring + '레벨' : '');
     document.getElementById('title').textContent = name;
     document.title = name + ' · 드롭 시세 · 메이플 루틴 관리';
-    document.getElementById('back').href = '/admin/drop-market?' + new URLSearchParams({ kind: state.kind, key: state.key }).toString();
+    document.getElementById('back').href = '/drop-market?' + new URLSearchParams({ kind: state.kind, key: state.key }).toString();
     var last = d.candles[d.candles.length - 1];
     document.getElementById('subtitle').textContent = last ? '마지막 봉 ' + last.day + ' · 종가 ' + meso(last.close) + ' 메소' : '최근 90일 거래가 없다';
     state.detail = d;

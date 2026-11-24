@@ -6,7 +6,7 @@ import { layout } from './layout'
  * 기간 · 획득처 고르기는 목록과 상세에 함께 걸린다. 목록과 기록은 화면 아래 끝까지 채운 칸 안에서 스크롤하고 쪽으로 나누지 않는다.
  */
 export const DROP_PRICES_HTML = layout(
-  '/admin/drop-prices',
+  '/drop-prices',
   '드롭 가격',
   `<div class="head"><div><h1>드롭 가격</h1><p>앱이 올린 드롭의 판매가다. 왼쪽에서 아이템을 고르면 오른쪽에 그 아이템의 가격 분포와 기록이 뜬다. 드롭 기록 없이 옮겨 온 옛 줄은 보스 · 기간 · 획득처가 비어 있다.</p></div></div>
 <div id="message" class="msg" role="status" hidden></div>
@@ -156,7 +156,7 @@ export const DROP_PRICES_HTML = layout(
 
   async function loadRows() {
     state.loading = true;
-    var r = await call('GET', '/admin/drop-prices/rows?' + query({ itemKey: state.sel, limit: PAGE, offset: state.offset }));
+    var r = await call('GET', '/drop-prices/rows?' + query({ itemKey: state.sel, limit: PAGE, offset: state.offset }));
     state.loading = false;
     if (!r.ok) { show(fail('기록을 못 읽었다', r), true); return; }
     var body = document.getElementById('detail-rows');
@@ -170,14 +170,14 @@ export const DROP_PRICES_HTML = layout(
     state.offset = 0;
     state.hasMore = false;
     if (!state.sel) { renderDetail([]); return; }
-    var r = await call('GET', '/admin/drop-prices/points?' + query({ itemKey: state.sel }));
+    var r = await call('GET', '/drop-prices/points?' + query({ itemKey: state.sel }));
     if (!r.ok) { show(fail('가격 분포를 못 읽었다', r), true); return; }
     renderDetail(r.json);
     await loadRows();
   }
 
   async function loadItems() {
-    var r = await call('GET', '/admin/drop-prices/items?' + query());
+    var r = await call('GET', '/drop-prices/items?' + query());
     if (!r.ok) { show(fail('아이템 목록을 못 읽었다', r), true); return; }
     show('', false);
     state.items = r.json;
@@ -187,7 +187,7 @@ export const DROP_PRICES_HTML = layout(
   }
 
   async function init() {
-    var res = await Promise.all([call('GET', '/admin/drop-prices/periods'), call('GET', '/admin/drop-boxes/rows')]);
+    var res = await Promise.all([call('GET', '/drop-prices/periods'), call('GET', '/drop-boxes/rows')]);
     if (!res[0].ok) { show(fail('기간 목록을 못 읽었다', res[0]), true); return; }
     if (!res[1].ok) { show(fail('상자 표를 못 읽었다', res[1]), true); return; }
     var period = document.getElementById('period');

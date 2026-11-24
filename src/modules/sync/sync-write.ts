@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, type SQL, sql } from 'drizzle-orm'
 import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core'
 
 import type { IdentityContext } from '../identity/identity.guard'
@@ -97,4 +97,27 @@ export async function writeDeviceRow<Row extends { id: string; deletedAt: Date |
   if (existing === undefined) await write.insert()
   else await write.update()
   return write.id
+}
+
+/**
+ * 기록에 딸린 줄을 갈아 끼우는 쓰기. 딸린 줄의 값이 갈아 끼우기 전과 다르면 기록 줄의 변경 번호를 올린다. 기록 줄의 값이 같으면
+ * 트리거가 번호를 두어(마이그레이션 0070), 딸린 줄만 바뀐 기록을 다른 기기가 받지 못한다.
+ *
+ * @param children 딸린 줄을 jsonb 하나로 읽는 식. 갈아 끼울 때마다 새로 붙는 줄 id 는 빼고 차례를 정해 모은다
+ */
+export async function replaceChildRows(
+  tx: Tx,
+  record: { table: PgTable; id: string },
+  children: SQL,
+  replace: () => Promise<void>,
+): Promise<void> {
+  const read = async () =>
+    (await tx.execute<{ children: string | null }>(sql`SELECT (${children})::text AS children`))
+      .rows[0]?.children
+  const before = await read()
+  await replace()
+  if ((await read()) === before) return
+  await tx.execute(
+    sql`UPDATE ${record.table} SET change_seq = nextval('record_change_seq'), updated_at = now() WHERE id = ${record.id}`,
+  )
 }

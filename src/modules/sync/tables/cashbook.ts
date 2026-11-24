@@ -34,6 +34,7 @@ import { changedAfter, defineTable, type MapleIdReader, mapleIdOwner } from '../
 import {
   assertTarget,
   RecordRejected,
+  replaceChildRows,
   sameContent,
   type TargetTable,
   type WriteContext,
@@ -83,6 +84,17 @@ async function markMapleRowDeleted(
     .returning({ id: table.id })
   return gone?.id ?? null
 }
+
+/** 가계부 기록의 딸린 줄 다섯. 품목 · 조각 사용은 차례 칸이 없어 줄의 값으로 차례를 정한다. */
+const entryChildren = (id: string) =>
+  sql`jsonb_build_array(${sql.join(
+    CHILD_TABLES.map(
+      (table) =>
+        sql`(SELECT coalesce(jsonb_agg(to_jsonb(c) - 'id' ORDER BY (to_jsonb(c) - 'id')::text), '[]'::jsonb)
+               FROM ${table} c WHERE c.entry_id = ${id})`,
+    ),
+    sql`, `,
+  )})`
 
 /**
  * 딸린 줄(품목 · 입력 · 조각 사용)을 받은 값으로 갈아 끼운다. 조각을 가져온 캐릭터는 기록과 같은 메이플 ID 다. 받는 캐릭터는 다른
@@ -167,7 +179,9 @@ export const cashbookEntriesTable = defineTable<CashbookEntryRow, DeleteById>({
       revive: () => Promise.reject(new Error('가계부 기록은 내용으로 가리지 않는다')),
       discard: () => Promise.reject(new Error('가계부 기록은 내용으로 가리지 않는다')),
     })
-    await replaceEntryChildren(ctx, row)
+    await replaceChildRows(tx, { table: cashbookEntries, id }, entryChildren(id), () =>
+      replaceEntryChildren(ctx, row),
+    )
     return kept
   },
   deleteOwners: (ctx, row) => mapleIdRowOwners(ctx.tx, cashbookEntries, row.id),

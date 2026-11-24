@@ -44,6 +44,7 @@ import {
   NoDropItem as NoDropItemForDrop,
   RewardExists,
 } from '../boss-drops/boss-drops.repository'
+import { AmbiguousDropBox } from '../boss-drops/drop-box-rules'
 import {
   CrystalPricesRepository,
   NoBossDifficulty as NoBossDifficultyForPrice,
@@ -1632,7 +1633,7 @@ export class AdminController {
       throw new NotFoundException(`모르는 상자다: ${item}`)
   }
 
-  /** 내용물을 맨 뒤에 더한다. 모르는 상자 · 아이템은 404, 이미 있으면 409 다. */
+  /** 내용물을 맨 뒤에 더한다. 모르는 상자 · 아이템은 404, 이미 있거나 상자가 하나로 정해지지 않으면 409 다. */
   @Post('drop-boxes/:item/contents')
   @HttpCode(204)
   async addBoxContent(
@@ -1647,6 +1648,7 @@ export class AdminController {
         throw new NotFoundException(`모르는 아이템이다: ${body.item}`)
       if (error instanceof ContentExists)
         throw new ConflictException(`이미 든 아이템이다: ${body.item}`)
+      if (error instanceof AmbiguousDropBox) throw new ConflictException(error.message)
       throw error
     }
   }
@@ -1687,7 +1689,7 @@ export class AdminController {
     return { rows: await this.drops.rows(query.boss, query.difficulty) }
   }
 
-  /** 줄을 그 조합 · 분류의 맨 뒤에 더한다. 모르는 조합 · 아이템은 404, 같은 줄은 409 다. */
+  /** 줄을 그 조합 · 분류의 맨 뒤에 더한다. 모르는 조합 · 아이템은 404, 같은 줄이나 상자가 하나로 정해지지 않는 줄은 409 다. */
   @Post('boss-drops')
   @HttpCode(201)
   async createBossDrop(@Body(new ZodValidationPipe(bossDropCreateBody)) body: BossDropCreateBody) {
@@ -1710,6 +1712,7 @@ export class AdminController {
         throw new ConflictException(
           '같은 조합 · 아이템 · 시작의 줄이 이미 있다. 분류가 달라도 같은 줄이다',
         )
+      if (error instanceof AmbiguousDropBox) throw new ConflictException(error.message)
       throw error
     }
   }
@@ -1736,12 +1739,6 @@ export class AdminController {
         )
       throw error
     }
-  }
-
-  @Delete('boss-drops/:id')
-  @HttpCode(204)
-  async deleteBossDrop(@Param('id', new ZodValidationPipe(rowId)) id: string): Promise<void> {
-    if (!(await this.drops.remove(id))) throw new NotFoundException()
   }
 
   @Post('boss-drops/:id/move')

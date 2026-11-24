@@ -3,7 +3,8 @@ import { layout } from './layout'
 /**
  * 드롭 표. 왼쪽에서 보스를, 오른쪽 위에서 난이도를 고르면 그 조합의 보상 줄이 분류마다 선다. 개수 · 기간은 칸에서 바로 고친다.
  *
- * 줄의 차례가 앱 드롭 시트의 타일 차례다. 패치로 빠진 아이템은 지우지 않고 끝을 적는다. 지우면 패치 전 기록이 거짓 기록으로 지워진다.
+ * 줄의 차례가 앱 드롭 시트의 타일 차례다. 줄을 지우는 버튼은 두지 않는다. 지우면 그 아이템의 지난 드롭이 동기화에서 거절되므로 보스가
+ * 주는 것이 바뀌면 끝을 적는다.
  */
 export const BOSS_DROPS_HTML = layout(
   '/admin/boss-drops',
@@ -28,10 +29,9 @@ export const BOSS_DROPS_HTML = layout(
     from = textCell(batch, name, r.validFrom, send, 'period'); from.input.placeholder = '처음부터';
     until = textCell(batch, name, r.validUntil, send, 'period'); until.input.placeholder = '끝없이';
     cell(tr, from.input); cell(tr, until.input);
-    var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm'), rm = button('지우기', 'btn danger sm');
+    var up = button('↑', 'btn ghost sm'), down = button('↓', 'btn ghost sm');
     up.addEventListener('click', function () { move(r, 'up'); }); down.addEventListener('click', function () { move(r, 'down'); });
-    rm.addEventListener('click', async function () { if (!window.confirm(r.itemName + ' 줄을 지운다. 패치로 빠진 것이면 지우지 말고 끝을 적는다.')) return; var x = await call('DELETE', '/admin/boss-drops/' + r.id); show(x.ok ? '지웠다' : fail('못 지웠다', x), !x.ok); loadRows(); });
-    var act = inline(up, down, rm); act.className = 'inline row-act'; cell(tr, act, 'act');
+    var act = inline(up, down); act.className = 'inline row-act'; cell(tr, act, 'act');
     return tr;
   }
 
@@ -68,7 +68,7 @@ export const BOSS_DROPS_HTML = layout(
     });
     t.appendChild(tb); box.appendChild(t);
     var foot = el('div', undefined, 'panel-head'); foot.style.marginTop = '10px';
-    foot.appendChild(el('p', '차례가 앱 드롭 시트의 타일 차례다. 기간은 KST 2026-09-17 또는 2026-09-17T10:00. 패치로 빠진 보상은 지우지 말고 끝을 적는다.'));
+    foot.appendChild(el('p', '차례가 앱 드롭 시트의 타일 차례다. 기간은 KST 2026-09-17 또는 2026-09-17T10:00. 패치로 빠진 보상은 끝을 적는다.'));
     box.appendChild(foot);
   }
 

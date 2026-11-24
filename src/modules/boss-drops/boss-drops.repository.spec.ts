@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { eq } from 'drizzle-orm'
 
 import { bossDifficulties, items } from '../../database/schema'
@@ -122,7 +124,8 @@ describeDb('BossDropsRepository', () => {
     expect(typeof later.id).toBe('string')
   })
 
-  it('수량 · 기간을 고치고 차례를 옮기고 지운다', async () => {
+  // 지우는 경로는 두지 않는다. 줄을 지우면 그 아이템의 지난 드롭이 동기화에서 거절된다. 보스가 주는 것이 바뀌면 기간으로 끝낸다.
+  it('수량 · 기간을 고치고 차례를 옮기며, 줄을 지우는 함수는 없다', async () => {
     const a = await repo.create(row({ category: 'consumable', item: 'red_boss_ring_box' }))
     const b = await repo.create(row({ category: 'consumable', item: 'spell_trace' }))
 
@@ -135,11 +138,11 @@ describeDb('BossDropsRepository', () => {
       ['red_boss_ring_box', '2026-09-17T10:00'],
     ])
     expect(await repo.move(b.id, 'up')).toBe(true)
-    expect(await repo.remove(a.id)).toBe(true)
-    expect(await repo.remove(a.id)).toBe(false)
-    expect(await repo.update(a.id, { quantity: null, validFrom: null, validUntil: null })).toBe(
+    expect('remove' in repo).toBe(false)
+    const missing = randomUUID()
+    expect(await repo.update(missing, { quantity: null, validFrom: null, validUntil: null })).toBe(
       false,
     )
-    expect(await repo.move(a.id, 'down')).toBe(false)
+    expect(await repo.move(missing, 'down')).toBe(false)
   })
 })

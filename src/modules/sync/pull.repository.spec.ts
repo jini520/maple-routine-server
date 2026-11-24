@@ -9,6 +9,7 @@ import * as schema from '../../database/schema'
 import { bossProfitEntries, mapleIds, mvpGradeHistory } from '../../database/schema'
 import {
   describeDb,
+  insertClearedDropTables,
   insertNexonAccount,
   insertRecordReferences,
   openTestDb,
@@ -393,5 +394,76 @@ describeDb('SyncPullRepository', () => {
       [],
     ])
     expect(await db.select().from(bossProfitEntries)).toEqual([])
+  })
+  // 서버가 처치한 수익 건으로 드롭을 모으면 그 드롭을 올린 기기도 다른 기기도 받기로 그 결과를 받는다. 번호가 오르지 않으면 이미 받은
+  // 기기는 옛 수익 건에 드롭을 둔 채 남는다.
+  it('처치한 수익 건으로 옮기고 바꾸고 지운 드롭과 비운 수익 건은 변경 번호가 올라 받기에 다시 온다', async () => {
+    const t = await insertClearedDropTables(db)
+    const entry = (bossDifficultyId: string, cleared: boolean) => ({
+      id: randomUUID(),
+      mapleId: M_ME,
+      ocid: O_ME,
+      bossDifficultyId,
+      periodCode: 'W202647',
+      worldId: null,
+      crystalPriceMeso: cleared ? 300 : null,
+      crystalReceivedMeso: cleared ? 150 : null,
+      splitType: cleared ? 'even' : null,
+      partySize: cleared ? 1 : null,
+      splitFeeFollowsMvpGrade: !cleared,
+      clearedDate: cleared ? '2026-11-20' : null,
+      clearRecordedBy: cleared ? 'auto' : null,
+    })
+    const drop = (profitEntryId: string, key: string) => ({
+      id: randomUUID(),
+      profitEntryId,
+      itemId: t.item[key],
+      category: 'consumable',
+      priceStatus: 'pending',
+      saleFeeFollowsMvpGrade: false,
+      splitFeeFollowsMvpGrade: false,
+    })
+    const normal = entry(t.bellona.normal, false)
+    const whetstone = drop(normal.id, 'life_whetstone')
+    const ring = drop(normal.id, 'ultimatum_ring_lv4')
+    await push(
+      me,
+      upsert('bossProfitEntries', normal),
+      upsert('bossDrops', whetstone),
+      upsert('bossDrops', ring),
+    )
+    const before = await pull(me)
+    const hard = entry(t.bellona.hard, true)
+    await push(me, upsert('bossProfitEntries', hard))
+
+    const after = await pull(me, { mapleIds: { [M_ME]: before.cursors.mapleIds[M_ME] ?? 0 } })
+
+    const sorted = (rows: unknown[][]) =>
+      rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+    expect(
+      sorted(
+        (after.records.bossDrops ?? []).map((row) => [
+          row.id,
+          row.profitEntryId,
+          row.itemId,
+          row.deletedAt !== null,
+        ]),
+      ),
+    ).toEqual(
+      sorted([
+        [whetstone.id, hard.id, t.item.life_whetstone_from_box, false],
+        [ring.id, normal.id, t.item.ultimatum_ring_lv4, true],
+      ]),
+    )
+    expect(
+      sorted(
+        (after.records.bossProfitEntries ?? []).map((row) => [row.id, row.deletedAt !== null]),
+      ),
+    ).toEqual(
+      sorted([
+        [hard.id, false],
+        [normal.id, true],
+      ]),
+    )
   })
 })

@@ -24,7 +24,8 @@ export type SessionRequest = FastifyRequest & { session?: SessionContext }
  * Authorization: Bearer <세션> 으로 사람을 가린다.
  *
  * 해시로 행을 찾아 수명만 본다. 넥슨을 부르지 않는다. 토큰이 필요한 경로만 TokenService 를 따로 부른다.
- * 신원 확인과 갱신을 한 자리에 묶으면 토큰을 안 쓰는 경로가 갱신을 일으킨다.
+ * 신원 확인과 갱신을 한 자리에 묶으면 토큰을 안 쓰는 경로가 갱신을 일으킨다. 신원 가드처럼 세션을 마지막으로 쓴 시각을 고친다.
+ * 오래 쓰지 않은 세션을 운영에서 가려낼 수 있게 하려는 것이다.
  */
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -36,6 +37,7 @@ export class SessionGuard implements CanActivate {
     if (value === null) throw new UnauthorizedException()
     const row = await this.sessions.findByHash(sha256(value))
     if (row === null) throw new UnauthorizedException()
+    await this.sessions.touch(row.id)
     request.session = { id: row.id, userId: row.userId, platform: row.platform }
     return true
   }

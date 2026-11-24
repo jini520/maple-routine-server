@@ -114,7 +114,23 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   - DB 박스 서버의 값은 운영과 다르다. DB 는 `maple_routine_next`(운영 DB 를 떠서 옮긴 사본, 역할 `mapleroutine` 이 유닉스 소켓의
     peer 로 붙는다), `HOST=127.0.0.1`, `DATABASE_POOL_MAX=3`(Postgres 연결 상한 20 을 운영 서버와 나눈다), `FRIENDS_NEXON_RPS=50`,
     `PUBLIC_BASE_URL=https://api.mapleroutine.store`, 운영과 다른 `TOKEN_ENC_KEY_V1` 이다. `FCM_KEY` · `NEXON_KEY` 는 넣지 않는다.
-    사본에 실제 사용자의 푸시 토큰이 있어 알림이 한 번 더 가기 때문이다. 넥슨 로그인 값은 넥슨이 api 콜백을 승인한 뒤 넣는다.
+    사본에 실제 사용자의 푸시 토큰이 있어 알림이 한 번 더 가기 때문이다. 넥슨 로그인 값은 넥슨이 api 콜백을 승인한 뒤 넣는다
+    (앱 저장소 `ADR-016` 결정 14). 그 전에는 이 서버에서 넥슨 로그인이 자격 없음으로 실패한다(2026-11-24 확인).
+  - 넥슨이 api 콜백(`https://api.mapleroutine.store/v1/auth/nexon/callback`)을 승인하면 아래 순서로 넣는다. `PUBLIC_BASE_URL` 은
+    이미 api 라 바꾸지 않는다. 넣을 값은 운영 앱 박스 `~/.config/maple-routine-server/.env` 의 같은 이름 다섯과 같다. 넥슨
+    애플리케이션은 운영과 같은 둘(iOS · 안드로이드)이고 콜백만 하나 더 등록한 것이기 때문이다.
+
+    ```
+    ssh ubuntu@152.69.225.126
+    sudo grep -n PUBLIC_BASE_URL /etc/maple-routine-server/env     # "https://api.mapleroutine.store" 인지 본다
+    sudo cp -p /etc/maple-routine-server/env /etc/maple-routine-server/env.before-nexon
+    sudoedit /etc/maple-routine-server/env    # 큰따옴표로 다섯 줄을 더한다
+    #   NEXON_IOS_CLIENT_ID · NEXON_IOS_CLIENT_SECRET · NEXON_ANDROID_CLIENT_ID · NEXON_ANDROID_CLIENT_SECRET · NEXON_OPENID_SCOPES
+    sudo systemctl restart maple-routine-server && sleep 3 && curl -s http://127.0.0.1:4000/healthz
+    ```
+
+    켠 뒤 1.0.15 개발 빌드에서 넥슨 로그인을 해 본다. 넥슨 로그인 화면에서 앱으로 돌아오면 콜백이 이 서버에 닿은 것이다.
+
   - 데이터를 다시 뜨려면 서비스를 멈추고 DB 를 지워 다시 만든 뒤, 마이그레이션 다음에 `sudo -u postgres` 로 옮긴다. 옛 DB 를
     읽어야 해서 슈퍼유저로 돌린다.
 

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { isCheckViolation, isUniqueViolation } from '../../common/pg-errors'
 import {
   accountSettings,
+  bossProfitCalculatorRecords,
   characters,
   dropSalePrices,
   enhancementAnomalies,
@@ -18,6 +19,7 @@ import {
   worlds,
 } from '../../database/schema'
 import { describeDb, openTestDb, type TestDb } from '../../database/test-db'
+import { DeletedRowsRepository } from '../sync/deleted-rows.repository'
 import { NexonAccountsRepository } from './nexon-accounts.repository'
 import { UsersRepository } from './users.repository'
 
@@ -305,6 +307,84 @@ describeDb('NexonAccountsRepository', () => {
       expect((await db.select().from(partyAppointments)).map((r) => r.nexonAccountId)).toEqual([
         old.nexonAccountId,
       ])
+    })
+
+    // 옮기면 변경 번호가 새로 붙어, 그 줄을 180일 뒤 지우기가 지울 때 받기의 지운 번호가 그 번호까지 오른다. 그러면 합치기와
+    // 상관없는 모든 기기가 한 번 비우고 다시 받는다. 없애는 줄을 보던 기기는 0 부터 받아 표식이 필요 없고, 남기는 줄을 보던
+    // 기기에는 가진 적 없는 줄의 지우기다.
+    it('합칠 때 없애는 줄의 삭제 표식은 옮기지 않고 지우고 살아 있는 줄은 옮기며, 그 뒤 180일 뒤 지우기가 돌아도 지운 번호가 오르지 않는다', async () => {
+      const old = await users$.upsertByMapleId('m1')
+      await backdate(old.nexonAccountId, '2026-10-01T00:00:00Z')
+      const fresh = await users$.upsertByMapleId('m2')
+      const [character, gone] = await db
+        .insert(characters)
+        .values([
+          { mapleId: (await mapleIdRowOf('m2')) ?? '', ocid: 'o2' },
+          { mapleId: (await mapleIdRowOf('m2')) ?? '', ocid: 'o3' },
+        ])
+        .returning({ id: characters.id })
+      const longAgo = new Date(Date.now() - 200 * 86_400_000)
+      const from = fresh.nexonAccountId
+      await db.insert(trackedCharacters).values([
+        {
+          nexonAccountId: from,
+          characterId: character?.id ?? '',
+          sortOrder: 0,
+          isRepresentative: true,
+        },
+        {
+          nexonAccountId: from,
+          characterId: gone?.id ?? '',
+          sortOrder: 1,
+          isRepresentative: false,
+          deletedAt: longAgo,
+        },
+      ])
+      const appointment = (deletedAt: Date | null) => ({
+        id: crypto.randomUUID(),
+        nexonAccountId: from,
+        time: '21:00',
+        durationMinutes: 60,
+        scheduleType: 'once' as const,
+        date: '2026-11-21',
+        deletedAt,
+      })
+      const alive = appointment(null)
+      await db.insert(partyAppointments).values([alive, appointment(longAgo)])
+      await db.insert(bossProfitCalculatorRecords).values({
+        id: crypto.randomUUID(),
+        nexonAccountId: from,
+        savedAt: longAgo,
+        deletedAt: longAgo,
+      })
+      await db.insert(enhancementSettledDays).values([
+        { nexonAccountId: from, apiType: 'cube', historyDate: '2026-05-01' },
+        { nexonAccountId: from, apiType: 'cube', historyDate: '2026-05-02', deletedAt: longAgo },
+      ])
+
+      await repo.reportMapleIds(from, ['m1'])
+
+      const rowsOf = async (
+        table:
+          | typeof trackedCharacters
+          | typeof partyAppointments
+          | typeof bossProfitCalculatorRecords
+          | typeof enhancementSettledDays,
+      ) =>
+        (
+          await db.select({ account: table.nexonAccountId, deletedAt: table.deletedAt }).from(table)
+        ).map((r) => [r.account, r.deletedAt])
+      expect(await rowsOf(trackedCharacters)).toEqual([[old.nexonAccountId, null]])
+      expect(await rowsOf(partyAppointments)).toEqual([[old.nexonAccountId, null]])
+      expect(await rowsOf(bossProfitCalculatorRecords)).toEqual([])
+      expect(await rowsOf(enhancementSettledDays)).toEqual([[old.nexonAccountId, null]])
+      expect(
+        (await db.select({ id: partyAppointments.id }).from(partyAppointments)).map((r) => r.id),
+      ).toEqual([alive.id])
+
+      const rows = new DeletedRowsRepository(db)
+      expect(await rows.purgeBefore(new Date(Date.now() - 180 * 86_400_000))).toBe(0)
+      expect(await rows.purgedChangeSeq()).toBeNull()
     })
 
     describe('없앨 줄의 사람의 옛 기록', () => {

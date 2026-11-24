@@ -54,7 +54,8 @@ describe('OperatorNoticesService.create', () => {
 
   it('마크다운을 블록과 평문으로 바꿔 원문과 함께 저장하고, 알림 문구를 비우면 바꾼 평문을 쓴다', async () => {
     const { service, repo, push } = build()
-    const markdown = '## 새 기능\n\n![](https://mapleroutine.store/assets/a.webp)\n\n메모를 붙여요'
+    const markdown =
+      '## 새 기능\n\n![](https://api.mapleroutine.store/assets/a.webp)\n\n메모를 붙여요'
 
     await service.create({
       ...base,
@@ -67,7 +68,7 @@ describe('OperatorNoticesService.create', () => {
         markdown,
         blocks: [
           { type: 'heading', text: '새 기능' },
-          { type: 'image', src: 'https://mapleroutine.store/assets/a.webp' },
+          { type: 'image', src: 'https://api.mapleroutine.store/assets/a.webp' },
           { type: 'text', text: '메모를 붙여요' },
         ],
         body: '새 기능\n메모를 붙여요',

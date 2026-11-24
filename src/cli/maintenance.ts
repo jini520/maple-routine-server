@@ -15,7 +15,7 @@ import { maintenanceFile, parseMaintenanceArgs } from './maintenance-args'
 const HOST = 'ubuntu@158.179.175.230'
 const DIR = '/srv/maple-routine-maintenance'
 const FILE = `${DIR}/maintenance.json`
-const STATUS_URL = 'https://mapleroutine.store/v1/maintenance'
+const STATUS_URL = 'https://api.mapleroutine.store/v1/maintenance'
 
 function ssh(command: string, input?: string): void {
   execFileSync('ssh', ['-o', 'BatchMode=yes', HOST, command], {

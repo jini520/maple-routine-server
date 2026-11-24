@@ -21,7 +21,7 @@ export function isForeignKeyViolation(error: unknown): boolean {
   return hasCode(error, '23503')
 }
 
-/** check_violation. 표의 CHECK 제약을 어겼다. */
-export function isCheckViolation(error: unknown): boolean {
-  return hasCode(error, '23514')
+/** check_violation. 표의 CHECK 제약을 어겼다. constraint 를 주면 그 제약의 위반만이다. 트리거가 이 코드로 거절하기도 한다. */
+export function isCheckViolation(error: unknown, constraint?: string): boolean {
+  return hasCode(error, '23514', constraint)
 }

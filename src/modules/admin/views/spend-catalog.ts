@@ -52,7 +52,7 @@ export const SPEND_CATALOG_HTML = page(
   `<section class="panel"><div class="panel-head" id="rules"></div></section>
 <div class="split"><nav class="picklist" id="list" aria-label="묶음"></nav><section class="panel" id="detail"></section></div>`,
   `
-  var CURRENCIES = [['point', '메포'], ['meso', '메소']];
+  var CURRENCIES = [['maple_point', '메포'], ['meso', '메소']];
   var UNITS = [['회', '회'], ['개', '개'], ['포인트', '포인트'], ['시간', '시간']];
   var current = null, ruleCells = {};
   function nameOf(pairs, key) { for (var i = 0; i < pairs.length; i++) if (pairs[i][0] === key) return pairs[i][1]; return key; }
@@ -92,7 +92,7 @@ export const SPEND_CATALOG_HTML = page(
     var key = input('text', 'mono'); key.placeholder = 'high_mountain_3';
     var tile = select(D.tiles.map(function (t) { return [t.key, t.name + ' (' + t.key + ')']; }), it ? it.tile : undefined);
     var name = input('text'); var tier = input('text'); tier.placeholder = '1단계 · 공격력';
-    var currency = select(CURRENCIES, it ? it.currency : 'point'); var unitPrice = input('number'); unitPrice.min = '0'; unitPrice.placeholder = '비우면 경매장 값';
+    var currency = select(CURRENCIES, it ? it.currency : 'maple_point'); var unitPrice = input('number'); unitPrice.min = '0'; unitPrice.placeholder = '비우면 경매장 값';
     var unit = select(UNITS, it ? it.unit : '회'); var maxQuantity = input('number'); maxQuantity.min = '1'; var coin = input('number'); coin.min = '1';
     var from = input('text', 'mono'); from.placeholder = '2026-09-17'; var until = input('text', 'mono'); until.placeholder = '비우면 끝없이';
     var options = input('text'); options.placeholder = '무기=한손무기; 능력치=공격력';

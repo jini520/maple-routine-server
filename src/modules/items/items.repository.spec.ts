@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 
+import { isCheckViolation } from '../../common/pg-errors'
 import {
   gameDataSectionUpdates,
   huntLootItems,
@@ -260,6 +261,36 @@ describeDb('ItemsRepository', () => {
     await expect(
       repo.create('another_whetstone', { ...ring, name: '생명의 연마석' }),
     ).rejects.toBeInstanceOf(ItemNameTaken)
+  })
+
+  // 시세와 게임 데이터는 연결을 한 번만 따라간다. 두 번 이어지면 따로 둔 줄의 판매가가 원래 아이템이 아닌 줄로 모인다.
+  it('같은 물건 연결은 한 번만 잇는다. 따로 둔 줄을 원래 줄로, 원래 줄을 따로 둔 줄로 쓰는 연결은 거절하고, 원래 줄 하나에 따로 둔 줄은 여럿 둔다', async () => {
+    await linkedRows()
+    const [second, third] = await db
+      .insert(items)
+      .values([
+        { key: 'life_whetstone_second', name: '생명의 연마석', isDrop: true },
+        { key: 'life_whetstone_third', name: '생명의 연마석', isDrop: true },
+      ])
+      .returning({ id: items.id })
+    const link = (itemId: string, originalItemId: string) =>
+      db.insert(sameItemLinks).values({ itemId, originalItemId })
+    const rejection = (query: PromiseLike<unknown>) =>
+      query.then(
+        () => null,
+        (error: unknown) => isCheckViolation(error, 'same_item_links_one_hop'),
+      )
+
+    expect([
+      await rejection(link(second.id, await idOf('life_whetstone_from_box'))),
+      await rejection(link(await idOf('life_whetstone'), third.id)),
+    ]).toEqual([true, true])
+    await link(second.id, await idOf('life_whetstone'))
+
+    expect((await db.select().from(sameItemLinks)).map((l) => l.originalItemId)).toEqual([
+      await idOf('life_whetstone'),
+      await idOf('life_whetstone'),
+    ])
   })
 
   it('사냥 전리품 아이템의 이름을 고치면 사냥 전리품 칸의 시각도 민다', async () => {

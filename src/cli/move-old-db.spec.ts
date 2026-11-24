@@ -828,7 +828,7 @@ describeDb('moveOldDb', () => {
     expect(moved.find((c) => c.key === 'mu_lung_dojo')?.shortName).toBe('mu_lung_dojo 짧은')
   })
 
-  it('가계부 기준 표: 줄 id 를 두고 칸을 새 이름으로 옮기며, 타일의 그림 두 칸을 한 칸으로 합치고 항목의 줄인 이름은 버린다', async () => {
+  it('가계부 기준 표: 줄 id 를 두고 칸을 새 이름으로 옮기며, 타일의 그림 두 칸을 한 칸으로 합치고 항목의 줄인 이름은 버린다. 재화 `point` 는 `maple_point` 가 된다', async () => {
     const icon = await insertOldAsset('items/spec_icon.webp')
     const mapIcon = await insertOldAsset('maps/icons/specMap.png')
     const [category] = await oldDb
@@ -936,6 +936,7 @@ describeDb('moveOldDb', () => {
       {
         id: item?.id,
         name: '시험 항목',
+        currency: 'maple_point',
         rewardCoinQuantity: 4,
         validFrom: '2026-09-17',
         validUntil: null,
@@ -1472,6 +1473,91 @@ describeDb('moveOldDb', () => {
       [10_000, 10_100.5],
     )
     expect(await newDb.select().from(schema.marketPublishedDays)).toHaveLength(1)
+    expect(await newDb.select().from(schema.marketResponses)).toEqual([])
+  })
+
+  // 옮긴 뒤 앱이 보는 시세의 흐름이 옛 DB 와 같아야 한다. 반지 레벨 두 줄이 한 레벨 줄로 모이거나 다른 시세의 날이 섞이면 봉이 바뀐다.
+  it('시세: 여러 날 · 반지 레벨 둘 · 버리는 판정과 응답이 섞여도 시세마다 날마다 기준가가 그대로이고, 거래권으로 재던 소비 아이템의 지난 줄은 거래권 줄을 가리킨다', async () => {
+    await insertOldGroup('spec_ring', 'accessory')
+    await insertOldGroup('spec_loot', 'consumable')
+    const ring = await insertOldItem('ring', { name: '반지', category: 'spec_ring' })
+    const whetstone = await insertOldItem('whetstone', { name: '연마석', category: 'spec_loot' })
+    const choiceBox = await insertOldItem('choice_box', {
+      name: '선택 상자',
+      category: 'spec_loot',
+    })
+    await insertOldBox('ring_box', [3, 4], [ring])
+    await oldDb
+      .insert(oldSchema.worlds)
+      .values({ key: 'scania', name: '스카니아', priceGroup: 'general', sortOrder: 0 })
+    const day = (
+      date: string,
+      itemId: string,
+      ringLevel: number | null,
+      scope: string,
+      refMeso: number,
+    ) => ({
+      day: date,
+      itemId,
+      ringLevel,
+      scope,
+      source: 'today' as const,
+      refMeso,
+      fenceLow: refMeso / 2,
+      fenceHigh: refMeso * 2,
+      voters: 3,
+      freshDay: date,
+    })
+    const oldDays = [
+      day('2026-11-01', ring, 3, 'general', 30),
+      day('2026-11-02', ring, 3, 'general', 31),
+      day('2026-11-01', ring, 4, 'general', 40),
+      day('2026-11-02', ring, 4, 'general', 41),
+      day('2026-11-03', ring, 4, 'general', 42),
+      day('2026-11-02', whetstone, null, 'scania', 7),
+      day('2026-11-03', whetstone, null, 'scania', 8),
+      day('2026-11-01', choiceBox, null, 'general', 5),
+    ]
+    await oldDb.insert(oldSchema.marketDays).values(oldDays)
+    await oldDb.insert(oldSchema.marketJudgements).values({
+      day: '2026-11-02',
+      person: 'u:00000000-0000-4000-8000-000000000000',
+      judged: 4,
+      excluded: 1,
+      dummy: false,
+    })
+    await oldDb
+      .insert(oldSchema.marketResponses)
+      .values({ day: '2026-11-03', key: 'item:ring:4:general', body: '{}', etag: '"e"' })
+
+    await moveOldDb(oldDb, newDb)
+
+    const levels = await newDb.select().from(schema.ringLevelItems)
+    const levelItem = (level: number) => levels.find((l) => l.ringLevel === level)?.itemId
+    const [general] = await newDb.select({ id: schema.tradeGroups.id }).from(schema.tradeGroups)
+    const [scania] = await newDb.select({ id: schema.worlds.id }).from(schema.worlds)
+    const scopeIdOf: Record<string, string> = { general: general.id, scania: scania.id }
+    const marketOf = (itemId: string | undefined, scopeId: string) => `${itemId}|${scopeId}`
+    const expected = new Map<string, [string, number][]>()
+    for (const d of oldDays) {
+      const itemId = d.ringLevel === null ? d.itemId : levelItem(d.ringLevel)
+      const key = marketOf(itemId, scopeIdOf[d.scope])
+      expected.set(key, [...(expected.get(key) ?? []), [d.day, d.refMeso]])
+    }
+    const moved = new Map<string, [string, number][]>()
+    for (const r of await newDb.select().from(schema.marketReferencePrices)) {
+      const key = marketOf(r.itemId, r.scopeId)
+      moved.set(key, [...(moved.get(key) ?? []), [r.date, r.referencePriceMeso]])
+    }
+    const sorted = (map: Map<string, [string, number][]>) =>
+      new Map([...map].map(([key, days]) => [key, [...days].sort()]))
+    expect(sorted(moved)).toEqual(sorted(expected))
+    const [boxRow] = await newDb
+      .select()
+      .from(schema.marketReferencePrices)
+      .where(eq(schema.marketReferencePrices.itemId, choiceBox))
+    expect([boxRow.scopeType, boxRow.scopeId]).toEqual(['trade_group', general.id])
+    expect(await newDb.select().from(schema.marketJudgements)).toEqual([])
     expect(await newDb.select().from(schema.marketResponses)).toEqual([])
   })
 

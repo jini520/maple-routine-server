@@ -241,13 +241,18 @@ export function layout(path: string, title: string, body: string): string {
   .item a { color: var(--accent-ink); word-break: break-all }
   .empty-text { color: var(--text-3); text-align: center; padding: 22px 20px; background: var(--surface); border-radius: 8px }
 
-  .links { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px }
-  .links a { display: grid; gap: 6px; padding: 18px 20px; text-decoration: none; color: inherit }
+  .home { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: 20px; align-items: start }
+  .home-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start }
+  .home-col, .home section { display: grid; gap: 8px; align-content: start }
+  .home-col { gap: 16px }
+  @media (max-width: 900px) { .home, .home-cols { grid-template-columns: 1fr } }
+  .links { display: grid; gap: 6px }
+  .links a { display: grid; gap: 2px; padding: 10px 14px; text-decoration: none; color: inherit }
   .links a:hover { background: var(--surface-2) }
-  .section { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--text); margin: 12px 0 -8px; padding-top: 16px }
-  .subsection { font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--text-3); margin: 0 0 -10px }
+  .section { font-size: 16px; font-weight: 700; letter-spacing: -.01em; color: var(--text); margin: 0 }
+  .subsection { font-size: 12.5px; font-weight: 600; letter-spacing: .02em; color: var(--text-3); margin: 0 }
   .links h3 { font-size: 15px; font-weight: 600; margin: 0; color: var(--accent-ink) }
-  .links p { margin: 0; color: var(--text-2); font-size: 13px }
+  .links p { margin: 0; color: var(--text-2); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
 
   .dash-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px }
   .dash-filters .btns { display: flex; gap: 6px; flex-wrap: wrap }

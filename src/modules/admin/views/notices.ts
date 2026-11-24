@@ -2,6 +2,7 @@ import { layout } from './layout'
 
 /**
  * 운영자 공지. 쓴 공지의 목록 하나이고, 쓰기와 고치기는 넓은 작은 창에서 한다. 창의 왼쪽이 입력, 오른쪽이 앱에 보일 미리 보기다.
+ * 목록은 쌓이기만 하므로 화면 아래 끝까지 채운 칸 안에서 스크롤한다.
  *
  * 올리는 시각을 예약하면 그 시각 전에는 앱에 보이지 않고, 켠 알림도 그 시각에 간다. 알림은 기본 꺼짐이다. 올라간 공지를 고칠
  * 때 오타마다 트레이가 울리지 않게 하려는 것이다. 예약 시각은 datetime-local 을 KST 로 읽어 ISO 로 바꿔 보낸다.
@@ -16,7 +17,7 @@ export const NOTICES_HTML = layout(
 <div id="message" class="msg" role="status" hidden></div>
 <section class="panel">
   <div class="panel-head"><p>운영자 공지다. 넥슨 공지는 여기 안 나온다. 예약한 공지는 올리는 시각 전에는 앱에 보이지 않는다</p></div>
-  <table class="sheet"><thead><tr><th>상태</th><th>제목</th><th>올리는 시각</th><th>알림</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+  <div class="fill" id="list"><table class="sheet"><thead><tr><th>상태</th><th>제목</th><th>올리는 시각</th><th>알림</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </section>
 <style>
   .editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 20px; align-items: start }
@@ -175,6 +176,7 @@ export const NOTICES_HTML = layout(
     });
   }
   async function load() { var r = await call('GET', '/notices/rows'); render(r.json ? r.json.rows : []); }
+  fillToBottom(document.getElementById('list'), 44);
   load();
 </script>`,
 )

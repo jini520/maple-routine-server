@@ -373,6 +373,38 @@ describe('AdminController', () => {
     expect(res.body).not.toContain('boss_difficulties')
   })
 
+  // 줄이 쌓이기만 하는 목록이 페이지를 늘리면 한 화면에 들어오지 않는다. 쪽으로 나누면 지난 줄을 찾으려고 넘겨야 한다.
+  it('늘어나기만 하는 목록(공지 · 보스 직접 완료)은 화면 아래 끝까지 채운 칸 안에서 스크롤한다', async () => {
+    for (const url of ['/notices', '/manual-completion']) {
+      const res = await app.inject({ method: 'GET', url })
+      expect(res.body).toMatch(/<div class="fill" id="list"><table[^>]*>/)
+      expect(res.body).toMatch(/fillToBottom\(document\.getElementById\('list'\), \d+\)/)
+    }
+  })
+
+  // 메뉴에 화면을 더하고 홈을 잊으면 홈의 카드와 `운영자 화면 스물넷` 이 어긋난다.
+  it('홈의 카드는 메뉴의 화면과 같다', async () => {
+    const res = await app.inject({ method: 'GET', url: '/' })
+    const nav = res.body.slice(res.body.indexOf('<nav'), res.body.indexOf('</nav>'))
+    const home = res.body.slice(res.body.indexOf('<div class="home">'))
+    const hrefs = (html: string, tag: RegExp) =>
+      [...html.matchAll(tag)].map((m) => m[1]).filter((href) => href !== '/')
+    const menu = hrefs(nav, /<a href="([^"]+)"/g)
+    const cards = hrefs(home, /<a class="card" href="([^"]+)"/g)
+    expect([...cards].sort()).toEqual([...menu].sort())
+    expect(res.body).toContain('운영자 화면 스물넷')
+    expect(cards).toHaveLength(24)
+  })
+
+  // 늘 펼쳐 둔 폼은 쓰지 않는 동안에도 화면을 차지한다.
+  it('보스 직접 완료 화면은 여는 폼을 단추가 띄우는 작은 창에 두고, 열린 줄과 이력을 표 하나에 둔다', async () => {
+    const res = await app.inject({ method: 'GET', url: '/manual-completion' })
+    const page = res.body.slice(res.body.indexOf('</nav>'))
+    expect(page).toContain("openForm('보스 열기'")
+    expect(page).not.toMatch(/<(select|input)\b/)
+    expect(page.match(/<table\b/g)).toHaveLength(1)
+  })
+
   const MENU_OF: Record<string, string> = {
     '/enhancement-costs/starforce': '/enhancement-costs',
     '/enhancement-costs/superior': '/enhancement-costs',

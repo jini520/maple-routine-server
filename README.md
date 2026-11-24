@@ -318,7 +318,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   든다. 바뀐 칸은 key 마다 요청 하나로 모아 보내고, 실패한 칸은 바뀐 표시를 남긴다. 목록이 긴 화면은 왼쪽에서 고르거나(`pickList`)
   위에서 고르고(`segButtons`), 더 긴 목록은 쪽으로 넘긴다(`pager`). 드롭 가격 · 드롭 시세(목록 · 아이템)는 쪽으로 나누지 않고,
   목록을 화면 아래 끝까지 채운 칸(`fillToBottom`) 안에서 스크롤한다(사용자 지정 2026-11-21). 드롭 가격의 기록은 칸 끝까지
-  내리면 다음 줄을 이어 읽는다. 보스 직접 완료 화면은 아직 옛 짜임이다.
+  내리면 다음 줄을 이어 읽는다. 쌓이기만 하는 공지 목록과 보스 직접 완료의 이력도 같은 칸 안에서 스크롤한다.
 - **시각은 timestamptz 로 저장하고, 사람이 보는 글자는 전부 KST `YYYY-MM-DD HH:mm:ss` 다**(앱 저장소 `ADR-016` 결정 5). 관리 화면은
   `layout.ts` 의 `when()` 으로만 시각을 그리고 `datetime-local` 입력도 KST 로 읽는다. CLI 는 `common/kst.ts` 의 `formatKst` 다. 브라우저와
   컨테이너의 시간대에 기대지 않는다.

@@ -2016,6 +2016,42 @@
    ]
   },
   {
+   "name": "deleted_row_purges",
+   "source": "card",
+   "kind": "new",
+   "group": "동기화",
+   "unique": [
+    "id (지우기 한 번에 한 줄)"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "uuid",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "max_change_seq",
+     "type": "bigint",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": null
+    },
+    {
+     "name": "created_at",
+     "type": "timestamptz",
+     "references": null,
+     "nullable": null,
+     "was": null,
+     "key": "sync"
+    }
+   ],
+   "was": null
+  },
+  {
    "name": "drop_box_contents",
    "source": "server",
    "was": null,

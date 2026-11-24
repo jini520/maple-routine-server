@@ -99,26 +99,32 @@ describeDb('SyncPullRepository', () => {
     expect([row?.mapleId, row?.ocid, 'characterId' in (row ?? {})]).toEqual([M_ME, O_ME, false])
   })
 
-  // 바뀐 것이 없는 주인도 번호가 올라야 남은 삭제 표식의 가장 작은 번호보다 뒤에 선다. 아니면 쓰지 않는 메이플 ID 를 매번 다시 받는다.
-  it('다 받은 주인에게는 순번의 지금 값을 돌려주고, 남은 삭제 표식의 가장 작은 번호를 싣는다', async () => {
+  // 바뀐 것이 없는 주인도 번호가 올라야 지운 번호보다 뒤에 선다. 아니면 180일 넘게 바뀌지 않은 메이플 ID 를 지우기마다 다시 받는다.
+  it('다 받은 주인에게는 순번의 지금 값을 돌려주고, 180일 뒤 지우기가 지운 가장 큰 번호를 싣는다. 남은 표식은 세지 않는다', async () => {
     const gone = total()
     await push(me, upsert('enhancementTotals', gone), remove('enhancementTotals', { id: gone.id }))
     await push(
       other,
       upsert('enhancementTotals', total({ mapleId: M_OTHER, ocid: sha256Hex('o-x') })),
     )
-    const [deleted] = await db
-      .select()
-      .from(schema.enhancementTotals)
-      .where(eq(schema.enhancementTotals.id, gone.id))
 
-    const response = await pull(me, { mapleIds: { [M_ME]: 999_999 } })
+    const kept = await pull(me, { mapleIds: { [M_ME]: 999_999 } })
 
     const sequence = await db.execute<{ last_value: string }>(
       sql`SELECT last_value FROM record_change_seq`,
     )
-    expect(response.cursors.mapleIds[M_ME]).toBe(Number(sequence.rows[0]?.last_value))
-    expect(response.oldestDeletedChangeSeq).toBe(deleted?.changeSeq)
+    expect(kept.cursors.mapleIds[M_ME]).toBe(Number(sequence.rows[0]?.last_value))
+    expect(kept.purgedChangeSeq).toBeNull()
+
+    const [deleted] = await db
+      .select()
+      .from(schema.enhancementTotals)
+      .where(eq(schema.enhancementTotals.id, gone.id))
+    await new DeletedRowsRepository(db).purgeBefore(new Date(Date.now() + 60_000))
+
+    const purged = await pull(me, { mapleIds: { [M_ME]: 999_999 } })
+
+    expect(purged.purgedChangeSeq).toBe(deleted?.changeSeq)
   })
 
   // 처음 받는 기기에는 지울 줄이 없다. 번호를 기억한 기기는 그 사이에 지운 줄을 받아 지운다.

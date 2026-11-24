@@ -94,6 +94,29 @@ describe('TokenService', () => {
     expect(sessions.delete).not.toHaveBeenCalled()
   })
 
+  // 세션 암호 키가 봉한 때의 키와 다르면 토큰을 열지 못한다. 그대로 던지면 프렌즈 조회가 500 이라 앱이 다시 로그인하라고 하지 않는다.
+  it('봉한 토큰을 열 수 없으면 넥슨을 부르지 않고 세션을 지운 뒤 ReloginRequired 를 던진다', async () => {
+    const otherKey = new SealService({ get: () => 'cd'.repeat(32) } as unknown as ConfigService<
+      Env,
+      true
+    >)
+    const alive = build(row({ sealedAccessToken: otherKey.seal('access', 'AT-old') }))
+
+    await expect(alive.service.tokenFor('sid')).rejects.toBeInstanceOf(ReloginRequired)
+    expect(alive.sessions.delete).toHaveBeenCalledWith('sid')
+
+    const expired = build(
+      row({
+        accessExpiresAt: new Date(),
+        sealedRefreshToken: otherKey.seal('refresh', 'RT-old'),
+      }),
+    )
+
+    await expect(expired.service.tokenFor('sid')).rejects.toBeInstanceOf(ReloginRequired)
+    expect(expired.nexon.refresh).not.toHaveBeenCalled()
+    expect(expired.sessions.delete).toHaveBeenCalledWith('sid')
+  })
+
   it('세션이 없으면 ReloginRequired 다', async () => {
     const { service } = build(null)
 

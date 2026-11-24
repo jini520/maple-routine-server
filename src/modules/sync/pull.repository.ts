@@ -25,8 +25,8 @@ export interface PullResponse {
     nexonAccount: { id: string; changeSeq: number }
     mapleIds: Record<string, number>
   }
-  /** 서버 전체에 남은 삭제 표식 가운데 가장 작은 변경 번호. 표식이 없으면 null 이다. */
-  oldestDeletedChangeSeq: number | null
+  /** 180일 뒤 지우기가 지금까지 지운 기록 줄의 가장 큰 변경 번호. 지운 적이 없으면 null 이다. */
+  purgedChangeSeq: number | null
   /** 상한에 닿아 다 싣지 못한 주인이 있다. */
   hasMore: boolean
   /** 표마다 바뀐 줄. 줄이 있는 표만 SYNC_TABLE_NAMES 의 차례로 싣는다. 지운 줄은 deletedAt 이 차 있다. */
@@ -131,7 +131,7 @@ async function attachReferenced(
  * 차례다. 한 번에 PULL_ROW_LIMIT 줄까지 싣고 상한에 닿은 주인은 마지막으로 실은 줄의 번호를 돌려준다.
  *
  * 주인들의 잠금을 함께 쥐고 읽는다. 도는 쓰기가 끝난 뒤에 읽고 읽는 동안 새 쓰기를 세우므로, 다 읽은 주인에게 순번의 지금
- * 값을 돌려줄 수 있다. 바뀐 것이 없는 주인도 번호가 올라 남은 삭제 표식의 가장 작은 번호보다 뒤에 선다.
+ * 값을 돌려줄 수 있다. 바뀐 것이 없는 주인도 번호가 올라 지운 번호보다 뒤에 선다.
  */
 @Injectable()
 export class SyncPullRepository {
@@ -205,7 +205,8 @@ export class SyncPullRepository {
           nexonAccount: { id: identity.nexonAccountId, changeSeq: accountNext },
           mapleIds: mapleIdCursors,
         },
-        oldestDeletedChangeSeq: await this.deletedRows.oldestDeletedChangeSeq(tx),
+        // 줄을 읽은 뒤에 읽어야, 그 사이에 지운 줄이 있으면 오른 값이 실린다.
+        purgedChangeSeq: await this.deletedRows.purgedChangeSeq(tx),
         hasMore,
         records,
       }

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 
 import { sha256Hex } from '../../common/hash'
 import { cashbookEntries, cashbookEntryItems, mapleIdNames, mapleIds } from '../../database/schema'
@@ -75,20 +75,42 @@ describeDb('DeletedRowsRepository', () => {
     ).toEqual([])
   })
 
-  // 받기가 이 번호를 알려 줘야 오래 받지 않은 기기가 표식을 놓쳤는지 안다.
-  it('남은 표식 가운데 가장 작은 변경 번호를 표를 가로질러 돌려주고, 표식이 없으면 null 이다', async () => {
-    expect(await repo.oldestDeletedChangeSeq()).toBeNull()
+  // 표식을 놓치는 것은 표식이 선 줄이 실제로 지워질 때뿐이다. 받기가 이 번호를 알려 줘야 그 사이에 받지 않은 기기가 비우고
+  // 다시 받는다. 남은 표식까지 세면 줄이 많은 주인이 비우고 다시 받기를 되풀이하고, 내려가면 이미 견준 기기가 다시 비운다.
+  it('지운 줄의 가장 큰 변경 번호를 표를 가로질러 적고, 지울 때마다 오르며 내려가지 않는다. 지운 적이 없으면 null 이다', async () => {
     const mapleId = await mapleIdRow(sha256Hex('m-me'))
-    await db.insert(mapleIdNames).values({ mapleId, name: '본캐', deletedAt: new Date() })
-    await insertEntry(mapleId, new Date())
+    const now = Date.now()
+    const seqOf = async (id: string): Promise<number> => {
+      const [row] = await db
+        .select({ changeSeq: cashbookEntries.changeSeq })
+        .from(cashbookEntries)
+        .where(eq(cashbookEntries.id, id))
+      if (row === undefined) throw new Error('가계부 기록이 없다')
+      return row.changeSeq
+    }
+    const purge = (daysAgo: number) => repo.purgeBefore(new Date(now - daysAgo * DAY_MS))
 
-    const [name] = await db.select().from(mapleIdNames)
-    const result = await db.execute<{ min: string }>(
-      sql`SELECT min(change_seq) AS min FROM cashbook_entries WHERE deleted_at IS NOT NULL`,
-    )
+    const early = await insertEntry(mapleId, new Date(now - 10 * DAY_MS))
+    const earlySeq = await seqOf(early)
+    await purge(180)
+    expect(await repo.purgedChangeSeq()).toBeNull()
 
-    expect(await repo.oldestDeletedChangeSeq()).toBe(
-      Math.min(name?.changeSeq ?? Infinity, Number(result.rows[0]?.min)),
-    )
+    await insertEntry(mapleId, new Date(now - 200 * DAY_MS))
+    const [name] = await db
+      .insert(mapleIdNames)
+      .values({ mapleId, name: '본캐', deletedAt: new Date(now - 200 * DAY_MS) })
+      .returning()
+    const recent = await insertEntry(mapleId, new Date(now - DAY_MS))
+    const recentSeq = await seqOf(recent)
+    await purge(180)
+    expect(await repo.purgedChangeSeq()).toBe(name?.changeSeq)
+    expect(recentSeq).toBeGreaterThan(name?.changeSeq ?? Infinity)
+
+    await purge(5)
+    expect(earlySeq).toBeLessThan(name?.changeSeq ?? -Infinity)
+    expect(await repo.purgedChangeSeq()).toBe(name?.changeSeq)
+
+    await purge(0)
+    expect(await repo.purgedChangeSeq()).toBe(recentSeq)
   })
 })

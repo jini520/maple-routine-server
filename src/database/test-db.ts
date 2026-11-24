@@ -76,6 +76,7 @@ const TABLES = [
   'boss_profit_entries',
   'boss_split_settings',
   'drop_sale_prices',
+  'deleted_row_purges',
   'usage_events',
   'nexon_login_attempts',
   'nexon_sessions',

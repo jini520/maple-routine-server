@@ -54,13 +54,24 @@ const syncColumns = () => ({
 })
 
 /**
- * 삭제 표식이 선 줄의 변경 번호 색인. 받기마다 남은 표식 가운데 가장 작은 번호를 읽는다. 표식이 선 줄만 담아 작고, 없으면 큰
- * 기록 표를 받기마다 다 훑는다.
+ * 삭제 표식이 선 줄의 변경 번호 색인. 180일 뒤 지우기가 이 색인으로 표식이 선 줄만 훑는다. 표식이 선 줄만 담아 작고, 없으면 큰
+ * 기록 표를 지우기마다 다 훑는다.
  */
 const deletedChangeSeqIndex = (table: string, t: { changeSeq: PgColumn; deletedAt: PgColumn }) =>
   index(`${table}_deleted_change_seq_idx`)
     .on(t.changeSeq)
     .where(sql`${t.deletedAt} IS NOT NULL`)
+
+/**
+ * 180일 뒤 지우기가 표식이 선 기록 줄을 지운 한 번. 받기는 가장 큰 `max_change_seq` 를 알려 주고, 기기는 그 값이 바뀌었을 때만
+ * 번호가 그보다 작은 주인을 비운다. 줄을 지우면 그 줄의 번호가 남지 않아 따로 적는다.
+ */
+export const deletedRowPurges = pgTable('deleted_row_purges', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** 그 지우기가 지운 줄의 가장 큰 변경 번호 */
+  maxChangeSeq: bigint('max_change_seq', { mode: 'number' }).notNull(),
+  createdAt: timestamptz('created_at').notNull().defaultNow(),
+})
 
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
 export const platformEnum = pgEnum('platform', ['ios', 'android'])

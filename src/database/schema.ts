@@ -1491,7 +1491,7 @@ export const enhancementAnomalies = pgTable(
     /** 응답의 장비 이름. 판정하지 못한 줄은 장비와 무관해 빈 글자다. */
     itemName: text('item_name').notNull(),
     rowCount: integer('row_count').notNull(),
-    /** 캐릭터 목록 요청의 실패 이유. 판정하지 못한 줄만 있다. */
+    /** 이벤트 월드를 판정하지 못한 줄의 월드 이름. 월드 표에 없는 월드다. 그 줄만 있다. */
     detail: text('detail'),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
     updatedAt: timestamptz('updated_at').notNull().defaultNow(),

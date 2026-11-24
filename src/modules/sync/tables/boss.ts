@@ -233,8 +233,8 @@ async function moveDrops(ctx: WriteContext, from: string, into: string): Promise
 }
 
 /**
- * 보스 수익 건. 보스 줄은 난이도 줄에서 채우고, 기간 값의 첫 글자가 난이도의 주기와 다르면 받지 않는다. 처치한 수익 건이면 적은 뒤
- * 그 묶음의 드롭을 그 수익 건으로 모은다.
+ * 보스 수익 건. 보스 줄은 난이도 줄에서 채우고, 기간 값의 첫 글자가 난이도의 주기와 다르면 받지 않는다. 적은 뒤 그 묶음에 처치한
+ * 수익 건이 있으면 드롭을 그 수익 건으로 모으고 빈 처치 전 수익 건을 지운다.
  */
 export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById>({
   upsertRow: bossProfitEntryRow,
@@ -310,13 +310,12 @@ export const bossProfitEntriesTable = defineTable<BossProfitEntryRow, DeleteById
         await markEntryDeleted(ctx, gone)
       },
     })
-    if (values.clearRecordedBy !== null) {
-      await settleClearedDrops(ctx, {
-        characterId,
-        bossId: difficulty.bossId,
-        periodCode: values.periodCode,
-      })
-    }
+    // 처치 전 수익 건도 맞춘다. 처치를 아직 받지 못한 기기가 나중에 올린 수익 건이 다른 난이도에 남지 않게 한다.
+    await settleClearedDrops(ctx, {
+      characterId,
+      bossId: difficulty.bossId,
+      periodCode: values.periodCode,
+    })
     return kept
   },
   deleteOwners: (ctx, row) => characterRowOwners(ctx.tx, bossProfitEntries, row.id),

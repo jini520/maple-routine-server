@@ -1161,6 +1161,53 @@ describeDb('SyncPushRepository', () => {
       )
     })
 
+    // 앱은 직접 완료의 난이도를 바꾸면 옛 처치를 걷는 쓰기를 새 처치보다 먼저 올린다. 새 처치가 먼저 닿으면 옛 처치와 같은 기간 ·
+    // 보스의 처치라 거절되고, 옛 수익 건의 지우기가 먼저 닿으면 아직 옮기지 않은 드롭이 함께 지워진다.
+    it('한 요청에 옛 수익 건의 처치를 걷는 쓰기와 새 난이도의 처치를 차례로 받으면 드롭을 새 수익 건으로 옮기고 빈 옛 수익 건을 지운다', async () => {
+      const previous = entry({ bossDifficultyId: t.kalos.chaos, clearRecordedBy: 'manual' })
+      const ring = itemDrop(previous.id, 'restraint_ring_lv4')
+      await push(me, upsert('bossProfitEntries', previous), upsert('bossDrops', ring))
+      const next = entry({ bossDifficultyId: t.kalos.normal, clearRecordedBy: 'manual' })
+
+      const results = await push(
+        me,
+        upsert('bossProfitEntries', { ...previous, ...notCleared }),
+        upsert('bossProfitEntries', next),
+      )
+
+      expect(results.map((r) => (r.ok ? r.id : r.code))).toEqual([previous.id, next.id])
+      expect(await dropRows()).toEqual([[ring.id, next.id, 'restraint_ring_lv4', true]])
+      const [gone] = await db
+        .select()
+        .from(bossProfitEntries)
+        .where(eq(bossProfitEntries.id, previous.id))
+      expect(gone?.deletedAt).toEqual(expect.any(Date))
+      // 두 기기가 같은 기간 · 보스를 다른 난이도로 처치했다고 적으면 뒤에 온 처치는 지금처럼 거절한다.
+      const [other] = await push(
+        me,
+        upsert('bossProfitEntries', entry({ bossDifficultyId: t.kalos.chaos })),
+      )
+      expect(other).toEqual(expect.objectContaining({ ok: false, code: 'duplicate_record' }))
+    })
+
+    it('옛 처치가 아직 서버에 없으면 옛 수익 건을 처치 전 수익 건으로 받았다가 새 처치를 받을 때 빈 수익 건으로 지운다', async () => {
+      const previous = entry({ bossDifficultyId: t.kalos.chaos, ...notCleared })
+      const next = entry({ bossDifficultyId: t.kalos.normal, clearRecordedBy: 'manual' })
+      const ring = itemDrop(next.id, 'restraint_ring_lv4')
+
+      const results = await push(
+        me,
+        upsert('bossProfitEntries', previous),
+        upsert('bossProfitEntries', next),
+      )
+      await push(me, upsert('bossDrops', ring))
+
+      expect(results.every((r) => r.ok)).toBe(true)
+      expect(await dropRows()).toEqual([[ring.id, next.id, 'restraint_ring_lv4', true]])
+      const live = (await db.select().from(bossProfitEntries)).filter((r) => r.deletedAt === null)
+      expect(live.map((r) => r.id)).toEqual([next.id])
+    })
+
     // 처치를 아직 받지 못한 기기가 나중에 올린 드롭이 다른 난이도 수익 건에 남으면 기기마다 다르게 보인다. 앱은 드롭을 한 건씩 올려
     // 첫 드롭을 옮기며 비운 수익 건을 뒤 드롭이 가리킨다. 그 드롭을 지운 기록의 수정으로 거절하면 앱이 드롭을 지운다.
     it('처치한 수익 건이 있는 묶음의 드롭을 받으면 그 드롭도 옮기고 가리며, 그러다 비운 수익 건을 가리키는 뒤 드롭도 받는다', async () => {

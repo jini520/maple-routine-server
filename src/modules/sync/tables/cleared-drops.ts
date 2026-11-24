@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, or, type SQL, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, isNull, ne, or, type SQL, sql } from 'drizzle-orm'
 
 import {
   bossDifficulties,
@@ -218,11 +218,11 @@ function planClearedDrops(
 }
 
 /**
- * 처치한 수익 건이 있는 묶음의 드롭을 그 수익 건으로 모으고, 비운 수익 건을 기기처럼 지우는 쓰기. 같은 주인의 잠금 안에서 부를 것.
- * 잠금 밖이면 같은 묶음의 다른 쓰기와 엇갈려 변경 번호 차례가 커밋 차례와 어긋남
+ * 처치한 수익 건이 있는 묶음의 드롭을 그 수익 건으로 모으고, 처치도 분배도 드롭도 없는 다른 수익 건을 기기처럼 지우는 쓰기. 같은
+ * 주인의 잠금 안에서 부를 것. 잠금 밖이면 같은 묶음의 다른 쓰기와 엇갈려 변경 번호 차례가 커밋 차례와 어긋남
  */
 export async function settleClearedDrops(ctx: WriteContext, group: EntryGroup): Promise<void> {
-  const { tx, identity } = ctx
+  const { tx } = ctx
   const target = await clearedEntryOf(tx, group)
   const start = periodStartDateOf(group.periodCode)
   if (target === undefined || start === null) return
@@ -246,7 +246,34 @@ export async function settleClearedDrops(ctx: WriteContext, group: EntryGroup): 
         isNull(bossDrops.deletedAt),
       ),
     )
-  if (drops.length === 0) return
+  if (drops.length > 0) await moveIntoCleared(ctx, target, start, drops)
+  await tx
+    .update(bossProfitEntries)
+    .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+    .where(
+      and(
+        eq(bossProfitEntries.characterId, group.characterId),
+        eq(bossProfitEntries.bossId, group.bossId),
+        eq(bossProfitEntries.periodCode, group.periodCode),
+        ne(bossProfitEntries.id, target.id),
+        isNull(bossProfitEntries.clearRecordedBy),
+        isNull(bossProfitEntries.splitType),
+        isNull(bossProfitEntries.deletedAt),
+        sql`NOT EXISTS (SELECT 1 FROM ${bossDrops}
+                         WHERE ${bossDrops.profitEntryId} = ${bossProfitEntries.id}
+                           AND ${bossDrops.deletedAt} IS NULL)`,
+      ),
+    )
+}
+
+/** 묶음의 드롭을 처치한 수익 건으로 옮기고 가리는 쓰기. 바꾼 드롭은 판매가 줄의 아이템도 바꿈 */
+async function moveIntoCleared(
+  ctx: WriteContext,
+  target: ClearedEntry,
+  start: string,
+  drops: readonly GroupDrop[],
+): Promise<void> {
+  const { tx, identity } = ctx
   const plan = planClearedDrops(
     target.id,
     drops,
@@ -275,22 +302,4 @@ export async function settleClearedDrops(ctx: WriteContext, group: EntryGroup): 
         ),
       )
   }
-  const emptied = [...new Set(drops.map((drop) => drop.profitEntryId))].filter(
-    (id) => id !== target.id,
-  )
-  if (emptied.length === 0) return
-  await tx
-    .update(bossProfitEntries)
-    .set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
-    .where(
-      and(
-        inArray(bossProfitEntries.id, emptied),
-        isNull(bossProfitEntries.clearRecordedBy),
-        isNull(bossProfitEntries.splitType),
-        isNull(bossProfitEntries.deletedAt),
-        sql`NOT EXISTS (SELECT 1 FROM ${bossDrops}
-                         WHERE ${bossDrops.profitEntryId} = ${bossProfitEntries.id}
-                           AND ${bossDrops.deletedAt} IS NULL)`,
-      ),
-    )
 }

@@ -2,11 +2,34 @@ import { parseArgs } from 'node:util'
 
 import { formatKst } from '../common/kst'
 
+/** 점검을 거는 주소. `root` 는 1.0.14 까지의 앱이, `api` 는 1.0.15 부터의 앱이 묻는다. */
+export type MaintenanceTarget = 'api' | 'root'
+
 export type MaintenanceCommand =
   /** `until` 은 `2026-12-02T06:00:00+09:00` 꼴. 적지 않았으면 `null`. */
-  { command: 'on'; until: string | null } | { command: 'off' } | { command: 'status' }
+  | { command: 'on'; targets: MaintenanceTarget[]; until: string | null }
+  | { command: 'off'; targets: MaintenanceTarget[] }
+  | { command: 'status'; targets: MaintenanceTarget[] }
 
-const OPTIONS = { until: { type: 'string' } } as const
+/**
+ * 주소마다 앱 박스의 점검 파일과 앱이 묻는 주소. 그 주소의 nginx 가 그 파일이 있으면 `/v1/` 을 막는다.
+ *
+ * 루트의 파일은 처음 자리 그대로다. 운영 nginx 의 루트 설정과 main 의 스크립트가 이 자리를 읽고 쓴다.
+ */
+export const MAINTENANCE_TARGETS: Record<MaintenanceTarget, { file: string; statusUrl: string }> = {
+  api: {
+    file: '/srv/maple-routine-maintenance/api/maintenance.json',
+    statusUrl: 'https://api.mapleroutine.store/v1/maintenance',
+  },
+  root: {
+    file: '/srv/maple-routine-maintenance/maintenance.json',
+    statusUrl: 'https://mapleroutine.store/v1/maintenance',
+  },
+}
+
+const BOTH: MaintenanceTarget[] = ['api', 'root']
+
+const OPTIONS = { until: { type: 'string' }, target: { type: 'string' } } as const
 
 const UNTIL = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/
 
@@ -25,8 +48,19 @@ function toUntil(text: string, now: number): string {
   return iso
 }
 
+/** `--target` 의 값. 켜고 끌 때는 기본값이 없다. 빠뜨렸을 때 1.0.14 사용자를 잘못 잠그지 않게 한다. */
+function toTargets(text: string | undefined, required: boolean): MaintenanceTarget[] {
+  if (text === undefined) {
+    if (required) throw new Error('--target 을 꼭 적는다: api | root | both')
+    return BOTH
+  }
+  if (text === 'both') return BOTH
+  if (text === 'api' || text === 'root') return [text]
+  throw new Error(`모르는 대상: ${text}. api | root | both`)
+}
+
 /**
- * `npm run maintenance -- on|off|status …` 의 인자. 틀리면 무엇이 틀렸는지가 메시지다.
+ * `npm run maintenance -- on|off|status --target api|root|both …` 의 인자. 틀리면 무엇이 틀렸는지가 메시지다.
  *
  * @param now 지금 시각(ms). 지난 종료 예정 시각을 거르는 기준
  */
@@ -36,11 +70,15 @@ export function parseMaintenanceArgs(argv: readonly string[], now: number): Main
 
   switch (command) {
     case 'on':
-      return { command, until: values.until === undefined ? null : toUntil(values.until, now) }
+      return {
+        command,
+        targets: toTargets(values.target, true),
+        until: values.until === undefined ? null : toUntil(values.until, now),
+      }
     case 'off':
     case 'status':
       if (values.until !== undefined) throw new Error('--until 은 on 에만 쓴다')
-      return { command }
+      return { command, targets: toTargets(values.target, command === 'off') }
     default:
       throw new Error(`모르는 명령: ${command ?? '(없음)'}. on | off | status`)
   }

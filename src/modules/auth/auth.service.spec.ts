@@ -38,7 +38,7 @@ function build() {
     userinfo: jest.fn().mockResolvedValue({ uid: 'NEXON-UID' }),
   }
   const config = {
-    get: (key: keyof Env) => (key === 'PUBLIC_BASE_URL' ? 'https://mapleroutine.store' : KEY),
+    get: (key: keyof Env) => (key === 'PUBLIC_BASE_URL' ? 'https://api.mapleroutine.store' : KEY),
   } as unknown as ConfigService<Env, true>
   const service = new AuthService(
     attempts as unknown as AttemptsRepository,
@@ -69,7 +69,7 @@ describe('AuthService', () => {
     expect(nexon.authorizeUrl).toHaveBeenCalledWith(
       'android',
       input.state,
-      'https://mapleroutine.store/v1/auth/nexon/callback',
+      'https://api.mapleroutine.store/v1/auth/nexon/callback',
     )
   })
 
@@ -82,7 +82,7 @@ describe('AuthService', () => {
     expect(nexon.exchange).toHaveBeenCalledWith(
       'ios',
       'CODE',
-      'https://mapleroutine.store/v1/auth/nexon/callback',
+      'https://api.mapleroutine.store/v1/auth/nexon/callback',
     )
     expect(users.upsertByNexonUid).toHaveBeenCalledWith('NEXON-UID')
     const [created] = sessions.create.mock.calls[0] as [

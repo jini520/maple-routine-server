@@ -1,6 +1,6 @@
 import { MarkdownRejected, markdownToNotice } from './markdown-blocks'
 
-const IMAGE = 'https://mapleroutine.store/assets/3f9a.webp'
+const IMAGE = 'https://api.mapleroutine.store/assets/3f9a.webp'
 
 describe('markdownToNotice', () => {
   it('제목 · 문단 · 표를 소제목 · 글 · 표로 바꾸고 표는 머리 줄이 첫 줄이다', () => {

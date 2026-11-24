@@ -54,7 +54,7 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   /etc/docker/daemon.json                 {"live-restore": true}. 데몬을 다시 켜도 서버 컨테이너가 멈추지 않는다(아래 Docker 데몬)
   /srv/maple-routine-assets/              그림 파일(<sha256>.<확장자>). compose 가 /data/assets 로 건다. 주인은 uid 1000(컨테이너의 node)
   /srv/maple-routine-ota/                 OTA 매니페스트 · latest · releases.json 과 files/(번들 · 에셋). compose 가 /data/ota 로 읽기 전용으로 건다. 주인은 ubuntu
-  /srv/maple-routine-maintenance/         점검 파일 maintenance.json. 있으면 점검 중이다. 서버는 읽지 않고 nginx 만 읽는다. 주인은 ubuntu
+  /srv/maple-routine-maintenance/         점검 파일. 루트 주소는 maintenance.json, api 주소는 api/maintenance.json(아래 점검 잠금). 있으면 그 주소가 점검 중이다. 서버는 읽지 않고 nginx 만 읽는다. 주인은 ubuntu
 ```
 
 ```
@@ -106,7 +106,7 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
     /etc/maple-routine-server/env              값 전부(root:mapleroutine 640, 값은 큰따옴표). 서비스와 마이그레이션이 같이 읽는다
     /etc/systemd/system/maple-routine-server.service   deploy/maple-routine-server.service. 127.0.0.1:4000, 메모리 상한 400MB
     /etc/nginx/sites-available/maple-routine-server    deploy/nginx/db-box.conf. 10.0.0.192:8080 에서 그림 · OTA 파일과 서버
-    /srv/maple-routine-assets/ · /srv/maple-routine-ota/   앱 박스에서 떠 온 그림 · OTA. 그림은 서버(mapleroutine)가 쓴다
+    /srv/maple-routine-assets/ · /srv/maple-routine-ota/   앱 박스에서 떠 온 그림 · OTA. 그림은 서버(mapleroutine)가 쓰고, OTA 는 1.0.15 의 발행 스크립트가 올린다(아래 OTA)
   ```
 
   - 올리기는 맥에서 `deploy/deploy.sh ubuntu@152.69.225.126` 이다. 맥에서 빌드하고 `npm ci --omit=dev` 로 받은 `node_modules` 를 함께
@@ -114,7 +114,23 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   - DB 박스 서버의 값은 운영과 다르다. DB 는 `maple_routine_next`(운영 DB 를 떠서 옮긴 사본, 역할 `mapleroutine` 이 유닉스 소켓의
     peer 로 붙는다), `HOST=127.0.0.1`, `DATABASE_POOL_MAX=3`(Postgres 연결 상한 20 을 운영 서버와 나눈다), `FRIENDS_NEXON_RPS=50`,
     `PUBLIC_BASE_URL=https://api.mapleroutine.store`, 운영과 다른 `TOKEN_ENC_KEY_V1` 이다. `FCM_KEY` · `NEXON_KEY` 는 넣지 않는다.
-    사본에 실제 사용자의 푸시 토큰이 있어 알림이 한 번 더 가기 때문이다. 넥슨 로그인 값은 넥슨이 api 콜백을 승인한 뒤 넣는다.
+    사본에 실제 사용자의 푸시 토큰이 있어 알림이 한 번 더 가기 때문이다. 넥슨 로그인 값은 넥슨이 api 콜백을 승인한 뒤 넣는다
+    (앱 저장소 `ADR-016` 결정 14). 그 전에는 이 서버에서 넥슨 로그인이 자격 없음으로 실패한다(2026-11-24 확인).
+  - 넥슨이 api 콜백(`https://api.mapleroutine.store/v1/auth/nexon/callback`)을 승인하면 아래 순서로 넣는다. `PUBLIC_BASE_URL` 은
+    이미 api 라 바꾸지 않는다. 넣을 값은 운영 앱 박스 `~/.config/maple-routine-server/.env` 의 같은 이름 다섯과 같다. 넥슨
+    애플리케이션은 운영과 같은 둘(iOS · 안드로이드)이고 콜백만 하나 더 등록한 것이기 때문이다.
+
+    ```
+    ssh ubuntu@152.69.225.126
+    sudo grep -n PUBLIC_BASE_URL /etc/maple-routine-server/env     # "https://api.mapleroutine.store" 인지 본다
+    sudo cp -p /etc/maple-routine-server/env /etc/maple-routine-server/env.before-nexon
+    sudoedit /etc/maple-routine-server/env    # 큰따옴표로 다섯 줄을 더한다
+    #   NEXON_IOS_CLIENT_ID · NEXON_IOS_CLIENT_SECRET · NEXON_ANDROID_CLIENT_ID · NEXON_ANDROID_CLIENT_SECRET · NEXON_OPENID_SCOPES
+    sudo systemctl restart maple-routine-server && sleep 3 && curl -s http://127.0.0.1:4000/healthz
+    ```
+
+    켠 뒤 1.0.15 개발 빌드에서 넥슨 로그인을 해 본다. 넥슨 로그인 화면에서 앱으로 돌아오면 콜백이 이 서버에 닿은 것이다.
+
   - 데이터를 다시 뜨려면 서비스를 멈추고 DB 를 지워 다시 만든 뒤, 마이그레이션 다음에 `sudo -u postgres` 로 옮긴다. 옛 DB 를
     읽어야 해서 슈퍼유저로 돌린다.
 
@@ -178,6 +194,28 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
   디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-ota /srv/maple-routine-ota/files` 로 만든다. 서버는 읽기만
   하므로 주인이 ubuntu 여도 된다. `/v1/` 의 속도 제한은 매니페스트에만 걸리고 `/ota/files/` 에는 안 걸린다.
+  - **1.0.15 의 OTA 는 전환까지 DB 박스의 `/srv/maple-routine-ota/` 에 있다**(앱 저장소 `ADR-099` 결정 43). 1.0.15 앱은 api 주소로
+    묻고, api 의 `/v1/ota/` · `/ota/files/` 는 upstream `maple_api` 를 따라 DB 박스로 간다. 그래서 앱 develop 의 발행 스크립트
+    (`OTA_HOST`)가 DB 박스에 올리고, 1.0.15 바이너리를 업로드하면 그 지문도 DB 박스의 `latest-<platform>.json` 에 넣는다. 매니페스트는
+    DB 박스의 서버 develop 이, 파일은 DB 박스 nginx(`deploy/nginx/db-box.conf`)가 낸다. 1.0.14 까지의 OTA 는 지금처럼 앱 박스다.
+  - 전환할 때 upstream 을 앱 박스로 바꾸기 **전에** DB 박스의 1.0.15 OTA 를 앱 박스로 옮긴다. 바꾼 뒤 api 의 OTA 확인이 앱 박스의
+    목록을 읽는데, 거기에 1.0.15 의 지문이 없으면 1.0.15 사용자가 스토어 업데이트 모달에 막힌다. 옮긴 목록은 루트로 묻는 1.0.14
+    사용자도 받으므로, 1.0.15 가 스토어에 나온 뒤 루트를 잠글 때 옮긴다(앱 저장소 `ADR-099` 결정 64). 옮기는 것은 `files/` 와
+    `latest-<platform>.json`, 1.0.15 지문의 매니페스트다. 앱 박스의 `files/` 는 지우지 않는다(`--delete` 를 붙이지 않는다). 옮긴
+    `latest-<platform>.json` 의 `acceptedRuntimeVersions` 에 1.0.14 까지의 지문이 남아 있으면 뺀다. 그 뒤 다음에 발행할 트리의
+    `OTA_HOST` 를 앱 박스로 바꾼다.
+
+    ```
+    # 맥에서. 앱 박스의 목록을 먼저 백업한다
+    ssh ubuntu@158.179.175.230 'B=~/ota-backups/<날짜>-before-1.0.15-move; mkdir -p $B && cp -p /srv/maple-routine-ota/*.json $B/'
+    # 파일을 먼저 옮기고 목록은 나중에 옮긴다. 기기가 아직 없는 번들을 가리키는 매니페스트를 받지 않게 한다
+    rsync -a ubuntu@152.69.225.126:/srv/maple-routine-ota/files/ ~/ota-from-db-box/files/
+    rsync -a ~/ota-from-db-box/files/ ubuntu@158.179.175.230:/srv/maple-routine-ota/files/
+    rsync -a --include='latest-*.json' --include='manifest-*-<1.0.15 지문>.json' --exclude='*' \
+      ubuntu@152.69.225.126:/srv/maple-routine-ota/ ~/ota-from-db-box/
+    rsync -a ~/ota-from-db-box/*.json ubuntu@158.179.175.230:/srv/maple-routine-ota/
+    curl -s "https://mapleroutine.store/v1/ota/latest?platform=ios&t=$(date +%s)"   # 1.0.15 지문만 있는지 본다
+    ```
 
 - **nginx 압축. JSON 응답은 nginx 가 gzip 으로 줄인다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). `game-data` 전체 받기가
   1,018KB 에서 241KB 로, 앱을 열 때마다 두 번 받는 소식 목록이 23KB 에서 8KB 로 준다. `/etc/nginx/nginx.conf` 의 `http` 블록은 이렇다.
@@ -206,26 +244,49 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
   ```
   npm run build
-  npm run maintenance -- on --until "2026-12-02 06:00"   # 켠다. 종료 예정 시각은 한국 시각이고 안 적어도 된다
-  npm run maintenance -- status                          # 앱이 묻는 주소에 그대로 물어 본다
-  npm run maintenance -- off                             # 끈다
+  npm run maintenance -- on --target api --until "2026-12-02 06:00"   # 켠다. 대상은 api · root · both 가운데 꼭 적는다. 시각은 한국 시각이고 안 적어도 된다
+  npm run maintenance -- status                                       # 두 주소에 앱이 묻는 그대로 물어 본다. --target 으로 하나만 볼 수 있다
+  npm run maintenance -- off --target api                             # 끈다
   ```
 
-  점검 상태는 앱 박스의 `/srv/maple-routine-maintenance/maintenance.json` 하나다. 파일이 있으면 점검 중이다. 스크립트가 SSH 로 그
+  점검 상태는 주소마다 앱 박스의 파일 하나다(앱 저장소 `ADR-261` 결정 3). 파일이 있으면 그 주소가 점검 중이다. 스크립트가 SSH 로
   파일을 쓰고 지운다. 서버가 아니라 nginx 가 읽는 것은 서버 컨테이너를 내린 동안에도 앱이 점검 중인 것을 알아야 하기 때문이다.
+
+  | 대상   | 묻는 앱     | 파일                                                  | 스크립트가 묻는 주소                            |
+  | ------ | ----------- | ----------------------------------------------------- | ----------------------------------------------- |
+  | `root` | 1.0.14 까지 | `/srv/maple-routine-maintenance/maintenance.json`     | `https://mapleroutine.store/v1/maintenance`     |
+  | `api`  | 1.0.15 부터 | `/srv/maple-routine-maintenance/api/maintenance.json` | `https://api.mapleroutine.store/v1/maintenance` |
+  - 주소마다 나눈 것은 1.0.15 로 전환할 때 api 를 먼저 잠그고 루트는 1.0.15 가 스토어에 나온 뒤에 잠그기 때문이다(앱 저장소
+    `ADR-099` 결정 43 · 64). 파일이 하나면 api 를 잠그는 순간 1.0.14 사용자도 업데이트가 나오기 전부터 잠긴다.
+  - 루트의 파일은 처음 자리 그대로다. 지금 운영 nginx 의 루트 설정과 main 의 스크립트(대상 없이 이 파일만 쓴다)가 이 자리를 쓴다.
+  - `on` · `off` 는 대상을 꼭 받는다. 기본값이 있으면 대상을 빠뜨렸을 때 1.0.14 사용자를 잘못 잠글 수 있다. 끝나면 두 주소의 상태를
+    찍고, 대상 주소가 켰는데 200 이 아니거나 껐는데 204 가 아니면 실패로 끝난다. nginx 가 읽지 않는 자리에 파일을 쓰면 아무 일도
+    일어나지 않기 때문이다.
+  - **지금(2026-11-24) 운영 nginx 는 api 도 루트의 파일을 읽는다.** 아래 `출시 준비 때 api 의 점검 파일 나누기` 를 하기 전에는
+    `--target root` 가 api 도 잠그고, `--target api` 는 api 디렉터리가 없어 실패한다.
   - 앱은 `GET /v1/maintenance` 로 묻는다. 파일이 있으면 그 내용이 200 으로, 없으면 204 가 간다. 앱은 켜자마자, 돌아올 때, 쓰는
     동안 5분마다, 잠긴 동안 30초마다 묻는다. 그래서 켠 뒤 5분이 지나면 켜져 있던 앱도 잠기고, 끈 뒤 30초 안에 풀린다.
   - 점검 중에는 nginx 가 `/v1/` 요청을 서버로 넘기지 않고 503 으로 답한다. 잠금 코드가 없는 옛 번들도 서버의 값을 바꾸지 못하게
     하려는 것이다. `/v1/maintenance` 와 OTA 확인(`/v1/ota/`)만 예외다. `/admin` 은 막지 않는다.
   - 503 으로 점검을 알리지 않는 것은 nginx 가 속도 제한에 걸린 요청에도 503 을 내기 때문이다.
 
-  nginx 는 이렇게 둔다. 서버 경로는 `/etc/nginx/snippets/mapleroutine-api.conf` 에 있어서 루트와 api 주소에 함께 걸린다(앱 저장소
-  `ADR-016` 결정 14). `/v1/` 과 `/v1/friends/stream` 두 블록에는 맨 위에 `if` 를 넣고, 나머지 줄은 그대로 둔다.
+  nginx 의 서버 경로는 주소마다 snippet 이 다르다. 루트는 `/etc/nginx/snippets/mapleroutine-api.conf`(서버 `127.0.0.1:4000`), api 는
+  `/etc/nginx/snippets/mapleroutine-api-upstream.conf`(이 저장소의 `deploy/nginx/app-box-api.conf`, upstream `maple_api`)다(앱 저장소
+  `ADR-016` 결정 14). 1.0.15 로 전환할 때 루트도 api 의 snippet 을 쓴다. 그래서 그 snippet 은 점검 디렉터리를 변수
+  `$maintenance_dir` 로 받고, include 하는 server 블록이 먼저 `set` 한다. `/v1/` 과 `/v1/friends/stream` 두 블록에는 맨 위에 `if`
+  를 넣고, 나머지 줄은 그대로 둔다.
 
   ```
-  # 점검 상태. 파일이 있으면 점검 중이다.
+  server {
+      server_name api.mapleroutine.store;
+      ...
+      set $maintenance_dir /srv/maple-routine-maintenance/api;   # 루트 server 블록은 /srv/maple-routine-maintenance
+      include snippets/mapleroutine-api-upstream.conf;
+  }
+
+  # 점검 상태. 이 주소의 파일이 있으면 점검 중이다.
   location = /v1/maintenance {
-      root /srv/maple-routine-maintenance;
+      root $maintenance_dir;
       add_header Cache-Control "no-store" always;
       try_files /maintenance.json =204;
   }
@@ -238,16 +299,58 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
   }
 
   location /v1/ {
-      if (-f /srv/maple-routine-maintenance/maintenance.json) {
+      if (-f $maintenance_dir/maintenance.json) {
           return 503;
       }
       ...
   }
   ```
 
-  디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-maintenance` 로 만든다. 설정을 고치면
-  `sudo nginx -t && sudo nginx -s reload` 다. 이 설정은 운영과 같은 nginx 1.18 컨테이너에서 켜기 전 · 켠 뒤 · 끈 뒤의 응답을
-  확인했다(2026-11-20).
+  디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-maintenance /srv/maple-routine-maintenance/api` 로 만든다.
+  설정을 고치면 `sudo nginx -t && sudo nginx -s reload` 다. 이 설정은 운영과 같은 nginx 1.18 컨테이너에서 켜기 전 · 켠 뒤 · 끈 뒤의
+  응답을 확인했다(2026-11-20). 주소마다 나눈 설정은 같은 컨테이너에 두 server 블록을 띄워, 루트만 · api 만 · 둘 다 켰을 때 켠 쪽만
+  `/v1/` 이 503 이고 `/v1/ota/` 는 200 인 것을 확인했다(2026-11-24). 어느 server 블록에도 `set` 이 없으면 `nginx -t` 가 멈추지만,
+  한 블록에만 있으면 다른 블록은 빈 값으로 통과해 그 주소에 점검이 걸리지 않는다. 그래서 스크립트가 켠 뒤 다시 물어 본다.
+
+  - **출시 준비 때 api 의 점검 파일 나누기.** 1.0.15 의 api 를 처음 잠그기 전에, 사용자 승인을 받고 앱 박스에서 한다. 바꾸는 것은
+    api 의 snippet 에서 점검 자리 세 곳(`if` 둘과 `/v1/maintenance` 의 `root`)과 api server 블록의 `set` 한 줄이다. 루트 server
+    블록과 루트의 snippet(`mapleroutine-api.conf`)은 건드리지 않으므로 1.0.14 사용자에게는 바뀌는 것이 없다.
+
+    ```
+    # 맥에서. 운영 snippet 과 이 저장소의 파일이 점검 자리와 머리 주석 말고 같은지 먼저 본다
+    ssh ubuntu@158.179.175.230 cat /etc/nginx/snippets/mapleroutine-api-upstream.conf | diff - deploy/nginx/app-box-api.conf
+    scp deploy/nginx/app-box-api.conf ubuntu@158.179.175.230:/tmp/mapleroutine-api-upstream.conf
+
+    # 앱 박스에서. 백업
+    B=~/nginx-maintenance-split; mkdir -p $B
+    sudo cp -p /etc/nginx/sites-available/mapleroutine /etc/nginx/snippets/mapleroutine-api-upstream.conf $B/
+    # 바꾸기
+    sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-maintenance/api
+    sudo install -m 644 /tmp/mapleroutine-api-upstream.conf /etc/nginx/snippets/mapleroutine-api-upstream.conf
+    sudoedit /etc/nginx/sites-available/mapleroutine
+    #   api server 블록의 include snippets/mapleroutine-api-upstream.conf; 바로 위에 한 줄
+    #   set $maintenance_dir /srv/maple-routine-maintenance/api;
+    sudo nginx -t && sudo nginx -s reload
+    ```
+
+    확인은 맥에서 한다. 두 주소가 204 이고 api 의 다른 경로가 그대로 답하면 된다. 심사 중인 1.0.15 가 없을 때만 api 를 켜 보고
+    곧바로 끈다. 켜면 api 는 200, 루트는 204 여야 한다. 루트는 켜 보지 않는다. 1.0.14 사용자가 잠긴다.
+
+    ```
+    npm run build && npm run maintenance -- status                          # 둘 다 점검 아님
+    curl -s -o /dev/null -w '%{http_code}\n' https://api.mapleroutine.store/v1/game-data   # 200
+    npm run maintenance -- on --target api && npm run maintenance -- off --target api
+    ```
+
+    되돌릴 때는 백업을 제자리에 놓는다. 그러면 api 는 다시 루트의 파일을 읽는다.
+
+    ```
+    # 앱 박스에서
+    sudo cp -p ~/nginx-maintenance-split/mapleroutine /etc/nginx/sites-available/mapleroutine
+    sudo cp -p ~/nginx-maintenance-split/mapleroutine-api-upstream.conf /etc/nginx/snippets/mapleroutine-api-upstream.conf
+    sudo nginx -t && sudo nginx -s reload
+    rm -f /srv/maple-routine-maintenance/api/maintenance.json
+    ```
 
 - **마이그레이션은 `node dist/cli/migrate.js` 다.** 실행 이미지에 drizzle-kit 이 없다. 같은 SQL 을 drizzle-orm 의
   migrator 가 적용하고 이미 적용된 것은 건너뛴다.

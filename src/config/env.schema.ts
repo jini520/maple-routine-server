@@ -15,8 +15,8 @@ export const envSchema = z.object({
    * 운영 서버가 연결을 못 얻는다.
    */
   DATABASE_POOL_MAX: z.coerce.number().int().positive().max(15).default(10),
-  /** 넥슨에 등록한 redirect_uri 의 호스트. 로컬에서는 바꿔 쓴다. */
-  PUBLIC_BASE_URL: z.string().url().default('https://mapleroutine.store'),
+  /** 넥슨에 등록한 redirect_uri 의 호스트. 관리 화면에서 올린 공지 그림의 주소도 이 값으로 만든다. 로컬에서는 바꿔 쓴다. */
+  PUBLIC_BASE_URL: z.string().url().default('https://api.mapleroutine.store'),
   /** 그림 파일을 두는 디렉터리. 같은 박스의 nginx 가 `/assets/` 로 낸다. 컨테이너에서는 볼륨을 건 경로다. */
   ASSETS_DIR: z.string().min(1).default('/data/assets'),
   /** OTA 매니페스트 · 번들 · 에셋을 두는 디렉터리. 발행 스크립트가 올리고 서버는 매니페스트만 읽는다. nginx 가 `files/` 를 `/ota/files/` 로 낸다. */

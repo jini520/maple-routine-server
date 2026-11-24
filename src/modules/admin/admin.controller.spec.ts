@@ -780,7 +780,7 @@ describe('AdminController', () => {
 
     it('POST /notices/preview 는 저장과 같은 변환의 블록 · 평문을 내고, https 가 아닌 주소는 400 이다', async () => {
       const markdown =
-        '## 새 기능\n\n![](https://mapleroutine.store/assets/a.webp)\n\n메모를 붙여요'
+        '## 새 기능\n\n![](https://api.mapleroutine.store/assets/a.webp)\n\n메모를 붙여요'
       const ok = await app.inject({
         method: 'POST',
         url: '/notices/preview',

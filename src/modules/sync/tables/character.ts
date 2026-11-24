@@ -415,6 +415,25 @@ export const manualTrackedItemsTable = defineTable<ManualTrackedItemRow, ManualT
         set: revived,
       })
       .returning({ id: manualTrackedItems.id })
+    // 캐릭터 · 보스마다 난이도는 하나다. 두 기기가 같은 보스를 다른 난이도로 고르면 둘 다 남아 보스 수익에 같은 보스가 두 줄 선다.
+    // 나중에 온 난이도를 남기고, 표식을 적은 줄은 번호가 올라 다른 기기가 받아 지운다.
+    if (row.type === 'boss') {
+      await tx
+        .update(manualTrackedItems)
+        .set(deleted)
+        .where(
+          and(
+            eq(manualTrackedItems.characterId, characterId),
+            eq(manualTrackedItems.type, 'boss'),
+            ne(manualTrackedItems.id, written.id),
+            isNull(manualTrackedItems.deletedAt),
+            sql`${manualTrackedItems.targetId} IN (
+              SELECT other.id FROM ${bossDifficulties} other
+                JOIN ${bossDifficulties} chosen ON chosen.boss_id = other.boss_id
+               WHERE chosen.id = ${row.targetId})`,
+          ),
+        )
+    }
     return written.id
   },
   deleteOwners: async (_ctx, row) => [mapleIdOwner(row.mapleId)],

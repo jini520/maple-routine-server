@@ -1509,6 +1509,99 @@ describeDb('SyncPushRepository', () => {
     })
   })
 
+  // 수동 모드는 캐릭터 · 보스마다 난이도 하나다. 두 기기가 같은 보스를 다른 난이도로 고르면 둘 다 남아 보스 수익에 같은 보스가 두 줄
+  // 선다.
+  describe('수동 추적 보스', () => {
+    const tracked = (targetId: string, ocid = O_ME) => ({
+      mapleId: M_ME,
+      ocid,
+      type: 'boss',
+      targetId,
+    })
+    /** 살아 있는 수동 추적 항목의 캐릭터 ocid · 대상. 캐릭터 · 대상 차례다. */
+    const alive = async () =>
+      (
+        await db
+          .select({ ocid: characters.ocid, targetId: manualTrackedItems.targetId })
+          .from(manualTrackedItems)
+          .innerJoin(characters, eq(characters.id, manualTrackedItems.characterId))
+          .where(sql`${manualTrackedItems.deletedAt} IS NULL`)
+      ).sort((a, b) => `${a.ocid}${a.targetId}`.localeCompare(`${b.ocid}${b.targetId}`))
+    const sorted = (rows: { ocid: string; targetId: string }[]) =>
+      [...rows].sort((a, b) => `${a.ocid}${a.targetId}`.localeCompare(`${b.ocid}${b.targetId}`))
+
+    it('같은 캐릭터 · 같은 보스의 다른 난이도를 받으면 앞 난이도에 삭제 표식을 적고 번호를 올린다. 다른 캐릭터 · 다른 보스 · 컨텐츠는 둔다', async () => {
+      const [will] = await db
+        .insert(schema.bosses)
+        .values({
+          key: 'will',
+          name: '윌',
+          shortName: '윌',
+          isSeasonBoss: false,
+          portraitAssetId: await insertAsset(db, 'bosses/will.webp'),
+          sortOrder: 1,
+        })
+        .returning({ id: schema.bosses.id })
+      const [willHard] = await db
+        .insert(schema.bossDifficulties)
+        .values({ bossId: will.id, difficulty: 'hard', cycle: 'weekly', requiredLevel: 235 })
+        .returning({ id: schema.bossDifficulties.id })
+      await push(
+        me,
+        upsert('manualTrackedItems', tracked(ref.hard)),
+        upsert('manualTrackedItems', tracked(ref.hard, O_ALT)),
+        upsert('manualTrackedItems', tracked(willHard.id)),
+        upsert('manualTrackedItems', { ...tracked(ref.contentId), type: 'weekly' }),
+      )
+      const [hard] = await db
+        .select()
+        .from(manualTrackedItems)
+        .where(eq(manualTrackedItems.targetId, ref.hard))
+        .orderBy(manualTrackedItems.changeSeq)
+
+      const [result] = await push(me, upsert('manualTrackedItems', tracked(ref.normal)))
+
+      expect(result?.ok).toBe(true)
+      expect(await alive()).toEqual(
+        sorted([
+          { ocid: O_ME, targetId: ref.normal },
+          { ocid: O_ALT, targetId: ref.hard },
+          { ocid: O_ME, targetId: willHard.id },
+          { ocid: O_ME, targetId: ref.contentId },
+        ]),
+      )
+      const [gone] = await db
+        .select()
+        .from(manualTrackedItems)
+        .where(eq(manualTrackedItems.id, hard.id))
+      expect(gone?.deletedAt).toEqual(expect.any(Date))
+      expect(Number(gone?.changeSeq)).toBeGreaterThan(Number(hard?.changeSeq))
+    })
+
+    it('한 요청의 새 난이도 올리기와 앞 난이도 지우기를 어느 차례로 받아도 새 난이도 하나만 남고, 같은 값을 다시 올리면 아무 줄도 고치지 않는다', async () => {
+      await push(me, upsert('manualTrackedItems', tracked(ref.hard)))
+      const upsertFirst = await push(
+        me,
+        upsert('manualTrackedItems', tracked(ref.normal)),
+        remove('manualTrackedItems', tracked(ref.hard)),
+      )
+      expect(upsertFirst.map((r) => r.ok)).toEqual([true, true])
+      expect(await alive()).toEqual([{ ocid: O_ME, targetId: ref.normal }])
+
+      const removeFirst = await push(
+        me,
+        remove('manualTrackedItems', tracked(ref.normal)),
+        upsert('manualTrackedItems', tracked(ref.hard)),
+      )
+      expect(removeFirst.map((r) => r.ok)).toEqual([true, true])
+      expect(await alive()).toEqual([{ ocid: O_ME, targetId: ref.hard }])
+
+      const written = await stamps('manual_tracked_items')
+      await push(me, upsert('manualTrackedItems', tracked(ref.hard)))
+      expect(await stamps('manual_tracked_items')).toEqual(written)
+    })
+  })
+
   // 계정을 삭제하면 기록이 메이플 ID 를 따라 지워진다. 판매가는 사람만 비우고 남는다.
   it('사람을 지우면 올린 기록은 지워지고 판매가 줄은 사람만 빈다', async () => {
     const first = entry()

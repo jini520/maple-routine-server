@@ -152,7 +152,7 @@ export const ASSETS_HTML = page(
     shown.slice(pageAt * PAGE, pageAt * PAGE + PAGE).forEach(function (r) {
       var tr = el('tr'); var img = el('img', undefined, 'thumb'); img.src = urlOf(r); img.alt = ''; img.loading = 'lazy'; cell(tr, img);
       var name = textCell(batch, keyText(r), r.name || '', function () { return call('PUT', '/images/' + r.id + '/name', { name: name.value() }); }, 'w-mid');
-      name.input.placeholder = r.uses[0] ? r.uses[0].name : r.fileName;
+      name.input.placeholder = r.autoLabel;
       var box = el('div', undefined, 'pair'); box.appendChild(name.input); box.appendChild(el('small', keyText(r))); cell(tr, box);
       var uses = r.uses.length === 0 ? span('표가 안 씀', 'tag bad') : button(r.uses.length + '곳', 'tag accent');
       if (r.uses.length > 0) uses.addEventListener('click', function () { usesDialog(r); });

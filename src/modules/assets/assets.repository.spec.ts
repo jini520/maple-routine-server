@@ -73,7 +73,7 @@ describeDb('AssetsRepository', () => {
     expect(after.updatedAt).not.toBe(first)
   })
 
-  it('관리 목록은 이름이 비면 쓰는 곳의 이름, 쓰는 곳도 없으면 파일 이름을 보이고 아이템 분류를 든다', async () => {
+  it('관리 목록은 이름이 비면 쓰는 곳의 이름, 쓰는 곳도 없으면 파일 이름을 보이고, 이름을 적어도 비었을 때의 이름을 함께 낸다', async () => {
     const ids = await insertAssets(db, [
       'items/pendant.png',
       'skills/KAPCL.png',
@@ -108,6 +108,7 @@ describeDb('AssetsRepository', () => {
     })
     expect(rows.get(ids['bosses/named.webp'] ?? '')).toMatchObject({
       label: '이름 붙인 보스',
+      autoLabel: 'named',
       name: '이름 붙인 보스',
     })
   })

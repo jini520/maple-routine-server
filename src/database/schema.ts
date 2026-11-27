@@ -76,7 +76,7 @@ export const deletedRowPurges = pgTable('deleted_row_purges', {
 })
 
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
-export const platformEnum = pgEnum('platform', ['ios', 'android'])
+export const platformEnum = pgEnum('platform', ['ios', 'android', 'web'])
 export const noticeTypeEnum = pgEnum('notice_type', ['app', 'game', 'event', 'update', 'cashshop'])
 /** 앱 BOSS_DIFFICULTIES 그대로. 넥슨 API 값이고 선언 순서가 정렬 순서다. */
 export const bossDifficultyEnum = pgEnum('boss_difficulty', [

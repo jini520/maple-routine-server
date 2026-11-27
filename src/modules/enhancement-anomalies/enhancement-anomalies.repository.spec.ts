@@ -68,7 +68,11 @@ describeDb('EnhancementAnomaliesRepository', () => {
   // 앱은 상세까지 같아야 한 줄로 묶는다. 서버가 상세를 빼고 견주면 같은 날 모르는 월드 이름이 둘이면 하나만 남는다.
   it('판정하지 못한 줄은 빈 장비 이름으로 날짜 · API 종류 · 상세마다 한 줄이다', async () => {
     const unknown = item({ reason: 'event_world_unknown', itemName: '', detail: '월드 A' })
-    await repo.upsert(me, [unknown, { ...unknown, apiType: 'cube' }, { ...unknown, detail: '월드 B' }])
+    await repo.upsert(me, [
+      unknown,
+      { ...unknown, apiType: 'cube' },
+      { ...unknown, detail: '월드 B' },
+    ])
     await repo.upsert(me, [{ ...unknown, rowCount: 7 }])
 
     const rows = await db.select().from(enhancementAnomalies)
@@ -123,7 +127,9 @@ describeDb('EnhancementAnomaliesRepository', () => {
     ])
 
     const rows = await db.select().from(enhancementAnomalies)
-    expect(rows.map((row) => [row.nexonAccountId, row.itemName])).toEqual([[me.nexonAccountId, '내 장비']])
+    expect(rows.map((row) => [row.nexonAccountId, row.itemName])).toEqual([
+      [me.nexonAccountId, '내 장비'],
+    ])
   })
 
   // 다 버린 묶음으로 빈 INSERT 를 내면 Postgres 가 거절해 요청이 500 이 된다.

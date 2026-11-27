@@ -6257,7 +6257,8 @@
   "platform": {
    "values": [
     "ios",
-    "android"
+    "android",
+    "web"
    ],
    "was": null,
    "source": "server"

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { platformEnum, usageEventTypeEnum } from '../../database/schema'
+import { usageEventTypeEnum } from '../../database/schema'
 
 /** 한 묶음의 사건 수 상한. 앱은 기기에 500 건까지만 쌓는다. */
 export const USAGE_BATCH_MAX = 500
@@ -18,7 +18,8 @@ export const usageEventBody = z.object({
 export type UsageEventBody = z.infer<typeof usageEventBody>
 
 export const usageEventsBody = z.object({
-  platform: z.enum(platformEnum.enumValues),
+  // 웹은 아직 사용 기록을 보내지 않는다. 웹을 받으면 대시보드의 플랫폼 집계 규칙부터 정해야 한다.
+  platform: z.enum(['ios', 'android']),
   appVersion: z.string().min(1).max(32),
   events: z.array(usageEventBody).min(1).max(USAGE_BATCH_MAX),
 })

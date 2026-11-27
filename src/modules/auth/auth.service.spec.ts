@@ -12,7 +12,15 @@ import type { SessionsRepository } from './sessions.repository'
 const KEY = 'ab'.repeat(32)
 const seal = new SealService({ get: () => KEY } as unknown as ConfigService<Env, true>)
 
-function build() {
+const WEB_RETURN = 'http://localhost:3000/auth/nexon/done'
+const API_CALLBACK = 'https://api.mapleroutine.store/v1/auth/nexon/callback'
+
+function build(
+  env: Partial<Record<keyof Env, string>> = {
+    WEB_RETURN_URL: WEB_RETURN,
+    WEB_REDIRECT_URI: API_CALLBACK,
+  },
+) {
   const attempts = {
     create: jest.fn().mockResolvedValue({ id: 'aid' }),
     claim: jest.fn().mockResolvedValue({ id: 'aid', platform: 'ios' }),
@@ -38,7 +46,12 @@ function build() {
     userinfo: jest.fn().mockResolvedValue({ uid: 'NEXON-UID' }),
   }
   const config = {
-    get: (key: keyof Env) => (key === 'PUBLIC_BASE_URL' ? 'https://api.mapleroutine.store' : KEY),
+    get: (key: keyof Env) =>
+      key === 'PUBLIC_BASE_URL'
+        ? 'https://api.mapleroutine.store'
+        : key === 'TOKEN_ENC_KEY_V1'
+          ? KEY
+          : env[key],
   } as unknown as ConfigService<Env, true>
   const service = new AuthService(
     attempts as unknown as AttemptsRepository,
@@ -202,5 +215,60 @@ describe('AuthService', () => {
     await service.logout('SESSION-VALUE')
 
     expect(sessions.deleteByHash).toHaveBeenCalledWith(sha256('SESSION-VALUE'))
+  })
+
+  describe('웹', () => {
+    it('start 는 state 앞에 web. 을 붙이고 웹 애플리케이션에 등록한 redirect_uri 를 싣는다', async () => {
+      const { service, attempts, nexon } = build()
+
+      await service.start('web')
+
+      const [input] = attempts.create.mock.calls[0] as [{ state: string; platform: string }]
+      expect(input.platform).toBe('web')
+      expect(input.state.startsWith('web.')).toBe(true)
+      expect(nexon.authorizeUrl).toHaveBeenCalledWith('web', input.state, API_CALLBACK)
+    })
+
+    it('앱의 state 는 web. 으로 시작하지 않는다', async () => {
+      const { service, attempts } = build()
+
+      await service.start('ios')
+
+      const [input] = attempts.create.mock.calls[0] as [{ state: string }]
+      expect(input.state.startsWith('web.')).toBe(false)
+    })
+
+    it('돌아갈 웹 주소가 없으면 start 가 짝을 만들지 않고 던진다', async () => {
+      const { service, attempts } = build({ WEB_REDIRECT_URI: API_CALLBACK })
+
+      await expect(service.start('web')).rejects.toThrow()
+      expect(attempts.create).not.toHaveBeenCalled()
+    })
+
+    it('웹이 시작한 짝은 웹 redirect_uri 로 교환하고 웹 주소에 receipt 를 실어 돌려보낸다', async () => {
+      const { service, attempts, nexon } = build()
+      attempts.claim.mockResolvedValue({ id: 'aid', platform: 'web' })
+
+      const url = await service.callback({ code: 'CODE', state: 'web.ST' })
+
+      expect(url.startsWith(`${WEB_RETURN}?receipt=`)).toBe(true)
+      expect(nexon.exchange).toHaveBeenCalledWith('web', 'CODE', API_CALLBACK)
+    })
+
+    it('웹이 시작한 짝의 교환이 실패하면 앱 스킴이 아니라 웹 주소로 돌려보낸다', async () => {
+      const { service, attempts, nexon } = build()
+      attempts.claim.mockResolvedValue({ id: 'aid', platform: 'web' })
+      nexon.exchange.mockRejectedValue(new NexonTokenRejected(400, '{}'))
+
+      expect(await service.callback({ code: 'CODE', state: 'web.ST' })).toBe(WEB_RETURN)
+      expect(attempts.delete).toHaveBeenCalledWith('aid')
+    })
+
+    it('state 가 web. 인데 짝을 못 찾아도 웹 주소로 돌려보낸다', async () => {
+      const { service, attempts } = build()
+      attempts.claim.mockResolvedValue(null)
+
+      expect(await service.callback({ code: 'CODE', state: 'web.ST' })).toBe(WEB_RETURN)
+    })
   })
 })

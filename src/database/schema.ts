@@ -1845,7 +1845,7 @@ export const accountSettings = pgTable('account_settings', {
   quickLinkKeys: text('quick_link_keys').array(),
   /** 하단바 그룹 다섯의 화면 이름. 놓인 차례다. */
   barGroupKeys: text('bar_group_keys').array(),
-  /** 통계 누적 순 수익의 시작 날짜 `YYYY-MM-DD` */
+  /** 통계 누적 순수익의 시작 날짜 `YYYY-MM-DD` */
   statsCumulativeStartDate: text('stats_cumulative_start_date'),
   isMvpWeeklyCheckOff: boolean('is_mvp_weekly_check_off').notNull().default(false),
   /** 마지막으로 등급을 확인한 주 `W202647` */

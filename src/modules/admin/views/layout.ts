@@ -346,6 +346,7 @@ export function layout(path: string, title: string, body: string): string {
   .heat .c.on { box-shadow: inset 0 0 0 2px var(--text) }
   .scale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-left: 30px; font-size: 11.5px; color: var(--text-3) }
   .scale i { width: 18px; height: 10px; border-radius: 2px; display: inline-block }
+  .scale .step { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums }
   .parts { display: grid; gap: 22px }
   .part { display: flex; flex-direction: column; gap: 10px }
   .part .title { font-size: 12.5px; font-weight: 600; color: var(--text-2) }

@@ -54,7 +54,7 @@ describe('AuthController', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/auth/nexon/login',
-      payload: { platform: 'web' },
+      payload: { platform: 'windows' },
     })
 
     expect(res.statusCode).toBe(400)
@@ -120,5 +120,18 @@ describe('AuthController', () => {
     })
     expect(res.statusCode).toBe(204)
     expect(auth.logout).toHaveBeenCalledWith('VALUE')
+  })
+
+  it('POST /v1/auth/nexon/login 은 web 도 받는다', async () => {
+    auth.start.mockResolvedValue({ authorizeUrl: 'https://n/x', redeemKey: 'RK' })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/nexon/login',
+      payload: { platform: 'web' },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(auth.start).toHaveBeenCalledWith('web')
   })
 })

@@ -40,9 +40,10 @@ describe('NexonBucket', () => {
         }),
       ),
     )
-    const gaps = started.slice(1).map((t, i) => t - (started[i] ?? t))
+    // 이웃한 두 시각의 간격은 앞 요청이 늦게 시작하면 좁아 보인다(버킷은 예약한 시각으로 간격을 잰다). 그래서 전체 폭을 본다.
     // 타이머와 Date.now 의 1ms 반올림만 봐준다.
-    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(1000 / rps - 2)
+    const span = (started.at(-1) ?? 0) - (started[0] ?? 0)
+    expect(span).toBeGreaterThanOrEqual((started.length - 1) * (1000 / rps) - 2)
   }, 10_000)
 
   it('플랫폼이 다르면 버킷이 다르다', async () => {

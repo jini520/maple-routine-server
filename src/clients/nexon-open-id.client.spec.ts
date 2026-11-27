@@ -118,4 +118,20 @@ describe('NexonOpenIdClient', () => {
       NexonCredentialMissing,
     )
   })
+
+  it('web 은 웹 애플리케이션의 client_id 로 화면을 열고 그 자격 쌍으로 교환한다', async () => {
+    const env = { ...ENV, NEXON_WEB_CLIENT_ID: 'web-id', NEXON_WEB_CLIENT_SECRET: 'web-secret' }
+    fetchSpy.mockResolvedValue(reply(200, TOKENS))
+
+    expect(client(env).authorizeUrl('web', 'ST', 'https://x/cb')).toContain('client_id=web-id')
+    await client(env).exchange('web', 'CODE', 'https://x/cb')
+
+    const body = new URLSearchParams(fetchSpy.mock.calls[0][1]?.body as string)
+    expect(body.get('client_id')).toBe('web-id')
+    expect(body.get('client_secret')).toBe('web-secret')
+  })
+
+  it('web 의 자격 쌍이 env 에 없으면 iOS 쌍을 빌려 쓰지 않고 던진다', () => {
+    expect(() => client().authorizeUrl('web', 'ST', 'https://x/cb')).toThrow(NexonCredentialMissing)
+  })
 })

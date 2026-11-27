@@ -4,6 +4,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { DB, type Db } from '../../database/database.module'
 import { assets, imageCrops } from '../../database/schema'
 import { sectionUpdatedAt, touchSection } from '../game-data/sections'
+import { autoLabels } from './asset-labels'
 import { type AssetKey, storedFileName } from './asset-paths'
 import { type AssetUse, assetUses } from './asset-uses'
 
@@ -28,8 +29,10 @@ export interface AssetsSection {
 export interface AssetAdminRow extends AssetFileView, AssetKey {
   /** 관리 화면에서 적은 이름. 비어 있을 수 있다. */
   name: string | null
-  /** 보이는 이름. 적은 이름, 없으면 첫 쓰는 곳의 이름, 그것도 없으면 확장자를 뗀 파일 이름이다. */
+  /** 보이는 이름. 적은 이름, 없으면 autoLabel 이다. */
   label: string
+  /** 이름 칸이 비었을 때의 이름. 지도 그림은 지역 이름, 다른 그림은 첫 쓰는 곳의 이름이고 없으면 파일 이름이다. */
+  autoLabel: string
   uses: AssetUse[]
   /** 아이템이 쓰는 그림이면 첫 아이템의 분류. 트리가 아이템 그림을 이 분류로 묶는다. */
   itemCategory: string | null
@@ -55,15 +58,20 @@ export class AssetsRepository {
 
   async adminRows(): Promise<AssetAdminRow[]> {
     const [rows, uses] = await Promise.all([this.rows(), assetUses(this.db)])
-    return rows.map((r) => {
+    const auto = autoLabels(
+      rows.map((r) => ({ category: r.category, fileName: r.fileName, uses: uses.get(r.id) ?? [] })),
+    )
+    return rows.map((r, i) => {
       const list = uses.get(r.id) ?? []
+      const autoLabel = auto[i] ?? r.fileName
       return {
         ...fileView(r),
         category: r.category,
         fileName: r.fileName,
         extension: r.extension as AssetKey['extension'],
         name: r.name,
-        label: r.name ?? list[0]?.name ?? r.fileName,
+        label: r.name ?? autoLabel,
+        autoLabel,
         uses: list,
         itemCategory: list.find((u) => u.itemCategory !== null)?.itemCategory ?? null,
       }

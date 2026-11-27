@@ -1,8 +1,8 @@
 /**
  * 새 표로 바꾼 표가 설계와 같은지 본다. 표 이름 · 칸 이름 · 형 · 가리키는 표 · enum 의 값을 견준다.
  *
- * `design-tables.json` 은 설계 페이지의 원본에서 뽑은 목록이다(앱 저장소 ADR-099, jini520/maple-routine#947). 설계가 바뀌면 다시
- * 뽑아 이 파일을 바꾼다. 손으로 쓴 카드는 한 줄에 칸 여럿을 `a · b` 로 적거나 형을 비워 둔 곳이 있다. 그런 줄은 이름만 견준다.
+ * `design-tables.json` 은 설계에서 뽑은 목록이다(앱 저장소 ADR-099, jini520/maple-routine#947). 설계가 바뀌면 그 결정을 앱
+ * 저장소 ADR 에 먼저 적고, 그 ADR 을 보고 이 파일을 고친다. 손으로 쓴 카드는 한 줄에 칸 여럿을 `a · b` 로 적거나 형을 비워 둔 곳이 있다. 그런 줄은 이름만 견준다.
  */
 import { is } from 'drizzle-orm'
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core'

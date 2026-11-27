@@ -20,7 +20,6 @@ import { CASHBOOK_ENTRY_TYPES } from '../cashbook-categories/cashbook-categories
 import { HUNT_LOOT_TYPES } from '../hunt-loot/hunt-loot.repository'
 import { SPEND_CURRENCIES, SPEND_REWARD_TYPES } from '../spend-catalog/spend-catalog.repository'
 import { USAGE_RETENTION_DAYS } from '../usage-events/usage-events.purge.job'
-import { platformEnum } from '../../database/schema'
 
 /** 보스를 연다. key 는 bosses 표에 있어야 하고 날짜는 KST YYYY-MM-DD 다. */
 export const openBody = z.object({
@@ -97,7 +96,8 @@ export type UsageQuery = z.infer<typeof usageQuery>
 /** 사용자 화면. 플랫폼을 고르면 사건으로 세는 값만 그 플랫폼으로 센다. */
 export const usersQuery = z.object({
   days: dashboardDays(USERS_DAYS),
-  platform: z.enum(platformEnum.enumValues).optional(),
+  // 사용 기록은 아직 iOS · Android 만 온다(usage-events.dto).
+  platform: z.enum(['ios', 'android']).optional(),
 })
 export type UsersQuery = z.infer<typeof usersQuery>
 

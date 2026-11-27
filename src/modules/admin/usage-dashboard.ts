@@ -80,3 +80,53 @@ export function hourGrid(
   }
   return grid
 }
+
+/** 색 단계 하나에 든 칸의 가장 작은 값과 가장 큰 값. */
+export interface HeatStep {
+  min: number
+  max: number
+}
+
+/** 요일 × 시 칸마다 색 단계(0 ~ 5)와 단계마다 든 값의 범위. 든 칸이 없는 단계는 null. */
+export interface HeatScale {
+  levels: number[][]
+  steps: (HeatStep | null)[]
+}
+
+/** 방문이 있는 칸을 나누는 단계 수. 관리 화면의 `--ramp-1` ~ `--ramp-5` 와 같은 수여야 한다. */
+const HEAT_LEVELS = 5
+
+/**
+ * 칸의 색 단계. 0 인 칸은 0 단계, 방문이 있는 칸은 값이 그 칸 이하인 칸의 비율로 1 ~ 5 단계.
+ *
+ * 가장 많은 칸으로 나누면 알림 시각에 몰린 칸 하나가 나머지를 모두 가장 옅은 단계로 밀어내서 순위로 나눈다.
+ * 같은 값은 비율에 함께 들어가 같은 단계가 되고, 가장 많은 칸은 늘 5 단계다.
+ */
+export function heatScale(grid: readonly (readonly number[])[]): HeatScale {
+  const sorted = grid
+    .flat()
+    .filter((v) => v > 0)
+    .sort((a, b) => a - b)
+  const atOrBelow = (v: number): number => {
+    let lo = 0
+    let hi = sorted.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (sorted[mid] <= v) lo = mid + 1
+      else hi = mid
+    }
+    return lo
+  }
+  const steps: (HeatStep | null)[] = Array.from({ length: HEAT_LEVELS + 1 }, () => null)
+  const levels = grid.map((row) =>
+    row.map((v) => {
+      const level = v > 0 ? Math.ceil((atOrBelow(v) / sorted.length) * HEAT_LEVELS) : 0
+      const step = steps[level]
+      steps[level] = step
+        ? { min: Math.min(step.min, v), max: Math.max(step.max, v) }
+        : { min: v, max: v }
+      return level
+    }),
+  )
+  return { levels, steps }
+}

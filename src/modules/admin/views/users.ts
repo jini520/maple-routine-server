@@ -69,7 +69,7 @@ ${DASHBOARD_SCRIPT}
       days: d.daily.map(function (x) { return { day: x.day, value: x.visitors, extra: '새 사용자 ' + x.fresh + '명', alerts: x.alerts }; }),
     }));
     put('weekday', weekdayChart(d.weekday, '명'));
-    put('heat', heatChart(d.heat, '방문 시작 평균', '번'));
+    put('heat', heatChart(d.heat, d.heatScale, '방문 시작 평균', '번'));
     put('fresh', dailyChart({
       series: '새 사용자', unit: '명', height: 140,
       days: d.daily.map(function (x) { return { day: x.day, value: x.fresh }; }),

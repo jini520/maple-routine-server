@@ -100,16 +100,24 @@ describe('요일 · 시간대 칸의 색 단계', () => {
     return grid
   }
 
-  // 가장 많은 칸으로 나누면 알림 시각에 몰린 칸 하나가 나머지를 모두 가장 옅은 단계로 밀어낸다.
-  it('몰린 칸 하나가 있어도 방문이 있는 칸이 다섯 단계에 고르게 나뉜다', () => {
-    const values = [...Array.from({ length: 19 }, (_, i) => i + 1), 500]
+  // 다섯 등분하면 방문이 있는 칸의 20% 가 늘 가장 진해 관대하다. 윗단을 좁혀 정말 붐비는 칸만 진하게 남긴다.
+  it('방문이 있는 칸을 하위 50% · 75% · 90% · 97% 에서 끊어, 가장 진한 단계는 상위 3% 뿐이다', () => {
+    const values = Array.from({ length: 100 }, (_, i) => i + 1)
     const { levels } = heatScale(gridOf(values))
 
     const counts = [0, 0, 0, 0, 0, 0]
     levels.flat().forEach((l, i) => i < values.length && (counts[l] += 1))
-    expect(counts).toEqual([0, 4, 4, 4, 4, 4])
-    expect(levels[0][19]).toBe(5)
-    expect(levels[0][0]).toBe(1)
+    expect(counts).toEqual([0, 50, 25, 15, 7, 3])
+  })
+
+  // 가장 많은 칸으로 나누면 알림 시각에 몰린 칸 하나가 나머지를 모두 가장 옅은 단계로 밀어낸다.
+  it('몰린 칸 하나가 있어도 나머지 칸이 순위대로 단계를 받는다', () => {
+    const values = [...Array.from({ length: 19 }, (_, i) => i + 1), 500]
+    const { levels } = heatScale(gridOf(values))
+
+    expect(levels[0].slice(0, 20)).toEqual([
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 4, 5,
+    ])
   })
 
   it('0 인 칸은 0 단계이고, 같은 값은 같은 단계다', () => {
@@ -118,7 +126,7 @@ describe('요일 · 시간대 칸의 색 단계', () => {
     expect(levels[0][0]).toBe(levels[0][1])
     expect(levels[0][1]).toBe(levels[0][2])
     expect(levels[0][0]).toBe(5)
-    expect(levels[0][3]).toBe(2)
+    expect(levels[0][3]).toBe(1)
     expect(levels[6][23]).toBe(0)
   })
 
@@ -127,8 +135,8 @@ describe('요일 · 시간대 칸의 색 단계', () => {
 
     expect(steps).toEqual([
       { min: 0, max: 0 },
-      null,
       { min: 1, max: 1 },
+      null,
       null,
       null,
       { min: 3, max: 3 },

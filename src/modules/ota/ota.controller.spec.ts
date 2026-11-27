@@ -29,7 +29,8 @@ describe('OtaController', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  const manifest = (headers: Record<string, string>) => app.inject({ method: 'GET', url: '/v1/ota/manifest', headers })
+  const manifest = (headers: Record<string, string>) =>
+    app.inject({ method: 'GET', url: '/v1/ota/manifest', headers })
 
   describe('GET /v1/ota/manifest', () => {
     // `expo-updates` 는 이 헤더가 없으면 매니페스트를 버린다. 이 경로가 있는 이유가 이 헤더다.
@@ -49,7 +50,10 @@ describe('OtaController', () => {
 
     // 프로토콜에서 204 는 "업데이트 없음" 이다. 앱은 그 뒤 `/latest` 로 스토어 업데이트가 필요한지 묻는다.
     it('그 지문의 매니페스트가 없으면 204 다', async () => {
-      const res = await manifest({ 'expo-platform': 'android', 'expo-runtime-version': 'nothing-here' })
+      const res = await manifest({
+        'expo-platform': 'android',
+        'expo-runtime-version': 'nothing-here',
+      })
 
       expect(res.statusCode).toBe(204)
       expect(res.headers['expo-protocol-version']).toBe('1')
@@ -70,7 +74,11 @@ describe('OtaController', () => {
 
   describe('GET /v1/ota/latest', () => {
     it('플랫폼의 latest 파일을 낸다', async () => {
-      const latest = { runtimeVersion: RUNTIME, acceptedRuntimeVersions: [RUNTIME], appVersion: '1.0.13' }
+      const latest = {
+        runtimeVersion: RUNTIME,
+        acceptedRuntimeVersions: [RUNTIME],
+        appVersion: '1.0.13',
+      }
       await writeFile(join(dir, 'latest-ios.json'), JSON.stringify(latest))
 
       const res = await app.inject({ method: 'GET', url: '/v1/ota/latest?platform=ios&t=1' })

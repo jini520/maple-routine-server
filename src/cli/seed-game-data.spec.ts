@@ -781,7 +781,11 @@ describeDb('seedGameData', () => {
     })
 
     const spend = await new SpendCatalogRepository(db).section()
-    expect(spend.rules).toEqual({ tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 })
+    expect(spend.rules).toEqual({
+      tariffPercent: 10,
+      rewardCoinPriceMeso: 40_000_000,
+      mesoMarketFeePercent: 1,
+    })
     expect(spend.groups.map((g) => [g.key, g.active])).toEqual([
       ['epic_dungeon_bonus_reward', true],
       ['maple_point_shop', false],
@@ -1057,12 +1061,16 @@ describeDb('seedGameData', () => {
 
   // 운영 DB 는 지출 목록과 규칙 둘이 이미 차 있다. 배포 뒤 씨앗을 돌리면 새 규칙 줄만 채우고 운영자가 고친 값은 둔다.
   it('지출 목록이 차 있어도 빈 규칙 줄만 채우고, 이미 있는 규칙은 그대로 둔다', async () => {
-    await seedGameData(db, { cashbookCategories: parseCashbookCategoriesSeed(cashbookCategoriesSeed) })
+    await seedGameData(db, {
+      cashbookCategories: parseCashbookCategoriesSeed(cashbookCategoriesSeed),
+    })
     await seedGameData(db, { spendCatalog: parseSpendCatalogSeed(spendCatalogSeed) })
     await db.delete(gameRules).where(eq(gameRules.key, 'meso_market_fee_percent'))
     await db.update(gameRules).set({ value: 12 }).where(eq(gameRules.key, 'spend_tariff_percent'))
 
-    expect(await seedGameData(db, { spendCatalog: parseSpendCatalogSeed(spendCatalogSeed) })).toEqual({
+    expect(
+      await seedGameData(db, { spendCatalog: parseSpendCatalogSeed(spendCatalogSeed) }),
+    ).toEqual({
       spendCatalog: 'skipped',
     })
     expect((await new SpendCatalogRepository(db).section()).rules).toEqual({

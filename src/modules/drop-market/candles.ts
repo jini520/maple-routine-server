@@ -71,7 +71,10 @@ export function summarize(rows: Judged[], now: Date): MarketSummary {
   const candles = dailyCandles(rows)
   const today = kstDay(now)
   const todayCandle = candles.at(-1)?.day === today ? candles.at(-1) : undefined
-  const last = rows.filter((r) => r.verdict !== 'excluded').sort(byPricedAt).at(-1)
+  const last = rows
+    .filter((r) => r.verdict !== 'excluded')
+    .sort(byPricedAt)
+    .at(-1)
   const previous = candles.at(-2)
   const thisWeek = weeklyCandles(rows).at(-1)
   const nowDay = kstDayNumber(now)

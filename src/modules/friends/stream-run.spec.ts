@@ -209,7 +209,13 @@ describe('runStream', () => {
     )
 
     const summary = await runStream(
-      build({ tasks: [cube('2026-10-01'), cube('2026-10-02')], fanout: 1, tokenRejected, fetchPage, sink }),
+      build({
+        tasks: [cube('2026-10-01'), cube('2026-10-02')],
+        fanout: 1,
+        tokenRejected,
+        fetchPage,
+        sink,
+      }),
     )
 
     expect(parsed(sink.lines)).toEqual([{ t: 'end', reason: 'relogin' }])
@@ -223,7 +229,9 @@ describe('runStream', () => {
     const tokenRejected = jest.fn(async () => undefined)
     const fetchPage = jest.fn(async () => page('{"error":{"name":"OPENAPI00009"}}', 400))
 
-    const summary = await runStream(build({ tasks: [cube('2026-10-01')], tokenRejected, fetchPage, sink }))
+    const summary = await runStream(
+      build({ tasks: [cube('2026-10-01')], tokenRejected, fetchPage, sink }),
+    )
 
     expect(parsed(sink.lines)[0]).toEqual({
       t: 'fail',

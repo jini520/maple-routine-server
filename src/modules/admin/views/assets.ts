@@ -191,7 +191,7 @@ export const ASSETS_HTML = layout(
   function nameCell(r) {
     if (state.editing === r.id) {
       var box = el('div', undefined, 'inline');
-      var name = input('text'); name.value = r.name || ''; name.placeholder = r.uses[0] ? r.uses[0].name : slugOf(r.path); name.size = 22;
+      var name = input('text'); name.value = r.name || ''; name.placeholder = r.autoLabel; name.size = 22;
       var save = button('저장', 'btn sm'), cancel = button('취소', 'btn ghost sm');
       save.addEventListener('click', function () { saveName(r, name.value); });
       cancel.addEventListener('click', function () { state.editing = null; renderRows(); });

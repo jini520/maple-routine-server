@@ -160,17 +160,39 @@ describeDb('ItemsRepository', () => {
     await repo.create('giant_terror', { ...base, iconAssetId: icon })
     await repo.create('red_cube', { ...plain, name: '레드 큐브', category: 'cash' })
     await repo.create('arcane_symbol_box', { ...plain, name: '아케인 심볼 상자', category: 'box' })
-    await repo.create('sol_erda_fragment', { ...plain, name: '솔 에르다 조각', category: 'growth_material' })
+    await repo.create('sol_erda_fragment', {
+      ...plain,
+      name: '솔 에르다 조각',
+      category: 'growth_material',
+    })
     await repo.create('reindeer_milk', { ...plain, name: '순록의 우유', category: null })
 
     const section = await repo.section()
 
     expect(section.updatedAt).not.toBeNull()
     expect(section.items).toEqual([
-      { key: 'giant_terror', name: '거대한 공포', kind: 'accessory', category: 'dark_boss_set', iconAssetId: icon },
+      {
+        key: 'giant_terror',
+        name: '거대한 공포',
+        kind: 'accessory',
+        category: 'dark_boss_set',
+        iconAssetId: icon,
+      },
       { key: 'red_cube', name: '레드 큐브', kind: 'cash', category: 'cash', iconAssetId: null },
-      { key: 'sol_erda_fragment', name: '솔 에르다 조각', kind: 'etc', category: 'growth_material', iconAssetId: null },
-      { key: 'arcane_symbol_box', name: '아케인 심볼 상자', kind: 'consumable', category: 'box', iconAssetId: null },
+      {
+        key: 'sol_erda_fragment',
+        name: '솔 에르다 조각',
+        kind: 'etc',
+        category: 'growth_material',
+        iconAssetId: null,
+      },
+      {
+        key: 'arcane_symbol_box',
+        name: '아케인 심볼 상자',
+        kind: 'consumable',
+        category: 'box',
+        iconAssetId: null,
+      },
     ])
   })
 

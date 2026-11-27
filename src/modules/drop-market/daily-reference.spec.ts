@@ -22,7 +22,12 @@ const everyone = (): number => 1
 describe('votesOf', () => {
   it('한 사람이 하루에 여러 줄을 적어도 그 사람의 중앙값 한 표다', () => {
     const votes = votesOf(
-      [row('a', '2026-11-12', 8 * EOK), row('a', '2026-11-12', 8 * EOK), row('a', '2026-11-12', 9 * EOK), row('b', '2026-11-12', 7 * EOK)],
+      [
+        row('a', '2026-11-12', 8 * EOK),
+        row('a', '2026-11-12', 8 * EOK),
+        row('a', '2026-11-12', 9 * EOK),
+        row('b', '2026-11-12', 7 * EOK),
+      ],
       everyone,
     )
 
@@ -33,7 +38,12 @@ describe('votesOf', () => {
   it('여러 날을 함께 보면 날마다의 중앙값을 다시 중앙값으로 접는다', () => {
     // 하루에 줄을 많이 적은 날이 그 사람의 표를 혼자 정하지 못한다.
     const votes = votesOf(
-      [row('a', '2026-11-10', 2 * EOK), row('a', '2026-11-11', 6 * EOK), row('a', '2026-11-11', 6 * EOK), row('a', '2026-11-11', 6 * EOK)],
+      [
+        row('a', '2026-11-10', 2 * EOK),
+        row('a', '2026-11-11', 6 * EOK),
+        row('a', '2026-11-11', 6 * EOK),
+        row('a', '2026-11-11', 6 * EOK),
+      ],
       everyone,
     )
 
@@ -41,7 +51,9 @@ describe('votesOf', () => {
   })
 
   it('무게가 0 인 사람은 표를 내지 못한다', () => {
-    const votes = votesOf([row('a', '2026-11-12', EOK), row('b', '2026-11-12', EOK)], (p) => (p === 'b' ? 0 : 1))
+    const votes = votesOf([row('a', '2026-11-12', EOK), row('b', '2026-11-12', EOK)], (p) =>
+      p === 'b' ? 0 : 1,
+    )
 
     expect([...votes.keys()]).toEqual(['a'])
   })
@@ -68,7 +80,13 @@ describe('logFence', () => {
 describe('weightedMedian', () => {
   it('무게 절반인 표는 반만 센다', () => {
     // 무게를 그대로 세면 11 이 가운데이고, 절반짜리 둘을 반으로 세면 10 이 가운데다.
-    expect(weightedMedian([{ value: 10, weight: 1 }, { value: 11, weight: 0.5 }, { value: 12, weight: 0.5 }])).toBe(10)
+    expect(
+      weightedMedian([
+        { value: 10, weight: 1 },
+        { value: 11, weight: 0.5 },
+        { value: 12, weight: 0.5 },
+      ]),
+    ).toBe(10)
   })
 })
 
@@ -88,14 +106,35 @@ describe('agreed', () => {
 })
 
 describe('referenceOf', () => {
-  const previous = (day: string, ref: number, source: DayReference['source'] = 'today'): DayReference => ({
-    day, source, ref, q1: ref, q3: ref, low: ref * 0.8, high: ref * 1.2, voters: 3, freshDay: day,
+  const previous = (
+    day: string,
+    ref: number,
+    source: DayReference['source'] = 'today',
+  ): DayReference => ({
+    day,
+    source,
+    ref,
+    q1: ref,
+    q3: ref,
+    low: ref * 0.8,
+    high: ref * 1.2,
+    voters: 3,
+    freshDay: day,
   })
 
   it('이벤트로 3명이 새 값에 모이면 그날 바로 새 기준가가 된다', () => {
-    const rows = [row('a', '2026-11-05', 11 * EOK), row('b', '2026-11-05', 11.2 * EOK), row('c', '2026-11-05', 10.8 * EOK)]
+    const rows = [
+      row('a', '2026-11-05', 11 * EOK),
+      row('b', '2026-11-05', 11.2 * EOK),
+      row('c', '2026-11-05', 10.8 * EOK),
+    ]
 
-    const ref = referenceOf({ day: '2026-11-05', rows, previous: previous('2026-11-04', 13.5 * EOK), weightOf: everyone })
+    const ref = referenceOf({
+      day: '2026-11-05',
+      rows,
+      previous: previous('2026-11-04', 13.5 * EOK),
+      weightOf: everyone,
+    })
 
     expect(ref?.source).toBe('today')
     expect(ref?.ref).toBe(11 * EOK)
@@ -103,12 +142,21 @@ describe('referenceOf', () => {
 
   it('그날 표가 합의하지 않으면 3일 표로 다시 본다', () => {
     const rows = [
-      row('a', '2026-10-29', 3.1 * EOK), row('b', '2026-10-29', 2.4 * EOK), row('c', '2026-10-30', 2.8 * EOK),
-      row('d', '2026-10-30', 2.4 * EOK), row('e', '2026-10-31', 6.5 * EOK), row('f', '2026-10-31', 4.0 * EOK),
+      row('a', '2026-10-29', 3.1 * EOK),
+      row('b', '2026-10-29', 2.4 * EOK),
+      row('c', '2026-10-30', 2.8 * EOK),
+      row('d', '2026-10-30', 2.4 * EOK),
+      row('e', '2026-10-31', 6.5 * EOK),
+      row('f', '2026-10-31', 4.0 * EOK),
       row('g', '2026-10-31', 1.9 * EOK),
     ]
 
-    const ref = referenceOf({ day: '2026-10-31', rows, previous: previous('2026-10-30', 2.44 * EOK), weightOf: everyone })
+    const ref = referenceOf({
+      day: '2026-10-31',
+      rows,
+      previous: previous('2026-10-30', 2.44 * EOK),
+      weightOf: everyone,
+    })
 
     expect(ref?.source).toBe('three_day')
     expect(ref?.ref).toBeLessThan(3.2 * EOK)
@@ -118,7 +166,12 @@ describe('referenceOf', () => {
     const last = previous('2026-11-01', 5 * EOK)
     const lonely = [row('a', '2026-11-04', 9 * EOK)]
 
-    const day3 = referenceOf({ day: '2026-11-04', rows: lonely, previous: { ...last, day: '2026-11-03', source: 'carry' }, weightOf: everyone })
+    const day3 = referenceOf({
+      day: '2026-11-04',
+      rows: lonely,
+      previous: { ...last, day: '2026-11-03', source: 'carry' },
+      weightOf: everyone,
+    })
     const day4 = referenceOf({ day: '2026-11-05', rows: [], previous: day3, weightOf: everyone })
 
     expect(day3).toMatchObject({ source: 'carry', ref: 5 * EOK, freshDay: '2026-11-01' })
@@ -126,9 +179,20 @@ describe('referenceOf', () => {
   })
 
   it('비운 뒤에는 앞 기준가 없이 3명이 모여야 다시 선다', () => {
-    const rows = [row('a', '2026-11-10', 2 * EOK), row('b', '2026-11-10', 6 * EOK), row('c', '2026-11-10', 30 * EOK)]
+    const rows = [
+      row('a', '2026-11-10', 2 * EOK),
+      row('b', '2026-11-10', 6 * EOK),
+      row('c', '2026-11-10', 30 * EOK),
+    ]
 
-    expect(referenceOf({ day: '2026-11-10', rows, previous: previous('2026-11-01', 6 * EOK), weightOf: everyone })).toBeNull()
+    expect(
+      referenceOf({
+        day: '2026-11-10',
+        rows,
+        previous: previous('2026-11-01', 6 * EOK),
+        weightOf: everyone,
+      }),
+    ).toBeNull()
   })
 })
 
@@ -165,7 +229,12 @@ describe('dummyPersons', () => {
 
   it('같은 가격이어도 아이템마다 울타리 안이면 정상 기록이다', () => {
     // 시세가 30억 근처인 아이템 셋에 30억을 적은 정상 기록이 있었다.
-    const rows = ['eyepatch', 'faith', 'ether4'].map((m) => ({ person: 'y', market: m, item: m, priceMeso: 30 * EOK }))
+    const rows = ['eyepatch', 'faith', 'ether4'].map((m) => ({
+      person: 'y',
+      market: m,
+      item: m,
+      priceMeso: 30 * EOK,
+    }))
 
     expect(dummyPersons(rows, fences).size).toBe(0)
   })
@@ -174,11 +243,24 @@ describe('dummyPersons', () => {
 describe('runDay', () => {
   it('더미 입력을 한 사람의 그날 표는 기준가에서 빠지고 모두 빠진 판정으로 남는다', () => {
     const day = '2026-11-09'
-    const honest = (market: string, value: number) => ['a', 'b', 'c'].map((p) => ({ ...row(p, day, value, market), market }))
+    const honest = (market: string, value: number) =>
+      ['a', 'b', 'c'].map((p) => ({ ...row(p, day, value, market), market }))
     const rowsByMarket = new Map([
-      ['eyepatch', [...honest('eyepatch', 27 * EOK), { ...row('x', day, 10 * EOK, 'eyepatch'), market: 'eyepatch' }]],
-      ['ether1', [...honest('ether1', 2 * EOK), { ...row('x', day, 10 * EOK, 'ether1'), market: 'ether1' }]],
-      ['faith', [...honest('faith', 29 * EOK), { ...row('x', day, 10 * EOK, 'faith'), market: 'faith' }]],
+      [
+        'eyepatch',
+        [
+          ...honest('eyepatch', 27 * EOK),
+          { ...row('x', day, 10 * EOK, 'eyepatch'), market: 'eyepatch' },
+        ],
+      ],
+      [
+        'ether1',
+        [...honest('ether1', 2 * EOK), { ...row('x', day, 10 * EOK, 'ether1'), market: 'ether1' }],
+      ],
+      [
+        'faith',
+        [...honest('faith', 29 * EOK), { ...row('x', day, 10 * EOK, 'faith'), market: 'faith' }],
+      ],
     ])
 
     const result = runDay({ day, rowsByMarket, previous: new Map(), judgements: new Map() })
@@ -196,9 +278,16 @@ describe('runDay', () => {
       ...['w1', 'w2'].map((p) => ({ ...row(p, day, 7.5 * EOK, 'life'), market: 'life' })),
       ...['bad1', 'bad2', 'bad3'].map((p) => ({ ...row(p, day, 7 * EOK, 'life'), market: 'life' })),
     ]
-    const judgements = new Map(['bad1', 'bad2', 'bad3'].map((p) => [p, { judged: 10, excluded: 6 }]))
+    const judgements = new Map(
+      ['bad1', 'bad2', 'bad3'].map((p) => [p, { judged: 10, excluded: 6 }]),
+    )
 
-    const result = runDay({ day, rowsByMarket: new Map([['life', rows]]), previous: new Map(), judgements })
+    const result = runDay({
+      day,
+      rowsByMarket: new Map([['life', rows]]),
+      previous: new Map(),
+      judgements,
+    })
 
     expect(result.references.get('life')?.ref).toBe(8 * EOK)
     expect(result.references.get('life')?.voters).toBe(5)

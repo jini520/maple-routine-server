@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config'
 import type { Env } from '../config/env.schema'
 import { errorNameOf, TOKEN_REJECTED } from './nexon-error'
 
-export type Platform = 'ios' | 'android'
+export type Platform = 'ios' | 'android' | 'web'
 
 export interface NexonTokens {
   accessToken: string
@@ -39,6 +39,13 @@ const AUTHORIZE_URL = 'https://openid.nexon.com/oauth2/authorize'
 const TOKEN_URL = 'https://openid.nexon.com/oauth2/token'
 const USERINFO_URL = 'https://openid.nexon.com/oauth2/userinfo'
 
+/** 플랫폼마다 넥슨 애플리케이션이 따로라 자격 쌍도 따로다. 다른 플랫폼의 쌍을 빌려 쓰면 넥슨이 거절한다. */
+const CREDENTIAL_KEYS = {
+  ios: ['NEXON_IOS_CLIENT_ID', 'NEXON_IOS_CLIENT_SECRET'],
+  android: ['NEXON_ANDROID_CLIENT_ID', 'NEXON_ANDROID_CLIENT_SECRET'],
+  web: ['NEXON_WEB_CLIENT_ID', 'NEXON_WEB_CLIENT_SECRET'],
+} as const satisfies Record<Platform, readonly [keyof Env, keyof Env]>
+
 /** 넥슨이 답을 안 주면 이만큼 기다리고 끊는다. 매달린 호출 하나가 회차 슬롯을 영구히 쥐지 않게. */
 const TIMEOUT_MS = 10_000
 
@@ -52,7 +59,7 @@ interface TokenBody {
 /**
  * 플랫폼별 자격 쌍으로 부르는 넥슨 Open ID. 인가 코드 교환 · 토큰 갱신 · userinfo.
  *
- * 자격이 플랫폼마다 갈리는 것은 넥슨 애플리케이션을 iOS 와 Android 로 따로 등록하기 때문이다.
+ * 자격이 플랫폼마다 갈리는 것은 넥슨 애플리케이션을 iOS · Android · 웹으로 따로 등록하기 때문이다.
  * 갱신도 발급한 쌍으로 해야 넥슨이 받는다.
  */
 @Injectable()
@@ -137,14 +144,9 @@ export class NexonOpenIdClient {
   }
 
   private credentials(platform: Platform): { clientId: string; clientSecret: string } {
-    const clientId =
-      platform === 'ios'
-        ? this.config.get('NEXON_IOS_CLIENT_ID', { infer: true })
-        : this.config.get('NEXON_ANDROID_CLIENT_ID', { infer: true })
-    const clientSecret =
-      platform === 'ios'
-        ? this.config.get('NEXON_IOS_CLIENT_SECRET', { infer: true })
-        : this.config.get('NEXON_ANDROID_CLIENT_SECRET', { infer: true })
+    const [idKey, secretKey] = CREDENTIAL_KEYS[platform]
+    const clientId = this.config.get(idKey, { infer: true })
+    const clientSecret = this.config.get(secretKey, { infer: true })
     if (!clientId || !clientSecret) {
       throw new NexonCredentialMissing(`${platform} 의 넥슨 자격 쌍이 env 에 없다`)
     }

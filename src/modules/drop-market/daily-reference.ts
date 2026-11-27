@@ -67,7 +67,10 @@ function median(values: number[]): number {
  * 사람마다 한 표. 날마다 그 사람 줄의 중앙값을 내고, 여러 날이면 그 값들의 중앙값으로 접는다.
  * 무게가 0 인 사람은 표를 내지 못한다.
  */
-export function votesOf(rows: MarketRow[], weightOf: (person: string) => number): Map<string, Vote> {
+export function votesOf(
+  rows: MarketRow[],
+  weightOf: (person: string) => number,
+): Map<string, Vote> {
   const byPerson = new Map<string, Map<string, number[]>>()
   for (const r of rows) {
     const days = byPerson.get(r.person) ?? new Map<string, number[]>()
@@ -88,7 +91,10 @@ export function logFence(values: number[]): { low: number; high: number } {
   const logs = values.map(Math.log)
   const m = median(logs)
   const mad = median(logs.map((x) => Math.abs(x - m))) * 1.4826
-  return { low: Math.exp(Math.min(m - 3 * mad, m + MIN_LOW)), high: Math.exp(Math.max(m + 3 * mad, m + MIN_HIGH)) }
+  return {
+    low: Math.exp(Math.min(m - 3 * mad, m + MIN_LOW)),
+    high: Math.exp(Math.max(m + 3 * mad, m + MIN_HIGH)),
+  }
 }
 
 /** 무게를 실은 중앙값. 무게를 차례로 더해 절반에 처음 닿는 값이다. */
@@ -111,7 +117,11 @@ export function agreed(values: number[], previous: number | null): boolean {
 }
 
 /** 표들로 낸 기준가 · 울타리. 범위는 비워 두고 market-range 가 채운다. MASPI 의 기준 기간 기준가도 이것으로 낸다. */
-export function referenceFromVotes(day: string, source: ReferenceSource, votes: Map<string, Vote>): DayReference {
+export function referenceFromVotes(
+  day: string,
+  source: ReferenceSource,
+  votes: Map<string, Vote>,
+): DayReference {
   const all = [...votes.values()]
   const fence = logFence(all.map((v) => v.value))
   const inside = all.filter((v) => v.value >= fence.low && v.value <= fence.high)
@@ -143,13 +153,27 @@ export function referenceOf(input: {
 }): DayReference | null {
   const { day, rows, weightOf } = input
   const usable =
-    input.previous !== null && dayNumber(day) - dayNumber(input.previous.freshDay) <= CARRY_DAYS ? input.previous : null
-  const windows: [ReferenceSource, number][] = [['today', 1], ['three_day', 3]]
+    input.previous !== null && dayNumber(day) - dayNumber(input.previous.freshDay) <= CARRY_DAYS
+      ? input.previous
+      : null
+  const windows: [ReferenceSource, number][] = [
+    ['today', 1],
+    ['three_day', 3],
+  ]
   for (const [source, span] of windows) {
     const from = shiftDay(day, -(span - 1))
-    const votes = votesOf(rows.filter((r) => r.day >= from && r.day <= day), weightOf)
+    const votes = votesOf(
+      rows.filter((r) => r.day >= from && r.day <= day),
+      weightOf,
+    )
     if (votes.size < MIN_VOTERS) continue
-    if (!agreed([...votes.values()].map((v) => v.value), usable?.ref ?? null)) continue
+    if (
+      !agreed(
+        [...votes.values()].map((v) => v.value),
+        usable?.ref ?? null,
+      )
+    )
+      continue
     return referenceFromVotes(day, source, votes)
   }
   return usable === null ? null : { ...usable, day, source: 'carry' }
@@ -196,9 +220,14 @@ export function runDay(input: {
   rowsByMarket: Map<string, MarketRow[]>
   previous: Map<string, DayReference>
   judgements: Map<string, Judgement>
-}): { references: Map<string, DayReference | null>; dummies: Set<string>; judged: Map<string, Judgement> } {
+}): {
+  references: Map<string, DayReference | null>
+  dummies: Set<string>
+  judged: Map<string, Judgement>
+} {
   const { day, rowsByMarket } = input
-  const weightOf = (person: string): number => trustWeight(input.judgements.get(person) ?? { judged: 0, excluded: 0 })
+  const weightOf = (person: string): number =>
+    trustWeight(input.judgements.get(person) ?? { judged: 0, excluded: 0 })
   const compute = (market: string, rows: MarketRow[]): DayReference | null =>
     referenceOf({ day, rows, previous: input.previous.get(market) ?? null, weightOf })
 
@@ -215,7 +244,13 @@ export function runDay(input: {
   if (dummies.size > 0) {
     for (const [market, rows] of rowsByMarket) {
       if (!rows.some((r) => r.day === day && dummies.has(r.person))) continue
-      references.set(market, compute(market, rows.filter((r) => !(r.day === day && dummies.has(r.person)))))
+      references.set(
+        market,
+        compute(
+          market,
+          rows.filter((r) => !(r.day === day && dummies.has(r.person))),
+        ),
+      )
     }
   }
 

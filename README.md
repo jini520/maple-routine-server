@@ -48,7 +48,9 @@ TEST_DATABASE_URL=postgres://test:test@127.0.0.1:15432/test npm run test:db
   ~/.config/maple-routine-server/fcm-key.json   FCM 서비스 계정 키. compose 가 /run/secrets/fcm-key.json 으로 건다
   ~/.config/maple-routine-server/db.env   DATABASE_URL 하나. psql 을 도커로 띄울 때 쓴다
   /etc/nginx/sites-available/mapleroutine 주소 넷(mapleroutine.store · api · admin · info)의 server 블록. admin 은 /admin 과 /v1/bosses 를 127.0.0.1:4000 으로 넘기고 /assets/ 는 아래 디렉터리를 바로 낸다. 관리 화면이 보스 표와 그림을 /admin 밖에서 읽기 때문이다. /admin 에만 auth_basic 을 건다
-  /etc/nginx/snippets/mapleroutine-api.conf  루트와 api 가 함께 include 하는 서버 경로. /v1 을 127.0.0.1:4000 으로 넘기고, /assets/ · /ota/files/ 는 아래 디렉터리를 바로 낸다
+  /etc/nginx/snippets/mapleroutine-api.conf  루트가 include 하는 서버 경로. /v1 을 127.0.0.1:4000 으로 넘기고, /assets/ · /ota/files/ 는 아래 디렉터리를 바로 낸다
+  /etc/nginx/snippets/mapleroutine-api-upstream.conf  api 가 include 하는 서버 경로. upstream maple_api(DB 박스의 서버 develop)로 넘긴다. 넥슨 콜백 중 state 가 web. 으로 시작하는 것만 127.0.0.1:4000 으로 넘긴다(아래 웹 넥슨 로그인)
+  /etc/nginx/conf.d/maple-api-upstream.conf  upstream maple_api
   /etc/nginx/snippets/mapleroutine-site.conf 루트와 info 가 함께 include 하는 안내 사이트
   /etc/nginx/nginx.conf                   gzip 설정. JSON 을 줄인다(아래 nginx 압축)
   /etc/docker/daemon.json                 {"live-restore": true}. 데몬을 다시 켜도 서버 컨테이너가 멈추지 않는다(아래 Docker 데몬)
@@ -145,6 +147,21 @@ docker run --rm -it --env-file ~/.config/maple-routine-server/db.env postgres:16
 
   디렉터리는 `sudo install -d -o ubuntu -g ubuntu -m 755 /srv/maple-routine-ota /srv/maple-routine-ota/files` 로 만든다. 서버는 읽기만
   하므로 주인이 ubuntu 여도 된다. `/v1/` 의 속도 제한은 매니페스트에만 걸리고 `/ota/files/` 에는 안 걸린다.
+
+- **웹 넥슨 로그인은 이 서버가 받고, 콜백은 api 주소로 돌아온다**(2026-11-27 사용자 지정, 앱 저장소 #1206). 넥슨 웹 애플리케이션에는
+  api 콜백(`https://api.mapleroutine.store/v1/auth/nexon/callback`)만 등록되어 있다. api 주소는 DB 박스의 서버 develop 으로 가므로,
+  웹 로그인의 짝은 state 앞에 `web.` 을 붙이고 앱 박스 nginx 가 그 콜백만 이 서버로 넘긴다. 앱의 로그인과 state 없는 동의 취소는
+  그대로 DB 박스로 간다. 그래서 웹에서 동의를 취소하면 브라우저가 앱 스킴으로 가 에러 화면이 뜬다.
+  - env: `NEXON_WEB_CLIENT_ID` · `NEXON_WEB_CLIENT_SECRET`(콘솔의 웹 애플리케이션 값, 큰따옴표 없이), `WEB_REDIRECT_URI`(위 api 콜백),
+    `WEB_RETURN_URL`(로그인이 끝나고 receipt 를 실어 돌아갈 웹 주소). `WEB_RETURN_URL` 이 없으면 웹 로그인 시작이 500 이다.
+  - nginx(`snippets/mapleroutine-api-upstream.conf`)의 `/v1/` 앞에 둔다. 1.0.15 로 서버를 바꾸면 두 서버가 하나가 되므로 걷는다.
+
+    ```
+    location = /v1/auth/nexon/callback {
+        if ($arg_state ~ "^web\.") { proxy_pass http://127.0.0.1:4000; }
+        proxy_pass http://maple_api;
+    }
+    ```
 
 - **nginx 압축. JSON 응답은 nginx 가 gzip 으로 줄인다**(2026-11-20 사용자 지정, 앱 저장소 `ADR-016` 결정 3). `game-data` 전체 받기가
   1,018KB 에서 241KB 로, 앱을 열 때마다 두 번 받는 소식 목록이 23KB 에서 8KB 로 준다. `/etc/nginx/nginx.conf` 의 `http` 블록은 이렇다.

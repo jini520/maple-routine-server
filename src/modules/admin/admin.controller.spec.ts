@@ -1242,7 +1242,11 @@ describe('AdminController', () => {
           await app.inject({
             method: 'PUT',
             url: '/admin/spend-catalog/rules',
-            payload: { tariffPercent: 10, rewardCoinPriceMeso: 40_000_000, mesoMarketFeePercent: 1 },
+            payload: {
+              tariffPercent: 10,
+              rewardCoinPriceMeso: 40_000_000,
+              mesoMarketFeePercent: 1,
+            },
           })
         ).statusCode,
       ).toBe(204)
@@ -1258,7 +1262,8 @@ describe('AdminController', () => {
         { tariffPercent: 10, rewardCoinPriceMeso: 1 },
       ]) {
         expect(
-          (await app.inject({ method: 'PUT', url: '/admin/spend-catalog/rules', payload })).statusCode,
+          (await app.inject({ method: 'PUT', url: '/admin/spend-catalog/rules', payload }))
+            .statusCode,
         ).toBe(400)
       }
 
@@ -2444,7 +2449,10 @@ describe('AdminController', () => {
 
       enhancementRepo.setSuperiorItemIcon.mockResolvedValue(true)
       expect(await put({ assetId })).toBe(204)
-      expect(enhancementRepo.setSuperiorItemIcon).toHaveBeenCalledWith('타일런트 리카온 벨트', assetId)
+      expect(enhancementRepo.setSuperiorItemIcon).toHaveBeenCalledWith(
+        '타일런트 리카온 벨트',
+        assetId,
+      )
       enhancementRepo.setSuperiorItemIcon.mockResolvedValue(false)
       expect(await put({ assetId })).toBe(404)
       enhancementRepo.setSuperiorItemIcon.mockRejectedValue(new AssetNotFound(assetId))

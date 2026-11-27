@@ -24,7 +24,13 @@ describeDb('DropMarketService', () => {
   const person: Record<string, string> = {}
   let scania: string
 
-  async function trade(who: string, itemKey: string, day: string, priceMeso: number, time = '12:00') {
+  async function trade(
+    who: string,
+    itemKey: string,
+    day: string,
+    priceMeso: number,
+    time = '12:00',
+  ) {
     await db.insert(dropPrices).values({
       userId: person[who],
       dropRecordId: randomUUID(),
@@ -59,11 +65,15 @@ describeDb('DropMarketService', () => {
       ])
       .returning({ id: items.id, key: items.key })
     for (const r of itemRows) item[r.key] = r.id
-    ;[{ id: scania }] = await db.insert(worlds).values({ key: 'scania', name: '스카니아', sortOrder: 0 }).returning({ id: worlds.id })
+    ;[{ id: scania }] = await db
+      .insert(worlds)
+      .values({ key: 'scania', name: '스카니아', sortOrder: 0 })
+      .returning({ id: worlds.id })
 
     const prices = { ring: 30 * EOK, belt: 20 * EOK, eye: 10 * EOK }
     for (let d = '2026-10-22'; d <= '2026-11-05'; d = shiftDay(d, 1)) {
-      for (const [key, price] of Object.entries(prices)) for (const who of ['a', 'b', 'c']) await trade(who, key, d, price)
+      for (const [key, price] of Object.entries(prices))
+        for (const who of ['a', 'b', 'c']) await trade(who, key, d, price)
     }
   })
   afterAll(() => close())
@@ -79,20 +89,27 @@ describeDb('DropMarketService', () => {
     expect(byPrice(300 * EOK)).toMatchObject({ verdict: 'excluded', basis: 'today' })
     expect(byPrice(300 * EOK)?.fence?.high).toBeLessThan(300 * EOK)
     expect(byPrice(31 * EOK)).toMatchObject({ verdict: 'pending', fence: null, basis: null })
-    expect(rows.filter((r) => r.priceMeso === 30 * EOK).every((r) => r.verdict === 'included')).toBe(true)
+    expect(
+      rows.filter((r) => r.priceMeso === 30 * EOK).every((r) => r.verdict === 'included'),
+    ).toBe(true)
     expect(rows[0]).not.toHaveProperty('person')
   })
 
   it('그날 더미 입력을 한 사람의 줄은 울타리 안이어도 제외이고, 한눈에 보는 화면의 제외 수에 든다', async () => {
     // x 가 11/03 에 시세가 다른 세 아이템에 모두 50억을 적고, 반지에는 시세 그대로 30억도 적었다.
-    for (const key of ['ring', 'belt', 'eye']) await trade('x', key, '2026-11-03', 50 * EOK, '13:00')
+    for (const key of ['ring', 'belt', 'eye'])
+      await trade('x', key, '2026-11-03', 50 * EOK, '13:00')
     await trade('x', 'ring', '2026-11-03', 30 * EOK, '14:00')
     await publish.backfill('2026-11-05')
 
     const { rows } = await service.detail(GENERAL, RING, NOW)
     const overview = await service.overview(GENERAL, NOW)
 
-    const xRows = rows.filter((r) => r.pricedAt.getTime() >= new Date('2026-11-03T13:00:00+09:00').getTime() && r.pricedAt < new Date('2026-11-04T00:00:00+09:00'))
+    const xRows = rows.filter(
+      (r) =>
+        r.pricedAt.getTime() >= new Date('2026-11-03T13:00:00+09:00').getTime() &&
+        r.pricedAt < new Date('2026-11-04T00:00:00+09:00'),
+    )
     expect(xRows.map((r) => [r.priceMeso / EOK, r.verdict, r.basis])).toEqual([
       [50, 'excluded', 'dummy'],
       [30, 'excluded', 'dummy'],

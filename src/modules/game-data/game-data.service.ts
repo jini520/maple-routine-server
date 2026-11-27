@@ -125,7 +125,8 @@ export class GameDataService {
   async response(): Promise<{ body: string; etag: string }> {
     const stamp = await gameDataStamp(this.db)
     const built = this.built
-    if (built !== null && built.stamp === stamp && Date.now() - built.builtAt < MAX_AGE_MS) return built
+    if (built !== null && built.stamp === stamp && Date.now() - built.builtAt < MAX_AGE_MS)
+      return built
     return this.build(stamp)
   }
 
@@ -136,7 +137,12 @@ export class GameDataService {
     this.building = this.snapshot()
       .then((snapshot) => {
         const body = JSON.stringify(snapshot)
-        const next: Built = { stamp, builtAt, body, etag: `"${createHash('sha1').update(body).digest('hex')}"` }
+        const next: Built = {
+          stamp,
+          builtAt,
+          body,
+          etag: `"${createHash('sha1').update(body).digest('hex')}"`,
+        }
         this.built = next
         return next
       })

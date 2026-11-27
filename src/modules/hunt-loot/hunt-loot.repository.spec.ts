@@ -110,10 +110,15 @@ describeDb('HuntLootRepository', () => {
 
   it('이름 · 그림을 고친 아이템에 분류가 있으면 items 칸의 시각도 민다. 분류가 없으면 그 칸에 안 실려 밀지 않는다', async () => {
     const touched = async () =>
-      (await db.select({ key: gameDataSections.key }).from(gameDataSections)).map((r) => r.key).sort()
+      (await db.select({ key: gameDataSections.key }).from(gameDataSections))
+        .map((r) => r.key)
+        .sort()
     await repo.create(milk)
     await repo.create(fragment)
-    await db.update(items).set({ category: 'growth_material' }).where(eq(items.key, 'sol_erda_fragment'))
+    await db
+      .update(items)
+      .set({ category: 'growth_material' })
+      .where(eq(items.key, 'sol_erda_fragment'))
     await db.delete(gameDataSections)
 
     await repo.update('reindeer_milk', { ...milk, name: '순록의 우유!' })

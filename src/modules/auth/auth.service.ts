@@ -13,12 +13,16 @@ import { SessionsRepository } from './sessions.repository'
 const ATTEMPT_TTL_MS = 10 * 60_000
 
 /**
- * 두 플랫폼이 돌아오는 커스텀 스킴. iOS 는 인증 세션이 이것을 연 앱에만 돌려주므로 값을 실어도 안전하다.
+ * iOS · Android 가 돌아오는 커스텀 스킴. iOS 는 인증 세션이 이것을 연 앱에만 돌려주므로 값을 실어도 안전하다.
  * 안드로이드는 다른 앱이 가로챌 수 있지만 receipt 만으로는 세션을 못 받으므로(redeem_key 가 둘째 열쇠) 그 로그인이 실패할 뿐이다.
  */
 const SCHEME_RETURN = 'com.mapleroutine.app://oauth/callback'
-/** 넥슨이 돌아오는 자리. 넥슨 애플리케이션 둘에 같은 주소를 등록한다. */
+/** 넥슨이 돌아오는 자리. iOS · Android 애플리케이션에 같은 주소를 등록한다. 웹은 `WEB_REDIRECT_URI` 가 있으면 그것이다. */
 const CALLBACK_PATH = '/v1/auth/nexon/callback'
+/**
+ * 웹에서 시작한 짝의 state 머리. api 콜백을 받는 nginx 가 이 머리로 웹 로그인을 이 서버에 넘긴다. 바꾸면 nginx 규칙도 같이 바꾼다.
+ */
+export const WEB_STATE_PREFIX = 'web.'
 
 export type RedeemResult =
   | { status: 'ok'; session: string }
@@ -58,7 +62,9 @@ export class AuthService {
   ) {}
 
   async start(platform: Platform): Promise<{ authorizeUrl: string; redeemKey: string }> {
-    const state = randomToken()
+    // 돌아갈 웹 주소가 없으면 넥슨 화면을 다 거친 뒤에 갈 곳이 없다. 짝을 만들기 전에 멈춘다.
+    if (platform === 'web' && !this.webReturnUrl()) throw new Error('WEB_RETURN_URL 이 없다')
+    const state = platform === 'web' ? `${WEB_STATE_PREFIX}${randomToken()}` : randomToken()
     const redeemKey = randomToken()
     await this.attempts.create({
       state,
@@ -66,7 +72,10 @@ export class AuthService {
       platform,
       expiresAt: new Date(Date.now() + ATTEMPT_TTL_MS),
     })
-    return { authorizeUrl: this.nexon.authorizeUrl(platform, state, this.redirectUri()), redeemKey }
+    return {
+      authorizeUrl: this.nexon.authorizeUrl(platform, state, this.redirectUri(platform)),
+      redeemKey,
+    }
   }
 
   /**
@@ -74,9 +83,11 @@ export class AuthService {
    * 화면에 갇히고 앱으로 못 돌아온다.
    */
   async callback(query: CallbackQuery): Promise<string> {
+    // 웹이 시작했는지는 state 머리로 안다. 짝을 못 찾아도 웹 사용자를 앱 스킴으로 보내지 않기 위해서다.
+    // state 가 없는 동의 취소는 어디서 시작했는지 알 수 없어 앱 스킴으로 간다.
+    const web = query.state?.startsWith(WEB_STATE_PREFIX) === true
     // receipt 없이 돌아갈 때는 넥슨이 보낸 error_name 을 싣는다. 앱이 이것으로 취소와 실패를 가른다.
-    const back = this.returnUrl({ errorName: query.error_name })
-    // state 가 없으면 짝도 플랫폼도 모른다. 두 플랫폼이 같은 스킴으로 돌아오므로 주소는 하나다.
+    const back = this.returnUrl(web, { errorName: query.error_name })
     if (!query.state) return back
     const claimed = await this.attempts.claim(query.state)
     if (claimed === null) return back
@@ -90,7 +101,7 @@ export class AuthService {
 
     let sessionId: string | undefined
     try {
-      const tokens = await this.nexon.exchange(platform, query.code, this.redirectUri())
+      const tokens = await this.nexon.exchange(platform, query.code, this.redirectUri(platform))
       const { uid } = await this.nexon.userinfo(tokens.accessToken)
       const user = await this.users.upsertByNexonUid(uid)
 
@@ -112,7 +123,7 @@ export class AuthService {
         sessionSealed: this.seal.seal('session', sessionValue),
         sessionId,
       })
-      return this.returnUrl({ receipt })
+      return this.returnUrl(platform === 'web', { receipt })
     } catch (error) {
       this.logger.warn(`콜백이 실패했다: ${String(error)}`)
       // 실패한 짝에 봉한 것이 남을 일이 없게 행을 지운다. 세션까지 만들었으면 그것도 고아라 지운다.
@@ -137,13 +148,21 @@ export class AuthService {
     await this.sessions.deleteByHash(sha256(sessionValue))
   }
 
-  private redirectUri(): string {
-    return `${this.config.get('PUBLIC_BASE_URL', { infer: true })}${CALLBACK_PATH}`
+  /** 교환에도 authorize 때와 같은 값을 실어야 넥슨이 받는다. */
+  private redirectUri(platform: Platform): string {
+    const web =
+      platform === 'web' ? this.config.get('WEB_REDIRECT_URI', { infer: true }) : undefined
+    return web || `${this.config.get('PUBLIC_BASE_URL', { infer: true })}${CALLBACK_PATH}`
   }
 
-  private returnUrl(params: { receipt?: string; errorName?: string }): string {
-    if (params.receipt !== undefined) return `${SCHEME_RETURN}?receipt=${encodeURIComponent(params.receipt)}`
-    if (params.errorName) return `${SCHEME_RETURN}?error_name=${encodeURIComponent(params.errorName)}`
-    return SCHEME_RETURN
+  private webReturnUrl(): string | undefined {
+    return this.config.get('WEB_RETURN_URL', { infer: true }) || undefined
+  }
+
+  private returnUrl(web: boolean, params: { receipt?: string; errorName?: string }): string {
+    const base = (web ? this.webReturnUrl() : undefined) ?? SCHEME_RETURN
+    if (params.receipt !== undefined) return `${base}?receipt=${encodeURIComponent(params.receipt)}`
+    if (params.errorName) return `${base}?error_name=${encodeURIComponent(params.errorName)}`
+    return base
   }
 }

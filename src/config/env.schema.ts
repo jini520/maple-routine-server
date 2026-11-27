@@ -26,6 +26,15 @@ export const envSchema = z.object({
   NEXON_IOS_CLIENT_SECRET: z.string().optional(),
   NEXON_ANDROID_CLIENT_ID: z.string().optional(),
   NEXON_ANDROID_CLIENT_SECRET: z.string().optional(),
+  NEXON_WEB_CLIENT_ID: z.string().optional(),
+  NEXON_WEB_CLIENT_SECRET: z.string().optional(),
+  /** 웹에서 시작한 넥슨 로그인이 끝나고 돌아갈 웹 주소. receipt 나 error_name 을 쿼리로 붙인다. 없으면 웹 로그인을 시작하지 않는다. */
+  WEB_RETURN_URL: z.string().url().optional(),
+  /**
+   * 넥슨 웹 애플리케이션에 등록한 redirect_uri. 없으면 앱과 같은 `PUBLIC_BASE_URL` 의 콜백이다. 웹 애플리케이션은 api 주소의
+   * 콜백만 등록되어 있어, 루트를 쓰는 운영 서버는 이 값으로 api 콜백을 싣고 nginx 가 `web.` state 를 이 서버로 넘긴다.
+   */
+  WEB_REDIRECT_URI: z.string().url().optional(),
   /** 로그인 때 넥슨에 청하는 scope. 쉼표로 잇는다. 넥슨이 승인한 프렌즈 경로의 것이다. */
   NEXON_OPENID_SCOPES: z.string().optional(),
 

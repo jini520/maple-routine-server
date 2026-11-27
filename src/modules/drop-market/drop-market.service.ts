@@ -50,7 +50,10 @@ export class DropMarketService {
   /** 최근 거래가 늦은 시세부터. */
   async overview(scope: MarketScope, now: Date): Promise<MarketOverviewRow[]> {
     const since = daysBefore(now, OVERVIEW_DAYS)
-    const [rows, judge] = await Promise.all([this.repo.rows(scope, since), this.judgeOf(scope, since, now)])
+    const [rows, judge] = await Promise.all([
+      this.repo.rows(scope, since),
+      this.judgeOf(scope, since, now),
+    ])
     const markets = new Map<string, MarketRow[]>()
     for (const r of rows) {
       const key = marketKey(r.itemId, r.ringLevel, scope.key)
@@ -68,11 +71,23 @@ export class DropMarketService {
 
   async detail(scope: MarketScope, market: MarketKey, now: Date): Promise<MarketDetail> {
     const since = daysBefore(now, DETAIL_DAYS)
-    const [rows, judge] = await Promise.all([this.repo.rows(scope, since, market), this.judgeOf(scope, since, now)])
+    const [rows, judge] = await Promise.all([
+      this.repo.rows(scope, since, market),
+      this.judgeOf(scope, since, now),
+    ])
     const firstDay = kstDayNumber(now) - DETAIL_DAYS + 1
-    const judged = (rows.length === 0 ? [] : judge(marketKey(rows[0].itemId, rows[0].ringLevel, scope.key), rows))
+    const judged = (
+      rows.length === 0 ? [] : judge(marketKey(rows[0].itemId, rows[0].ringLevel, scope.key), rows)
+    )
       .map(({ id, priceMeso, pricedAt, worldKey, worldName, verdict, fence, basis }) => ({
-        id, priceMeso, pricedAt, worldKey, worldName, verdict, fence, basis,
+        id,
+        priceMeso,
+        pricedAt,
+        worldKey,
+        worldName,
+        verdict,
+        fence,
+        basis,
       }))
       .filter((j) => kstDayNumber(j.pricedAt) >= firstDay)
     return {

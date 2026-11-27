@@ -32,7 +32,7 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
 
 /** ENUM 인 것은 text 면 틀려도 에러가 아니라 14일 뒤 갱신 실패로 나기 때문이다. */
-export const platformEnum = pgEnum('platform', ['ios', 'android'])
+export const platformEnum = pgEnum('platform', ['ios', 'android', 'web'])
 export const noticeKindEnum = pgEnum('notice_kind', ['app', 'game', 'event', 'update', 'cashshop'])
 /** 쓰기 경로가 사람을 어느 헤더로 찾았나. key 는 증명이 없어 집계 때 가중을 가른다. */
 export const identitySourceEnum = pgEnum('identity_source', ['login', 'key'])

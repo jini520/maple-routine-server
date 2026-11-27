@@ -3,7 +3,15 @@ import { rangeOf, type RangeDay } from './market-range'
 
 const EOK = 100_000_000
 const DAY = '2026-11-12'
-const WEEK = ['2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', DAY]
+const WEEK = [
+  '2026-11-06',
+  '2026-11-07',
+  '2026-11-08',
+  '2026-11-09',
+  '2026-11-10',
+  '2026-11-11',
+  DAY,
+]
 
 function row(person: string, day: string, priceMeso: number): MarketRow {
   return { person, day, priceMeso, item: 'item' }
@@ -26,7 +34,10 @@ describe('rangeOf', () => {
     // 기준가가 30억에서 24억으로 내리는 주. 날마다 두 사람이 그날 기준가의 99% · 101% 에 판다.
     // 7일 줄을 가격 그대로 모으면 범위가 24억 ~ 30억에 퍼져 그날 기준가 24억을 따르지 못한다.
     const days = new Map(WEEK.map((d, i) => [d, steady((30 - i) * EOK)]))
-    const rows = WEEK.flatMap((d, i) => [row(`${d}-a`, d, (30 - i) * EOK * 0.99), row(`${d}-b`, d, (30 - i) * EOK * 1.01)])
+    const rows = WEEK.flatMap((d, i) => [
+      row(`${d}-a`, d, (30 - i) * EOK * 0.99),
+      row(`${d}-b`, d, (30 - i) * EOK * 1.01),
+    ])
 
     expect(rangeOf({ day: DAY, rows, days, dummies: noDummies, weightOf: everyone })).toEqual({
       q1: Math.round(24 * EOK * 0.99),
@@ -36,9 +47,12 @@ describe('rangeOf', () => {
 
   it('7일 표가 8개 미만이면 범위가 없다. 한 사람이 여러 날 · 여러 줄을 적어도 한 표다', () => {
     const days = new Map(WEEK.map((d) => [d, steady(30 * EOK)]))
-    const seven = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].flatMap((p) => WEEK.slice(0, 3).map((d) => row(p, d, 30 * EOK)))
+    const seven = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].flatMap((p) =>
+      WEEK.slice(0, 3).map((d) => row(p, d, 30 * EOK)),
+    )
     const eighth = [...seven, row('h', DAY, 30 * EOK)]
-    const range = (rows: MarketRow[], weightOf = everyone) => rangeOf({ day: DAY, rows, days, dummies: noDummies, weightOf })
+    const range = (rows: MarketRow[], weightOf = everyone) =>
+      rangeOf({ day: DAY, rows, days, dummies: noDummies, weightOf })
 
     expect(range(seven)).toBeNull()
     expect(range(eighth)).not.toBeNull()
@@ -55,7 +69,9 @@ describe('rangeOf', () => {
       row('pending', '2026-11-08', 30 * EOK),
     ]
 
-    expect(rangeOf({ day: DAY, rows, days, dummies: new Set([`${DAY}|dummy`]), weightOf: everyone })).toBeNull()
+    expect(
+      rangeOf({ day: DAY, rows, days, dummies: new Set([`${DAY}|dummy`]), weightOf: everyone }),
+    ).toBeNull()
   })
 
   it('혼자 동떨어진 표는 무게가 작아 범위 끝을 끌지 못한다', () => {
@@ -79,7 +95,13 @@ describe('rangeOf', () => {
     const rows = spread([-0.03, -0.02, -0.01, 0, 0, 0.01, 0.02, 0.03])
     const full = rangeOf({ day: DAY, rows, days, dummies: noDummies, weightOf: everyone })
     // 기준가보다 높게 판 세 사람(p5 · p6 · p7)의 무게를 절반으로 하면 위 끝이 내려온다.
-    const half = rangeOf({ day: DAY, rows, days, dummies: noDummies, weightOf: (p) => (['p5', 'p6', 'p7'].includes(p) ? 0.5 : 1) })
+    const half = rangeOf({
+      day: DAY,
+      rows,
+      days,
+      dummies: noDummies,
+      weightOf: (p) => (['p5', 'p6', 'p7'].includes(p) ? 0.5 : 1),
+    })
 
     expect(half?.q3).toBeLessThan(full?.q3 as number)
   })

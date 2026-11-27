@@ -189,7 +189,9 @@ describe('GameDataService.response', () => {
 
   it('칸 시각이 바뀌면 다음 요청이 다시 읽은 응답이다', async () => {
     const changed: Catalog = { ...catalog, updatedAt: '2026-11-20T01:00:00.000Z' }
-    const bosses = { catalog: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed) }
+    const bosses = {
+      catalog: jest.fn().mockResolvedValueOnce(catalog).mockResolvedValueOnce(changed),
+    }
     const stamps = stampDb('a')
     const sut = service(bosses, stamps.db)
 

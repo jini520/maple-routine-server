@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const loginBody = z.object({ platform: z.enum(['ios', 'android']) })
+export const loginBody = z.object({ platform: z.enum(['ios', 'android', 'web']) })
 export type LoginBody = z.infer<typeof loginBody>
 
 export const sessionBody = z.object({

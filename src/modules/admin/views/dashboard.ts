@@ -339,8 +339,12 @@ export const DASHBOARD_SCRIPT = `<script>
     return root;
   }
 
-  /** 요일 × 시. 값은 그 요일이 기간에 든 날 수로 나눈 평균이다. */
-  function heatChart(grid, caption, unit) {
+  /**
+   * 요일 × 시. 값은 그 요일이 기간에 든 날 수로 나눈 평균이다.
+   * 색은 서버가 순위로 매긴 단계다. 알림 시각에 몰린 칸 하나가 나머지를 옅게 만들지 않게 한다.
+   * 범례는 단계마다 든 값의 범위를 적는다. 순위로 나눈 색만으로는 몇 번인지 알 수 없다.
+   */
+  function heatChart(grid, scale, caption, unit) {
     var root = el('div', undefined, 'chart');
     var ro = el('div', undefined, 'readout');
     ro.setAttribute('aria-live', 'polite');
@@ -358,19 +362,25 @@ export const DASHBOARD_SCRIPT = `<script>
       nodes.push([]);
       r.forEach(function (v, h) {
         var c = el('div', undefined, 'c');
-        c.style.background = HEAT[max > 0 ? Math.min(HEAT.length - 1, Math.floor(v / max * HEAT.length)) : 0];
+        c.style.background = HEAT[scale.levels[ri][h]];
         c.addEventListener('mouseenter', function () { paint(ri, h); });
         box.appendChild(c);
         nodes[ri].push(c);
       });
     });
     root.appendChild(box);
-    var scale = el('div', undefined, 'scale');
-    scale.appendChild(el('span', '적음'));
-    HEAT.forEach(function (c) { var i = el('i'); i.style.background = c; scale.appendChild(i); });
-    scale.appendChild(el('span', '많음'));
-    scale.appendChild(el('span', '가장 많은 칸 ' + num(max) + unit));
-    root.appendChild(scale);
+    var legend = el('div', undefined, 'scale');
+    HEAT.forEach(function (c, level) {
+      var s = scale.steps[level];
+      var step = el('span', undefined, 'step');
+      var i = el('i');
+      i.style.background = c;
+      step.appendChild(i);
+      step.appendChild(el('span', !s ? '-' : s.min === s.max ? num(s.min) : num(s.min) + '~' + num(s.max)));
+      legend.appendChild(step);
+    });
+    legend.appendChild(el('span', '가장 많은 칸 ' + num(max) + unit));
+    root.appendChild(legend);
     var on = null;
     function paint(ri, h) {
       if (on) on.classList.remove('on');

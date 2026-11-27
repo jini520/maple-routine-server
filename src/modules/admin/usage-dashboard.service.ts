@@ -11,6 +11,8 @@ import {
 import { UsersRepository } from '../users/users.repository'
 import {
   delta,
+  type HeatScale,
+  heatScale,
   hourGrid,
   kstDays,
   periodEndingToday,
@@ -50,6 +52,7 @@ export interface UsersDashboard {
   daily: { day: string; visitors: number; fresh: number; alerts: DayAlerts }[]
   weekday: WeekdayStat[]
   heat: number[][]
+  heatScale: HeatScale
   composition: { platform: UsagePart[]; identity: UsagePart[] }
 }
 
@@ -137,6 +140,7 @@ export class UsageDashboardService {
     const fresh = sum(daily.map((d) => d.fresh))
     const today = daily[daily.length - 1]?.visitors ?? 0
     const dayBefore = daily[daily.length - 2]?.visitors ?? 0
+    const heat = hourGrid(hours, dayList)
 
     let running = totalBeforeSpark
     const totalSeries = dayList.slice(-Math.min(SPARK_DAYS, days)).map((day) => {
@@ -166,7 +170,8 @@ export class UsageDashboardService {
       },
       daily,
       weekday: weekdayStats(daily.map((d) => ({ day: d.day, value: d.visitors }))),
-      heat: hourGrid(hours, dayList),
+      heat,
+      heatScale: heatScale(heat),
       composition: { platform: composition.platform, identity: composition.identity },
     }
   }

@@ -1,5 +1,6 @@
 import {
   delta,
+  heatScale,
   hourGrid,
   kstDays,
   kstWeekday,
@@ -88,5 +89,56 @@ describe('요일별', () => {
     expect(grid[2][21]).toBe(5)
     expect(grid[0][21]).toBe(10)
     expect(grid[1][3]).toBe(0)
+  })
+})
+
+describe('요일 · 시간대 칸의 색 단계', () => {
+  /** 7 × 24 칸을 0 으로 채우고 values 를 앞 칸부터 넣는다. */
+  function gridOf(values: number[]): number[][] {
+    const grid = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0))
+    values.forEach((v, i) => (grid[Math.floor(i / 24)][i % 24] = v))
+    return grid
+  }
+
+  // 가장 많은 칸으로 나누면 알림 시각에 몰린 칸 하나가 나머지를 모두 가장 옅은 단계로 밀어낸다.
+  it('몰린 칸 하나가 있어도 방문이 있는 칸이 다섯 단계에 고르게 나뉜다', () => {
+    const values = [...Array.from({ length: 19 }, (_, i) => i + 1), 500]
+    const { levels } = heatScale(gridOf(values))
+
+    const counts = [0, 0, 0, 0, 0, 0]
+    levels.flat().forEach((l, i) => i < values.length && (counts[l] += 1))
+    expect(counts).toEqual([0, 4, 4, 4, 4, 4])
+    expect(levels[0][19]).toBe(5)
+    expect(levels[0][0]).toBe(1)
+  })
+
+  it('0 인 칸은 0 단계이고, 같은 값은 같은 단계다', () => {
+    const { levels } = heatScale(gridOf([3, 3, 3, 1]))
+
+    expect(levels[0][0]).toBe(levels[0][1])
+    expect(levels[0][1]).toBe(levels[0][2])
+    expect(levels[0][0]).toBe(5)
+    expect(levels[0][3]).toBe(2)
+    expect(levels[6][23]).toBe(0)
+  })
+
+  it('범례는 단계마다 든 칸의 값 범위이고, 든 칸이 없는 단계는 비운다', () => {
+    const { steps } = heatScale(gridOf([3, 3, 3, 1]))
+
+    expect(steps).toEqual([
+      { min: 0, max: 0 },
+      null,
+      { min: 1, max: 1 },
+      null,
+      null,
+      { min: 3, max: 3 },
+    ])
+  })
+
+  it('방문이 하나도 없으면 모든 칸이 0 단계이고 1 ~ 5 단계는 비운다', () => {
+    const { levels, steps } = heatScale(gridOf([]))
+
+    expect(new Set(levels.flat())).toEqual(new Set([0]))
+    expect(steps).toEqual([{ min: 0, max: 0 }, null, null, null, null, null])
   })
 })
